@@ -1,0 +1,80 @@
+name: Fly Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      # ================================================
+      # TOKEN DO GITHUB APP
+      # ================================================
+      - name: Generate GitHub App token
+        id: app-token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.BOT_APP_ID }}
+          installation_id: ${{ secrets.BOT_INSTALLATION_ID }}
+          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Define preview app name
+        id: vars
+        run: echo "APP_NAME=${{ github.event.repository.name }}-pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+
+      - name: Create Fly app (if not exists)
+        run: |
+          flyctl apps create ${{ steps.vars.outputs.APP_NAME }} --yes --org ${{ secrets.FLY_ORG }} || true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Set secrets for preview app
+        run: |
+          cd ${{ secrets.FOLDER__API }}
+          flyctl secrets set \
+            JWTKEY="${{ secrets.JWTKEY }}" \
+            CONNECTIONDB="${{ secrets.CONNECTIONDB }}" \
+            EMAILSETTINGS__SMTPSERVER="${{ secrets.EMAILSETTINGS__SMTPSERVER }}" \
+            EMAILSETTINGS__SMTPPORT="${{ secrets.EMAILSETTINGS__SMTPPORT }}" \
+            EMAILSETTINGS__IMAPSERVER="${{ secrets.EMAILSETTINGS__IMAPSERVER }}" \
+            EMAILSETTINGS__IMAPPORT="${{ secrets.EMAILSETTINGS__IMAPPORT }}" \
+            EMAILSETTINGS__FROM="${{ secrets.EMAILSETTINGS__FROM }}" \
+            EMAILSETTINGS__PASSWORD="${{ secrets.EMAILSETTINGS__PASSWORD }}" \
+            INTEGRATIONSETTINGS__TMDBAPIKEY="${{ SECRETS.INTEGRATIONSETTINGS__TMDBAPIKEY }}" \
+            INTEGRATIONSETTINGS__TMDBAPIURL="${{ SECRETS.INTEGRATIONSETTINGS__TMDBAPIURL }}" \
+            INTEGRATIONSETTINGS__GOOGLEBOOKSAPIKEY="${{ SECRETS.INTEGRATIONSETTINGS__GOOGLEBOOKSAPIKEY }}" \
+            INTEGRATIONSETTINGS__GOOGLEBOOKSAPIURL="${{ SECRETS.INTEGRATIONSETTINGS__GOOGLEBOOKSAPIURL }}" \
+            KESTREL__CERTIFICATES__DEVELOPMENT__PASSWORD="${{ secrets.KESTREL__CERTIFICATES__DEVELOPMENT__PASSWORD }}" \
+            -a ${{ steps.vars.outputs.APP_NAME }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy preview app
+        run: |
+          cd ${{ secrets.FOLDER__API }}
+          flyctl deploy --remote-only -a ${{ steps.vars.outputs.APP_NAME }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      # ================================================
+      # COMENTÁRIO USANDO O BOT
+      # ================================================
+      - name: Comment preview URL on PR (Vercel-style)
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          token: ${{ steps.app-token.outputs.token }} # 👈 USA O BOT
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **🚀 Preview environment for this PR**
+
+            | Project | Deployment | Preview | Updated (UTC) |
+            |--------|------------|---------|---------------|
+            | `${{ github.event.repository.name }}` | 🟢 Deployed | [Preview](https://${{ steps.vars.outputs.APP_NAME }}.fly.dev) | ${{ github.event.pull_request.updated_at }} |
