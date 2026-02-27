@@ -1,17 +1,16 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import "./globals.css"
-import { AuthProvider } from "@/contexts/auth.context"
-import { Main } from "@/components/layout/admin/main"
+import type { Metadata, Viewport } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
+import './globals.css'
 
-const inter = Inter({ subsets: ["latin"] })
+const _geist = Geist({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FitCoach Pro - Gestão para Personal Trainers",
-  description: "Sistema completo de gestão para personal trainers: alunos, treinos, nutrição e mensagens",
+  title: 'Salon CRM - Gerenciamento de Clientes',
+  description: 'Sistema de gerenciamento de clientes e servicos para saloes de beleza',
   keywords: ["desenvolvimento de sistemas", "criação de páginas", "automações comerciais", "conexão com clientes", "soluções digitais", "presença online", "engajamento de clientes", "tecnologia para negócios"],
   generator: "vorolabs.app",
   icons: {
@@ -33,21 +32,35 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#1a1a1a' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="pt-BR" className="dark scroll-smooth">
-      <body className={`${inter.className} font-sans antialiased`}>
-        <AuthProvider>
-          <Main>
-            {children}
-          </Main>
-        </AuthProvider>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="font-sans antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
         <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   )
