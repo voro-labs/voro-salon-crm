@@ -5,7 +5,7 @@
       "name": "API C#",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/voro-salon-crm-api/VoroSwipeEntertainment.API/VoroSwipeEntertainment.API.csproj",
+      "projectPath": "${workspaceFolder}/voro-salon-crm-api/VoroSalonCrm.API/VoroSalonCrm.API.csproj",
       "launchConfigurationId": "TargetFramework=;http-public"
     },
     {

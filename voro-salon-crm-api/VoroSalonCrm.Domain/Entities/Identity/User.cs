@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
-using VoroSwipeEntertainment.Domain.Interfaces.Entities;
+using VoroSalonCrm.Domain.Interfaces.Entities;
 
-namespace VoroSwipeEntertainment.Domain.Entities.Identity
+namespace VoroSalonCrm.Domain.Entities.Identity
 {
     public class User : IdentityUser<Guid>, ISoftDeletable
     {

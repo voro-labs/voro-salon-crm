@@ -1,8 +1,8 @@
-﻿using VoroSwipeEntertainment.Domain.Interfaces.Repositories.Base;
+﻿using VoroSalonCrm.Domain.Interfaces.Repositories.Base;
 using System.Linq.Expressions;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Base;
+using VoroSalonCrm.Application.Services.Interfaces.Base;
 
-namespace VoroSwipeEntertainment.Application.Services.Base
+namespace VoroSalonCrm.Application.Services.Base
 {
     public class ServiceBase<T>(IRepositoryBase<T> repository) : IServiceBase<T> where T : class
     {

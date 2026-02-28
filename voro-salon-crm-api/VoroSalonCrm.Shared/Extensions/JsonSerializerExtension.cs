@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VoroSwipeEntertainment.Shared.Extensions
+namespace VoroSalonCrm.Shared.Extensions
 {
     public static class JsonSerializerExtension
     {

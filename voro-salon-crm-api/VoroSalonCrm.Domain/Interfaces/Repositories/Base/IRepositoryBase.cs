@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace VoroSwipeEntertainment.Domain.Interfaces.Repositories.Base
+namespace VoroSalonCrm.Domain.Interfaces.Repositories.Base
 {
     public interface IRepositoryBase<T> where T : class
     {

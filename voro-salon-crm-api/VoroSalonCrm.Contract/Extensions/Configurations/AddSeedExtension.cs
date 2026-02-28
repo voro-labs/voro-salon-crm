@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Builder;
-using VoroSwipeEntertainment.Infrastructure.Seeds;
-using VoroSwipeEntertainment.Infrastructure.Factories;
+using VoroSalonCrm.Infrastructure.Seeds;
+using VoroSalonCrm.Infrastructure.Factories;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace VoroSwipeEntertainment.Contract.Extensions.Configurations
+namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddSeedExtension
     {

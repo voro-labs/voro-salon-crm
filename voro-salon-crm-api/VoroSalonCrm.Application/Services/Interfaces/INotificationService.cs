@@ -1,7 +1,7 @@
-﻿using VoroSwipeEntertainment.Domain.Entities;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Base;
+﻿using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Application.Services.Interfaces.Base;
 
-namespace VoroSwipeEntertainment.Application.Services.Interfaces
+namespace VoroSalonCrm.Application.Services.Interfaces
 {
     public interface INotificationService : IServiceBase<Notification>
     {

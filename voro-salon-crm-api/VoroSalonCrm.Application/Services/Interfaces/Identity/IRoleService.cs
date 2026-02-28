@@ -1,7 +1,7 @@
-﻿using VoroSwipeEntertainment.Application.Services.Interfaces.Base;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
+﻿using VoroSalonCrm.Application.Services.Interfaces.Base;
+using VoroSalonCrm.Domain.Entities.Identity;
 
-namespace VoroSwipeEntertainment.Application.Services.Interfaces.Identity
+namespace VoroSalonCrm.Application.Services.Interfaces.Identity
 {
     public interface IRoleService : IServiceBase<Role>
     {

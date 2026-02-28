@@ -1,10 +1,10 @@
-﻿using VoroSwipeEntertainment.Domain.Entities;
-using VoroSwipeEntertainment.Domain.Interfaces.Repositories;
-using VoroSwipeEntertainment.Infrastructure.Repositories.Base;
-using VoroSwipeEntertainment.Domain.Interfaces.UnitOfWork;
-using VoroSwipeEntertainment.Infrastructure.Factories;
+﻿using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Infrastructure.Repositories.Base;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Infrastructure.Factories;
 
-namespace VoroSwipeEntertainment.Infrastructure.Repositories
+namespace VoroSalonCrm.Infrastructure.Repositories
 {
     public class NotificationRepository(JasmimDbContext context, IUnitOfWork unitOfWork) : RepositoryBase<Notification>(context, unitOfWork), INotificationRepository
     {

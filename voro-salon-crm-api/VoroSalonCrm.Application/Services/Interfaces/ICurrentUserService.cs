@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Application.Services.Interfaces
+﻿namespace VoroSalonCrm.Application.Services.Interfaces
 {
     public interface ICurrentUserService
     {

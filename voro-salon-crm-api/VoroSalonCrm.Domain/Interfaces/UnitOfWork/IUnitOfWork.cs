@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 
-namespace VoroSwipeEntertainment.Domain.Interfaces.UnitOfWork
+namespace VoroSalonCrm.Domain.Interfaces.UnitOfWork
 {
     public interface IUnitOfWork : IDisposable, IAsyncDisposable
     {

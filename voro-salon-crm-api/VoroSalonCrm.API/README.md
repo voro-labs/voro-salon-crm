@@ -1,6 +1,6 @@
-dotnet ef migrations add AddInfos --project VoroSwipeEntertainment.Infrastructure --startup-project VoroSwipeEntertainment.API --output-dir Migrations
-dotnet ef migrations remove --project VoroSwipeEntertainment.Infrastructure --startup-project VoroSwipeEntertainment.API
-dotnet ef database update --project VoroSwipeEntertainment.Infrastructure --startup-project VoroSwipeEntertainment.API
+dotnet ef migrations add AddInfos --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API --output-dir Migrations
+dotnet ef migrations remove --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API
+dotnet ef database update --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API
 
 
-dotnet watch --project VoroSwipeEntertainment.API --urls http://0.0.0.0:5000
+dotnet watch --project VoroSalonCrm.API --urls http://0.0.0.0:5000

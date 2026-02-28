@@ -1,11 +1,11 @@
-﻿using VoroSwipeEntertainment.Domain.Entities;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
+﻿using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Entities.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces;
 
-namespace VoroSwipeEntertainment.Infrastructure.Factories
+namespace VoroSalonCrm.Infrastructure.Factories
 {
     public class JasmimDbContext : IdentityDbContext<User, Role, Guid,
         IdentityUserClaim<Guid>, UserRole, IdentityUserLogin<Guid>,

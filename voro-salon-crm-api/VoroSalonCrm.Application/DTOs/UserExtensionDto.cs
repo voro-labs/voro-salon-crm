@@ -1,7 +1,7 @@
-﻿using VoroSwipeEntertainment.Application.DTOs.Identity;
-using VoroSwipeEntertainment.Domain.Enums;
+﻿using VoroSalonCrm.Application.DTOs.Identity;
+using VoroSalonCrm.Domain.Enums;
 
-namespace VoroSwipeEntertainment.Application.DTOs
+namespace VoroSalonCrm.Application.DTOs
 {
     public class UserExtensionDto
     {

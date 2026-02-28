@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Shared.Utils
+﻿namespace VoroSalonCrm.Shared.Utils
 {
     public class MailUtil
     {

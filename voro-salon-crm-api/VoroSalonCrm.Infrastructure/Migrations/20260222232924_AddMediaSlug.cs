@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace VoroSwipeEntertainment.Infrastructure.Migrations
+namespace VoroSalonCrm.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class AddMediaSlug : Migration

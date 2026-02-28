@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace VoroSwipeEntertainment.Application.Services.Interfaces.Base
+namespace VoroSalonCrm.Application.Services.Interfaces.Base
 {
     public interface IServiceBase<T> where T : class
     {

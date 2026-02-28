@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace VoroSwipeEntertainment.Shared.ViewModels
+namespace VoroSalonCrm.Shared.ViewModels
 {
     public class ResponseViewModel<T> where T : class?
     {

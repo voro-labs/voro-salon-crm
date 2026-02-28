@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace VoroSwipeEntertainment.API.Filters
+namespace VoroSalonCrm.API.Filters
 {
     public class ValidateModelFilter : IActionFilter
     {

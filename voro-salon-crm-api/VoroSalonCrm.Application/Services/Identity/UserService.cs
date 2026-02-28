@@ -1,13 +1,13 @@
-﻿using VoroSwipeEntertainment.Domain.Interfaces.Repositories.Identity;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
-using VoroSwipeEntertainment.Application.Services.Base;
+﻿using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Application.Services.Base;
 using Microsoft.AspNetCore.Identity;
-using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Application.DTOs.Identity;
+using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs.Identity;
 using AutoMapper;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Application.Services.Interfaces.Identity;
 
-namespace VoroSwipeEntertainment.Application.Services.Identity
+namespace VoroSalonCrm.Application.Services.Identity
 {
     public class UserService(IUserRepository userRepository, RoleManager<Role> roleManager,
         SignInManager<User> signInManager, UserManager<User> userManager, IMapper mapper) : ServiceBase<User>(userRepository), IUserService

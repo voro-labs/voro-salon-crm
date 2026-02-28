@@ -1,8 +1,8 @@
 <Solution>
-  <Project Path="VoroSwipeEntertainment.API/VoroSwipeEntertainment.API.csproj" />
-  <Project Path="VoroSwipeEntertainment.Application/VoroSwipeEntertainment.Application.csproj" />
-  <Project Path="VoroSwipeEntertainment.Contract/VoroSwipeEntertainment.Contract.csproj" Id="2a3100e7-6d6d-46c2-b113-9764092b3584" />
-  <Project Path="VoroSwipeEntertainment.Domain/VoroSwipeEntertainment.Domain.csproj" />
-  <Project Path="VoroSwipeEntertainment.Infrastructure/VoroSwipeEntertainment.Infrastructure.csproj" />
-  <Project Path="VoroSwipeEntertainment.Shared/VoroSwipeEntertainment.Shared.csproj" Id="5c2730a9-2d3a-4329-8b91-4910993e8ce8" />
+  <Project Path="VoroSalonCrm.API/VoroSalonCrm.API.csproj" />
+  <Project Path="VoroSalonCrm.Application/VoroSalonCrm.Application.csproj" />
+  <Project Path="VoroSalonCrm.Contract/VoroSalonCrm.Contract.csproj" Id="2a3100e7-6d6d-46c2-b113-9764092b3584" />
+  <Project Path="VoroSalonCrm.Domain/VoroSalonCrm.Domain.csproj" />
+  <Project Path="VoroSalonCrm.Infrastructure/VoroSalonCrm.Infrastructure.csproj" />
+  <Project Path="VoroSalonCrm.Shared/VoroSalonCrm.Shared.csproj" Id="5c2730a9-2d3a-4329-8b91-4910993e8ce8" />
 </Solution>

@@ -1,10 +1,10 @@
 using Asp.Versioning;
 using Scalar.AspNetCore;
 using System.Text.Json;
-using VoroSwipeEntertainment.API.Filters;
-using VoroSwipeEntertainment.API.Middlewares;
+using VoroSalonCrm.API.Filters;
+using VoroSalonCrm.API.Middlewares;
 using System.Text.Json.Serialization;
-using VoroSwipeEntertainment.Contract.Extensions.Configurations;
+using VoroSalonCrm.Contract.Extensions.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 

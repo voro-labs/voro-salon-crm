@@ -1,7 +1,7 @@
-﻿using VoroSwipeEntertainment.Domain.Entities;
-using VoroSwipeEntertainment.Domain.Interfaces.Repositories.Base;
+﻿using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Repositories.Base;
 
-namespace VoroSwipeEntertainment.Domain.Interfaces.Repositories
+namespace VoroSalonCrm.Domain.Interfaces.Repositories
 {
     public interface INotificationRepository : IRepositoryBase<Notification>
     {

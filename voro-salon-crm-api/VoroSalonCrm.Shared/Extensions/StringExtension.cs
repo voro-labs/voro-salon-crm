@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace VoroSwipeEntertainment.Shared.Extensions
+namespace VoroSalonCrm.Shared.Extensions
 {
     public static class StringExtension
     {

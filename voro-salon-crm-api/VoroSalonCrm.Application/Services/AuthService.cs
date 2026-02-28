@@ -1,19 +1,19 @@
-﻿using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
-using VoroSwipeEntertainment.Shared.Structs;
-using VoroSwipeEntertainment.Shared.Utils;
+﻿using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Shared.Structs;
+using VoroSalonCrm.Shared.Utils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using VoroSwipeEntertainment.Application.DTOs.Identity;
+using VoroSalonCrm.Application.DTOs.Identity;
 using AutoMapper;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Identity;
 
-namespace VoroSwipeEntertainment.Application.Services
+namespace VoroSalonCrm.Application.Services
 {
     public class AuthService(IOptions<CookieUtil> cookieUtil, IConfiguration configuration,
         IMapper mapper, INotificationService notificationService, IUserService userService) : IAuthService

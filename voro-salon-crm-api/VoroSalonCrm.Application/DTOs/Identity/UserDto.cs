@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Application.DTOs.Identity
+﻿namespace VoroSalonCrm.Application.DTOs.Identity
 {
     public class UserDto
     {

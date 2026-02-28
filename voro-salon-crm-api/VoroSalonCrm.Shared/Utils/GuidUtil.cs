@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace VoroSwipeEntertainment.Shared.Utils
+namespace VoroSalonCrm.Shared.Utils
 {
-    public static class GuidUtils
+    public static class GuidUtil
     {
         public static Guid GenerateGuidFromSlug(string slug)
         {

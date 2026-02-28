@@ -1,6 +1,6 @@
-﻿using VoroSwipeEntertainment.Infrastructure.Factories;
+﻿using VoroSalonCrm.Infrastructure.Factories;
 
-namespace VoroSwipeEntertainment.Infrastructure.Seeds
+namespace VoroSalonCrm.Infrastructure.Seeds
 {
     public interface IDataSeeder
     {

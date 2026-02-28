@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
-using VoroSwipeEntertainment.Shared.Extensions;
-using VoroSwipeEntertainment.Shared.ViewModels;
+using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Shared.Extensions;
+using VoroSalonCrm.Shared.ViewModels;
 
-namespace VoroSwipeEntertainment.API.Controllers
+namespace VoroSalonCrm.API.Controllers
 {
     [Route("api/v{version:version}/[controller]")]
     [Tags("Contents")]

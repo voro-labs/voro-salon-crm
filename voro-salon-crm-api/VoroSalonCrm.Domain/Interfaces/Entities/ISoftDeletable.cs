@@ -1,4 +1,4 @@
-namespace VoroSwipeEntertainment.Domain.Interfaces.Entities
+namespace VoroSalonCrm.Domain.Interfaces.Entities
 {
     public interface ISoftDeletable
     {

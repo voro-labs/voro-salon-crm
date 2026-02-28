@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-namespace VoroSwipeEntertainment.Shared.Extensions
+namespace VoroSalonCrm.Shared.Extensions
 {
     public static class EnumExtension
     {

@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces;
 
-namespace VoroSwipeEntertainment.Application.Services
+namespace VoroSalonCrm.Application.Services
 {
     public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
     {

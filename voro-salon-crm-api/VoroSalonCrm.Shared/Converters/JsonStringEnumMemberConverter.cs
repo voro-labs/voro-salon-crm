@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VoroSwipeEntertainment.Shared.Converters
+namespace VoroSalonCrm.Shared.Converters
 {
     public class JsonStringEnumMemberConverter<T> : JsonConverter<T> where T : struct, Enum
     {

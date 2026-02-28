@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Domain.Enums
+﻿namespace VoroSalonCrm.Domain.Enums
 {
     public enum NotificationEnum
     {

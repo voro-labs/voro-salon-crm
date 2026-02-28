@@ -1,9 +1,9 @@
-﻿using VoroSwipeEntertainment.Domain.Interfaces.Repositories.Base;
+﻿using VoroSalonCrm.Domain.Interfaces.Repositories.Base;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-using VoroSwipeEntertainment.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
-namespace VoroSwipeEntertainment.Infrastructure.Repositories.Base
+namespace VoroSalonCrm.Infrastructure.Repositories.Base
 {
     public class RepositoryBase<T>(DbContext context, IUnitOfWork unitOfWork) : IRepositoryBase<T> where T : class
     {

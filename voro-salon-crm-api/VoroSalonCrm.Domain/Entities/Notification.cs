@@ -1,6 +1,6 @@
-﻿using VoroSwipeEntertainment.Domain.Interfaces.Entities;
+﻿using VoroSalonCrm.Domain.Interfaces.Entities;
 
-namespace VoroSwipeEntertainment.Domain.Entities
+namespace VoroSalonCrm.Domain.Entities
 {
     public class Notification : ISoftDeletable
     {

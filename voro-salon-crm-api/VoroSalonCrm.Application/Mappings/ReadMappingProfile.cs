@@ -1,8 +1,8 @@
 using AutoMapper;
-using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Domain.Entities;
+using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Domain.Entities;
 
-namespace VoroSwipeEntertainment.Application.Mappings
+namespace VoroSalonCrm.Application.Mappings
 {
     public class ReadMappingProfile : Profile
     {

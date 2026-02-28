@@ -1,10 +1,10 @@
-﻿using VoroSwipeEntertainment.Domain.Entities.Identity;
-using VoroSwipeEntertainment.Domain.Interfaces.Repositories.Identity;
-using VoroSwipeEntertainment.Domain.Interfaces.UnitOfWork;
-using VoroSwipeEntertainment.Infrastructure.Factories;
-using VoroSwipeEntertainment.Infrastructure.Repositories.Base;
+﻿using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Infrastructure.Factories;
+using VoroSalonCrm.Infrastructure.Repositories.Base;
 
-namespace VoroSwipeEntertainment.Infrastructure.Repositories.Identity
+namespace VoroSalonCrm.Infrastructure.Repositories.Identity
 {
     public class UserRepository(JasmimDbContext context, IUnitOfWork unitOfWork) : RepositoryBase<User>(context, unitOfWork), IUserRepository
     {

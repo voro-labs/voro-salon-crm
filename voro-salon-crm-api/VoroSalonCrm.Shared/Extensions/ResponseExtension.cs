@@ -1,8 +1,8 @@
-﻿using VoroSwipeEntertainment.Shared.ViewModels;
+﻿using VoroSalonCrm.Shared.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 
-namespace VoroSwipeEntertainment.Shared.Extensions
+namespace VoroSalonCrm.Shared.Extensions
 {
     public static class ResponseExtension
     {

@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
-using VoroSwipeEntertainment.Domain.Enums;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Domain.Enums;
 
-namespace VoroSwipeEntertainment.Domain.Entities
+namespace VoroSalonCrm.Domain.Entities
 {
     public class UserExtension
     {

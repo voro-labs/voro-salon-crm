@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using VoroSwipeEntertainment.Application.DTOs.Identity;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
+using VoroSalonCrm.Application.DTOs.Identity;
+using VoroSalonCrm.Domain.Entities.Identity;
 
-namespace VoroSwipeEntertainment.Application.Mappings.Identity
+namespace VoroSalonCrm.Application.Mappings.Identity
 {
     public class IdentityMappingProfile : Profile
     {

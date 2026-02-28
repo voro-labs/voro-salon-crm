@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace VoroSwipeEntertainment.Domain.Entities.Identity
+namespace VoroSalonCrm.Domain.Entities.Identity
 {
     public class Role : IdentityRole<Guid>
     {

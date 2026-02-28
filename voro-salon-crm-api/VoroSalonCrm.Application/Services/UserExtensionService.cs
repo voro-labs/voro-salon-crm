@@ -1,15 +1,15 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Application.Services.Base;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
-using VoroSwipeEntertainment.Domain.Entities;
+using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.Services.Base;
+using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Domain.Entities;
 using System.Collections.Concurrent;
-using VoroSwipeEntertainment.Domain.Enums;
-using VoroSwipeEntertainment.Domain.Interfaces.Repositories;
-using VoroSwipeEntertainment.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Domain.Enums;
+using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
-namespace VoroSwipeEntertainment.Application.Services
+namespace VoroSalonCrm.Application.Services
 {
     public class UserExtensionService(
         IUserExtensionRepository userExtensionRepository,

@@ -1,11 +1,11 @@
 ﻿using System.Text;
-using VoroSwipeEntertainment.Shared.Utils;
+using VoroSalonCrm.Shared.Utils;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-namespace VoroSwipeEntertainment.Contract.Extensions.Configurations
+namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddAuthExtension
     {

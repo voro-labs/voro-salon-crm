@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Application.Services.Interfaces.Email
+﻿namespace VoroSalonCrm.Application.Services.Interfaces.Email
 {
     public interface IMailKitEmailService
     {

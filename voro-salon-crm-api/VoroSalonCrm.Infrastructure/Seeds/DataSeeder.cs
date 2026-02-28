@@ -1,13 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Data;
-using VoroSwipeEntertainment.Domain.Entities;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
-using VoroSwipeEntertainment.Domain.Enums;
-using VoroSwipeEntertainment.Infrastructure.Factories;
-using VoroSwipeEntertainment.Shared.Constants;
-using VoroSwipeEntertainment.Shared.Extensions;
+using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Domain.Enums;
+using VoroSalonCrm.Infrastructure.Factories;
+using VoroSalonCrm.Shared.Constants;
+using VoroSalonCrm.Shared.Extensions;
 
-namespace VoroSwipeEntertainment.Infrastructure.Seeds
+namespace VoroSalonCrm.Infrastructure.Seeds
 {
     public class DataSeeder : IDataSeeder
     {

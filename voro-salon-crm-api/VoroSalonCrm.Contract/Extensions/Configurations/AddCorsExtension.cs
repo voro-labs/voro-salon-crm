@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace VoroSwipeEntertainment.Contract.Extensions.Configurations
+namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddCorsExtension
     {

@@ -1,14 +1,14 @@
-﻿using VoroSwipeEntertainment.Domain.Enums;
-using VoroSwipeEntertainment.Domain.Entities;
+﻿using VoroSalonCrm.Domain.Enums;
+using VoroSalonCrm.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using VoroSwipeEntertainment.Shared.Extensions;
-using VoroSwipeEntertainment.Application.Services.Base;
-using VoroSwipeEntertainment.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Shared.Extensions;
+using VoroSalonCrm.Application.Services.Base;
+using VoroSalonCrm.Domain.Interfaces.Repositories;
 using Microsoft.Extensions.Configuration;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Email;
+using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Email;
 
-namespace VoroSwipeEntertainment.Application.Services
+namespace VoroSalonCrm.Application.Services
 {
     public class NotificationService(IMailKitEmailService emailService, IConfiguration configuration, INotificationRepository notificationRepository) : ServiceBase<Notification>(notificationRepository), INotificationService
     {

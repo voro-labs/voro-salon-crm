@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\VoroSwipeEntertainment.Application\VoroSwipeEntertainment.Application.csproj" />
-    <ProjectReference Include="..\VoroSwipeEntertainment.Domain\VoroSwipeEntertainment.Domain.csproj" />
-    <ProjectReference Include="..\VoroSwipeEntertainment.Shared\VoroSwipeEntertainment.Shared.csproj" />
+    <ProjectReference Include="..\VoroSalonCrm.Application\VoroSalonCrm.Application.csproj" />
+    <ProjectReference Include="..\VoroSalonCrm.Domain\VoroSalonCrm.Domain.csproj" />
+    <ProjectReference Include="..\VoroSalonCrm.Shared\VoroSalonCrm.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

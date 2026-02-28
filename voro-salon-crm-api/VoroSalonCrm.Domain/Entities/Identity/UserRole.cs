@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace VoroSwipeEntertainment.Domain.Entities.Identity
+namespace VoroSalonCrm.Domain.Entities.Identity
 {
     public class UserRole : IdentityUserRole<Guid>
     {

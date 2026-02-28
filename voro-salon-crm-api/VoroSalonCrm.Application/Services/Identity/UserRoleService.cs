@@ -1,9 +1,9 @@
-﻿using VoroSwipeEntertainment.Domain.Interfaces.Repositories.Identity;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
-using VoroSwipeEntertainment.Application.Services.Base;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Identity;
+﻿using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Application.Services.Base;
+using VoroSalonCrm.Application.Services.Interfaces.Identity;
 
-namespace VoroSwipeEntertainment.Application.Services.Identity
+namespace VoroSalonCrm.Application.Services.Identity
 {
     public class UserRoleService(IUserRoleRepository userRoleRepository) : ServiceBase<UserRole>(userRoleRepository), IUserRoleService
     {

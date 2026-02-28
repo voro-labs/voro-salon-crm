@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Shared.Helpers
+﻿namespace VoroSalonCrm.Shared.Helpers
 {
     public static class CollectionSyncHelper
     {

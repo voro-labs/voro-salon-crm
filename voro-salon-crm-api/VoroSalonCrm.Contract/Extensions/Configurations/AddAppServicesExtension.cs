@@ -1,21 +1,21 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using VoroSwipeEntertainment.Application.Services;
-using VoroSwipeEntertainment.Application.Services.Identity;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Email;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Identity;
-using VoroSwipeEntertainment.Domain.Interfaces.Repositories;
-using VoroSwipeEntertainment.Domain.Interfaces.Repositories.Identity;
-using VoroSwipeEntertainment.Domain.Interfaces.UnitOfWork;
-using VoroSwipeEntertainment.Infrastructure.Email;
-using VoroSwipeEntertainment.Infrastructure.Repositories;
-using VoroSwipeEntertainment.Infrastructure.Repositories.Identity;
-using VoroSwipeEntertainment.Infrastructure.Seeds;
-using VoroSwipeEntertainment.Infrastructure.UnitOfWork;
-using VoroSwipeEntertainment.Shared.Utils;
+using VoroSalonCrm.Application.Services;
+using VoroSalonCrm.Application.Services.Identity;
+using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Email;
+using VoroSalonCrm.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Infrastructure.Email;
+using VoroSalonCrm.Infrastructure.Repositories;
+using VoroSalonCrm.Infrastructure.Repositories.Identity;
+using VoroSalonCrm.Infrastructure.Seeds;
+using VoroSalonCrm.Infrastructure.UnitOfWork;
+using VoroSalonCrm.Shared.Utils;
 
-namespace VoroSwipeEntertainment.Contract.Extensions.Configurations
+namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddAppServicesExtension
     {

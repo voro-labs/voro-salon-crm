@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Shared.Structs
+﻿namespace VoroSalonCrm.Shared.Structs
 {
     public struct CustomClaimTypes
     {

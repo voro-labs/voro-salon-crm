@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VoroSwipeEntertainment.Shared.Converters
+namespace VoroSalonCrm.Shared.Converters
 {
     public class ByteArrayFromObjectConverter : JsonConverter<byte[]>
     {

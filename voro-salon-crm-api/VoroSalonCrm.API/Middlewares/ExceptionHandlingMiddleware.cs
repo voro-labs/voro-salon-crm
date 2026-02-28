@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.API.Middlewares
+﻿namespace VoroSalonCrm.API.Middlewares
 {
     public class ExceptionHandlingMiddleware
     {

@@ -1,9 +1,9 @@
-﻿using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
-using VoroSwipeEntertainment.Application.DTOs.Identity;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Base;
+﻿using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Application.DTOs.Identity;
+using VoroSalonCrm.Application.Services.Interfaces.Base;
 
-namespace VoroSwipeEntertainment.Application.Services.Interfaces.Identity
+namespace VoroSalonCrm.Application.Services.Interfaces.Identity
 {
     public interface IUserService : IServiceBase<User>
     {

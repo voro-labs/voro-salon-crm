@@ -1,13 +1,13 @@
 ﻿using Microsoft.Extensions.Options;
 using System.Text.Json;
-using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Application.Responses;
-using VoroSwipeEntertainment.Application.Services.Interfaces;
-using VoroSwipeEntertainment.Shared.Utils;
-using VoroSwipeEntertainment.Shared.Extensions;
-using VoroSwipeEntertainment.Domain.Enums;
+using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.Responses;
+using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Shared.Utils;
+using VoroSalonCrm.Shared.Extensions;
+using VoroSalonCrm.Domain.Enums;
 
-namespace VoroSwipeEntertainment.Application.Services
+namespace VoroSalonCrm.Application.Services
 {
     public class TmdbService : ITmdbService
     {

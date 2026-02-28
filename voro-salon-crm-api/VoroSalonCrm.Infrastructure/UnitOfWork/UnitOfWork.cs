@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using VoroSwipeEntertainment.Infrastructure.Factories;
-using VoroSwipeEntertainment.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Infrastructure.Factories;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
-namespace VoroSwipeEntertainment.Infrastructure.UnitOfWork
+namespace VoroSalonCrm.Infrastructure.UnitOfWork
 {
     public class UnitOfWork : IUnitOfWork
     {

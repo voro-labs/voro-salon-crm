@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using VoroSwipeEntertainment.Infrastructure.Factories;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
+using VoroSalonCrm.Infrastructure.Factories;
+using VoroSalonCrm.Domain.Entities.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace VoroSwipeEntertainment.Contract.Extensions.Configurations
+namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddIdentityExtension
     {

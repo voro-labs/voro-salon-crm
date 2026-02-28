@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Shared.Constants
+﻿namespace VoroSalonCrm.Shared.Constants
 {
     public static class RoleConstant
     {

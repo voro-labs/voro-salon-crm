@@ -1,4 +1,4 @@
-﻿namespace VoroSwipeEntertainment.Application.DTOs
+﻿namespace VoroSalonCrm.Application.DTOs
 {
     public class SignInDto
     {

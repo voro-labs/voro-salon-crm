@@ -1,8 +1,8 @@
-﻿using VoroSwipeEntertainment.Application.Mappings;
-using VoroSwipeEntertainment.Application.Mappings.Identity;
+﻿using VoroSalonCrm.Application.Mappings;
+using VoroSalonCrm.Application.Mappings.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace VoroSwipeEntertainment.Contract.Extensions.Configurations
+namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddMappingExtension
     {

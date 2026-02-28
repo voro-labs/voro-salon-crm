@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
-using VoroSwipeEntertainment.Infrastructure.Factories;
-using VoroSwipeEntertainment.Shared.Utils;
+using VoroSalonCrm.Infrastructure.Factories;
+using VoroSalonCrm.Shared.Utils;
 
-namespace VoroSwipeEntertainment.Contract.Extensions.Configurations
+namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddDatabaseExtension
     {

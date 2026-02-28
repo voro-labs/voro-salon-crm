@@ -1,6 +1,6 @@
-﻿using VoroSwipeEntertainment.Application.DTOs;
+﻿using VoroSalonCrm.Application.DTOs;
 
-namespace VoroSwipeEntertainment.Application.Services.Interfaces
+namespace VoroSalonCrm.Application.Services.Interfaces
 {
     public interface ITmdbService
     {

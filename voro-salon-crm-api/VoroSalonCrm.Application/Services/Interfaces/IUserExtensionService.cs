@@ -1,8 +1,8 @@
-﻿using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Base;
-using VoroSwipeEntertainment.Domain.Entities;
+﻿using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.Services.Interfaces.Base;
+using VoroSalonCrm.Domain.Entities;
 
-namespace VoroSwipeEntertainment.Application.Services.Interfaces
+namespace VoroSalonCrm.Application.Services.Interfaces
 {
     public interface IUserExtensionService : IServiceBase<UserExtension>
     {

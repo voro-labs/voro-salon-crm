@@ -1,11 +1,11 @@
 ﻿using MimeKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
-using VoroSwipeEntertainment.Shared.Utils;
+using VoroSalonCrm.Shared.Utils;
 using Microsoft.Extensions.Options;
-using VoroSwipeEntertainment.Application.Services.Interfaces.Email;
+using VoroSalonCrm.Application.Services.Interfaces.Email;
 
-namespace VoroSwipeEntertainment.Infrastructure.Email
+namespace VoroSalonCrm.Infrastructure.Email
 {
     public class MailKitEmailService(IOptions<MailUtil> mailUtil) : IMailKitEmailService
     {

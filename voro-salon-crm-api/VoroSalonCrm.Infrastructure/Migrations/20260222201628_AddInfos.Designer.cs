@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using VoroSwipeEntertainment.Infrastructure.Factories;
+using VoroSalonCrm.Infrastructure.Factories;
 
 #nullable disable
 
-namespace VoroSwipeEntertainment.Infrastructure.Migrations
+namespace VoroSalonCrm.Infrastructure.Migrations
 {
     [DbContext(typeof(JasmimDbContext))]
     [Migration("20260222201628_AddInfos")]
@@ -113,7 +113,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Genre", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Genre", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -141,7 +141,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("Genres");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Identity.Role", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.Role", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -168,7 +168,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("Roles", (string)null);
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Identity.User", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -269,7 +269,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Identity.UserRole", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.UserRole", b =>
                 {
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -284,7 +284,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("UserRoles", (string)null);
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Keyword", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Keyword", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -312,7 +312,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("Keywords");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.MediaGenre", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.MediaGenre", b =>
                 {
                     b.Property<Guid>("MediaItemId")
                         .HasColumnType("uuid");
@@ -336,7 +336,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("MediaGenres");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.MediaItem", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.MediaItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -380,7 +380,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("MediaItems");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.MediaKeyword", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.MediaKeyword", b =>
                 {
                     b.Property<Guid>("MediaItemId")
                         .HasColumnType("uuid");
@@ -404,7 +404,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("MediaKeywords");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Notification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -448,7 +448,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserEraScore", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserEraScore", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -480,7 +480,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("UserEraScores");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserExtension", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserExtension", b =>
                 {
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -499,7 +499,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("UserExtensions");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserGenreScore", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserGenreScore", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -533,7 +533,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("UserGenreScores");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserKeywordScore", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserKeywordScore", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -567,7 +567,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("UserKeywordScores");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserMediaInteraction", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserMediaInteraction", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -600,7 +600,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.ToTable("UserMediaInteractions");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserMediaList", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserMediaList", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -636,7 +636,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Identity.Role", null)
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.Role", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -645,7 +645,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Identity.User", null)
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -654,7 +654,7 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Identity.User", null)
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -663,22 +663,22 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Identity.User", null)
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Identity.UserRole", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.UserRole", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Identity.Role", "Role")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.Role", "Role")
                         .WithMany("UserRoles")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Identity.User", "User")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.User", "User")
                         .WithMany("UserRoles")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -689,15 +689,15 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.MediaGenre", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.MediaGenre", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Genre", "Genre")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Genre", "Genre")
                         .WithMany("MediaGenres")
                         .HasForeignKey("GenreId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.MediaItem", "MediaItem")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.MediaItem", "MediaItem")
                         .WithMany("Genres")
                         .HasForeignKey("MediaItemId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -708,15 +708,15 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("MediaItem");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.MediaKeyword", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.MediaKeyword", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Keyword", "Keyword")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Keyword", "Keyword")
                         .WithMany("MediaKeywords")
                         .HasForeignKey("KeywordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.MediaItem", "MediaItem")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.MediaItem", "MediaItem")
                         .WithMany("Keywords")
                         .HasForeignKey("MediaItemId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -727,9 +727,9 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("MediaItem");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserEraScore", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserEraScore", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.UserExtension", "User")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.UserExtension", "User")
                         .WithMany("EraScores")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -738,26 +738,26 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserExtension", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserExtension", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Identity.User", "User")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.User", "User")
                         .WithOne("UserExtension")
-                        .HasForeignKey("VoroSwipeEntertainment.Domain.Entities.UserExtension", "UserId")
+                        .HasForeignKey("VoroSalonCrm.Domain.Entities.UserExtension", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserGenreScore", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserGenreScore", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Genre", "Genre")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Genre", "Genre")
                         .WithMany()
                         .HasForeignKey("GenreId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.UserExtension", "User")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.UserExtension", "User")
                         .WithMany("GenreScores")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -768,15 +768,15 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserKeywordScore", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserKeywordScore", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.Keyword", "Keyword")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Keyword", "Keyword")
                         .WithMany()
                         .HasForeignKey("KeywordId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.UserExtension", "User")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.UserExtension", "User")
                         .WithMany("KeywordScores")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -787,15 +787,15 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserMediaInteraction", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserMediaInteraction", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.MediaItem", "MediaItem")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.MediaItem", "MediaItem")
                         .WithMany()
                         .HasForeignKey("MediaItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.UserExtension", "User")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.UserExtension", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -806,15 +806,15 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserMediaList", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserMediaList", b =>
                 {
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.MediaItem", "MediaItem")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.MediaItem", "MediaItem")
                         .WithMany()
                         .HasForeignKey("MediaItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("VoroSwipeEntertainment.Domain.Entities.UserExtension", "User")
+                    b.HasOne("VoroSalonCrm.Domain.Entities.UserExtension", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -825,36 +825,36 @@ namespace VoroSwipeEntertainment.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Genre", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Genre", b =>
                 {
                     b.Navigation("MediaGenres");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Identity.Role", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.Role", b =>
                 {
                     b.Navigation("UserRoles");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Identity.User", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.User", b =>
                 {
                     b.Navigation("UserExtension");
 
                     b.Navigation("UserRoles");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.Keyword", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Keyword", b =>
                 {
                     b.Navigation("MediaKeywords");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.MediaItem", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.MediaItem", b =>
                 {
                     b.Navigation("Genres");
 
                     b.Navigation("Keywords");
                 });
 
-            modelBuilder.Entity("VoroSwipeEntertainment.Domain.Entities.UserExtension", b =>
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserExtension", b =>
                 {
                     b.Navigation("EraScores");
 

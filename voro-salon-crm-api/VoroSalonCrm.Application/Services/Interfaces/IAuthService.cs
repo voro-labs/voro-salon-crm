@@ -1,7 +1,7 @@
-﻿using VoroSwipeEntertainment.Application.DTOs;
-using VoroSwipeEntertainment.Domain.Entities.Identity;
+﻿using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Domain.Entities.Identity;
 
-namespace VoroSwipeEntertainment.Application.Services.Interfaces
+namespace VoroSalonCrm.Application.Services.Interfaces
 {
     public interface IAuthService
     {
