@@ -37,19 +37,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<INotificationRepository, NotificationRepository>();
-            #endregion
-
-            #region Repositories
-            services.AddScoped<IMediaItemRepository, MediaItemRepository>();
-            services.AddScoped<IGenreRepository, GenreRepository>();
-            services.AddScoped<IKeywordRepository, KeywordRepository>();
-            services.AddScoped<IMediaGenreRepository, MediaGenreRepository>();
-            services.AddScoped<IMediaKeywordRepository, MediaKeywordRepository>();
-            services.AddScoped<IUserMediaInteractionRepository, UserMediaInteractionRepository>();
-            services.AddScoped<IUserMediaListRepository, UserMediaListRepository>();
-            services.AddScoped<IUserGenreScoreRepository, UserGenreScoreRepository>();
-            services.AddScoped<IUserKeywordScoreRepository, UserKeywordScoreRepository>();
-            services.AddScoped<IUserEraScoreRepository, UserEraScoreRepository>();
+            services.AddScoped<ITenantRepository, TenantRepository>();
             #endregion
 
             #region Identity Services
@@ -58,23 +46,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IRoleService, RoleService>();
             services.AddScoped<IUserRoleService, UserRoleService>();
             services.AddScoped<INotificationService, NotificationService>();
-            #endregion
-
-            #region Services
-            services.AddScoped<IMediaItemService, MediaItemService>();
-            services.AddScoped<IGenreService, GenreService>();
-            services.AddScoped<IKeywordService, KeywordService>();
-            services.AddScoped<IMediaGenreService, MediaGenreService>();
-            services.AddScoped<IMediaKeywordService, MediaKeywordService>();
-            services.AddScoped<IUserMediaInteractionService, UserMediaInteractionService>();
-            services.AddScoped<IUserMediaListService, UserMediaListService>();
-            services.AddScoped<IUserGenreScoreService, UserGenreScoreService>();
-            services.AddScoped<IUserKeywordScoreService, UserKeywordScoreService>();
-            
-            services.AddScoped<IContentService, ContentService>();
-            services.AddScoped<ITmdbService, TmdbService>();
-            services.AddScoped<IAnilistService, AnilistService>();
-            services.AddScoped<IGoogleBooksService, GoogleBooksService>();
+            services.AddScoped<ITenantService, TenantService>();
             #endregion
 
             return services;

@@ -6,9 +6,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
 {
     public interface IUserExtensionService : IServiceBase<UserExtension>
     {
-        Task<UserDataResponseDto> GetUserDataAsync(Guid userId);
-        Task SyncAsync(Guid userId, UserSyncDto model);
-
         Task<IEnumerable<UserExtensionDto>> GetAllAsync();
         Task<UserExtensionDto?> GetByIdAsync(Guid id);
         Task<UserExtensionDto> CreateAsync(UserExtensionDto model);

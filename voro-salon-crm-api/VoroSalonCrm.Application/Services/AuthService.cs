@@ -88,7 +88,8 @@ namespace VoroSalonCrm.Application.Services
                 new Claim(JwtRegisteredClaimNames.Jti, $"{Guid.NewGuid()}"),
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName!),
                 new Claim(JwtRegisteredClaimNames.Name, $"{user.FirstName!} {user.LastName!}"),
-                new Claim(JwtRegisteredClaimNames.EmailVerified, $"{user.EmailConfirmed}")
+                new Claim(JwtRegisteredClaimNames.EmailVerified, $"{user.EmailConfirmed}"),
+                new Claim("TenantId", $"{user.TenantId}"),
             ];
 
             if (rolesNames != null && rolesNames!.Any())

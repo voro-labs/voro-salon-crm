@@ -7,9 +7,5 @@ namespace VoroSalonCrm.Application.DTOs
     {
         public Guid? UserId { get; set; }
         public UserDto? User { get; set; }
-
-        public ICollection<UserKeywordScoreDto> KeywordScores { get; set; } = [];
-        public ICollection<UserGenreScoreDto> GenreScores { get; set; } = [];
-        public ICollection<UserEraScoreDto> EraScores { get; set; } = [];
     }
 }

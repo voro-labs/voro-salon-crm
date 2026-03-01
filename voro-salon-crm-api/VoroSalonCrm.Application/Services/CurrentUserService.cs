@@ -19,6 +19,17 @@ namespace VoroSalonCrm.Application.Services
             }
         }
 
+        public Guid TenantId
+        {
+            get
+            {
+                var tenantId = _httpContextAccessor.HttpContext?.User?
+                    .FindFirstValue("TenantId");
+
+                return Guid.TryParse(tenantId, out var id) ? id : Guid.Empty;
+            }
+        }
+
         public string Email =>
             _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Email)!;
 
