@@ -1,9 +1,9 @@
-﻿using VoroSalonCrm.Domain.Entities;
-using VoroSalonCrm.Domain.Entities.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Entities.Identity;
 
 namespace VoroSalonCrm.Infrastructure.Factories
 {
@@ -28,6 +28,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<Tenant> Tenants { get; set; }
         public DbSet<UserExtension> UserExtensions { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Client> Clients { get; set; }
+        public DbSet<ServiceRecord> ServiceRecords { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -48,6 +50,12 @@ namespace VoroSalonCrm.Infrastructure.Factories
             builder.Entity<Notification>().HasQueryFilter(n =>
                 !n.IsDeleted && n.TenantId == currentTenantId);
 
+            builder.Entity<Client>().HasQueryFilter(c =>
+                !c.IsDeleted && c.TenantId == currentTenantId);
+
+            builder.Entity<ServiceRecord>().HasQueryFilter(s =>
+                !s.IsDeleted && s.TenantId == currentTenantId);
+
             // ---------------------------
             // TENANT
             // ---------------------------
@@ -64,6 +72,53 @@ namespace VoroSalonCrm.Infrastructure.Factories
                     .WithOne(u => u.Tenant)
                     .HasForeignKey(u => u.TenantId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ---------------------------
+            // CLIENT
+            // ---------------------------
+            builder.Entity<Client>(b =>
+            {
+                b.HasKey(c => c.Id);
+                b.Property(c => c.Name).HasMaxLength(200).IsRequired();
+                b.Property(c => c.Phone).HasMaxLength(50);
+                b.Property(c => c.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                // Indexes equivalentes ao SQL: idx_clients_tenant, idx_clients_name
+                b.HasIndex(c => c.TenantId);
+                b.HasIndex(c => new { c.TenantId, c.Name });
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(c => c.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // SERVICE RECORD
+            // ---------------------------
+            builder.Entity<ServiceRecord>(b =>
+            {
+                b.HasKey(s => s.Id);
+                b.Property(s => s.ServiceDate).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.Property(s => s.Description).IsRequired();
+                b.Property(s => s.Amount).HasColumnType("NUMERIC(10,2)").HasDefaultValue(0);
+                b.Property(s => s.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                // Indexes equivalentes ao SQL: idx_services_tenant, idx_services_client, idx_services_date
+                b.HasIndex(s => s.TenantId);
+                b.HasIndex(s => s.ClientId);
+                b.HasIndex(s => new { s.TenantId, s.ServiceDate }).IsDescending(false, true);
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(s => s.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(s => s.Client)
+                 .WithMany()
+                 .HasForeignKey(s => s.ClientId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<UserExtension>()

@@ -38,6 +38,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<ITenantRepository, TenantRepository>();
+            services.AddScoped<IClientRepository, ClientRepository>();
+            services.AddScoped<IServiceRecordRepository, ServiceRecordRepository>();
             #endregion
 
             #region Identity Services
@@ -47,6 +49,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IUserRoleService, UserRoleService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<ITenantService, TenantService>();
+            services.AddScoped<IClientService, ClientService>();
+            services.AddScoped<IServiceRecordService, ServiceRecordService>();
             #endregion
 
             return services;
