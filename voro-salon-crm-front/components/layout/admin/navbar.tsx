@@ -7,16 +7,17 @@ import { useEffect, useState } from "react"
 interface NavbarProps {
   isOpen: boolean
   onMenuClick: () => void
+  tenant?: any
 }
 
-export function Navbar({ isOpen, onMenuClick }: NavbarProps) {
+export function Navbar({ isOpen, onMenuClick, tenant }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const isMobile = useIsMobile()
 
   useEffect(() => {
     if (!isMobile) return
-    
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 0);
     }
@@ -27,11 +28,10 @@ export function Navbar({ isOpen, onMenuClick }: NavbarProps) {
   return (
     <>
       <nav
-        className={`${
-          isScrolled
+        className={`${isScrolled
             ? "fixed top-0 left-0 right-0"
             : "relative"
-        } transition-all duration-300 lg:hidden 
+          } transition-all duration-300 lg:hidden 
         ${isScrolled || isMobileMenuOpen ? "bg-background/80 backdrop-blur-lg border-b border-border" : "bg-transparent"} 
         ${isOpen ? "z-0" : "z-50"}`}
       >
@@ -43,7 +43,7 @@ export function Navbar({ isOpen, onMenuClick }: NavbarProps) {
             >
               <Menu size={20} />
             </button>
-            <span className="text-xl font-bold text-gray-600">VoroLabs</span>
+            <span className="text-xl font-bold text-gray-600">{tenant?.name || "VoroLabs"}</span>
           </div>
         </div>
       </nav>

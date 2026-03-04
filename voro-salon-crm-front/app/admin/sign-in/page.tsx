@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, AlertCircle, Scissors } from "lucide-react"
 import { useAuth } from "@/contexts/auth.context"
 import { useSignIn } from "@/hooks/use-sign-in.hook"
 import { SignInDto } from "@/types/DTOs/sign-in.interface"
@@ -91,7 +91,19 @@ export default function SignInPage() {
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="p-6 max-w-sm w-full bg-white shadow-lg rounded-lg border border-gray-200">
-        <h2 className="text-2xl font-bold text-center mb-6 text-gray-900">Sign-In</h2>
+        <div className="flex flex-col items-center gap-3 mb-8">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-primary-foreground">
+            <Scissors className="h-7 w-7" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-foreground text-balance">
+              Salon CRM
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Gerenciamento de clientes e servicos
+            </p>
+          </div>
+        </div>
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-start gap-2">
@@ -111,9 +123,8 @@ export default function SignInPage() {
               id="email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-gray-700 ${
-                fieldErrors.email ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-gray-700 ${fieldErrors.email ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="Seu email"
               autoComplete="email"
               disabled={loading}
@@ -132,9 +143,8 @@ export default function SignInPage() {
                 id="password"
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
-                className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-gray-700 ${
-                  fieldErrors.password ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-gray-700 ${fieldErrors.password ? "border-red-500" : "border-gray-300"
+                  }`}
                 placeholder="Sua senha"
                 autoComplete="current-password"
                 disabled={loading}
@@ -162,11 +172,10 @@ export default function SignInPage() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-              loading
+            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${loading
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            } text-white`}
+              } text-white`}
           >
             {loading ? (
               <div className="flex items-center justify-center">

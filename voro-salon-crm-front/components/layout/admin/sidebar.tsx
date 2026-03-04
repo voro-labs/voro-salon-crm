@@ -20,9 +20,10 @@ const navItems = [
 interface SidebarProps {
   isOpen: boolean
   onClose: () => void
+  tenant?: any
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
 
@@ -67,7 +68,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Header */}
         <div className="p-6 border-b border-border text-center">
-          <h1 className="text-xl font-bold">VoroLabs</h1>
+          <h1 className="text-xl font-bold">{tenant?.name || "VoroLabs"}</h1>
           <p className="text-sm mt-2">
             Olá, {toTitleCase(`${user.firstName} ${user.lastName}`)}
           </p>
@@ -96,10 +97,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onClick={onClose}
                 className={`
                   flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                  ${
-                    isActive(item.href)
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ${isActive(item.href)
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   }
                 `}
               >
