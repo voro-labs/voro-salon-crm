@@ -30,20 +30,20 @@ export const API_CONFIG = {
 // Função para obter o token do localStorage
 export function getAuthToken(): string | null {
   if (typeof window === "undefined") return null
-  return localStorage.getItem("vorolabs_lp_token")
+  return localStorage.getItem("vorolabs_salon_token")
 }
 
 // Função para remover o token (logout)
 export function removeAuthToken(): void {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("vorolabs_lp_token")
+    localStorage.removeItem("vorolabs_salon_token")
   }
 }
 
 // Função para salvar o token
 export function setAuthToken(token: string): void {
   if (typeof window !== "undefined") {
-    localStorage.setItem("vorolabs_lp_token", token)
+    localStorage.setItem("vorolabs_salon_token", token)
   }
 }
 
@@ -95,12 +95,9 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
         json!.message = `Erro ${status}: ${response.statusText}`
       }
 
-      // 🔥 Se for 401, handle especial
+      // 🔥 Se for 401, remove o token localmente — o redirect é feito pelo Main
       if (status === 401) {
         removeAuthToken()
-        if (typeof window !== "undefined") {
-          window.location.href = "/admin/sign-in"
-        }
       }
 
       return {
@@ -141,9 +138,6 @@ export async function secureApiCall<T>(endpoint: string, options: RequestInit = 
   const token = getAuthToken()
 
   if (!token) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/admin/sign-in"
-    }
     return {
       status: 401,
       message: "Token de autenticação não encontrado. Faça login novamente.",

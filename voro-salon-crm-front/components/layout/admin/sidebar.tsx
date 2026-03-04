@@ -33,10 +33,6 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
     switch (roles[0]) {
       case "Admin":
         return { text: "Admin", class: "bg-blue-100 text-blue-800" }
-      case "Trainer":
-        return { text: "Trainer", class: "bg-purple-100 text-purple-800" }
-      case "Student":
-        return { text: "Student", class: "bg-green-100 text-green-800" }
       default:
         return { text: "User", class: "bg-green-100 text-green-800" }
     }

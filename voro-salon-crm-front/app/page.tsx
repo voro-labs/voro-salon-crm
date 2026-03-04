@@ -86,7 +86,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <AuthGuard requiredRoles={["Admin"]}>
+    <AuthGuard requiredRoles={["User"]}>
       <div className="flex flex-col gap-6 p-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground text-balance">Painel</h1>

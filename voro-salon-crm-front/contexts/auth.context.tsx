@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const decoded = jwtDecode<JwtPayload>(token)
-    
+
 
       const userData: AuthDto = {
         userId: decoded.userId,
@@ -103,9 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null)
     removeAuthToken()
-    if (typeof window !== "undefined") {
-      window.location.href = "/admin/sign-in"
-    }
   }
 
   return (

@@ -47,6 +47,7 @@ import { CurrencyInput } from "@/components/currency-input"
 import { toast } from "sonner"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { AuthGuard } from "@/components/auth/auth.guard"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -166,7 +167,7 @@ export default function ClienteDetailPage() {
   async function handleAddService(e: React.FormEvent) {
     e.preventDefault()
     if (!svcForm.description.trim()) {
-      toast.error("Descricao do servico e obrigatoria.")
+      toast.error("Descricao do serviço e obrigatoria.")
       return
     }
     setSvcSubmitting(true)
@@ -180,10 +181,10 @@ export default function ClienteDetailPage() {
         }),
       })
       if (res.hasError) {
-        toast.error(res.message || "Erro ao registrar servico.")
+        toast.error(res.message || "Erro ao registrar serviço.")
         return
       }
-      toast.success("Servico registrado!")
+      toast.success("Serviço registrado!")
       setSvcOpen(false)
       setSvcForm({
         description: "",
@@ -204,7 +205,7 @@ export default function ClienteDetailPage() {
     try {
       const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICES}/${serviceId}`, { method: "DELETE" })
       if (res.hasError) {
-        toast.error("Erro ao excluir servico.")
+        toast.error("Erro ao excluir serviço.")
         return
       }
       toast.success("Servico excluido!")
@@ -256,339 +257,345 @@ export default function ClienteDetailPage() {
   )
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/clients">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="flex-1 truncate text-2xl font-bold tracking-tight text-foreground">
-          {client.name}
-        </h1>
-      </div>
+    <AuthGuard requiredRoles={["User"]}>
+      <div className="flex flex-col gap-6 p-6">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/clients">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="flex-1 truncate text-2xl font-bold tracking-tight text-foreground">
+            {client.name}
+          </h1>
+        </div>
 
-      {/* Client info card */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
-                {client.name
-                  .split(" ")
-                  .map((n: string) => n[0])
-                  .slice(0, 2)
-                  .join("")
-                  .toUpperCase()}
-              </div>
-              <div className="flex flex-col gap-1">
-                <h2 className="text-lg font-semibold text-foreground">{client.name}</h2>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5" />
-                    {formatPhone(client.phone)}
-                  </span>
-                  {client.email && (
+        {/* Client info card */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
+                  {client.name
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-lg font-semibold text-foreground">{client.name}</h2>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5" />
-                      {client.email}
+                      <Phone className="h-3.5 w-3.5" />
+                      {formatPhone(client.phone)}
                     </span>
+                    {client.email && (
+                      <span className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5" />
+                        {client.email}
+                      </span>
+                    )}
+                  </div>
+                  {client.notes && (
+                    <p className="mt-1 text-sm text-muted-foreground">{client.notes}</p>
                   )}
                 </div>
-                {client.notes && (
-                  <p className="mt-1 text-sm text-muted-foreground">{client.notes}</p>
-                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={openEdit}>
+                  <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                  Editar
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white hover:border-destructive"
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                      Excluir
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Essa acao ira remover {client.name} e todo o historico de servicos. Essa acao
+                        nao pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+                      >
+                        {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={openEdit}>
-                <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                Editar
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                    Excluir
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Essa acao ira remover {client.name} e todo o historico de servicos. Essa acao
-                      nao pode ser desfeita.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Excluir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </div>
 
-          {/* Summary stats */}
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">Servicos Realizados</span>
-              <span className="text-lg font-semibold text-foreground">{services.length}</span>
+            {/* Summary stats */}
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-3">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Servicos Realizados</span>
+                <span className="text-lg font-semibold text-foreground">{services.length}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Total Gasto</span>
+                <span className="text-lg font-semibold text-foreground">
+                  {formatCurrency(totalSpent)}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs text-muted-foreground">Cliente desde</span>
+                <span className="text-lg font-semibold text-foreground">
+                  {formatDate(client.createdAt)}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">Total Gasto</span>
-              <span className="text-lg font-semibold text-foreground">
-                {formatCurrency(totalSpent)}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">Cliente desde</span>
-              <span className="text-lg font-semibold text-foreground">
-                {formatDate(client.createdAt)}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Service History */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-foreground">Historico de Servicos</CardTitle>
-            <CardDescription>Servicos realizados para este cliente</CardDescription>
-          </div>
-          <Dialog open={svcOpen} onOpenChange={setSvcOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Registrar
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Registrar Servico</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddService} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="svc-desc">Descricao *</Label>
-                  <Input
-                    id="svc-desc"
-                    placeholder="Ex: Corte + Escova"
-                    value={svcForm.description}
-                    onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="svc-price">Valor (R$)</Label>
-                    <CurrencyInput
-                      id="svc-price"
-                      value={svcForm.amount}
-                      onChange={(v) => setSvcForm((p) => ({ ...p, amount: v }))}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="svc-date">Data</Label>
-                    <Input
-                      id="svc-date"
-                      type="date"
-                      value={svcForm.serviceDate}
-                      onChange={(e) =>
-                        setSvcForm((p) => ({ ...p, serviceDate: e.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="svc-notes">Observacoes</Label>
-                  <Textarea
-                    id="svc-notes"
-                    rows={2}
-                    placeholder="Anotacoes sobre o servico..."
-                    value={svcForm.notes}
-                    onChange={(e) => setSvcForm((p) => ({ ...p, notes: e.target.value }))}
-                  />
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Cancelar
-                    </Button>
-                  </DialogClose>
-                  <Button type="submit" disabled={svcSubmitting}>
-                    {svcSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Salvar
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {svcLoading ? (
-            <div className="flex flex-col gap-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
-                  <div className="flex flex-1 flex-col gap-1.5">
-                    <div className="h-4 w-36 animate-pulse rounded bg-muted" />
-                    <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                  </div>
-                </div>
-              ))}
+        {/* Service History */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-foreground">Historico de Servicos</CardTitle>
+              <CardDescription>Servicos realizados para este cliente</CardDescription>
             </div>
-          ) : services.length === 0 ? (
-            <div className="flex flex-col items-center py-8 text-center">
-              <Clock className="mb-3 h-10 w-10 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">Nenhum servico registrado ainda.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {services.map(
-                (svc: {
-                  id: string
-                  description: string
-                  amount: number
-                  serviceDate: string
-                  notes: string
-                }) => (
-                  <div
-                    key={svc.id}
-                    className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate)
-                      ? "border-primary/30 bg-primary/5"
-                      : "border-border"
-                      }`}
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                      <CalendarDays className="h-4 w-4" />
-                    </div>
-                    <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium text-foreground">
-                          {svc.description}
-                        </span>
-                        {isRecent(svc.serviceDate) && (
-                          <Badge variant="outline" className="shrink-0 text-xs border-primary/30 text-primary">
-                            Recente
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                        <span>{formatDate(svc.serviceDate)}</span>
-                        {svc.amount > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Banknote className="h-3 w-3" />
-                            {formatCurrency(svc.amount)}
-                          </span>
-                        )}
-                      </div>
-                      {svc.notes && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">{svc.notes}</p>
-                      )}
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="sr-only">Excluir servico</span>
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir servico?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Essa acao ira remover o registro deste servico permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteService(svc.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Cliente</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-name">Nome *</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-phone">Telefone *</Label>
-              <PhoneInput
-                id="edit-phone"
-                value={editForm.phone}
-                onChange={(v) => setEditForm((p) => ({ ...p, phone: v }))}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-email">Email</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={editForm.email}
-                onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-notes">Observacoes</Label>
-              <Textarea
-                id="edit-notes"
-                rows={2}
-                value={editForm.notes}
-                onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
-              />
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Cancelar
+            <Dialog open={svcOpen} onOpenChange={setSvcOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Registrar
                 </Button>
-              </DialogClose>
-              <Button type="submit" disabled={editLoading}>
-                {editLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Registrar Servico</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddService} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="svc-desc">Descricao *</Label>
+                    <Input
+                      id="svc-desc"
+                      placeholder="Ex: Corte + Escova"
+                      value={svcForm.description}
+                      onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="svc-price">Valor (R$)</Label>
+                      <CurrencyInput
+                        id="svc-price"
+                        value={svcForm.amount}
+                        onChange={(v) => setSvcForm((p) => ({ ...p, amount: v }))}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="svc-date">Data</Label>
+                      <Input
+                        id="svc-date"
+                        type="date"
+                        value={svcForm.serviceDate}
+                        onChange={(e) =>
+                          setSvcForm((p) => ({ ...p, serviceDate: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="svc-notes">Observacoes</Label>
+                    <Textarea
+                      id="svc-notes"
+                      rows={2}
+                      placeholder="Anotacoes sobre o serviço..."
+                      value={svcForm.notes}
+                      onChange={(e) => setSvcForm((p) => ({ ...p, notes: e.target.value }))}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">
+                        Cancelar
+                      </Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={svcSubmitting}>
+                      {svcSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            {svcLoading ? (
+              <div className="flex flex-col gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                    <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
+                    <div className="flex flex-1 flex-col gap-1.5">
+                      <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                      <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : services.length === 0 ? (
+              <div className="flex flex-col items-center py-8 text-center">
+                <Clock className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">Nenhum serviço registrado ainda.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {services.map(
+                  (svc: {
+                    id: string
+                    description: string
+                    amount: number
+                    serviceDate: string
+                    notes: string
+                  }) => (
+                    <div
+                      key={svc.id}
+                      className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate)
+                        ? "border-primary/30 bg-primary/5"
+                        : "border-border"
+                        }`}
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                        <CalendarDays className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium text-foreground">
+                            {svc.description}
+                          </span>
+                          {isRecent(svc.serviceDate) && (
+                            <Badge variant="outline" className="shrink-0 text-xs border-primary/30 text-primary">
+                              Recente
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                          <span>{formatDate(svc.serviceDate)}</span>
+                          {svc.amount > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Banknote className="h-3 w-3" />
+                              {formatCurrency(svc.amount)}
+                            </span>
+                          )}
+                        </div>
+                        {svc.notes && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{svc.notes}</p>
+                        )}
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="sr-only">Excluir serviço</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Essa acao ira remover o registro deste serviço permanentemente.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteService(svc.id)}
+                              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Edit Dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Cliente</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-name">Nome *</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-phone">Telefone *</Label>
+                <PhoneInput
+                  id="edit-phone"
+                  value={editForm.phone}
+                  onChange={(v) => setEditForm((p) => ({ ...p, phone: v }))}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-notes">Observacoes</Label>
+                <Textarea
+                  id="edit-notes"
+                  rows={2}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+                />
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">
+                    Cancelar
+                  </Button>
+                </DialogClose>
+                <Button type="submit" disabled={editLoading}>
+                  {editLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AuthGuard>
   )
 }

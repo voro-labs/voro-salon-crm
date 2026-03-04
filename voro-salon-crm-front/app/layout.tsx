@@ -1,5 +1,5 @@
-import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import type { Metadata } from 'next'
+import { Geist } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/auth.context'
@@ -13,7 +13,23 @@ const _geist = Geist({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Salon CRM - Gerenciamento de Clientes',
   description: 'Sistema de gerenciamento de clientes e servicos para saloes de beleza',
-  keywords: ["desenvolvimento de sistemas", "criação de páginas", "automações comerciais", "conexão com clientes", "soluções digitais", "presença online", "engajamento de clientes", "tecnologia para negócios"],
+  keywords: [
+    "sistema para salão de beleza",
+    "CRM para salão de beleza",
+    "software para salão de beleza",
+    "gestão de clientes para salão",
+    "sistema de agendamento online para salão",
+    "controle de clientes salão",
+    "gerenciamento de serviços de beleza",
+    "automação para salão de beleza",
+    "sistema para cabeleireiro",
+    "sistema para barbearia",
+    "sistema para clínica estética",
+    "controle financeiro para salão",
+    "fidelização de clientes para salão",
+    "marketing para salão de beleza",
+    "aplicativo para salão de beleza"
+  ],
   generator: "vorolabs.app",
   icons: {
     icon: [

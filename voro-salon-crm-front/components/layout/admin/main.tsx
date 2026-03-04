@@ -11,6 +11,8 @@ import { Sidebar } from "./sidebar"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 
+import { ThemeToggle } from "../../theme-toggle"
+
 interface MainProps {
   children: React.ReactNode
 }
@@ -52,15 +54,19 @@ export function Main({ children }: MainProps) {
   }
 
   if (!user?.token) {
-    // Redirecionar para sign-in se não estiver na página inicial
-    if (typeof window !== "undefined" && !routesAllowed.some(item => window.location.pathname.startsWith(item))) {
-      router.push("/admin/sign-in")
-      return <LoadingSimple />
+    const isPublicRoute = routesAllowed.some(item => pathname.startsWith(item))
+
+    if (!isPublicRoute) {
+      // Rota protegida sem usuário: redireciona silenciosamente
+      router.replace("/admin/sign-in")
     }
 
-    // Layout público (não autenticado)
+    // Layout público (sign-in, forgot-password, etc.) — nunca mostra loading aqui
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
         <main className="flex-1">{children}</main>
       </div>
     )
