@@ -11,12 +11,12 @@ interface TenantData {
   id: string
   slug: string
   name: string
-  logo_url: string | null
-  primary_color: string | null
-  secondary_color: string | null
-  contact_phone: string | null
-  contact_email: string | null
-  theme_mode: string
+  logoUrl: string | null
+  primaryColor: string | null
+  secondaryColor: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  themeMode: string
 }
 
 interface UserData {
@@ -37,13 +37,24 @@ const TenantContext = createContext<TenantContextType>({
   tenant: null,
   user: null,
   isLoading: true,
-  mutate: () => {},
+  mutate: () => { },
 })
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+import { API_CONFIG, secureApiCall } from "@/lib/api"
+
+const fetcher = async () => {
+  const result = await secureApiCall<{ user: UserData; tenant: TenantData }>(API_CONFIG.ENDPOINTS.ME, {
+    method: "GET"
+  })
+
+  if (result.hasError) {
+    throw new Error(result.message || "Failed to fetch session")
+  }
+  return result.data
+}
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { data, isLoading, mutate } = useSWR("/api/auth/session", fetcher)
+  const { data, isLoading, mutate } = useSWR("/auth/me", fetcher)
 
   return (
     <TenantContext.Provider

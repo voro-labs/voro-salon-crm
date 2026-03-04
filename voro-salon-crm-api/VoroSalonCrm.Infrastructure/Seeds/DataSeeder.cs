@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.Data;
+﻿using System.Data;
+using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
 using VoroSalonCrm.Domain.Enums;
@@ -26,6 +26,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             await context.SaveChangesAsync();
 
+            // SEED: Tenant
+            SeedTenants(context);
+
+            await context.SaveChangesAsync();
+
             // SEED: Usuário Admin
             SeedUsers(context);
 
@@ -34,7 +39,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedNotifications(JasmimDbContext context)
         {
-            if (!context.Notifications.Any())
+            if (!context.Notifications.IgnoreQueryFilters().Any())
             {
                 var notifications = new List<Notification>
                 {
@@ -155,11 +160,33 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             }
         }
 
+        private static void SeedTenants(JasmimDbContext context)
+        {
+            if (!context.Tenants.Any())
+            {
+                var tenant = new Tenant
+                {
+                    Name = "VoroLabs",
+                    Slug = "vorolabs",
+                    ContactEmail = "voro@vorolabs.app",
+                    ContactPhone = "(11) 99999-0000",
+                    IsActive = true,
+                    PrimaryColor = "#0f172a",
+                    SecondaryColor = "#6366f1",
+                    ThemeMode = "light",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                context.Tenants.Add(tenant);
+            }
+        }
+
         private static void SeedUsers(JasmimDbContext context)
         {
-            if (!context.Users.Any())
+            if (!context.Users.IgnoreQueryFilters().Any())
             {
                 var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Admin");
+                var tenant = context.Tenants.FirstOrDefault(t => t.Slug == "vorolabs");
 
                 var admin = new User
                 {
@@ -174,6 +201,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     CreatedAt = DateTime.UtcNow,
                     BirthDate = DateTime.UtcNow,
                     SecurityStamp = "f87c07d8-3b68-4e35-b1e9-97c9021cf4e8",
+                    TenantId = tenant!.Id,
                     UserRoles = [
                         new UserRole()
                         {

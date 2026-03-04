@@ -1,11 +1,12 @@
-﻿using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
-using VoroSalonCrm.Domain.Entities.Identity;
-using VoroSalonCrm.Application.Services.Base;
+﻿using AutoMapper;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Identity;
-using AutoMapper;
+using VoroSalonCrm.Application.Services.Base;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
 
 namespace VoroSalonCrm.Application.Services.Identity
 {
@@ -14,7 +15,7 @@ namespace VoroSalonCrm.Application.Services.Identity
     {
         public async Task<(User user, IList<string>? rolesNames)> GetByEmailAndPassword(string email, string password)
         {
-            var user = await userManager.FindByEmailAsync(email);
+            var user = await FindUserByEmailAsync(email);
 
             if (user == null)
                 throw new UnauthorizedAccessException("Usuário ou senha inválidos.");
@@ -43,7 +44,7 @@ namespace VoroSalonCrm.Application.Services.Identity
         {
             var existingUser = await base.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException("User não encontrado");
-            
+
             mapper.Map(dto, existingUser);
 
             await UpdateAsync(existingUser);
@@ -100,9 +101,9 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task<(User user, string token)> GenerateConfirmEmailAsync(string email)
         {
-            var user = await userManager.FindByEmailAsync(email
-                ?? throw new KeyNotFoundException("Usuário não encontrado."));
-            
+            var user = await FindUserByEmailAsync(email)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
             if (user!.EmailConfirmed)
                 return (user, "");
 
@@ -115,17 +116,20 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email)
         {
-            var user = await userManager.FindByEmailAsync(email)
+            var user = await FindUserByEmailAsync(email)
                 ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
-            var result = await userManager.ConfirmEmailAsync(user, $"{authViewModel.Token}");
-            
+            var decodedTokenBytes = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(authViewModel.Token!);
+            var decodedToken = System.Text.Encoding.UTF8.GetString(decodedTokenBytes);
+
+            var result = await userManager.ConfirmEmailAsync(user, decodedToken);
+
             return result.Succeeded;
         }
 
         public async Task<(User user, string token)> GenerateForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
         {
-            var user = await userManager.FindByEmailAsync(forgotPasswordDto.Email)
+            var user = await FindUserByEmailAsync(forgotPasswordDto.Email)
                 ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
             var token = await userManager.GeneratePasswordResetTokenAsync(user);
@@ -135,12 +139,24 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
         {
-            var user = await userManager.FindByEmailAsync(resetPasswordDto.Email)
+            var user = await FindUserByEmailAsync(resetPasswordDto.Email)
             ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
-            var result = await userManager.ResetPasswordAsync(user, resetPasswordDto.Token, resetPasswordDto.NewPassword);
+            var decodedTokenBytes = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(resetPasswordDto.Token);
+            var decodedToken = System.Text.Encoding.UTF8.GetString(decodedTokenBytes);
+
+            var result = await userManager.ResetPasswordAsync(user, decodedToken, resetPasswordDto.NewPassword);
 
             return result.Succeeded;
+        }
+
+        private async Task<User?> FindUserByEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return null;
+            var normalizedEmail = userManager.NormalizeEmail(email);
+            return await userManager.Users
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail && !u.IsDeleted);
         }
     }
 }

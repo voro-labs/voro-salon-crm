@@ -39,22 +39,20 @@ namespace VoroSalonCrm.Infrastructure.Factories
             // ---------------------------
             // GLOBAL QUERY FILTERS (Multi-Tenant)
             // ---------------------------
-            var currentTenantId = _currentUser.TenantId;
-
             builder.Entity<User>().HasQueryFilter(u =>
-                !u.IsDeleted && u.TenantId == currentTenantId);
+                !u.IsDeleted && u.TenantId == _currentUser.TenantId);
 
             builder.Entity<UserExtension>().HasQueryFilter(ue =>
-                !ue.User.IsDeleted && ue.User.TenantId == currentTenantId);
+                !ue.User.IsDeleted && ue.User.TenantId == _currentUser.TenantId);
 
             builder.Entity<Notification>().HasQueryFilter(n =>
-                !n.IsDeleted && n.TenantId == currentTenantId);
+                !n.IsDeleted && n.TenantId == _currentUser.TenantId);
 
             builder.Entity<Client>().HasQueryFilter(c =>
-                !c.IsDeleted && c.TenantId == currentTenantId);
+                !c.IsDeleted && c.TenantId == _currentUser.TenantId);
 
             builder.Entity<ServiceRecord>().HasQueryFilter(s =>
-                !s.IsDeleted && s.TenantId == currentTenantId);
+                !s.IsDeleted && s.TenantId == _currentUser.TenantId);
 
             // ---------------------------
             // TENANT

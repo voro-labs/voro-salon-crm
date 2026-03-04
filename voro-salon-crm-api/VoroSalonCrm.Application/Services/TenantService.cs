@@ -56,6 +56,12 @@ namespace VoroSalonCrm.Application.Services
             if (dto.Name is not null) tenant.Name = dto.Name;
             if (dto.Slug is not null) tenant.Slug = dto.Slug.ToLowerInvariant().Trim();
             if (dto.IsActive.HasValue) tenant.IsActive = dto.IsActive.Value;
+            if (dto.LogoUrl is not null) tenant.LogoUrl = dto.LogoUrl;
+            if (dto.PrimaryColor is not null) tenant.PrimaryColor = dto.PrimaryColor;
+            if (dto.SecondaryColor is not null) tenant.SecondaryColor = dto.SecondaryColor;
+            if (dto.ContactPhone is not null) tenant.ContactPhone = dto.ContactPhone;
+            if (dto.ContactEmail is not null) tenant.ContactEmail = dto.ContactEmail;
+            if (dto.ThemeMode is not null) tenant.ThemeMode = dto.ThemeMode;
 
             tenant.UpdatedAt = DateTimeOffset.UtcNow;
 

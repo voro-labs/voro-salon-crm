@@ -8,9 +8,9 @@ using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 namespace VoroSalonCrm.Application.Services
 {
     public class ServiceRecordService(
-        IServiceRecordRepository serviceRepository, 
+        IServiceRecordRepository serviceRepository,
         IClientRepository clientRepository,
-        IUnitOfWork unitOfWork, 
+        IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService) : IServiceRecordService
     {
         private readonly IServiceRecordRepository _serviceRepository = serviceRepository;
@@ -33,7 +33,7 @@ namespace VoroSalonCrm.Application.Services
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 ClientId = dto.ClientId,
-                ServiceDate = dto.ServiceDate ?? DateTimeOffset.UtcNow,
+                ServiceDate = dto.ServiceDate?.ToUniversalTime() ?? DateTimeOffset.UtcNow,
                 Description = dto.Description,
                 Amount = dto.Amount,
                 Notes = dto.Notes,
@@ -71,7 +71,7 @@ namespace VoroSalonCrm.Application.Services
             var record = await _serviceRepository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"ServiceRecord '{id}' not found.");
 
-            if (dto.ServiceDate.HasValue) record.ServiceDate = dto.ServiceDate.Value;
+            if (dto.ServiceDate.HasValue) record.ServiceDate = dto.ServiceDate.Value.ToUniversalTime();
             if (dto.Description is not null) record.Description = dto.Description;
             if (dto.Amount.HasValue) record.Amount = dto.Amount.Value;
             if (dto.Notes is not null) record.Notes = dto.Notes;

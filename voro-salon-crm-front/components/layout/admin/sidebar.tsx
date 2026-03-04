@@ -5,23 +5,16 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import {
   Users,
-  ClipboardList,
-  Apple,
-  Dumbbell,
   LayoutDashboard,
-  MessageSquare,
   LogOut,
-  Smartphone,
+  Settings,
 } from "lucide-react"
 import { toTitleCase } from "@/lib/utils"
 
 const navItems = [
-  { title: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "Trainer", "Student"] },
-  { title: "Alunos", href: "/students", icon: Users, roles: ["Admin", "Trainer"] },
-  { title: "Exercícios", href: "/exercises", icon: Dumbbell, roles: ["Admin", "Trainer"] },
-  { title: "Treinos", href: "/workouts", icon: ClipboardList, roles: ["Admin", "Trainer", "Student"] },
-  { title: "Nutrição", href: "/nutrition", icon: Apple, roles: ["Admin"] },
-  { title: "Instâncias", href: "/instances", icon: Smartphone, roles: ["Admin", "Trainer"] }
+  { title: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "User"] },
+  { title: "Clientes", href: "/clients", icon: Users, roles: ["Admin", "User"] },
+  { title: "Configurações", href: "/settings", icon: Settings, roles: ["Admin", "User"] }
 ]
 
 interface SidebarProps {

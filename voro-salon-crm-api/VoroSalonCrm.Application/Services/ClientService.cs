@@ -32,7 +32,7 @@ namespace VoroSalonCrm.Application.Services
             await _clientRepository.AddAsync(client);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ClientDto(client.Id, client.Name, client.Phone, client.Notes, client.CreatedAt);
+            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt);
         }
 
         public async Task<ClientDto?> GetByIdAsync(Guid id)
@@ -40,13 +40,13 @@ namespace VoroSalonCrm.Application.Services
             var client = await _clientRepository.GetByIdAsync(id);
             if (client is null) return null;
 
-            return new ClientDto(client.Id, client.Name, client.Phone, client.Notes, client.CreatedAt);
+            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt);
         }
 
         public async Task<IEnumerable<ClientDto>> GetAllAsync()
         {
             var clients = await _clientRepository.GetAllAsync();
-            return clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Notes, c.CreatedAt));
+            return clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt));
         }
 
         public async Task<ClientDto> UpdateAsync(Guid id, UpdateClientDto dto)
@@ -56,6 +56,7 @@ namespace VoroSalonCrm.Application.Services
 
             if (dto.Name is not null) client.Name = dto.Name;
             if (dto.Phone is not null) client.Phone = dto.Phone;
+            if (dto.Email is not null) client.Email = dto.Email;
             if (dto.Notes is not null) client.Notes = dto.Notes;
 
             client.UpdatedAt = DateTimeOffset.UtcNow;
@@ -63,7 +64,7 @@ namespace VoroSalonCrm.Application.Services
             _clientRepository.Update(client);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ClientDto(client.Id, client.Name, client.Phone, client.Notes, client.CreatedAt);
+            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt);
         }
 
         public async Task<bool> DeleteAsync(Guid id)

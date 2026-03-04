@@ -1,12 +1,12 @@
-﻿using VoroSalonCrm.Domain.Enums;
-using VoroSalonCrm.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using VoroSalonCrm.Shared.Extensions;
-using VoroSalonCrm.Application.Services.Base;
-using VoroSalonCrm.Domain.Interfaces.Repositories;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using VoroSalonCrm.Application.Services.Base;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Email;
+using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Enums;
+using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Shared.Extensions;
 
 namespace VoroSalonCrm.Application.Services
 {
@@ -16,7 +16,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly IMailKitEmailService _emailService = emailService;
         private readonly INotificationRepository _notificationRepository = notificationRepository;
 
-        private string UrlBase => 
+        private string UrlBase =>
             _configuration
                 .GetSection("CorsSettings")
                 .GetSection("AllowedOrigins")
@@ -49,8 +49,8 @@ namespace VoroSalonCrm.Application.Services
             if (template == null)
                 throw new InvalidOperationException("Template de e-mail de reset de senha não encontrado.");
 
-            // Gera o link de reset (ajuste conforme sua URL base)
-            var resetLink = $"{UrlBase}/admin/reset-password?email={email}&token={token}";
+            // Gera o link de reset com codificação de URL (evita perder + ou =)
+            var resetLink = $"{UrlBase}/admin/reset-password?email={Uri.EscapeDataString(email)}&token={token}";
 
             // Substitui placeholders no corpo e no assunto
             var subject = template.Subject
@@ -72,8 +72,8 @@ namespace VoroSalonCrm.Application.Services
             if (template == null)
                 throw new InvalidOperationException("Template de e-mail de confirmação de e-mail não encontrado.");
 
-            // Gera o link de confirmação (ajuste conforme sua URL base)
-            var confirmLink = $"{UrlBase}/admin/confirm-email?email={email}&token={token}";
+            // Gera o link de confirmação com codificação de URL
+            var confirmLink = $"{UrlBase}/admin/confirm-email?email={Uri.EscapeDataString(email)}&token={token}";
 
             // Substitui placeholders no corpo e no assunto
             var subject = template.Subject

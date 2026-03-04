@@ -51,6 +51,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ITenantService, TenantService>();
             services.AddScoped<IClientService, ClientService>();
             services.AddScoped<IServiceRecordService, ServiceRecordService>();
+            services.AddScoped<IDashboardService, DashboardService>();
+            services.AddScoped<IExportService, ExportService>();
             #endregion
 
             return services;

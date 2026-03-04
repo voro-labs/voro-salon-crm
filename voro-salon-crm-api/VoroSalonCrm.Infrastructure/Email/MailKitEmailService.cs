@@ -1,9 +1,9 @@
-﻿using MimeKit;
-using MailKit.Net.Smtp;
+﻿using MailKit.Net.Smtp;
 using MailKit.Security;
-using VoroSalonCrm.Shared.Utils;
 using Microsoft.Extensions.Options;
+using MimeKit;
 using VoroSalonCrm.Application.Services.Interfaces.Email;
+using VoroSalonCrm.Shared.Utils;
 
 namespace VoroSalonCrm.Infrastructure.Email
 {
@@ -31,7 +31,21 @@ namespace VoroSalonCrm.Infrastructure.Email
                 HtmlBody = body
             };
 
-            message.Body = builder.ToMessageBody();
+            var multipart = builder.ToMessageBody();
+
+            if (multipart is Multipart multi)
+            {
+                foreach (var part in multi.OfType<TextPart>())
+                {
+                    part.ContentTransferEncoding = ContentEncoding.Base64;
+                }
+            }
+            else if (multipart is TextPart text)
+            {
+                text.ContentTransferEncoding = ContentEncoding.Base64;
+            }
+
+            message.Body = multipart;
 
             using var smtp = new SmtpClient();
             await smtp.ConnectAsync(_mailUtil.SmtpServer, _mailUtil.SmtpPort, SecureSocketOptions.StartTls);

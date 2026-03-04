@@ -48,7 +48,7 @@ namespace VoroSalonCrm.Application.Services
 
             var userName = string.IsNullOrEmpty(user.UserName) ? $"{user.FirstName}.{user.LastName}".ToLower() : $"{user.UserName}";
 
-            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, Uri.EscapeDataString(token));
+            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)));
         }
 
         public async Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email)
@@ -64,7 +64,7 @@ namespace VoroSalonCrm.Application.Services
 
             var userName = !string.IsNullOrEmpty(user.FirstName) ? $"{user.FirstName} {user.LastName}" : $"{user.UserName}";
 
-            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, Uri.EscapeDataString(token));
+            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)));
         }
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
@@ -125,6 +125,7 @@ namespace VoroSalonCrm.Application.Services
             {
                 Expiration = expiration,
                 UserId = $"{user.Id}",
+                TenantId = $"{user.TenantId}",
                 UserName = $"{user.UserName}".ToLower(),
                 Email = $"{user.Email}".ToLower(),
                 FirstName = $"{user.FirstName}".ToLower(),

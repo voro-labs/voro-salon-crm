@@ -3,6 +3,7 @@
     public class AuthDto
     {
         public string? UserId { get; set; }
+        public string? TenantId { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? UserName { get; set; }

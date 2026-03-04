@@ -1,10 +1,13 @@
-﻿using VoroSalonCrm.Shared.Extensions;
-using VoroSalonCrm.Shared.ViewModels;
-using VoroSalonCrm.Application.DTOs;
-using VoroSalonCrm.Shared.Constants;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs.Auth;
+using VoroSalonCrm.Application.DTOs.Tenant;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Shared.Constants;
+using VoroSalonCrm.Shared.Extensions;
+using VoroSalonCrm.Shared.ViewModels;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -13,6 +16,54 @@ namespace VoroSalonCrm.API.Controllers
     [ApiController]
     public class AuthController(IAuthService authService) : ControllerBase
     {
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetSession(
+            [FromServices] ICurrentUserService currentUserService,
+            [FromServices] IUserService userService,
+            [FromServices] ITenantService tenantService)
+        {
+            try
+            {
+                var userId = currentUserService.UserId;
+                var tenantId = currentUserService.TenantId;
+
+                if (userId == Guid.Empty || tenantId == Guid.Empty)
+                    return Unauthorized();
+
+                var user = await userService.GetByIdAsync(userId);
+                var tenant = await tenantService.GetByIdAsync(tenantId);
+
+                if (user == null || tenant == null)
+                    return Unauthorized();
+
+                var roles = user.UserRoles?.Select(ur => ur.Role?.Name).ToList() ?? new List<string?>();
+                var primaryRole = roles.FirstOrDefault() ?? "user";
+
+                var sessionUser = new SessionUserDto(
+                    user.Id,
+                    string.IsNullOrWhiteSpace(user.LastName) ? user.FirstName : $"{user.FirstName} {user.LastName}",
+                    user.Email ?? string.Empty,
+                    primaryRole
+                );
+
+                var sessionTenant = new TenantDto(
+                    tenant.Id, tenant.Name, tenant.Slug, tenant.IsActive, tenant.CreatedAt,
+                    tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode
+                );
+
+                var sessionDto = new SessionDto(sessionUser, sessionTenant);
+
+                return ResponseViewModel<SessionDto>
+                    .SuccessWithMessage("Session retrieved.", sessionDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
         [HttpPost("sign-in")]
         [AllowAnonymous]
         public async Task<IActionResult> SignIn([FromBody] SignInDto signInDto)
@@ -87,7 +138,7 @@ namespace VoroSalonCrm.API.Controllers
                         .Fail("Invalid token.")
                         .ToActionResult();
                 }
-                
+
                 return ResponseViewModel<object>
                     .SuccessWithMessage("Reset-password successful.", null)
                     .ToActionResult();

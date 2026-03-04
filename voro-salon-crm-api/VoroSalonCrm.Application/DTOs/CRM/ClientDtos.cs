@@ -5,12 +5,14 @@ namespace VoroSalonCrm.Application.DTOs.CRM
     public record CreateClientDto(
         [Required][StringLength(200)] string Name,
         [StringLength(50)] string? Phone,
+        [StringLength(50)] string? Email,
         string? Notes
     );
 
     public record UpdateClientDto(
         [StringLength(200)] string? Name,
         [StringLength(50)] string? Phone,
+        [StringLength(50)] string? Email,
         string? Notes
     );
 
@@ -18,6 +20,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         Guid Id,
         string Name,
         string? Phone,
+        string? Email,
         string? Notes,
         DateTimeOffset CreatedAt
     );

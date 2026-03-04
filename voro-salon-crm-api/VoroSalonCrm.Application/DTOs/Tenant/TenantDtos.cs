@@ -10,7 +10,13 @@ namespace VoroSalonCrm.Application.DTOs.Tenant
     public record UpdateTenantDto(
         [StringLength(150)] string? Name,
         [StringLength(100)] string? Slug,
-        bool? IsActive
+        bool? IsActive,
+        string? LogoUrl,
+        string? PrimaryColor,
+        string? SecondaryColor,
+        string? ContactPhone,
+        string? ContactEmail,
+        string? ThemeMode
     );
 
     public record TenantDto(
@@ -18,6 +24,12 @@ namespace VoroSalonCrm.Application.DTOs.Tenant
         string Name,
         string Slug,
         bool IsActive,
-        DateTimeOffset CreatedAt
+        DateTimeOffset CreatedAt,
+        string? LogoUrl,
+        string? PrimaryColor,
+        string? SecondaryColor,
+        string? ContactPhone,
+        string? ContactEmail,
+        string? ThemeMode
     );
 }
