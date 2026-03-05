@@ -4,9 +4,11 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react"
+import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Loader2 } from "lucide-react"
 import { API_CONFIG, apiCall } from "@/lib/api"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -136,10 +138,10 @@ export default function ResetPasswordPage() {
     if (/[@$!%*?&]/.test(password)) strength++
 
     const levels = [
-      { text: "Muito fraca", color: "text-red-600" },
-      { text: "Fraca", color: "text-orange-600" },
-      { text: "Regular", color: "text-yellow-600" },
-      { text: "Boa", color: "text-blue-600" },
+      { text: "Muito fraca", color: "text-destructive" },
+      { text: "Fraca", color: "text-orange-500" },
+      { text: "Regular", color: "text-yellow-500" },
+      { text: "Boa", color: "text-primary" },
       { text: "Forte", color: "text-green-600" },
     ]
 
@@ -149,24 +151,22 @@ export default function ResetPasswordPage() {
   // Se não há token, mostrar erro
   if (tokenValid === false) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="p-6 max-w-md w-full bg-white shadow-lg rounded-lg border border-gray-200">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-            </div>
-
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Link Inválido</h2>
-
-            <p className="text-gray-600 mb-6">O link de recuperação é inválido ou expirou.</p>
-
-            <button
-              onClick={() => router.push("/admin/forgot-password")}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Solicitar Novo Link
-            </button>
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <AlertCircle className="h-7 w-7" />
           </div>
+
+          <h2 className="mb-2 text-2xl font-bold text-foreground">Link Inválido</h2>
+
+          <p className="mb-6 text-sm text-muted-foreground font-medium">O link de recuperação é inválido ou expirou.</p>
+
+          <Button
+            onClick={() => router.push("/admin/forgot-password")}
+            className="w-full"
+          >
+            Solicitar Novo Link
+          </Button>
         </div>
       </div>
     )
@@ -175,104 +175,97 @@ export default function ResetPasswordPage() {
   // Tela de sucesso
   if (success) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="p-6 max-w-md w-full bg-white shadow-lg rounded-lg border border-gray-200">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Senha Redefinida!</h2>
-
-            <p className="text-gray-600 mb-6">
-              Sua senha foi alterada com sucesso. Agora você pode fazer login com sua nova senha.
-            </p>
-
-            <button
-              onClick={() => router.push("/admin/sign-in")}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Ir para Login
-            </button>
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-600">
+            <CheckCircle className="h-7 w-7" />
           </div>
+
+          <h2 className="mb-2 text-2xl font-bold text-foreground">Senha Redefinida!</h2>
+
+          <p className="mb-6 text-sm text-muted-foreground font-medium">
+            Sua senha foi alterada com sucesso. Agora você pode fazer login com sua nova senha.
+          </p>
+
+          <Button
+            onClick={() => router.push("/admin/sign-in")}
+            className="w-full"
+          >
+            Ir para Login
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="p-6 max-w-md w-full bg-white shadow-lg rounded-lg border border-gray-200">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
-            <Lock className="h-6 w-6 text-blue-600" />
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Lock className="h-7 w-7" />
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Redefinir Senha</h2>
+          <h2 className="mb-1 text-2xl font-bold text-foreground">Redefinir Senha</h2>
 
-          <p className="text-gray-600">Digite sua nova senha abaixo</p>
+          <p className="text-sm text-muted-foreground">Digite sua nova senha abaixo</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex items-start gap-2">
-            <AlertCircle size={20} className="shrink-0 mt-0.5" />
+          <div className="mb-5 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="text-sm">{error}</div>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Nova Senha */}
-          <div className="mb-4">
-            <label htmlFor="newPassword" className="block text-sm font-bold mb-2 text-gray-700">
-              Nova Senha
-            </label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="newPassword">Nova Senha</Label>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
                 id="newPassword"
                 value={formData.newPassword}
                 onChange={(e) => handleInputChange("newPassword", e.target.value)}
-                className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-gray-700 ${
-                  fieldErrors.newPassword ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`pr-10 ${fieldErrors.newPassword ? "border-destructive" : ""}`}
                 placeholder="Digite sua nova senha"
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
                 disabled={loading}
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             {fieldErrors.newPassword && (
-              <span className="text-red-500 text-sm block mt-1">{fieldErrors.newPassword}</span>
+              <span className="text-xs text-destructive">{fieldErrors.newPassword}</span>
             )}
 
             {/* Indicador de força da senha */}
             {formData.newPassword && (
               <div className="mt-2">
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div className="flex-1 bg-muted rounded-full h-1.5">
                     <div
-                      className={`h-2 rounded-full transition-all ${
-                        getPasswordStrength(formData.newPassword).strength >= 4
+                      className={`h-1.5 rounded-full transition-all ${getPasswordStrength(formData.newPassword).strength >= 4
                           ? "bg-green-500"
                           : getPasswordStrength(formData.newPassword).strength >= 3
-                            ? "bg-blue-500"
+                            ? "bg-primary"
                             : getPasswordStrength(formData.newPassword).strength >= 2
                               ? "bg-yellow-500"
-                              : "bg-red-500"
-                      }`}
+                              : "bg-destructive"
+                        }`}
                       style={{ width: `${(getPasswordStrength(formData.newPassword).strength / 5) * 100}%` }}
                     />
                   </div>
-                  <span className={`text-xs font-medium ${getPasswordStrength(formData.newPassword).color}`}>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${getPasswordStrength(formData.newPassword).color}`}>
                     {getPasswordStrength(formData.newPassword).text}
                   </span>
                 </div>
@@ -281,78 +274,80 @@ export default function ResetPasswordPage() {
           </div>
 
           {/* Confirmar Senha */}
-          <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block text-sm font-bold mb-2 text-gray-700">
-              Confirmar Nova Senha
-            </label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
             <div className="relative">
               <Input
                 type={showConfirmPassword ? "text" : "password"}
                 id="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-gray-700 ${
-                  fieldErrors.confirmPassword ? "border-red-500" : "border-gray-300"
-                }`}
+                className={`pr-10 ${fieldErrors.confirmPassword ? "border-destructive" : ""}`}
                 placeholder="Confirme sua nova senha"
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
                 disabled={loading}
               >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             {fieldErrors.confirmPassword && (
-              <span className="text-red-500 text-sm block mt-1">{fieldErrors.confirmPassword}</span>
+              <span className="text-xs text-destructive">{fieldErrors.confirmPassword}</span>
             )}
           </div>
 
           {/* Buttons */}
-          <div className="space-y-3">
-            <button
+          <div className="mt-2 flex flex-col gap-3">
+            <Button
               type="submit"
               disabled={loading}
-              className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              } text-white`}
+              className="w-full"
             >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Redefinindo...
-                </div>
-              ) : (
-                "Redefinir Senha"
-              )}
-            </button>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loading ? "Redefinindo..." : "Redefinir Senha"}
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => router.push("/admin/sign-in")}
-              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              className="w-full gap-2"
               disabled={loading}
             >
               <ArrowLeft size={16} />
               Voltar ao Login
-            </button>
+            </Button>
           </div>
         </form>
 
         {/* Requisitos da senha */}
-        <div className="mt-6 p-3 rounded-lg">
-          <p className="text-xs text-gray-600 font-medium mb-2">Requisitos da senha:</p>
-          <ul className="text-xs text-gray-600 space-y-1">
-            <li>• Mínimo 8 caracteres</li>
-            <li>• Pelo menos 1 letra maiúscula</li>
-            <li>• Pelo menos 1 letra minúscula</li>
-            <li>• Pelo menos 1 número</li>
-            <li>• Pelo menos 1 caractere especial (@$!%*?&)</li>
+        <div className="mt-8 border-t border-border pt-6">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Requisitos da senha:</p>
+          <ul className="text-xs text-muted-foreground space-y-2">
+            <li className="flex items-center gap-2">
+              <div className="h-1 w-1 rounded-full bg-primary" />
+              Mínimo 8 caracteres
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1 w-1 rounded-full bg-primary" />
+              Pelo menos 1 letra maiúscula
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1 w-1 rounded-full bg-primary" />
+              Pelo menos 1 letra minúscula
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1 w-1 rounded-full bg-primary" />
+              Pelo menos 1 número
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="h-1 w-1 rounded-full bg-primary" />
+              Caractere especial (@$!%*?&)
+            </li>
           </ul>
         </div>
 
