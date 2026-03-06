@@ -16,8 +16,10 @@ export const API_CONFIG = {
     CLIENTS: "/client",
     SERVICE_RECORDS: "/servicerecord",
     SERVICES: "/services",
+    APPOINTMENTS: "/appointments",
     EXPORT_CLIENTS: "/export/clients",
-    EXPORT_SERVICES: "/export/services"
+    EXPORT_SERVICES: "/export/services",
+    EXPORT_APPOINTMENTS: "/export/appointments"
   },
   HEADERS: {
     "Content-Type": "application/json",

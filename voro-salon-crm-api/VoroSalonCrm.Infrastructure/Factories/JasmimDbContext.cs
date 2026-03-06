@@ -31,6 +31,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<Client> Clients { get; set; }
         public DbSet<Service> Services { get; set; }
         public DbSet<ServiceRecord> ServiceRecords { get; set; }
+        public DbSet<Appointment> Appointments { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -57,6 +58,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             builder.Entity<ServiceRecord>().HasQueryFilter(s =>
                 !s.IsDeleted && s.TenantId == _currentUser.TenantId);
+
+            builder.Entity<Appointment>().HasQueryFilter(a =>
+                !a.IsDeleted && a.TenantId == _currentUser.TenantId);
 
             // ---------------------------
             // TENANT
@@ -144,6 +148,39 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasOne(s => s.Service)
                  .WithMany()
                  .HasForeignKey(s => s.ServiceId)
+                 .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ---------------------------
+            // APPOINTMENT (Agendamento)
+            // ---------------------------
+            builder.Entity<Appointment>(b =>
+            {
+                b.HasKey(a => a.Id);
+                b.Property(a => a.ScheduledDateTime).IsRequired();
+                b.Property(a => a.DurationMinutes).HasDefaultValue(30);
+                b.Property(a => a.Status).HasConversion<int>().IsRequired();
+                b.Property(a => a.Amount).HasColumnType("NUMERIC(10,2)").HasDefaultValue(0);
+                b.Property(a => a.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(a => a.TenantId);
+                b.HasIndex(a => a.ClientId);
+                b.HasIndex(a => a.ServiceId);
+                b.HasIndex(a => new { a.TenantId, a.ScheduledDateTime });
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(a => a.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(a => a.Client)
+                 .WithMany()
+                 .HasForeignKey(a => a.ClientId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(a => a.Service)
+                 .WithMany()
+                 .HasForeignKey(a => a.ServiceId)
                  .OnDelete(DeleteBehavior.SetNull);
             });
 

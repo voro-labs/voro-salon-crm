@@ -379,8 +379,8 @@ export default function ClienteDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-foreground">Historico de Servicos</CardTitle>
-              <CardDescription>Servicos realizados para este cliente</CardDescription>
+              <CardTitle className="text-foreground">Historico de Serviços</CardTitle>
+              <CardDescription>Serviços realizados para este cliente</CardDescription>
             </div>
             <Dialog open={svcOpen} onOpenChange={setSvcOpen}>
               <DialogTrigger asChild>
