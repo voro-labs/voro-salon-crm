@@ -1,4 +1,4 @@
-dotnet ef migrations add AddEmailClient --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API --output-dir Migrations
+dotnet ef migrations add AddTenantModules --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API --output-dir Migrations
 dotnet ef migrations remove --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API
 dotnet ef database update --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API
 

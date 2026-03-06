@@ -1,14 +1,14 @@
-﻿using VoroSalonCrm.Domain.Interfaces.Repositories.Base;
+﻿using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
+using VoroSalonCrm.Domain.Interfaces.Repositories.Base;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
 namespace VoroSalonCrm.Infrastructure.Repositories.Base
 {
     public class RepositoryBase<T>(DbContext context, IUnitOfWork unitOfWork) : IRepositoryBase<T> where T : class
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork;
-        private readonly DbSet<T> _dbSet = context.Set<T>();
+        protected readonly IUnitOfWork _unitOfWork = unitOfWork;
+        protected readonly DbSet<T> _dbSet = context.Set<T>();
 
         public async Task AddAsync(T entity)
         {
