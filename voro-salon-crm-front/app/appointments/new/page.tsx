@@ -27,6 +27,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { QuickCreateClient } from "@/components/custom/quick-create-client"
+import { QuickCreateService } from "@/components/custom/quick-create-service"
+import { QuickCreateEmployee } from "@/components/custom/quick-create-employee"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -39,8 +42,8 @@ export default function NovoAgendamentoPage() {
   const [loading, setLoading] = useState(false)
 
   // Fetch data for dropdowns
-  const { data: clients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: clients, mutate: mutateClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
+  const { data: services, mutate: mutateServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const isModuleEnabled = (moduleId: number) => {
@@ -61,7 +64,7 @@ export default function NovoAgendamentoPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
 
   // Fetch employees based on service
-  const { data: employees } = useSWR(
+  const { data: employees, mutate: mutateEmployees } = useSWR(
     form.serviceId !== "none"
       ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
       : API_CONFIG.ENDPOINTS.EMPLOYEES,
@@ -166,7 +169,15 @@ export default function NovoAgendamentoPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="clientId">Cliente *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="clientId">Cliente *</Label>
+                    <QuickCreateClient
+                      onSuccess={async (id) => {
+                        await mutateClients()
+                        setForm(p => ({ ...p, clientId: id }))
+                      }}
+                    />
+                  </div>
                   <Select
                     key={clients ? "clients-loaded" : "clients-loading"}
                     value={form.clientId}
@@ -187,7 +198,20 @@ export default function NovoAgendamentoPage() {
 
                 {isModuleEnabled(3) && (
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="serviceId">Serviço (Opcional)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="serviceId">Serviço (Opcional)</Label>
+                      <QuickCreateService
+                        onSuccess={async (id) => {
+                          const updatedServices = await mutateServices()
+                          const newService = updatedServices?.find((s: any) => s.id === id)
+                          if (newService) {
+                            handleServiceChange(id)
+                          } else {
+                            setForm(p => ({ ...p, serviceId: id }))
+                          }
+                        }}
+                      />
+                    </div>
                     <Select
                       key={services ? "services-loaded" : "services-loading"}
                       value={form.serviceId}
@@ -210,7 +234,15 @@ export default function NovoAgendamentoPage() {
 
                 {isModuleEnabled(4) && (
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="employeeId">Funcionário (Opcional)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="employeeId">Funcionário (Opcional)</Label>
+                      <QuickCreateEmployee
+                        onSuccess={async (id) => {
+                          await mutateEmployees()
+                          setForm(p => ({ ...p, employeeId: id }))
+                        }}
+                      />
+                    </div>
                     <Select
                       key={employees ? "employees-loaded" : "employees-loading"}
                       value={form.employeeId}
