@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using VoroSalonCrm.Infrastructure.Factories;
 using VoroSalonCrm.Shared.Utils;
-using Microsoft.Extensions.Hosting;
 
 namespace VoroSalonCrm.Contract.Extensions.Configurations
 {

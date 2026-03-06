@@ -4,6 +4,7 @@ namespace VoroSalonCrm.Domain.Enums
     {
         Clients = 1,
         Scheduling = 2,
-        Services = 3
+        Services = 3,
+        Employees = 4
     }
 }

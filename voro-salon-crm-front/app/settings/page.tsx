@@ -712,7 +712,8 @@ export default function ConfiguracoesPage() {
                   const moduleNames: Record<number, string> = {
                     1: "Clientes",
                     2: "Agendamentos",
-                    3: "Serviços"
+                    3: "Serviços",
+                    4: "Funcionários"
                   };
 
                   return (

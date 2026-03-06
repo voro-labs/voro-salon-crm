@@ -51,6 +51,13 @@ const navItems = [
     moduleId: 3 // Services
   },
   {
+    title: "Funcionários",
+    href: "/employees",
+    icon: Users,
+    roles: ["Admin", "User"],
+    moduleId: 4 // Employees
+  },
+  {
     title: "Configurações",
     href: "/settings",
     icon: Settings,

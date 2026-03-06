@@ -36,16 +36,30 @@ export default function NovoAgendamentoPage() {
   // Fetch data for dropdowns
   const { data: clients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
   const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
+
+  const isModuleEnabled = (moduleId: number) => {
+    return modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
+  }
 
   const [form, setForm] = useState({
     clientId: "",
     serviceId: "none",
+    employeeId: "none",
     scheduledDateTime: "",
     durationMinutes: 30,
     description: "",
     amount: 0,
     notes: ""
   })
+
+  // Fetch employees based on service
+  const { data: employees } = useSWR(
+    form.serviceId !== "none"
+      ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
+      : API_CONFIG.ENDPOINTS.EMPLOYEES,
+    fetcher
+  )
 
   // Set default date/time to now (rounded to next 30 min)
   useEffect(() => {
@@ -93,7 +107,8 @@ export default function NovoAgendamentoPage() {
         body: JSON.stringify({
           ...form,
           scheduledDateTime: date.toISOString(),
-          serviceId: form.serviceId === "none" ? null : form.serviceId
+          serviceId: form.serviceId === "none" ? null : form.serviceId,
+          employeeId: form.employeeId === "none" ? null : form.employeeId
         }),
       })
 
@@ -135,7 +150,7 @@ export default function NovoAgendamentoPage() {
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="clientId">Cliente *</Label>
                   <Select
-                    key={clients?.id}
+                    key={clients ? "clients-loaded" : "clients-loading"}
                     value={form.clientId}
                     onValueChange={(v) => setForm(p => ({ ...p, clientId: v }))}
                   >
@@ -152,26 +167,51 @@ export default function NovoAgendamentoPage() {
                   </Select>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="serviceId">Serviço (Opcional)</Label>
-                  <Select
-                    key={services?.id}
-                    value={form.serviceId}
-                    onValueChange={handleServiceChange}
-                  >
-                    <SelectTrigger id="serviceId" className="w-full">
-                      <SelectValue placeholder="Selecione um serviço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {services?.map((s: any) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isModuleEnabled(3) && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="serviceId">Serviço (Opcional)</Label>
+                    <Select
+                      key={services ? "services-loaded" : "services-loading"}
+                      value={form.serviceId}
+                      onValueChange={handleServiceChange}
+                    >
+                      <SelectTrigger id="serviceId" className="w-full">
+                        <SelectValue placeholder="Selecione um serviço" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum / Customizado</SelectItem>
+                        {services?.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {isModuleEnabled(4) && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="employeeId">Funcionário (Opcional)</Label>
+                    <Select
+                      key={employees ? "employees-loaded" : "employees-loading"}
+                      value={form.employeeId}
+                      onValueChange={(v) => setForm(p => ({ ...p, employeeId: v }))}
+                    >
+                      <SelectTrigger id="employeeId" className="w-full">
+                        <SelectValue placeholder="Selecione um funcionário" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Qualquer um</SelectItem>
+                        {employees?.map((e: any) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

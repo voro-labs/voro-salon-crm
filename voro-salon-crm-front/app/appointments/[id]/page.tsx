@@ -60,12 +60,18 @@ export default function AppointmentDetailPage() {
 
   const { data: clients, isLoading: loadingClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
   const { data: services, isLoading: loadingServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
+
+  const isModuleEnabled = (moduleId: number) => {
+    return modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
+  }
 
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [form, setForm] = useState({
     clientId: "",
     serviceId: "",
+    employeeId: "none",
     scheduledDateTime: "",
     durationMinutes: 30,
     status: 0,
@@ -83,6 +89,7 @@ export default function AppointmentDetailPage() {
       setForm({
         clientId: appointment.clientId,
         serviceId: appointment.serviceId || "none",
+        employeeId: appointment.employeeId || "none",
         scheduledDateTime: localISOTime,
         durationMinutes: appointment.durationMinutes,
         status: appointment.status,
@@ -92,6 +99,14 @@ export default function AppointmentDetailPage() {
       })
     }
   }, [appointment])
+
+  // Fetch employees based on service
+  const { data: employees } = useSWR(
+    form.serviceId !== "none" && form.serviceId !== ""
+      ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
+      : API_CONFIG.ENDPOINTS.EMPLOYEES,
+    fetcher
+  )
 
   // Update amount when service changes
   function handleServiceChange(serviceId: string) {
@@ -114,7 +129,8 @@ export default function AppointmentDetailPage() {
         body: JSON.stringify({
           ...form,
           scheduledDateTime: date.toISOString(),
-          serviceId: form.serviceId === "none" ? null : form.serviceId
+          serviceId: form.serviceId === "none" ? null : form.serviceId,
+          employeeId: form.employeeId === "none" ? null : form.employeeId
         }),
       })
       if (res.hasError) {
@@ -251,29 +267,54 @@ export default function AppointmentDetailPage() {
                       </Select>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="serviceId">Serviço (Opcional)</Label>
-                      <Select
-                        key={`service-${form.serviceId}`}
-                        value={form.serviceId}
-                        onValueChange={handleServiceChange}
-                      >
-                        <SelectTrigger id="serviceId" className="w-full">
-                          <SelectValue placeholder="Selecione um serviço" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {services?.map((s: any) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {isModuleEnabled(3) && (
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="serviceId">Serviço (Opcional)</Label>
+                        <Select
+                          key={`service-${form.serviceId}`}
+                          value={form.serviceId}
+                          onValueChange={handleServiceChange}
+                        >
+                          <SelectTrigger id="serviceId" className="w-full">
+                            <SelectValue placeholder="Selecione um serviço" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum</SelectItem>
+                            {services?.map((s: any) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
+                    {isModuleEnabled(4) && (
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="employeeId">Funcionário (Opcional)</Label>
+                        <Select
+                          key={`employee-${form.employeeId}`}
+                          value={form.employeeId}
+                          onValueChange={(v) => setForm(p => ({ ...p, employeeId: v }))}
+                        >
+                          <SelectTrigger id="employeeId" className="w-full">
+                            <SelectValue placeholder="Selecione um funcionário" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Qualquer um</SelectItem>
+                            {employees?.map((e: any) => (
+                              <SelectItem key={e.id} value={e.id}>
+                                {e.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="scheduledDateTime">Data e Hora *</Label>
                       <Input
