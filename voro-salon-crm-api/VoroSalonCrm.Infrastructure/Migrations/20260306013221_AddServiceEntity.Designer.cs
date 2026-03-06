@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VoroSalonCrm.Infrastructure.Factories;
@@ -11,9 +12,11 @@ using VoroSalonCrm.Infrastructure.Factories;
 namespace VoroSalonCrm.Infrastructure.Migrations
 {
     [DbContext(typeof(JasmimDbContext))]
-    partial class JasmimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260306013221_AddServiceEntity")]
+    partial class AddServiceEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -108,70 +111,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("UserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Appointment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("NUMERIC(10,2)")
-                        .HasDefaultValue(0m);
-
-                    b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
-
-                    b.Property<DateTimeOffset?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<int>("DurationMinutes")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(30);
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("ScheduledDateTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ServiceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
-
-                    b.HasIndex("ServiceId");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("TenantId", "ScheduledDateTime");
-
-                    b.ToTable("Appointments");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Client", b =>
@@ -330,6 +269,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -345,6 +287,8 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Users", (string)null);
                 });
@@ -588,31 +532,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.ToTable("UserExtensions");
                 });
 
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserTenant", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
-
-                    b.Property<bool>("IsDefault")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.HasKey("UserId", "TenantId");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("UserTenants");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Identity.Role", null)
@@ -649,30 +568,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Appointment", b =>
-                {
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Client", "Client")
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Service", "Service")
-                        .WithMany()
-                        .HasForeignKey("ServiceId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Client");
-
-                    b.Navigation("Service");
-                });
-
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Client", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", null)
@@ -680,6 +575,17 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.User", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.UserRole", b =>
@@ -745,25 +651,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.UserTenant", b =>
-                {
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
-                        .WithMany("UserTenants")
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Identity.User", "User")
-                        .WithMany("UserTenants")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.Role", b =>
                 {
                     b.Navigation("UserRoles");
@@ -774,13 +661,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("UserExtension");
 
                     b.Navigation("UserRoles");
-
-                    b.Navigation("UserTenants");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Tenant", b =>
-                {
-                    b.Navigation("UserTenants");
                 });
 #pragma warning restore 612, 618
         }

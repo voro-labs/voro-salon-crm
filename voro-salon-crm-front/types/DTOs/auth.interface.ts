@@ -9,4 +9,5 @@ export interface AuthDto {
   roles?: RoleDto[];
   expiration?: Date;
   token: string;
+  tenants?: { id: string, name: string, slug: string, logoUrl?: string }[];
 }

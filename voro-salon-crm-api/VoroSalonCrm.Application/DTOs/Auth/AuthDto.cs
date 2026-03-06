@@ -1,9 +1,12 @@
-﻿namespace VoroSalonCrm.Application.DTOs
+﻿using VoroSalonCrm.Application.DTOs.CRM;
+
+namespace VoroSalonCrm.Application.DTOs
 {
     public class AuthDto
     {
         public string? UserId { get; set; }
         public string? TenantId { get; set; }
+        public List<TenantDto> Tenants { get; set; } = [];
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? UserName { get; set; }

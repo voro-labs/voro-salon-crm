@@ -32,6 +32,13 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -89,9 +96,10 @@ export default function ClienteDetailPage() {
 
   const { data: client, isLoading } = useSWR(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, fetcher)
   const { data: servicesData, isLoading: svcLoading } = useSWR(
-    `${API_CONFIG.ENDPOINTS.SERVICES}?clientId=${clientId}`,
+    `${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`,
     fetcher
   )
+  const { data: catalogServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
 
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "" })
@@ -99,6 +107,7 @@ export default function ClienteDetailPage() {
 
   const [svcOpen, setSvcOpen] = useState(false)
   const [svcForm, setSvcForm] = useState({
+    serviceId: "none",
     description: "",
     amount: 0,
     serviceDate: new Date().toISOString().split("T")[0],
@@ -172,12 +181,12 @@ export default function ClienteDetailPage() {
     }
     setSvcSubmitting(true)
     try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICES}`, {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}`, {
         method: "POST",
         body: JSON.stringify({
           ...svcForm,
-          clientId: clientId, // Add explicit ClientId mapping for backend
-          amount: svcForm.amount,
+          clientId: clientId,
+          serviceId: svcForm.serviceId === "none" ? null : svcForm.serviceId,
         }),
       })
       if (res.hasError) {
@@ -187,12 +196,13 @@ export default function ClienteDetailPage() {
       toast.success("Serviço registrado!")
       setSvcOpen(false)
       setSvcForm({
+        serviceId: "none",
         description: "",
         amount: 0,
         serviceDate: new Date().toISOString().split("T")[0],
         notes: "",
       })
-      mutate(`${API_CONFIG.ENDPOINTS.SERVICES}?clientId=${clientId}`)
+      mutate(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`)
       mutate(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`)
     } catch {
       toast.error("Erro de conexao.")
@@ -203,13 +213,13 @@ export default function ClienteDetailPage() {
 
   async function handleDeleteService(serviceId: string) {
     try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICES}/${serviceId}`, { method: "DELETE" })
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}/${serviceId}`, { method: "DELETE" })
       if (res.hasError) {
         toast.error("Erro ao excluir serviço.")
         return
       }
-      toast.success("Servico excluido!")
-      mutate(`${API_CONFIG.ENDPOINTS.SERVICES}?clientId=${clientId}`)
+      toast.success("Serviço excluido!")
+      mutate(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`)
       mutate(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`)
     } catch {
       toast.error("Erro de conexao.")
@@ -369,8 +379,8 @@ export default function ClienteDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-foreground">Historico de Servicos</CardTitle>
-              <CardDescription>Servicos realizados para este cliente</CardDescription>
+              <CardTitle className="text-foreground">Historico de Serviços</CardTitle>
+              <CardDescription>Serviços realizados para este cliente</CardDescription>
             </div>
             <Dialog open={svcOpen} onOpenChange={setSvcOpen}>
               <DialogTrigger asChild>
@@ -381,11 +391,46 @@ export default function ClienteDetailPage() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Registrar Servico</DialogTitle>
+                  <DialogTitle>Registrar Serviço</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleAddService} className="flex flex-col gap-4">
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="svc-desc">Descricao *</Label>
+                    <Label htmlFor="svc-catalog">Serviço Predefinido</Label>
+                    <Select
+                      key={catalogServices?.id}
+                      value={svcForm.serviceId || "none"}
+                      onValueChange={(val) => {
+                        if (val === "none") {
+                          setSvcForm((p) => ({ ...p, serviceId: "none" }))
+                        } else {
+                          const selected = (catalogServices || []).find((s: any) => s.id === val)
+                          if (selected) {
+                            setSvcForm((p) => ({
+                              ...p,
+                              serviceId: val,
+                              description: selected.name,
+                              amount: selected.price,
+                            }))
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="svc-catalog" className="w-full">
+                        <SelectValue placeholder="Selecione um serviço (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum (personalizado)</SelectItem>
+                        {(catalogServices || []).map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} - {formatCurrency(s.price)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="svc-desc">Descrição *</Label>
                     <Input
                       id="svc-desc"
                       placeholder="Ex: Corte + Escova"
@@ -416,16 +461,16 @@ export default function ClienteDetailPage() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="svc-notes">Observacoes</Label>
+                    <Label htmlFor="svc-notes">Observações</Label>
                     <Textarea
                       id="svc-notes"
                       rows={2}
-                      placeholder="Anotacoes sobre o serviço..."
+                      placeholder="Anotações sobre o serviço..."
                       value={svcForm.notes}
                       onChange={(e) => setSvcForm((p) => ({ ...p, notes: e.target.value }))}
                     />
                   </div>
-                  <DialogFooter>
+                  <DialogFooter className="gap-2 sm:gap-0">
                     <DialogClose asChild>
                       <Button type="button" variant="outline">
                         Cancelar

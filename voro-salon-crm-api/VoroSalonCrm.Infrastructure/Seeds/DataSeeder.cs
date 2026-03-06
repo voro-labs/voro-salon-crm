@@ -201,7 +201,13 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     CreatedAt = DateTime.UtcNow,
                     BirthDate = DateTime.UtcNow,
                     SecurityStamp = "f87c07d8-3b68-4e35-b1e9-97c9021cf4e8",
-                    TenantId = tenant!.Id,
+                    UserTenants = [
+                        new UserTenant
+                        {
+                            TenantId = tenant!.Id,
+                            IsDefault = true
+                        }
+                    ],
                     UserRoles = [
                         new UserRole()
                         {

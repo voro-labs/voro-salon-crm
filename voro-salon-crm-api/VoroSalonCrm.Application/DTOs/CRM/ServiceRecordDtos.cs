@@ -4,6 +4,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
 {
     public record CreateServiceRecordDto(
         [Required] Guid ClientId,
+        Guid? ServiceId,
         DateTimeOffset? ServiceDate,
         [Required] string Description,
         [Required] decimal Amount,
@@ -11,6 +12,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
     );
 
     public record UpdateServiceRecordDto(
+        Guid? ServiceId,
         DateTimeOffset? ServiceDate,
         string? Description,
         decimal? Amount,
@@ -20,6 +22,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
     public record ServiceRecordDto(
         Guid Id,
         Guid ClientId,
+        Guid? ServiceId,
+        string? ServiceName,
         DateTimeOffset ServiceDate,
         string Description,
         decimal Amount,

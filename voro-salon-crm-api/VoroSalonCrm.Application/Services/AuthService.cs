@@ -1,26 +1,29 @@
-﻿using VoroSalonCrm.Application.DTOs;
-using VoroSalonCrm.Domain.Entities.Identity;
-using VoroSalonCrm.Shared.Structs;
-using VoroSalonCrm.Shared.Utils;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using AutoMapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Identity;
-using AutoMapper;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Shared.Structs;
+using VoroSalonCrm.Shared.Utils;
 
 namespace VoroSalonCrm.Application.Services
 {
     public class AuthService(IOptions<CookieUtil> cookieUtil, IConfiguration configuration,
-        IMapper mapper, INotificationService notificationService, IUserService userService) : IAuthService
+        IMapper mapper, INotificationService notificationService, IUserService userService,
+        ICurrentUserService currentUserService) : IAuthService
     {
         private readonly INotificationService _notificationService = notificationService;
         private readonly CookieUtil _cookieUtil = cookieUtil.Value;
         private readonly IUserService _userService = userService;
+        private readonly ICurrentUserService _currentUser = currentUserService;
 
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
@@ -32,7 +35,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task<AuthDto> SignUpAsync(SignUpDto signUpDto, List<string> roles)
         {
             var userDto = mapper.Map<UserDto>(signUpDto);
-            
+
             var user = await _userService.CreateAsync(userDto, signUpDto.Password, roles);
 
             var userName = string.IsNullOrEmpty(user.UserName) ? $"{user.FirstName}.{user.LastName}".ToLower() : $"{user.UserName}";
@@ -72,10 +75,42 @@ namespace VoroSalonCrm.Application.Services
             var reseted = await _userService.ResetPasswordAsync(resetPasswordDto);
 
             return reseted;
-        } 
+        }
 
-        private static List<Claim> GenerateClaims(User user, IList<string>? rolesNames)
+        public async Task<AuthDto> SwitchTenantAsync(Guid tenantId)
         {
+            var userId = _currentUser.UserId;
+            Console.WriteLine($"[DEBUG] SwitchTenantAsync: UserId={userId}, TargetTenantId={tenantId}");
+
+            var user = await _userService.GetByIdAsync(userId)
+                ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
+
+            Console.WriteLine($"[DEBUG] User found: {user.Email}. UserTenants count: {user.UserTenants?.Count ?? 0}");
+
+            if (user.UserTenants != null)
+            {
+                foreach (var ut in user.UserTenants)
+                {
+                    Console.WriteLine($"[DEBUG] User belongs to Tenant: {ut.TenantId}");
+                }
+            }
+
+            // Verificar se o usuário pertence ao tenant
+            var userTenant = user.UserTenants?.FirstOrDefault(ut => ut.TenantId == tenantId)
+                ?? throw new UnauthorizedAccessException("Usuário não tem acesso a este salão.");
+
+            var roles = await _userService.GetRolesAsync(user);
+
+            return GenerateAuthDto(user, roles, tenantId);
+        }
+
+        private static List<Claim> GenerateClaims(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
+        {
+            var primaryTenantId = targetTenantId
+                                ?? user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.TenantId
+                                ?? user.UserTenants?.FirstOrDefault()?.TenantId
+                                ?? Guid.Empty;
+
             List<Claim> claims =
             [
                 new Claim(ClaimTypes.NameIdentifier, $"{user.Id}"),
@@ -89,7 +124,7 @@ namespace VoroSalonCrm.Application.Services
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName!),
                 new Claim(JwtRegisteredClaimNames.Name, $"{user.FirstName!} {user.LastName!}"),
                 new Claim(JwtRegisteredClaimNames.EmailVerified, $"{user.EmailConfirmed}"),
-                new Claim("TenantId", $"{user.TenantId}"),
+                new Claim("TenantId", $"{primaryTenantId}"),
             ];
 
             if (rolesNames != null && rolesNames!.Any())
@@ -103,8 +138,13 @@ namespace VoroSalonCrm.Application.Services
             return claims;
         }
 
-        private AuthDto GenerateAuthDto(User user, IList<string>? rolesNames)
+        private AuthDto GenerateAuthDto(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
         {
+            var primaryTenantId = targetTenantId
+                                ?? user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.TenantId
+                                ?? user.UserTenants?.FirstOrDefault()?.TenantId
+                                ?? Guid.Empty;
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.Get<ConfigUtil>()?.JwtKey!));
 
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -114,18 +154,27 @@ namespace VoroSalonCrm.Application.Services
             var token = new JwtSecurityToken(
                 issuer: _cookieUtil.Issuer,
                 audience: _cookieUtil.Audience,
-                claims: GenerateClaims(user, rolesNames),
+                claims: GenerateClaims(user, rolesNames, primaryTenantId),
                 expires: expiration,
                 signingCredentials: credentials
             );
 
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
+            var tenants = user.UserTenants?.Select(ut => new TenantDto
+            {
+                Id = ut.TenantId,
+                Name = ut.Tenant?.Name ?? "Salon",
+                Slug = ut.Tenant?.Slug ?? "",
+                LogoUrl = ut.Tenant?.LogoUrl
+            }).ToList() ?? [];
+
             return new AuthDto()
             {
                 Expiration = expiration,
                 UserId = $"{user.Id}",
-                TenantId = $"{user.TenantId}",
+                TenantId = $"{primaryTenantId}",
+                Tenants = tenants,
                 UserName = $"{user.UserName}".ToLower(),
                 Email = $"{user.Email}".ToLower(),
                 FirstName = $"{user.FirstName}".ToLower(),

@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Identity;
-using System.ComponentModel.DataAnnotations;
-using VoroSalonCrm.Domain.Interfaces.Entities;
+﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Identity;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Entities;
 
 namespace VoroSalonCrm.Domain.Entities.Identity
 {
-    public class User : IdentityUser<Guid>, ISoftDeletable, ITenantEntity
+    public class User : IdentityUser<Guid>, ISoftDeletable
     {
         [StringLength(100)]
         public string FirstName { get; set; } = string.Empty;
@@ -24,9 +24,7 @@ namespace VoroSalonCrm.Domain.Entities.Identity
 
         public UserExtension? UserExtension { get; set; }
         public ICollection<UserRole> UserRoles { get; set; } = [];
-
-        public Guid TenantId { get; set; }
-        public Tenant? Tenant { get; set; }
+        public ICollection<UserTenant> UserTenants { get; set; } = [];
 
         public bool IsActive { get; set; } = true;
         public bool IsDeleted { get; set; }

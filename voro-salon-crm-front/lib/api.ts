@@ -9,14 +9,18 @@ export const API_CONFIG = {
     CONFIRM_EMAIL: "/auth/confirm-email",
     RESET_PASSWORD: "/auth/reset-password",
     FORGOT_PASSWORD: "/auth/forgot-password",
+    SWITCH_TENANT: "/auth/switch-tenant",
     DASHBOARD: "/dashboard/metrics",
     ME: "/auth/me",
     TENANT: "/tenant",
     TENANT_ME: "/tenant/me",
     CLIENTS: "/client",
-    SERVICES: "/servicerecord",
+    SERVICE_RECORDS: "/servicerecord",
+    SERVICES: "/services",
+    APPOINTMENTS: "/appointments",
     EXPORT_CLIENTS: "/export/clients",
-    EXPORT_SERVICES: "/export/services"
+    EXPORT_SERVICES: "/export/services",
+    EXPORT_APPOINTMENTS: "/export/appointments"
   },
   HEADERS: {
     "Content-Type": "application/json",

@@ -1,8 +1,9 @@
+using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Entities;
 
 namespace VoroSalonCrm.Domain.Entities
 {
-    public class ServiceRecord : ISoftDeletable, ITenantEntity
+    public class Appointment : ISoftDeletable, ITenantEntity
     {
         public Guid Id { get; set; }
         public Guid TenantId { get; set; }
@@ -13,9 +14,12 @@ namespace VoroSalonCrm.Domain.Entities
         public Guid? ServiceId { get; set; }
         public Service? Service { get; set; }
 
-        public DateTimeOffset ServiceDate { get; set; } = DateTime.UtcNow;
-        public string Description { get; set; } = string.Empty;
-        public decimal Amount { get; set; } = 0;
+        public DateTimeOffset ScheduledDateTime { get; set; }
+        public int DurationMinutes { get; set; } = 30;
+        public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
+
+        public string? Description { get; set; }
+        public decimal Amount { get; set; }
         public string? Notes { get; set; }
 
         public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
