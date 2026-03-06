@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PhoneInput } from "@/components/phone-input"
+import { PhoneInput } from "@/components/ui/custom/phone-input"
+import { CountrySelector } from "@/components/ui/custom/country-selector"
+import { flags } from "@/lib/flag-utils"
 import { toast } from "sonner"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
@@ -18,6 +20,7 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 export default function NovoClientePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [countryCode, setCountryCode] = useState("BR")
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -33,9 +36,15 @@ export default function NovoClientePage() {
     }
     setLoading(true)
     try {
+      const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
+      const phoneForApi = `${dialCode}${form.phone}`
+
       const res = await secureApiCall(API_CONFIG.ENDPOINTS.CLIENTS, {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          phone: phoneForApi
+        }),
       })
       if (res.hasError) {
         toast.error(res.message || "Erro ao cadastrar cliente.")
@@ -82,11 +91,24 @@ export default function NovoClientePage() {
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="phone">Telefone *</Label>
-                <PhoneInput
-                  id="phone"
-                  value={form.phone}
-                  onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
-                />
+                <div className="flex gap-2">
+                  <div className="w-[120px] shrink-0">
+                    <CountrySelector
+                      value={countryCode}
+                      onChange={setCountryCode}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <PhoneInput
+                      id="phone"
+                      value={form.phone}
+                      autoComplete="tel"
+                      onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
+                      countryCode={countryCode}
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-col gap-2">

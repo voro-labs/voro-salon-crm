@@ -19,7 +19,9 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  Copy,
+  Link as LinkIcon
 } from "lucide-react"
 import {
   Select,
@@ -86,8 +88,19 @@ export default function DashboardPage() {
   const { data, isLoading } = useSWR(API_CONFIG.ENDPOINTS.DASHBOARD, fetcher)
   const { data: aptData, mutate: mutateApts } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS, fetcher)
 
+  const { data: tenant } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const [timeFilter, setTimeFilter] = useState("today")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  const handleCopyLink = () => {
+    if (!tenant?.slug) {
+      toast.error("Erro ao obter link de agendamento")
+      return
+    }
+    const url = `${window.location.origin}/booking/${tenant.slug}`
+    navigator.clipboard.writeText(url)
+    toast.success("Link de agendamento copiado para a área de transferência!")
+  }
 
   if (isLoading) {
     return (
@@ -137,15 +150,29 @@ export default function DashboardPage() {
 
   const filteredApts = appointments.filter((apt: any) => {
     const aptDate = new Date(apt.scheduledDateTime)
+
+    // Filtro de tempo (hoje vs semana)
+    let matchesTime = false
     if (timeFilter === "today") {
-      return isToday(aptDate)
+      matchesTime = isToday(aptDate)
     } else {
-      // This week (next 7 days)
-      return isWithinInterval(aptDate, {
+      // Esta semana (proximos 7 dias)
+      matchesTime = isWithinInterval(aptDate, {
         start: startOfDay(now),
         end: endOfDay(addDays(now, 7))
       })
     }
+
+    if (!matchesTime) return false
+
+    // Filtro de status: Concluido (2), Cancelado (3), Faltou (4) saem da lista apos 20 min
+    const isFinished = [2, 3, 4].includes(Number(apt.status))
+    if (isFinished) {
+      const minutesSinceApt = (now.getTime() - aptDate.getTime()) / (1000 * 60)
+      if (minutesSinceApt > 20) return false
+    }
+
+    return true
   }).sort((a: any, b: any) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
 
   async function handleStatusUpdate(id: string, newStatus: string) {
@@ -178,12 +205,18 @@ export default function DashboardPage() {
               Visao geral do seu negocio
             </p>
           </div>
-          <Button asChild size="sm">
-            <Link href="/appointments/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Agendamento
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copiar Link de Agendamento
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/appointments/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Agendamento
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Metric cards */}

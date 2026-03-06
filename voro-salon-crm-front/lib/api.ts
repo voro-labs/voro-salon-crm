@@ -22,7 +22,12 @@ export const API_CONFIG = {
     APPOINTMENTS: "/appointments",
     EXPORT_CLIENTS: "/export/clients",
     EXPORT_SERVICES: "/export/services",
-    EXPORT_APPOINTMENTS: "/export/appointments"
+    EXPORT_APPOINTMENTS: "/export/appointments",
+    PUBLIC_TENANT: "/public/PublicBooking/tenant",
+    PUBLIC_CHECK_CLIENT: "/public/PublicBooking/client/check",
+    PUBLIC_SERVICES: "/public/PublicBooking/services",
+    PUBLIC_EMPLOYEES: "/public/PublicBooking/employees",
+    PUBLIC_BOOKING: "/public/PublicBooking/booking",
   },
   HEADERS: {
     "Content-Type": "application/json",

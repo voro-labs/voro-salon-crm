@@ -32,6 +32,9 @@ import useSWR from "swr"
 import { API_CONFIG, secureApiCall, getAuthToken } from "@/lib/api"
 import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { PhoneInput } from "@/components/ui/custom/phone-input"
+import { CountrySelector } from "@/components/ui/custom/country-selector"
+import { flags, getCountryFromPhone } from "@/lib/flag-utils"
 
 interface TenantData {
   id: string
@@ -155,6 +158,7 @@ export default function ConfiguracoesPage() {
   const [exportingServices, setExportingServices] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
+  const [countryCode, setCountryCode] = useState("BR")
   const { data: modules, mutate: mutateModules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, async (url) => {
     const res = await secureApiCall<any[]>(url, { method: "GET" })
     if (res.hasError) throw new Error(res.message || "Failed to fetch modules")
@@ -173,15 +177,17 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     if (tenant && !form) {
+      const { countryCode: cCode, phoneNumber } = getCountryFromPhone(tenant.contactPhone || "")
       setForm({
         name: tenant.name ?? "",
         slug: tenant.slug ?? "",
         logoUrl: tenant.logoUrl ?? "",
         primaryColor: tenant.primaryColor ?? "#8B4513",
         secondaryColor: tenant.secondaryColor ?? "#A0522D",
-        contactPhone: tenant.contactPhone ?? "",
+        contactPhone: phoneNumber,
         contactEmail: tenant.contactEmail ?? "",
       })
+      setCountryCode(cCode)
     }
   }, [tenant, form])
 
@@ -225,9 +231,15 @@ export default function ConfiguracoesPage() {
     }
     setSaving(true)
     try {
+      const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
+      const phoneForApi = `${dialCode}${formData.contactPhone}`
+
       const res = await secureApiCall(API_CONFIG.ENDPOINTS.TENANT_ME, {
-        method: "PUT",
-        body: JSON.stringify(formData),
+        method: "PATCH",
+        body: JSON.stringify({
+          ...formData,
+          contactPhone: phoneForApi
+        }),
       })
       if (res.hasError) {
         toast.error(res.message || "Erro ao salvar configurações.")
@@ -494,13 +506,23 @@ export default function ConfiguracoesPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="contact-phone">Telefone / WhatsApp</Label>
-                      <Input
-                        id="contact-phone"
-                        type="tel"
-                        placeholder="(11) 99999-9999"
-                        value={formData.contactPhone}
-                        onChange={(e) => setForm((p) => p ? { ...p, contactPhone: e.target.value } : null)}
-                      />
+                      <div className="flex gap-2">
+                        <div className="w-[120px] shrink-0">
+                          <CountrySelector
+                            value={countryCode}
+                            onChange={setCountryCode}
+                          />
+                        </div>
+                        <div className="flex-1 relative">
+                          <PhoneInput
+                            id="contact-phone"
+                            value={formData.contactPhone}
+                            autoComplete="tel"
+                            onChange={(v) => setForm((p) => p ? { ...p, contactPhone: v } : null)}
+                            countryCode={countryCode}
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="contact-email">

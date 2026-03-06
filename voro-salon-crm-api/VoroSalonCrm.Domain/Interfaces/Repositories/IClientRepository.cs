@@ -5,5 +5,6 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories
 {
     public interface IClientRepository : IRepositoryBase<Client>
     {
+        Task<Client?> GetByPhoneAsync(Guid tenantId, string phone);
     }
 }

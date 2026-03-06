@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
@@ -30,6 +31,7 @@ const statusConfig: Record<number, { label: string; color: string; icon: any }> 
 
 export default function AppointmentsPage() {
   const [search, setSearch] = useState("")
+  const [periodFilter, setPeriodFilter] = useState("today")
   const { data, isLoading } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS, fetcher)
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
@@ -40,28 +42,60 @@ export default function AppointmentsPage() {
   const appointments = data ?? []
 
   const filtered = useCallback(() => {
-    if (!search.trim()) return appointments
-    const q = search.toLowerCase()
-    return appointments.filter(
-      (a: { clientName: string; serviceName?: string; description?: string }) =>
-        a.clientName.toLowerCase().includes(q) ||
-        (a.serviceName && a.serviceName.toLowerCase().includes(q)) ||
-        (a.description && a.description.toLowerCase().includes(q))
+    let result = appointments
+    const now = new Date()
+
+    // Period filter
+    if (periodFilter === "today") {
+      result = result.filter((a: any) => isToday(new Date(a.scheduledDateTime)))
+    } else if (periodFilter === "week") {
+      result = result.filter((a: any) =>
+        isWithinInterval(new Date(a.scheduledDateTime), {
+          start: startOfDay(now),
+          end: endOfDay(addDays(now, 7)),
+        })
+      )
+    }
+
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(
+        (a: { clientName: string; serviceName?: string; description?: string }) =>
+          a.clientName.toLowerCase().includes(q) ||
+          (a.serviceName && a.serviceName.toLowerCase().includes(q)) ||
+          (a.description && a.description.toLowerCase().includes(q))
+      )
+    }
+
+    return result.sort(
+      (a: any, b: any) =>
+        new Date(a.scheduledDateTime).getTime() -
+        new Date(b.scheduledDateTime).getTime()
     )
-  }, [search, appointments])
+  }, [search, appointments, periodFilter])
 
   return (
     <AuthGuard requiredRoles={["User"]}>
       <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Agendamentos</h1>
-          <Button asChild size="sm">
-            <Link href="/appointments/new">
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Novo Agendamento</span>
-              <span className="sm:hidden">Novo</span>
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Tabs value={periodFilter} onValueChange={setPeriodFilter} className="w-fit">
+              <TabsList className="bg-muted/50 border border-border/40 h-8 p-0.5">
+                <TabsTrigger value="today" className="text-[10px] h-7 px-3">Hoje</TabsTrigger>
+                <TabsTrigger value="week" className="text-[10px] h-7 px-3">Semana</TabsTrigger>
+                <TabsTrigger value="all" className="text-[10px] h-7 px-3">Tudo</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button asChild size="sm">
+              <Link href="/appointments/new">
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Novo Agendamento</span>
+                <span className="sm:hidden">Novo</span>
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
