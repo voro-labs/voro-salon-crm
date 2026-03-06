@@ -79,6 +79,7 @@ export default function ConfiguracoesPage() {
 
   const [form, setForm] = useState<{
     name: string
+    slug: string
     logoUrl: string
     primaryColor: string
     secondaryColor: string
@@ -90,6 +91,7 @@ export default function ConfiguracoesPage() {
     if (tenant && !form) {
       setForm({
         name: tenant.name ?? "",
+        slug: tenant.slug ?? "",
         logoUrl: tenant.logoUrl ?? "",
         primaryColor: tenant.primaryColor ?? "#8B4513",
         secondaryColor: tenant.secondaryColor ?? "#A0522D",
@@ -109,6 +111,7 @@ export default function ConfiguracoesPage() {
 
   const formData = form ?? {
     name: "",
+    slug: "",
     logoUrl: "",
     primaryColor: "#8B4513",
     secondaryColor: "#A0522D",
@@ -130,6 +133,10 @@ export default function ConfiguracoesPage() {
     e.preventDefault()
     if (!formData.name.trim()) {
       toast.error("Nome do estabelecimento é obrigatório.")
+      return
+    }
+    if (!formData.slug.trim()) {
+      toast.error("Slug é obrigatório.")
       return
     }
     setSaving(true)
@@ -207,7 +214,7 @@ export default function ConfiguracoesPage() {
               <Building2 className="h-5 w-5 text-primary" />
               <CardTitle>Dados do Estabelecimento</CardTitle>
             </div>
-            <CardDescription>Nome, logo e informações de contato do seu salão</CardDescription>
+            <CardDescription>Nome, slug, logo e informações de contato do seu salão</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSave} className="flex flex-col gap-5">
@@ -218,9 +225,20 @@ export default function ConfiguracoesPage() {
                     id="tenant-name"
                     placeholder="Meu Salão"
                     value={formData.name}
-                    onChange={(e) => setForm((p) => ({ ...formData, ...p, name: e.target.value }))}
+                    onChange={(e) => setForm((p) => p ? { ...p, name: e.target.value } : null)}
                   />
                 </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="tenant-slug">Slug *</Label>
+                  <Input
+                    id="tenant-slug"
+                    placeholder="meu-salao"
+                    value={formData.slug}
+                    onChange={(e) => setForm((p) => p ? { ...p, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') } : null)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="tenant-logo">URL do Logotipo</Label>
                   <Input
@@ -228,7 +246,7 @@ export default function ConfiguracoesPage() {
                     type="url"
                     placeholder="https://exemplo.com/logo.png"
                     value={formData.logoUrl}
-                    onChange={(e) => setForm((p) => ({ ...formData, ...p!, logoUrl: e.target.value }))}
+                    onChange={(e) => setForm((p) => p ? { ...p, logoUrl: e.target.value } : null)}
                   />
                 </div>
               </div>
@@ -247,7 +265,7 @@ export default function ConfiguracoesPage() {
                     type="tel"
                     placeholder="(11) 99999-9999"
                     value={formData.contactPhone}
-                    onChange={(e) => setForm((p) => ({ ...formData, ...p!, contactPhone: e.target.value }))}
+                    onChange={(e) => setForm((p) => p ? { ...p, contactPhone: e.target.value } : null)}
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -260,7 +278,7 @@ export default function ConfiguracoesPage() {
                     type="email"
                     placeholder="contato@meusalao.com"
                     value={formData.contactEmail}
-                    onChange={(e) => setForm((p) => ({ ...formData, ...p!, contactEmail: e.target.value }))}
+                    onChange={(e) => setForm((p) => p ? { ...p, contactEmail: e.target.value } : null)}
                   />
                 </div>
               </div>
