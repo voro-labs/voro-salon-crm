@@ -49,7 +49,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { PhoneInput } from "@/components/phone-input"
+import { PhoneInput } from "@/components/ui/custom/phone-input"
+import { CountrySelector } from "@/components/ui/custom/country-selector"
+import { flags, getCountryFromPhone } from "@/lib/flag-utils"
 import { CurrencyInput } from "@/components/currency-input"
 import { toast } from "sonner"
 
@@ -104,6 +106,7 @@ export default function ClienteDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "" })
   const [editLoading, setEditLoading] = useState(false)
+  const [countryCode, setCountryCode] = useState("BR")
 
   const [svcOpen, setSvcOpen] = useState(false)
   const [svcForm, setSvcForm] = useState({
@@ -120,12 +123,14 @@ export default function ClienteDetailPage() {
 
   function openEdit() {
     if (client) {
+      const { countryCode, phoneNumber } = getCountryFromPhone(client.phone)
       setEditForm({
         name: client.name,
-        phone: client.phone,
+        phone: phoneNumber,
         email: client.email || "",
         notes: client.notes || "",
       })
+      setCountryCode(countryCode)
       setEditOpen(true)
     }
   }
@@ -138,9 +143,15 @@ export default function ClienteDetailPage() {
     }
     setEditLoading(true)
     try {
+      const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
+      const phoneForApi = `${dialCode}${editForm.phone}`
+
       const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, {
         method: "PUT",
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          ...editForm,
+          phone: phoneForApi
+        }),
       })
       if (res.hasError) {
         toast.error(res.message || "Erro ao atualizar.")
@@ -602,11 +613,24 @@ export default function ClienteDetailPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="edit-phone">Telefone *</Label>
-                <PhoneInput
-                  id="edit-phone"
-                  value={editForm.phone}
-                  onChange={(v) => setEditForm((p) => ({ ...p, phone: v }))}
-                />
+                <div className="flex gap-2">
+                  <div className="w-[120px] shrink-0">
+                    <CountrySelector
+                      value={countryCode}
+                      onChange={setCountryCode}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <PhoneInput
+                      id="edit-phone"
+                      value={editForm.phone}
+                      autoComplete="tel"
+                      onChange={(v) => setEditForm((p) => ({ ...p, phone: v }))}
+                      countryCode={countryCode}
+                      required
+                    />
+                  </div>
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="edit-email">Email</Label>

@@ -9,5 +9,6 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories
         Task<Employee?> GetByIdWithSpecialtiesAsync(Guid id);
         Task UpdateSpecialtiesAsync(Guid employeeId, IEnumerable<Guid> serviceIds);
         Task<IEnumerable<Employee>> GetAvailableForServiceAsync(Guid tenantId, Guid serviceId);
+        Task<IEnumerable<Employee>> GetPublicEmployeesByServiceAsync(Guid tenantId, Guid serviceId);
     }
 }

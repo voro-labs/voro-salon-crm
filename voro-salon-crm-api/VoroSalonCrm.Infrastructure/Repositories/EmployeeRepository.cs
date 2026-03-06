@@ -53,5 +53,14 @@ namespace VoroSalonCrm.Infrastructure.Repositories
                 .Where(e => e.Specialties.Any(es => es.ServiceId == serviceId))
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Employee>> GetPublicEmployeesByServiceAsync(Guid tenantId, Guid serviceId)
+        {
+            return await _context.Employees
+                .IgnoreQueryFilters()
+                .Include(e => e.Specialties)
+                .Where(e => e.TenantId == tenantId && e.IsActive && !e.IsDeleted && e.Specialties.Any(es => es.ServiceId == serviceId))
+                .ToListAsync();
+        }
     }
 }

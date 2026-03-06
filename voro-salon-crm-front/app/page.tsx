@@ -19,7 +19,9 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  Copy,
+  Link as LinkIcon
 } from "lucide-react"
 import {
   Select,
@@ -86,8 +88,19 @@ export default function DashboardPage() {
   const { data, isLoading } = useSWR(API_CONFIG.ENDPOINTS.DASHBOARD, fetcher)
   const { data: aptData, mutate: mutateApts } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS, fetcher)
 
+  const { data: tenant } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const [timeFilter, setTimeFilter] = useState("today")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  const handleCopyLink = () => {
+    if (!tenant?.slug) {
+      toast.error("Erro ao obter link de agendamento")
+      return
+    }
+    const url = `${window.location.origin}/booking/${tenant.slug}`
+    navigator.clipboard.writeText(url)
+    toast.success("Link de agendamento copiado para a área de transferência!")
+  }
 
   if (isLoading) {
     return (
@@ -178,12 +191,18 @@ export default function DashboardPage() {
               Visao geral do seu negocio
             </p>
           </div>
-          <Button asChild size="sm">
-            <Link href="/appointments/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Agendamento
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copiar Link de Agendamento
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/appointments/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Agendamento
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Metric cards */}

@@ -16,6 +16,7 @@ interface PhoneInputProps {
   countryCode: string
   placeholder?: string
   disabled?: boolean
+  required?: boolean
   className?: string
 }
 
@@ -29,6 +30,7 @@ export function PhoneInput({
   placeholder,
   disabled,
   className,
+  required
 }: PhoneInputProps) {
   const [maskedValue, setMaskedValue] = useState("")
 
@@ -73,6 +75,7 @@ export function PhoneInput({
       className={cn("w-full px-3 py-2", className)}
       placeholder={currentPlaceholder}
       disabled={disabled}
+      required={required}
     />
   )
 }

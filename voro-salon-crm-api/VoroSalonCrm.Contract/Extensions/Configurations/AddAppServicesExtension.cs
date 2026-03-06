@@ -70,6 +70,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAppointmentService, AppointmentService>();
             services.AddScoped<ITenantModuleService, TenantModuleService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
+            services.AddScoped<IPublicBookingService, PublicBookingService>();
             #endregion
 
             return services;
