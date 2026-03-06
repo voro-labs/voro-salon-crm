@@ -14,6 +14,7 @@ import { format } from "date-fns"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags } from "@/lib/flag-utils"
+import { cn } from "@/lib/utils"
 
 type Step = 'IDENTIFICATION' | 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'CONFIRM' | 'SUCCESS'
 
@@ -43,6 +44,8 @@ export default function PublicBookingPage() {
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [availability, setAvailability] = useState<any[]>([])
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [countryCode, setCountryCode] = useState("BR")
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -145,11 +148,32 @@ export default function PublicBookingPage() {
     setStep('DATETIME')
   }
 
+  // Fetch availability when date or professional changes
+  useEffect(() => {
+    if (step === 'DATETIME' && form.date) {
+      async function fetchAvailability() {
+        setLoadingAvailability(true)
+        try {
+          // Use YYYY-MM-DDT00:00:00 to ensure local timezone parsing and avoid off-by-one day
+          const date = new Date(`${form.date}T00:00:00`)
+          const res = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_AVAILABILITY}?tenantSlug=${slug}&date=${date.toISOString()}${form.employeeId && form.employeeId !== 'none' ? `&employeeId=${form.employeeId}` : ""}`)
+          setAvailability(res.data || [])
+        } catch {
+          toast.error("Erro ao carregar horários disponíveis.")
+        } finally {
+          setLoadingAvailability(false)
+        }
+      }
+      fetchAvailability()
+    }
+  }, [step, form.date, form.employeeId, slug])
+
   const handleDateTimeSelect = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.date || !form.time) return
 
-    addUserMessage(`${format(new Date(form.date), "dd/MM/yyyy")} às ${form.time}`)
+    const displayDate = new Date(`${form.date}T00:00:00`)
+    addUserMessage(`${format(displayDate, "dd/MM/yyyy")} às ${form.time}`)
     addBotMessage("Quase lá! Tem alguma observação ou pedido especial que gostaria de deixar?")
     setStep('CONFIRM')
   }
@@ -317,7 +341,7 @@ export default function PublicBookingPage() {
                 <Button
                   key={s.id}
                   variant="outline"
-                  className="h-auto py-3 px-3 flex flex-col items-start gap-1 text-left bg-background hover:bg-primary/5 hover:border-primary transition-all"
+                  className="h-auto py-3 px-3 flex flex-col items-start gap-1 text-left bg-background hover:bg-primary/5 hover:border-primary hover:text-primary transition-all"
                   onClick={() => handleServiceSelect(s)}
                 >
                   <span className="font-bold text-sm line-clamp-1">{s.name}</span>
@@ -336,7 +360,7 @@ export default function PublicBookingPage() {
                   <Button
                     key={e.id}
                     variant="outline"
-                    className="h-auto py-2 px-2 flex items-center gap-3 bg-background hover:bg-primary/5 transition-all text-left"
+                    className="h-auto py-2 px-2 flex items-center gap-3 bg-background hover:bg-primary/5 hover:border-primary hover:text-primary transition-all text-left"
                     onClick={() => handleEmployeeSelect(e.id)}
                   >
                     <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border">
@@ -353,32 +377,61 @@ export default function PublicBookingPage() {
           )}
 
           {step === 'DATETIME' && !loading && (
-            <form onSubmit={handleDateTimeSelect} className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[10px] text-muted-foreground ml-1">Data</Label>
-                  <Input
-                    type="date"
-                    value={form.date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[10px] text-muted-foreground ml-1">Hora</Label>
-                  <Input
-                    type="time"
-                    value={form.time}
-                    onChange={e => setForm(p => ({ ...p, time: e.target.value }))}
-                    required
-                  />
-                </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <Label className="text-[10px] text-muted-foreground ml-1">Data</Label>
+                <Input
+                  type="date"
+                  value={form.date}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => {
+                    setForm(p => ({ ...p, date: e.target.value, time: '' }))
+                  }}
+                  required
+                />
               </div>
-              <Button type="submit" className="w-full h-9">
+
+              {form.date && (
+                <div className="flex flex-col gap-2">
+                  <Label className="text-[10px] text-muted-foreground ml-1">Horários Disponíveis</Label>
+                  {loadingAvailability ? (
+                    <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground justify-center">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Buscando horários...
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2">
+                      {availability.map(slot => (
+                        <Button
+                          key={slot.startTime}
+                          variant={form.time === format(new Date(slot.startTime), "HH:mm") ? "default" : "outline"}
+                          size="sm"
+                          className={cn(
+                            "h-10 text-[10px] px-1",
+                            !slot.isAvailable && "opacity-30 cursor-not-allowed"
+                          )}
+                          disabled={!slot.isAvailable}
+                          onClick={() => setForm(p => ({ ...p, time: format(new Date(slot.startTime), "HH:mm") }))}
+                        >
+                          {format(new Date(slot.startTime), "HH:mm")}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  {availability.length === 0 && !loadingAvailability && (
+                    <p className="text-[10px] text-muted-foreground text-center">Nenhum horário disponível para esta data.</p>
+                  )}
+                </div>
+              )}
+
+              <Button
+                onClick={handleDateTimeSelect}
+                className="w-full h-10 mt-1"
+                disabled={!form.date || !form.time}
+              >
                 Confirmar Horário
               </Button>
-            </form>
+            </div>
           )}
 
           {step === 'CONFIRM' && !loading && (

@@ -22,6 +22,11 @@ import useSWR from "swr"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -53,11 +58,21 @@ export default function NovoAgendamentoPage() {
     notes: ""
   })
 
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+
   // Fetch employees based on service
   const { data: employees } = useSWR(
     form.serviceId !== "none"
       ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
       : API_CONFIG.ENDPOINTS.EMPLOYEES,
+    fetcher
+  )
+
+  // Fetch available slots
+  const { data: availability, isLoading: loadingAvailability } = useSWR(
+    selectedDate
+      ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?date=${selectedDate.toISOString()}${form.employeeId !== "none" ? `&employeeId=${form.employeeId}` : ""}`
+      : null,
     fetcher
   )
 
@@ -68,7 +83,10 @@ export default function NovoAgendamentoPage() {
     now.setSeconds(0)
     now.setMilliseconds(0)
 
-    // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+    // Set selected date
+    setSelectedDate(now)
+
+    // Format for datetime-local input (YYYY-MM-DDTHH:mm) - still keeping for compatibility or fallback
     const tzOffset = now.getTimezoneOffset() * 60000
     const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16)
 
@@ -216,18 +234,37 @@ export default function NovoAgendamentoPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="scheduledDateTime">Data e Hora *</Label>
-                  <Input
-                    id="scheduledDateTime"
-                    type="datetime-local"
-                    value={form.scheduledDateTime}
-                    onChange={(e) => setForm(p => ({ ...p, scheduledDateTime: e.target.value }))}
-                    required
-                  />
+                  <Label>Data e Horário Disponível *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date)
+                          setForm(p => ({ ...p, scheduledDateTime: "" })) // Reset slot selection
+                        }}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="durationMinutes">Duração (minutos)</Label>
+                  <Label htmlFor="durationMinutes">Duração Estimada</Label>
                   <Select
                     key={form.durationMinutes}
                     value={form.durationMinutes.toString()}
@@ -247,6 +284,40 @@ export default function NovoAgendamentoPage() {
                   </Select>
                 </div>
               </div>
+
+              {selectedDate && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <Label className="text-sm font-medium">Horários Disponíveis</Label>
+                  {loadingAvailability ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Carregando horários...
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+                      {availability?.map((slot: any) => (
+                        <Button
+                          key={slot.startTime}
+                          type="button"
+                          variant={form.scheduledDateTime === slot.startTime ? "default" : "outline"}
+                          size="sm"
+                          className={cn(
+                            "h-9 px-2 text-xs",
+                            !slot.isAvailable && "opacity-30 cursor-not-allowed bg-muted"
+                          )}
+                          disabled={!slot.isAvailable}
+                          onClick={() => setForm(p => ({ ...p, scheduledDateTime: slot.startTime }))}
+                        >
+                          {format(new Date(slot.startTime), "HH:mm")}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  {availability?.length === 0 && !loadingAvailability && (
+                    <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data.</p>
+                  )}
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
@@ -293,6 +364,6 @@ export default function NovoAgendamentoPage() {
           </CardContent>
         </Card>
       </div>
-    </AuthGuard>
+    </AuthGuard >
   )
 }
