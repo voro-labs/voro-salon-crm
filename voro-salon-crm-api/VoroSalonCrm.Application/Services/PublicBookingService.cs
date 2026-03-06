@@ -122,7 +122,8 @@ namespace VoroSalonCrm.Application.Services
                 a.TenantId == tenant.Id &&
                 a.ScheduledDateTime >= startUtc &&
                 a.ScheduledDateTime < endUtc &&
-                a.Status != AppointmentStatus.Cancelled);
+                a.Status != AppointmentStatus.Cancelled)
+                .IgnoreQueryFilters();
 
             if (employeeId.HasValue)
             {
@@ -132,7 +133,9 @@ namespace VoroSalonCrm.Application.Services
             var appointments = await query.ToListAsync();
 
             // Get total active employees to handle "Any professional" case
-            var activeEmployeesCount = await employeeRepository.Query(e => e.TenantId == tenant.Id && e.IsActive).CountAsync();
+            var activeEmployeesCount = await employeeRepository.Query(e => e.TenantId == tenant.Id && e.IsActive)
+                .IgnoreQueryFilters()
+                .CountAsync();
 
             var slots = new List<VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto>();
             var current = startOfDay;
