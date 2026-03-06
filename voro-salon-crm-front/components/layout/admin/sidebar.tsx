@@ -8,12 +8,14 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  Scissors,
 } from "lucide-react"
 import { toTitleCase } from "@/lib/utils"
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "User"] },
   { title: "Clientes", href: "/clients", icon: Users, roles: ["Admin", "User"] },
+  { title: "Serviços", href: "/services", icon: Scissors, roles: ["Admin", "User"] },
   { title: "Configurações", href: "/settings", icon: Settings, roles: ["Admin"] }
 ]
 

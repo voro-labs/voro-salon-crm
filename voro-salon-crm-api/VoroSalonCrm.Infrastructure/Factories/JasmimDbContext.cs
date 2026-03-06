@@ -29,6 +29,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<UserExtension> UserExtensions { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Client> Clients { get; set; }
+        public DbSet<Service> Services { get; set; }
         public DbSet<ServiceRecord> ServiceRecords { get; set; }
 
 
@@ -50,6 +51,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             builder.Entity<Client>().HasQueryFilter(c =>
                 !c.IsDeleted && c.TenantId == _currentUser.TenantId);
+
+            builder.Entity<Service>().HasQueryFilter(s =>
+                !s.IsDeleted && s.TenantId == _currentUser.TenantId);
 
             builder.Entity<ServiceRecord>().HasQueryFilter(s =>
                 !s.IsDeleted && s.TenantId == _currentUser.TenantId);
@@ -93,6 +97,24 @@ namespace VoroSalonCrm.Infrastructure.Factories
             });
 
             // ---------------------------
+            // SERVICE
+            // ---------------------------
+            builder.Entity<Service>(b =>
+            {
+                b.HasKey(s => s.Id);
+                b.Property(s => s.Name).HasMaxLength(200).IsRequired();
+                b.Property(s => s.Price).HasColumnType("NUMERIC(10,2)").HasDefaultValue(0);
+                b.Property(s => s.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(s => s.TenantId);
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(s => s.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
             // SERVICE RECORD
             // ---------------------------
             builder.Entity<ServiceRecord>(b =>
@@ -106,6 +128,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 // Indexes equivalentes ao SQL: idx_services_tenant, idx_services_client, idx_services_date
                 b.HasIndex(s => s.TenantId);
                 b.HasIndex(s => s.ClientId);
+                b.HasIndex(s => s.ServiceId);
                 b.HasIndex(s => new { s.TenantId, s.ServiceDate }).IsDescending(false, true);
 
                 b.HasOne<Tenant>()
@@ -117,6 +140,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(s => s.ClientId)
                  .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(s => s.Service)
+                 .WithMany()
+                 .HasForeignKey(s => s.ServiceId)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
 
             builder.Entity<UserExtension>()

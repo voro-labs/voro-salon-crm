@@ -41,7 +41,7 @@ namespace VoroSalonCrm.Application.Services
             }).ToList();
 
             var sb = new StringBuilder();
-            sb.AppendLine("Nome,Telefone,Observacoes,Cadastro,Ultimo Servico,Total Servicos,Total Gasto");
+            sb.AppendLine("Nome,Telefone,Observacoes,Cadastro,Ultimo Serviço,Total Serviços,Total Gasto");
 
             foreach (var c in clients)
             {

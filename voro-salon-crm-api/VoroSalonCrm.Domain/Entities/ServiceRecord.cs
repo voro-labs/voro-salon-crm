@@ -6,9 +6,12 @@ namespace VoroSalonCrm.Domain.Entities
     {
         public Guid Id { get; set; }
         public Guid TenantId { get; set; }
-        
+
         public Guid ClientId { get; set; }
         public Client Client { get; set; } = null!;
+
+        public Guid? ServiceId { get; set; }
+        public Service? Service { get; set; }
 
         public DateTimeOffset ServiceDate { get; set; } = DateTime.UtcNow;
         public string Description { get; set; } = string.Empty;
