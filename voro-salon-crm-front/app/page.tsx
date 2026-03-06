@@ -150,15 +150,29 @@ export default function DashboardPage() {
 
   const filteredApts = appointments.filter((apt: any) => {
     const aptDate = new Date(apt.scheduledDateTime)
+
+    // Filtro de tempo (hoje vs semana)
+    let matchesTime = false
     if (timeFilter === "today") {
-      return isToday(aptDate)
+      matchesTime = isToday(aptDate)
     } else {
-      // This week (next 7 days)
-      return isWithinInterval(aptDate, {
+      // Esta semana (proximos 7 dias)
+      matchesTime = isWithinInterval(aptDate, {
         start: startOfDay(now),
         end: endOfDay(addDays(now, 7))
       })
     }
+
+    if (!matchesTime) return false
+
+    // Filtro de status: Concluido (2), Cancelado (3), Faltou (4) saem da lista apos 20 min
+    const isFinished = [2, 3, 4].includes(Number(apt.status))
+    if (isFinished) {
+      const minutesSinceApt = (now.getTime() - aptDate.getTime()) / (1000 * 60)
+      if (minutesSinceApt > 20) return false
+    }
+
+    return true
   }).sort((a: any, b: any) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
 
   async function handleStatusUpdate(id: string, newStatus: string) {
