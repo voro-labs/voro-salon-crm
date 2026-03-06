@@ -11,6 +11,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<IEnumerable<Tenant>> GetAllAsync();
         Task<Tenant> CreateAsync(CreateTenantDto dto);
         Task<Tenant> UpdateAsync(Guid id, UpdateTenantDto dto);
+        Task<Tenant> UpdateLogoAsync(Guid id, string logoUrl);
         Task<bool> DeleteAsync(Guid id);
     }
 }

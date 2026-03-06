@@ -71,6 +71,20 @@ namespace VoroSalonCrm.Application.Services
             return tenant;
         }
 
+        public async Task<Tenant> UpdateLogoAsync(Guid id, string logoUrl)
+        {
+            var tenant = await _tenantRepository.GetByIdAsync(id)
+                ?? throw new KeyNotFoundException($"Tenant '{id}' not found.");
+
+            tenant.LogoUrl = logoUrl;
+            tenant.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _tenantRepository.Update(tenant);
+            await _unitOfWork.SaveChangesAsync();
+
+            return tenant;
+        }
+
         public async Task<bool> DeleteAsync(Guid id)
         {
             var tenant = await _tenantRepository.GetByIdAsync(id);

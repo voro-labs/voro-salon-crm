@@ -3,11 +3,13 @@ using Microsoft.Extensions.DependencyInjection;
 using VoroSalonCrm.Application.Services;
 using VoroSalonCrm.Application.Services.Identity;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Blob;
 using VoroSalonCrm.Application.Services.Interfaces.Email;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Infrastructure.Blob;
 using VoroSalonCrm.Infrastructure.Email;
 using VoroSalonCrm.Infrastructure.Repositories;
 using VoroSalonCrm.Infrastructure.Repositories.Identity;
@@ -21,6 +23,12 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
     {
         public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddHttpClient("vercel-blob", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(100);
+            });
+
+            services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
             services.Configure<IntegrationUtil>(configuration.GetSection("IntegrationSettings"));
@@ -28,6 +36,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IDataSeeder, DataSeeder>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IBlobService, BlobService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IMailKitEmailService, MailKitEmailService>();
 

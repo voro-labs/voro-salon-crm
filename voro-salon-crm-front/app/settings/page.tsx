@@ -14,6 +14,9 @@ import {
   Phone,
   Mail,
   Sliders,
+  Upload,
+  Image as ImageIcon,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,10 +71,82 @@ function applyRadius(value: string) {
   try { localStorage.setItem("voro:radius", value) } catch { }
 }
 
+function AuthenticatedImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!src) {
+      setBlobUrl(null)
+      setLoading(false)
+      return
+    }
+
+    // Se não for do vercel blob, usa direto
+    if (!src.includes("blob.vercel-storage.com")) {
+      setBlobUrl(src)
+      setLoading(false)
+      return
+    }
+
+    // Se já for um data url ou blob local (preview), usa direto
+    if (src.startsWith("data:") || src.startsWith("blob:")) {
+      setBlobUrl(src)
+      setLoading(false)
+      return
+    }
+
+    let isMounted = true
+    const fetchSignedUrl = async () => {
+      setLoading(true)
+      try {
+        const proxyUrl = `/api/blob/proxy?url=${encodeURIComponent(src)}`
+        const response = await fetch(proxyUrl)
+
+        if (!response.ok) throw new Error("Failed to fetch signed URL via proxy")
+
+        const data = await response.json()
+        if (isMounted) {
+          setBlobUrl(data.url)
+        }
+      } catch (err) {
+        console.error("Error fetching signed URL:", err)
+        if (isMounted) setBlobUrl(null)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    fetchSignedUrl()
+    return () => {
+      isMounted = false
+    }
+  }, [src])
+
+  if (loading) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-muted/30`}>
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!blobUrl) {
+    return (
+      <div className={`${className} flex items-center justify-center bg-muted/30`}>
+        <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+      </div>
+    )
+  }
+
+  return <img src={blobUrl} alt={alt} className={className} />
+}
+
 export default function ConfiguracoesPage() {
   const { theme, setTheme } = useTheme()
   const { data: tenant, isLoading, mutate } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const [saving, setSaving] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [exportingClients, setExportingClients] = useState(false)
   const [exportingServices, setExportingServices] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -159,6 +234,49 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Preview localmente
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setForm(p => p ? { ...p, logoUrl: reader.result as string } : null)
+    }
+    reader.readAsDataURL(file)
+
+    setUploadingLogo(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TENANT_ME}/logo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+        body: formData,
+      })
+
+      const res = await response.json()
+      if (!response.ok || res.hasError) {
+        toast.error(res.message || "Erro ao fazer upload da logo.")
+        // Reverter para o original do tenant se falhar
+        setForm(p => p ? { ...p, logoUrl: tenant?.logoUrl ?? "" } : null)
+        return
+      }
+
+      toast.success("Logo atualizada com sucesso!")
+      setForm(p => p ? { ...p, logoUrl: res.data } : null)
+      mutate()
+    } catch {
+      toast.error("Erro de conexão ao enviar logo.")
+      setForm(p => p ? { ...p, logoUrl: tenant?.logoUrl ?? "" } : null)
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
   async function handleExport(type: "clients" | "services") {
     const setter = type === "clients" ? setExportingClients : setExportingServices
     setter(true)
@@ -239,15 +357,82 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="tenant-logo">URL do Logotipo</Label>
-                  <Input
-                    id="tenant-logo"
-                    type="url"
-                    placeholder="https://exemplo.com/logo.png"
-                    value={formData.logoUrl}
-                    onChange={(e) => setForm((p) => p ? { ...p, logoUrl: e.target.value } : null)}
-                  />
+                <div className="flex flex-col gap-4">
+                  <Label>Logotipo do Estabelecimento</Label>
+                  <div className="flex flex-col sm:flex-row items-start gap-4">
+                    {/* Preview Section */}
+                    <div className="relative group w-32 h-32 rounded-lg border-2 border-dashed border-muted flex items-center justify-center overflow-hidden bg-muted/30">
+                      {formData.logoUrl ? (
+                        <>
+                          <AuthenticatedImage
+                            src={formData.logoUrl}
+                            alt="Logo preview"
+                            className="w-full h-full object-contain"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setForm(p => p ? { ...p, logoUrl: "" } : null)}
+                            className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                      )}
+                      {uploadingLogo && (
+                        <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 flex flex-col gap-3 w-full">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="tenant-logo-file" className="text-xs uppercase tracking-wider text-muted-foreground">Upload de Arquivo</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="tenant-logo-file"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById('tenant-logo-file')?.click()}
+                            disabled={uploadingLogo}
+                            className="w-full sm:w-auto"
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {formData.logoUrl ? "Alterar Logo" : "Selecionar Logo"}
+                          </Button>
+                          <span className="text-xs text-muted-foreground hidden sm:inline">PNG, JPG ou SVG (Máx. 2MB)</span>
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-2 text-muted-foreground">OU</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="tenant-logo-url" className="text-xs uppercase tracking-wider text-muted-foreground">URL Externa</Label>
+                        <Input
+                          id="tenant-logo-url"
+                          type="url"
+                          placeholder="https://exemplo.com/logo.png"
+                          value={formData.logoUrl}
+                          onChange={(e) => setForm((p) => p ? { ...p, logoUrl: e.target.value } : null)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
