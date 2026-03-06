@@ -2,13 +2,14 @@
 {
     public class ConfigUtil
     {
-        public ConnectionDB? ConnectionDB { get; set; }
+        public ConnectionString? ConnectionString { get; set; }
+        public string? ConnectionDB { get; set; }
         public string? JwtKey { get; set; }
     }
 
-    public class ConnectionDB
+    public class ConnectionString
     {
-        public string? Prod { get; set; }
-        public string? Dev { get; set; }
+        public string? Production { get; set; }
+        public string? Development { get; set; }
     }
 }

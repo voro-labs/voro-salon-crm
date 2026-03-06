@@ -13,9 +13,20 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
         {
             var config = configuration.Get<ConfigUtil>();
 
-            var connectionString = env.IsDevelopment()
-                ? config?.ConnectionDB?.Dev
-                : config?.ConnectionDB?.Prod;
+            var connectionString = $"{config?.ConnectionDB}";
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                connectionString = env.IsDevelopment()
+                    ? config?.ConnectionString?.Development
+                    : config?.ConnectionString?.Production;
+            }
+
+            // Force to use development connection string
+            // connectionString = config?.ConnectionString?.Development;
+
+            // Force to use production connection string
+            // connectionString = config?.ConnectionString?.Production;
 
             services.AddDbContext<JasmimDbContext>(options =>
                 options.UseNpgsql(connectionString));
