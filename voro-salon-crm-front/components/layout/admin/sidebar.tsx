@@ -32,9 +32,9 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
   const getRoleBadge = (roles: string[]) => {
     switch (roles[0]) {
       case "Admin":
-        return { text: "Admin", class: "bg-blue-100 text-blue-800" }
+        return { text: "Administrador", class: "bg-blue-100 text-blue-800" }
       default:
-        return { text: "User", class: "bg-green-100 text-green-800" }
+        return { text: "Usuário", class: "bg-green-100 text-green-800" }
     }
   }
 
