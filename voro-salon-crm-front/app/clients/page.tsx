@@ -11,18 +11,12 @@ import { Badge } from "@/components/ui/badge"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { formatPhone } from "@/lib/mask-utils"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
   if (result.hasError) throw new Error(result.message || "Error")
   return result.data
-}
-
-function formatPhone(phone: string) {
-  const d = phone.replace(/\D/g, "")
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
-  return phone
 }
 
 export default function ClientesPage() {
