@@ -14,6 +14,7 @@
   "CorsSettings:AllowedOrigins:2": "https://localhost:3000",
   "CorsSettings:AllowedOrigins:1": "http://localhost:4200",
   "CorsSettings:AllowedOrigins:0": "http://localhost:3000",
-  "ConnectionDB": "Server=SERVER;Port=PORT;Database=DATABASE;User Id=USER_ID;Password=PASSWORD;",
+  "ConnectionDB:Prod": "Server=SERVER;Port=PORT;Database=DATABASE;User Id=USER_ID;Password=PASSWORD;",
+  "ConnectionDB:Dev": "Server=SERVER;Port=PORT;Database=DATABASE;User Id=USER_ID;Password=PASSWORD;",
 }
 ```

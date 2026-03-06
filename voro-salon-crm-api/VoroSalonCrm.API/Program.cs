@@ -18,7 +18,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services
-    .AddDatabase(builder.Configuration)
+    .AddDatabase(builder.Configuration, builder.Environment)
     .AddCustomIdentity()
     .AddJwtAuthentication(builder.Configuration)
     .AddMemoryCache()

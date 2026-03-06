@@ -3,15 +3,22 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using VoroSalonCrm.Infrastructure.Factories;
 using VoroSalonCrm.Shared.Utils;
+using Microsoft.Extensions.Hosting;
 
 namespace VoroSalonCrm.Contract.Extensions.Configurations
 {
     public static class AddDatabaseExtension
     {
-        public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration, IHostEnvironment env)
         {
+            var config = configuration.Get<ConfigUtil>();
+
+            var connectionString = env.IsDevelopment()
+                ? config?.ConnectionDB?.Dev
+                : config?.ConnectionDB?.Prod;
+
             services.AddDbContext<JasmimDbContext>(options =>
-                options.UseNpgsql(configuration.Get<ConfigUtil>()?.ConnectionDB));
+                options.UseNpgsql(connectionString));
 
             return services;
         }
