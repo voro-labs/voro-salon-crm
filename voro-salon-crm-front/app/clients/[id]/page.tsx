@@ -107,7 +107,7 @@ export default function ClienteDetailPage() {
 
   const [svcOpen, setSvcOpen] = useState(false)
   const [svcForm, setSvcForm] = useState({
-    serviceId: undefined as string | undefined,
+    serviceId: "none",
     description: "",
     amount: 0,
     serviceDate: new Date().toISOString().split("T")[0],
@@ -186,7 +186,7 @@ export default function ClienteDetailPage() {
         body: JSON.stringify({
           ...svcForm,
           clientId: clientId,
-          serviceId: svcForm.serviceId || null,
+          serviceId: svcForm.serviceId === "none" ? null : svcForm.serviceId,
         }),
       })
       if (res.hasError) {
@@ -196,7 +196,7 @@ export default function ClienteDetailPage() {
       toast.success("Serviço registrado!")
       setSvcOpen(false)
       setSvcForm({
-        serviceId: undefined,
+        serviceId: "none",
         description: "",
         amount: 0,
         serviceDate: new Date().toISOString().split("T")[0],
@@ -397,10 +397,11 @@ export default function ClienteDetailPage() {
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="svc-catalog">Serviço Predefinido</Label>
                     <Select
+                      key={catalogServices?.id}
                       value={svcForm.serviceId || "none"}
                       onValueChange={(val) => {
                         if (val === "none") {
-                          setSvcForm((p) => ({ ...p, serviceId: undefined }))
+                          setSvcForm((p) => ({ ...p, serviceId: "none" }))
                         } else {
                           const selected = (catalogServices || []).find((s: any) => s.id === val)
                           if (selected) {

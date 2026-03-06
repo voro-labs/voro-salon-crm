@@ -33,7 +33,7 @@ export function useSignIn() {
       if (response.data) {
         // Salvar token se fornecido pela API
         if (response.data?.token) {
-          login(response.data?.token)
+          login(response.data?.token, response.data?.tenants)
         }
         return { success: true }
       } else {

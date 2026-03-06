@@ -310,6 +310,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex flex-col items-end gap-2">
                             <Select
+                              key={apt.id}
                               value={String(apt.status)}
                               onValueChange={(v) => handleStatusUpdate(apt.id, v)}
                               disabled={isAptUpdating}

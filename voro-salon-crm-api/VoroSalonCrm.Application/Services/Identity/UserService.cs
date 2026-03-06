@@ -155,8 +155,26 @@ namespace VoroSalonCrm.Application.Services.Identity
             if (string.IsNullOrWhiteSpace(email)) return null;
             var normalizedEmail = userManager.NormalizeEmail(email);
             return await userManager.Users
+                .Include(u => u.UserTenants)
+                    .ThenInclude(ut => ut.Tenant)
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail && !u.IsDeleted);
+        }
+
+        public async Task<User?> GetByIdAsync(Guid id)
+        {
+            return await userRepository.Query()
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Include(u => u.UserTenants)
+                    .ThenInclude(ut => ut.Tenant)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        }
+
+        public async Task<IList<string>> GetRolesAsync(User user)
+        {
+            return await userManager.GetRolesAsync(user);
         }
     }
 }

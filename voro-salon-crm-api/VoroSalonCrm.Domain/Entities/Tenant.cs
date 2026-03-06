@@ -27,5 +27,7 @@ namespace VoroSalonCrm.Domain.Entities
 
         public bool IsDeleted { get; set; }
         public DateTimeOffset? DeletedAt { get; set; }
+
+        public ICollection<UserTenant> UserTenants { get; set; } = [];
     }
 }

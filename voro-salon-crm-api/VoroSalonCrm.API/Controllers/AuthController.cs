@@ -150,5 +150,25 @@ namespace VoroSalonCrm.API.Controllers
                     .ToActionResult();
             }
         }
+
+        [HttpPost("switch-tenant/{tenantId:guid}")]
+        [Authorize]
+        public async Task<IActionResult> SwitchTenant(Guid tenantId)
+        {
+            try
+            {
+                var authDto = await authService.SwitchTenantAsync(tenantId);
+
+                return ResponseViewModel<AuthDto>
+                    .SuccessWithMessage("Tenant switched successful.", authDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
     }
 }

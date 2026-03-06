@@ -1,7 +1,7 @@
 ﻿using VoroSalonCrm.Application.DTOs;
-using VoroSalonCrm.Domain.Entities.Identity;
 using VoroSalonCrm.Application.DTOs.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Base;
+using VoroSalonCrm.Domain.Entities.Identity;
 
 namespace VoroSalonCrm.Application.Services.Interfaces.Identity
 {
@@ -14,5 +14,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces.Identity
         Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email);
         Task<(User user, string token)> GenerateForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
         Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
+        Task<IList<string>> GetRolesAsync(User user);
+        Task<User?> GetByIdAsync(Guid id);
     }
 }

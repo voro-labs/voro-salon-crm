@@ -304,13 +304,12 @@ export function DateTimePicker({
           key={day}
           type="button"
           onClick={() => handleDateSelect(day)}
-          className={`w-8 h-8 text-sm rounded-full hover:bg-blue-100 transition-colors ${
-            isSelected
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : isToday
-                ? "bg-blue-100 text-blue-600 font-semibold"
-                : "text-white-700 hover:text-blue-600"
-          }`}
+          className={`w-8 h-8 text-sm rounded-full hover:bg-blue-100 transition-colors ${isSelected
+            ? "bg-blue-600 text-white hover:bg-blue-700"
+            : isToday
+              ? "bg-blue-100 text-blue-600 font-semibold"
+              : "text-white-700 hover:text-blue-600"
+            }`}
         >
           {day}
         </button>,
@@ -452,11 +451,10 @@ export function DateTimePicker({
             <button
               type="button"
               onClick={() => setActiveTab("date")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === "date"
-                  ? "text-primary border-b-2 border-primary bg-primary/5"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${activeTab === "date"
+                ? "text-primary border-b-2 border-primary bg-primary/5"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
             >
               <Calendar size={16} className="inline mr-2" />
               Data
@@ -464,11 +462,10 @@ export function DateTimePicker({
             <button
               type="button"
               onClick={() => setActiveTab("time")}
-              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === "time"
-                  ? "text-primary border-b-2 border-primary bg-primary/5"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${activeTab === "time"
+                ? "text-primary border-b-2 border-primary bg-primary/5"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
             >
               <Clock size={16} className="inline mr-2" />
               Horário
@@ -489,7 +486,11 @@ export function DateTimePicker({
                 </button>
 
                 <div className="flex items-center space-x-2">
-                  <Select value={`${currentMonth}`} onValueChange={(v) => setCurrentMonth(Number(v))}>
+                  <Select
+                    key="month"
+                    value={`${currentMonth}`}
+                    onValueChange={(v) => setCurrentMonth(Number(v))}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -502,7 +503,11 @@ export function DateTimePicker({
                     </SelectContent>
                   </Select>
 
-                  <Select value={`${currentYear}`} onValueChange={(v) => setCurrentYear(Number(v))}>
+                  <Select
+                    key="year"
+                    value={`${currentYear}`}
+                    onValueChange={(v) => setCurrentYear(Number(v))}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

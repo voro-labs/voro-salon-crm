@@ -18,5 +18,8 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         // Recuperação de senha
         Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
         Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
+
+        // Troca de Tenant
+        Task<AuthDto> SwitchTenantAsync(Guid tenantId);
     }
 }

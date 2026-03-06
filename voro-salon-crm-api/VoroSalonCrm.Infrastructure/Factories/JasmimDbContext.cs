@@ -26,6 +26,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         // Expor explicitamente a entidade de junção
         //public DbSet<Exemplo> Exemplo { get; set; }
         public DbSet<Tenant> Tenants { get; set; }
+        public DbSet<UserTenant> UserTenants { get; set; }
         public DbSet<UserExtension> UserExtensions { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Client> Clients { get; set; }
@@ -41,11 +42,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
             // ---------------------------
             // GLOBAL QUERY FILTERS (Multi-Tenant)
             // ---------------------------
-            builder.Entity<User>().HasQueryFilter(u =>
-                !u.IsDeleted && u.TenantId == _currentUser.TenantId);
+            builder.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
 
-            builder.Entity<UserExtension>().HasQueryFilter(ue =>
-                !ue.User.IsDeleted && ue.User.TenantId == _currentUser.TenantId);
+            builder.Entity<UserExtension>().HasQueryFilter(ue => !ue.User.IsDeleted);
 
             builder.Entity<Notification>().HasQueryFilter(n =>
                 !n.IsDeleted && n.TenantId == _currentUser.TenantId);
@@ -73,11 +72,25 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(t => t.Slug).IsUnique();
                 b.Property(t => t.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
                 b.Property(t => t.IsActive).HasDefaultValue(true);
+            });
 
-                b.HasMany<User>()
-                    .WithOne(u => u.Tenant)
-                    .HasForeignKey(u => u.TenantId)
-                    .OnDelete(DeleteBehavior.Restrict);
+            // ---------------------------
+            // USER TENANT (Join Table)
+            // ---------------------------
+            builder.Entity<UserTenant>(b =>
+            {
+                b.HasKey(ut => new { ut.UserId, ut.TenantId });
+
+                b.HasOne(ut => ut.User)
+                    .WithMany(u => u.UserTenants)
+                    .HasForeignKey(ut => ut.UserId);
+
+                b.HasOne(ut => ut.Tenant)
+                    .WithMany(t => t.UserTenants)
+                    .HasForeignKey(ut => ut.TenantId);
+
+                b.Property(ut => ut.IsDefault).HasDefaultValue(false);
+                b.Property(ut => ut.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
             });
 
             // ---------------------------

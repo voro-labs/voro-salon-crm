@@ -212,13 +212,12 @@ export function DatePicker({
           key={day}
           type="button"
           onClick={() => handleDateSelect(day)}
-          className={`w-8 h-8 text-sm rounded-full hover:bg-blue-100 transition-colors ${
-            isSelected
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : isToday
-                ? "bg-blue-100 text-blue-600 font-semibold"
-                : "text-white-700 hover:text-blue-600"
-          }`}
+          className={`w-8 h-8 text-sm rounded-full hover:bg-blue-100 transition-colors ${isSelected
+            ? "bg-blue-600 text-white hover:bg-blue-700"
+            : isToday
+              ? "bg-blue-100 text-blue-600 font-semibold"
+              : "text-white-700 hover:text-blue-600"
+            }`}
         >
           {day}
         </button>,
@@ -271,7 +270,11 @@ export function DatePicker({
               </button>
 
               <div className="flex items-center space-x-2">
-                <Select value={`${currentMonth}`} onValueChange={(v) => setCurrentMonth(Number(v))}>
+                <Select
+                  key={currentMonth}
+                  value={`${currentMonth}`}
+                  onValueChange={(v) => setCurrentMonth(Number(v))}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -284,7 +287,11 @@ export function DatePicker({
                   </SelectContent>
                 </Select>
 
-                <Select value={`${currentYear}`} onValueChange={(v) => setCurrentYear(Number(v))}>
+                <Select
+                  key={currentYear}
+                  value={`${currentYear}`}
+                  onValueChange={(v) => setCurrentYear(Number(v))}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

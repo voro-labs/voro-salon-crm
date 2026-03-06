@@ -39,7 +39,7 @@ export default function NovoAgendamentoPage() {
 
   const [form, setForm] = useState({
     clientId: "",
-    serviceId: "",
+    serviceId: "none",
     scheduledDateTime: "",
     durationMinutes: 30,
     description: "",
@@ -93,7 +93,7 @@ export default function NovoAgendamentoPage() {
         body: JSON.stringify({
           ...form,
           scheduledDateTime: date.toISOString(),
-          serviceId: form.serviceId || null
+          serviceId: form.serviceId === "none" ? null : form.serviceId
         }),
       })
 
@@ -135,6 +135,7 @@ export default function NovoAgendamentoPage() {
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="clientId">Cliente *</Label>
                   <Select
+                    key={clients?.id}
                     value={form.clientId}
                     onValueChange={(v) => setForm(p => ({ ...p, clientId: v }))}
                   >
@@ -154,6 +155,7 @@ export default function NovoAgendamentoPage() {
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="serviceId">Serviço (Opcional)</Label>
                   <Select
+                    key={services?.id}
                     value={form.serviceId}
                     onValueChange={handleServiceChange}
                   >
@@ -187,6 +189,7 @@ export default function NovoAgendamentoPage() {
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="durationMinutes">Duração (minutos)</Label>
                   <Select
+                    key={form.durationMinutes}
                     value={form.durationMinutes.toString()}
                     onValueChange={(v) => setForm(p => ({ ...p, durationMinutes: parseInt(v) }))}
                   >

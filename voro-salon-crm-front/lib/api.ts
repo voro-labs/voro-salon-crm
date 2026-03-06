@@ -9,6 +9,7 @@ export const API_CONFIG = {
     CONFIRM_EMAIL: "/auth/confirm-email",
     RESET_PASSWORD: "/auth/reset-password",
     FORGOT_PASSWORD: "/auth/forgot-password",
+    SWITCH_TENANT: "/auth/switch-tenant",
     DASHBOARD: "/dashboard/metrics",
     ME: "/auth/me",
     TENANT: "/tenant",

@@ -20,8 +20,9 @@ interface JwtPayload {
 // Tipo do contexto
 export interface AuthContextType {
   user: AuthDto | null
-  login: (token: string) => void
+  login: (token: string, tenants?: any[]) => void
   logout: () => void
+  switchTenant: (tenantId: string) => Promise<void>
   loading: boolean
 }
 
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = () => {
       const token = getAuthToken()
+      const storedTenants = localStorage.getItem("user_tenants")
 
       if (!token) {
         setUser(null)
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const now = Date.now() / 1000
         if (decoded.exp && decoded.exp < now) {
           removeAuthToken()
+          localStorage.removeItem("user_tenants")
           setUser(null)
         } else {
           const userData: AuthDto = {
@@ -58,7 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: decoded.email,
             roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
             expiration: new Date(decoded.exp * 1000),
-            token: token
+            token: token,
+            tenants: storedTenants ? JSON.parse(storedTenants) : []
           }
           setUser(userData)
         }
@@ -74,8 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth()
   }, [])
 
-  const login = (token: string) => {
+  const login = (token: string, tenants?: any[]) => {
     setAuthToken(token);
+    if (tenants) {
+      localStorage.setItem("user_tenants", JSON.stringify(tenants))
+    }
 
     try {
       const decoded = jwtDecode<JwtPayload>(token)
@@ -89,7 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: decoded.email,
         roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
         expiration: new Date(decoded.exp * 1000),
-        token: token
+        token: token,
+        tenants: tenants || []
       }
 
       setUser(userData)
@@ -103,10 +111,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null)
     removeAuthToken()
+    localStorage.removeItem("user_tenants")
+  }
+
+  const switchTenant = async (tenantId: string) => {
+    try {
+      const { secureApiCall, API_CONFIG } = await import("@/lib/api")
+      const result = await secureApiCall<AuthDto>(`${API_CONFIG.ENDPOINTS.SWITCH_TENANT}/${tenantId}`, {
+        method: "POST"
+      })
+
+      if (result.hasError) throw new Error(result.message ?? "Erro ao trocar de salão")
+
+      if (result.data?.token) {
+        login(result.data.token, result.data.tenants)
+        // Recarregar a página para atualizar todos os contextos vinculados ao tenant
+        window.location.reload()
+      }
+    } catch (err) {
+      console.error("Erro ao trocar de salão:", err)
+      throw err
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, switchTenant, loading }}>
       {children}
     </AuthContext.Provider>
   )

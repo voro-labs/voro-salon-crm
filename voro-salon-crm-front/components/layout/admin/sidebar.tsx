@@ -12,6 +12,13 @@ import {
   Calendar,
 } from "lucide-react"
 import { toTitleCase } from "@/lib/utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "User"] },
@@ -28,7 +35,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
-  const { user, logout } = useAuth()
+  const { user, logout, switchTenant } = useAuth()
   const pathname = usePathname()
 
   if (!user) return null
@@ -45,6 +52,14 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
   const badge = getRoleBadge(user?.roles?.map((r) => r.name) ?? [])
 
   const isActive = (href: string) => pathname === href
+
+  const handleTenantChange = async (tenantId: string) => {
+    try {
+      await switchTenant(tenantId)
+    } catch (err) {
+      // Erro já logado no contexto
+    }
+  }
 
   return (
     <>
@@ -68,14 +83,38 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
       >
         {/* Header */}
         <div className="p-6 border-b border-border text-center">
-          <h1 className="text-xl font-bold">{tenant?.name || "VoroLabs"}</h1>
-          <p className="text-sm mt-2">
-            Olá, {toTitleCase(`${user.firstName} ${user.lastName}`)}
+          <div className="mb-4">
+            {user.tenants && user.tenants.length > 1 ? (
+              <Select
+                key={tenant?.id}
+                defaultValue={tenant?.id}
+                onValueChange={handleTenantChange}
+              >
+                <SelectTrigger className="w-full bg-background/50 border-accent/20 hover:border-accent/40 transition-colors">
+                  <SelectValue placeholder="Selecione o salão" />
+                </SelectTrigger>
+                <SelectContent>
+                  {user.tenants.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <h1 className="text-xl font-bold truncate px-2" title={tenant?.name || "VoroLabs"}>
+                {tenant?.name || "VoroLabs"}
+              </h1>
+            )}
+          </div>
+
+          <p className="text-sm mt-2 text-muted-foreground">
+            Olá, <span className="font-semibold text-foreground">{toTitleCase(`${user.firstName} ${user.lastName}`)}</span>
           </p>
 
-          <div className="flex justify-center mt-2">
+          <div className="flex justify-center mt-3">
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.class}`}
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge.class}`}
             >
               {badge.text}
             </span>
