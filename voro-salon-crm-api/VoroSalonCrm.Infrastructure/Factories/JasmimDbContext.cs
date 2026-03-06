@@ -33,6 +33,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<Service> Services { get; set; }
         public DbSet<ServiceRecord> ServiceRecords { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<TenantModule> TenantModules { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -61,6 +62,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
             builder.Entity<Appointment>().HasQueryFilter(a =>
                 !a.IsDeleted && a.TenantId == _currentUser.TenantId);
 
+            builder.Entity<TenantModule>().HasQueryFilter(tm =>
+                tm.TenantId == _currentUser.TenantId);
+
             // ---------------------------
             // TENANT
             // ---------------------------
@@ -72,6 +76,25 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(t => t.Slug).IsUnique();
                 b.Property(t => t.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
                 b.Property(t => t.IsActive).HasDefaultValue(true);
+            });
+
+            // ---------------------------
+            // TENANT MODULE
+            // ---------------------------
+            builder.Entity<TenantModule>(b =>
+            {
+                b.HasKey(tm => tm.Id);
+                b.Property(tm => tm.Module).HasConversion<int>().IsRequired();
+                b.Property(tm => tm.IsEnabled).HasDefaultValue(true);
+                b.Property(tm => tm.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasOne(tm => tm.Tenant)
+                 .WithMany()
+                 .HasForeignKey(tm => tm.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasIndex(tm => tm.TenantId);
+                b.HasIndex(tm => new { tm.TenantId, tm.Module }).IsUnique();
             });
 
             // ---------------------------

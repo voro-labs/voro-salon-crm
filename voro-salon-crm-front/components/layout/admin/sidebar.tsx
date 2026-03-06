@@ -3,6 +3,8 @@
 import { useAuth } from "@/contexts/auth.context"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import useSWR from "swr"
+import { API_CONFIG } from "@/lib/api"
 import {
   Users,
   LayoutDashboard,
@@ -21,11 +23,39 @@ import {
 } from "@/components/ui/select"
 
 const navItems = [
-  { title: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "User"] },
-  { title: "Agendamentos", href: "/appointments", icon: Calendar, roles: ["Admin", "User"] },
-  { title: "Clientes", href: "/clients", icon: Users, roles: ["Admin", "User"] },
-  { title: "Serviços", href: "/services", icon: Scissors, roles: ["Admin", "User"] },
-  { title: "Configurações", href: "/settings", icon: Settings, roles: ["Admin"] }
+  {
+    title: "Dashboard",
+    href: "/",
+    icon: LayoutDashboard,
+    roles: ["Admin", "User"]
+  },
+  {
+    title: "Agendamentos",
+    href: "/appointments",
+    icon: Calendar,
+    roles: ["Admin", "User"],
+    moduleId: 2 // Scheduling
+  },
+  {
+    title: "Clientes",
+    href: "/clients",
+    icon: Users,
+    roles: ["Admin", "User"],
+    moduleId: 1 // Clients
+  },
+  {
+    title: "Serviços",
+    href: "/services",
+    icon: Scissors,
+    roles: ["Admin", "User"],
+    moduleId: 3 // Services
+  },
+  {
+    title: "Configurações",
+    href: "/settings",
+    icon: Settings,
+    roles: ["Admin"]
+  }
 ]
 
 interface SidebarProps {
@@ -37,6 +67,15 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
   const { user, logout, switchTenant } = useAuth()
   const pathname = usePathname()
+  const { data: modulesData } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, async (url) => {
+    const res = await fetch(`${API_CONFIG.BASE_URL}${url}`, {
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("vorolabs_salon_token")}`
+      }
+    });
+    const json = await res.json();
+    return json?.data || [];
+  })
 
   if (!user) return null
 
@@ -129,6 +168,21 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
             if (!item.roles.includes((user?.roles?.map((r) => r.name) ?? [])[0]))
               return null;
 
+            if (item.moduleId) {
+              const mod = (modulesData as any[])?.find(m => m.module === item.moduleId);
+              if (mod && !mod.isEnabled) return null;
+            }
+
+            const modConfig = item.moduleId ? (modulesData as any[])?.find(m => m.module === item.moduleId) : null;
+            let displayTitle = item.title;
+
+            if (modConfig?.configuration) {
+              try {
+                const config = JSON.parse(modConfig.configuration);
+                if (config.displayName) displayTitle = config.displayName;
+              } catch { }
+            }
+
             return (
               <Link
                 key={item.href}
@@ -143,7 +197,7 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
                 `}
               >
                 <Icon className="h-5 w-5" />
-                {item.title}
+                {displayTitle}
               </Link>
             )
           })}

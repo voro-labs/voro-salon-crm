@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using VoroSalonCrm.Application.DTOs.Tenant;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Blob;
+using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
 
@@ -13,7 +14,11 @@ namespace VoroSalonCrm.API.Controllers
     [Tags("Tenant")]
     [ApiController]
     [Authorize]
-    public class TenantController(ITenantService tenantService, ICurrentUserService currentUserService, IBlobService blobService) : ControllerBase
+    public class TenantController(
+        ITenantService tenantService,
+        ICurrentUserService currentUserService,
+        IBlobService blobService,
+        ITenantModuleService moduleService) : ControllerBase
     {
         [HttpGet("me")]
         public async Task<IActionResult> GetCurrentTenant()
@@ -40,7 +45,7 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
-        [HttpPut("me")]
+        [HttpPatch("me")]
         public async Task<IActionResult> UpdateCurrentTenant([FromBody] UpdateTenantDto dto)
         {
             try
@@ -77,9 +82,37 @@ namespace VoroSalonCrm.API.Controllers
 
                 var logoUrl = await blobService.UploadAsync("voro-salon-crm", file.OpenReadStream(), file.ContentType);
 
-                var tenant = await tenantService.UpdateLogoAsync(tenantId, logoUrl);
+                await tenantService.UpdateLogoAsync(tenantId, logoUrl);
 
                 return ResponseViewModel<string>.SuccessWithMessage("Logo updated successfully.", logoUrl).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("me/modules")]
+        public async Task<IActionResult> GetMyModules()
+        {
+            try
+            {
+                var modules = await moduleService.GetMyModulesAsync();
+                return ResponseViewModel<IEnumerable<TenantModuleDto>>.SuccessWithMessage("Modules retrieved.", modules).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPatch("me/modules/{module}")]
+        public async Task<IActionResult> UpdateModule(AppModule module, [FromBody] UpdateTenantModuleDto dto)
+        {
+            try
+            {
+                await moduleService.UpdateModuleAsync(module, dto);
+                return ResponseViewModel<object>.SuccessWithMessage("Module updated.", null).ToActionResult();
             }
             catch (Exception ex)
             {
