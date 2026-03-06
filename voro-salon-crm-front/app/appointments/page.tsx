@@ -31,6 +31,11 @@ const statusConfig: Record<number, { label: string; color: string; icon: any }> 
 export default function AppointmentsPage() {
   const [search, setSearch] = useState("")
   const { data, isLoading } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS, fetcher)
+  const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
+
+  const isModuleEnabled = (moduleId: number) => {
+    return modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
+  }
 
   const appointments = data ?? []
 
@@ -152,7 +157,7 @@ export default function AppointmentsPage() {
                               <Clock className="h-3 w-3" />
                               {format(date, "HH:mm")} ({apt.durationMinutes} min)
                             </span>
-                            {apt.serviceName && (
+                            {apt.serviceName && isModuleEnabled(3) && (
                               <span className="flex items-center gap-1">
                                 <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
                                 {apt.serviceName}

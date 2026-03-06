@@ -52,6 +52,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IServiceRecordRepository, ServiceRecordRepository>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
             services.AddScoped<ITenantModuleRepository, TenantModuleRepository>();
+            services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             #endregion
 
             #region Identity Services
@@ -68,6 +69,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IExportService, ExportService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
             services.AddScoped<ITenantModuleService, TenantModuleService>();
+            services.AddScoped<IEmployeeService, EmployeeService>();
             #endregion
 
             return services;

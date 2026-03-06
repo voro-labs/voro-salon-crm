@@ -34,6 +34,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<ServiceRecord> ServiceRecords { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<TenantModule> TenantModules { get; set; }
+        public DbSet<Employee> Employees { get; set; }
+        public DbSet<EmployeeService> EmployeeServices { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -64,6 +66,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             builder.Entity<TenantModule>().HasQueryFilter(tm =>
                 tm.TenantId == _currentUser.TenantId);
+
+            builder.Entity<Employee>().HasQueryFilter(e =>
+                !e.IsDeleted && e.TenantId == _currentUser.TenantId);
 
             // ---------------------------
             // TENANT
@@ -218,6 +223,47 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(a => a.ServiceId)
                  .OnDelete(DeleteBehavior.SetNull);
+
+                b.HasOne(a => a.Employee)
+                 .WithMany()
+                 .HasForeignKey(a => a.EmployeeId)
+                 .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ---------------------------
+            // EMPLOYEE
+            // ---------------------------
+            builder.Entity<Employee>(b =>
+            {
+                b.HasKey(e => e.Id);
+                b.Property(e => e.Name).HasMaxLength(200).IsRequired();
+                b.Property(e => e.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.Property(e => e.IsActive).HasDefaultValue(true);
+
+                b.HasIndex(e => e.TenantId);
+
+                b.HasOne(e => e.Tenant)
+                 .WithMany()
+                 .HasForeignKey(e => e.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // EMPLOYEE SERVICE (Specialties)
+            // ---------------------------
+            builder.Entity<EmployeeService>(b =>
+            {
+                b.HasKey(es => new { es.EmployeeId, es.ServiceId });
+
+                b.HasOne(es => es.Employee)
+                 .WithMany(e => e.Specialties)
+                 .HasForeignKey(es => es.EmployeeId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(es => es.Service)
+                 .WithMany()
+                 .HasForeignKey(es => es.ServiceId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<UserExtension>()
