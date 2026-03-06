@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VoroSalonCrm.Application.DTOs.Tenant;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Blob;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
 
@@ -12,7 +13,7 @@ namespace VoroSalonCrm.API.Controllers
     [Tags("Tenant")]
     [ApiController]
     [Authorize]
-    public class TenantController(ITenantService tenantService, ICurrentUserService currentUserService) : ControllerBase
+    public class TenantController(ITenantService tenantService, ICurrentUserService currentUserService, IBlobService blobService) : ControllerBase
     {
         [HttpGet("me")]
         public async Task<IActionResult> GetCurrentTenant()
@@ -55,6 +56,30 @@ namespace VoroSalonCrm.API.Controllers
                     tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode);
 
                 return ResponseViewModel<TenantDto>.SuccessWithMessage("Current tenant updated.", responseDto).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("me/logo")]
+        public async Task<IActionResult> UpdateMyLogo([FromForm] IFormFile file)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                if (tenantId == Guid.Empty)
+                    return ResponseViewModel<object>.Fail("No tenant associated to the current user.").ToActionResult();
+
+                if (file == null || file.Length == 0)
+                    return ResponseViewModel<object>.Fail("No file uploaded.").ToActionResult();
+
+                var logoUrl = await blobService.UploadAsync("voro-salon-crm", file.OpenReadStream(), file.ContentType);
+
+                var tenant = await tenantService.UpdateLogoAsync(tenantId, logoUrl);
+
+                return ResponseViewModel<string>.SuccessWithMessage("Logo updated successfully.", logoUrl).ToActionResult();
             }
             catch (Exception ex)
             {
