@@ -14,7 +14,7 @@ import { toTitleCase } from "@/lib/utils"
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["Admin", "User"] },
   { title: "Clientes", href: "/clients", icon: Users, roles: ["Admin", "User"] },
-  { title: "Configurações", href: "/settings", icon: Settings, roles: ["Admin", "User"] }
+  { title: "Configurações", href: "/settings", icon: Settings, roles: ["Admin"] }
 ]
 
 interface SidebarProps {
