@@ -344,8 +344,10 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="p-3 bg-muted/20 border-t border-border/40">
-                <Button variant="ghost" className="w-full h-8 text-xs text-muted-foreground hover:text-foreground" asChild>
-                  <Link href="/appointments">Ver todos os agendamentos</Link>
+                <Button asChild size="sm" className="w-full">
+                  <Link href="/appointments">
+                    Ver todos os agendamentos
+                  </Link>
                 </Button>
               </div>
             </CardContent>
