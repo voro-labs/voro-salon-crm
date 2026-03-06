@@ -314,12 +314,12 @@ export default function EmployeeDetailPage() {
                       )}
                     </div>
                     <div className="flex flex-1 flex-col gap-2">
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="w-full"
+                          className="flex-1 h-9"
                           onClick={() => document.getElementById("photo-upload")?.click()}
                           disabled={uploadingPhoto}
                         >
@@ -329,12 +329,12 @@ export default function EmployeeDetailPage() {
                         {form.photoUrl && (
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="px-2 text-destructive hover:bg-destructive/10"
+                            className="h-9 w-9 px-0 text-destructive border-destructive/20 hover:bg-destructive/5 hover:border-destructive/40 hover:text-destructive-foreground"
                             onClick={() => setForm(p => ({ ...p, photoUrl: "" }))}
                           >
-                            <X className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>

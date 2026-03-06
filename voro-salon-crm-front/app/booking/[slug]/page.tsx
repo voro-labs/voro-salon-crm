@@ -170,7 +170,7 @@ export default function PublicBookingPage() {
           clientName: form.name,
           clientPhone: phoneForApi,
           serviceId: form.serviceId,
-          employeeId: form.employeeId === 'none' ? null : form.employeeId,
+          employeeId: !form.employeeId || form.employeeId === 'none' ? null : form.employeeId,
           scheduledDateTime,
           description: form.description
         })

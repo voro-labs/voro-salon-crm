@@ -37,7 +37,7 @@ namespace VoroSalonCrm.API.Controllers
                 if (user == null || tenant == null)
                     return Unauthorized();
 
-                var roles = user.UserRoles?.Select(ur => ur.Role?.Name).ToList() ?? new List<string?>();
+                var roles = user.UserRoles?.Select(ur => ur.Role?.Name).ToList() ?? [];
                 var primaryRole = roles.FirstOrDefault() ?? "user";
 
                 var sessionUser = new SessionUserDto(
