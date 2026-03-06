@@ -11,11 +11,13 @@ namespace VoroSalonCrm.Application.Services
     public class AppointmentService(
         IAppointmentRepository appointmentRepository,
         IServiceRecordService serviceRecordService,
+        IEmployeeRepository employeeRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
+        private readonly IEmployeeRepository _employeeRepository = employeeRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
 
@@ -134,6 +136,63 @@ namespace VoroSalonCrm.Application.Services
             await _unitOfWork.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<IEnumerable<AvailabilitySlotDto>> GetAvailableSlotsAsync(DateTime date, Guid? employeeId = null)
+        {
+            var tenantId = _currentUserService.TenantId;
+            var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 8, 0, 0, TimeSpan.FromHours(-3)); // TODO: Get from tenant settings
+            var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 18, 0, 0, TimeSpan.FromHours(-3));
+
+            var startUtc = startOfDay.ToUniversalTime();
+            var endUtc = endOfDay.ToUniversalTime();
+
+            var query = _appointmentRepository.Query(a =>
+                a.TenantId == tenantId &&
+                a.ScheduledDateTime >= startUtc &&
+                a.ScheduledDateTime < endUtc &&
+                a.Status != AppointmentStatus.Cancelled);
+
+            if (employeeId.HasValue)
+            {
+                query = query.Where(a => a.EmployeeId == employeeId.Value);
+            }
+
+            var appointments = await query.ToListAsync();
+
+            // Get total active employees to handle "Any professional" case
+            var activeEmployeesCount = await _employeeRepository.Query(e => e.TenantId == tenantId && e.IsActive).CountAsync();
+
+            var slots = new List<AvailabilitySlotDto>();
+            var current = startOfDay;
+
+            while (current < endOfDay)
+            {
+                var next = current.AddMinutes(30);
+
+                bool isBusy;
+                if (employeeId.HasValue)
+                {
+                    // For specific professional
+                    isBusy = appointments.Any(a =>
+                        current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
+                        next > a.ScheduledDateTime);
+                }
+                else
+                {
+                    // For "Any professional", busy only if ALL professionals are occupied
+                    var overlappingCount = appointments.Count(a =>
+                        current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
+                        next > a.ScheduledDateTime);
+
+                    isBusy = overlappingCount >= activeEmployeesCount;
+                }
+
+                slots.Add(new AvailabilitySlotDto(current.ToUniversalTime(), next.ToUniversalTime(), !isBusy));
+                current = next;
+            }
+
+            return slots;
         }
 
         private async Task CreateHistoryFromAppointmentAsync(Appointment appointment)

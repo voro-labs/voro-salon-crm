@@ -90,5 +90,19 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpGet("availability")]
+        public async Task<IActionResult> GetAvailability([FromQuery] string tenantSlug, [FromQuery] DateTime date, [FromQuery] Guid? employeeId)
+        {
+            try
+            {
+                var result = await _service.GetAvailableSlotsAsync(tenantSlug, date, employeeId);
+                return ResponseViewModel<IEnumerable<VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto>>.Success(result).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

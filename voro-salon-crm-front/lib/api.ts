@@ -20,6 +20,7 @@ export const API_CONFIG = {
     SERVICE_RECORDS: "/servicerecord",
     SERVICES: "/services",
     APPOINTMENTS: "/appointments",
+    APPOINTMENTS_AVAILABILITY: "/appointments/availability",
     EXPORT_CLIENTS: "/export/clients",
     EXPORT_SERVICES: "/export/services",
     EXPORT_APPOINTMENTS: "/export/appointments",
@@ -28,6 +29,7 @@ export const API_CONFIG = {
     PUBLIC_SERVICES: "/public/PublicBooking/services",
     PUBLIC_EMPLOYEES: "/public/PublicBooking/employees",
     PUBLIC_BOOKING: "/public/PublicBooking/booking",
+    PUBLIC_AVAILABILITY: "/public/PublicBooking/availability",
   },
   HEADERS: {
     "Content-Type": "application/json",

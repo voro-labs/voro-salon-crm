@@ -38,4 +38,10 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Notes,
         DateTimeOffset CreatedAt
     );
+
+    public record AvailabilitySlotDto(
+        DateTimeOffset StartTime,
+        DateTimeOffset EndTime,
+        bool IsAvailable
+    );
 }
