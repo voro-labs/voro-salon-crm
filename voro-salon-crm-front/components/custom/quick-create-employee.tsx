@@ -82,7 +82,7 @@ export function QuickCreateEmployee({ onSuccess }: QuickCreateEmployeeProps) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-primary/10 hover:text-primary">
+                <Button type="button" variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-primary/10 hover:text-primary">
                     <Plus className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
