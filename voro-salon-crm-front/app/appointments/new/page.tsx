@@ -71,10 +71,9 @@ export default function NovoAgendamentoPage() {
     fetcher
   )
 
-  // Fetch available slots
   const { data: availability, isLoading: loadingAvailability } = useSWR(
     selectedDate
-      ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?date=${selectedDate.toISOString()}${form.employeeId !== "none" ? `&employeeId=${form.employeeId}` : ""}`
+      ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?date=${format(selectedDate, "yyyy-MM-dd")}${form.employeeId !== "none" ? `&employeeId=${form.employeeId}` : ""}`
       : null,
     fetcher
   )

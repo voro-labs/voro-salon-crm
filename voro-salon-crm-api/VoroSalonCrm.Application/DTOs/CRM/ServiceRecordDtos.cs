@@ -5,6 +5,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
     public record CreateServiceRecordDto(
         [Required] Guid ClientId,
         Guid? ServiceId,
+        Guid? AppointmentId,
         DateTimeOffset? ServiceDate,
         [Required] string Description,
         [Required] decimal Amount,
@@ -24,6 +25,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         Guid ClientId,
         Guid? ServiceId,
         string? ServiceName,
+        Guid? AppointmentId,
         DateTimeOffset ServiceDate,
         string Description,
         decimal Amount,

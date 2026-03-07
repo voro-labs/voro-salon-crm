@@ -157,7 +157,7 @@ namespace VoroSalonCrm.Application.Services
             }
 
             var slots = new List<VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto>();
-            var current = startOfDay;
+            var current = startOfDay.ToUniversalTime();
 
             // Salon-only Mode: If no active employees exist, treat the salon as a single resource with capacity 1
             if (activeEmployeesCount <= 0 && (!employeeId.HasValue || employeeId.Value == Guid.Empty))
@@ -167,7 +167,7 @@ namespace VoroSalonCrm.Application.Services
 
             while (current < endOfDay)
             {
-                var next = current.AddMinutes(30);
+                var next = current.AddMinutes(30).ToUniversalTime();
 
                 bool isBusy;
                 if (activeEmployeesCount <= 0)
@@ -193,7 +193,7 @@ namespace VoroSalonCrm.Application.Services
                 }
 
                 slots.Add(new VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto(current.ToUniversalTime(), next.ToUniversalTime(), !isBusy));
-                current = next;
+                current = next.ToUniversalTime();
             }
 
             return slots;

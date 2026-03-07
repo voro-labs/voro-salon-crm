@@ -52,7 +52,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task<AppointmentDto?> GetByIdAsync(Guid id)
         {
             var appointment = await _appointmentRepository.Include(a => a.Client, a => a.Service!)
-                .FirstOrDefaultAsync(a => a.Id == id);
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
             if (appointment == null) return null;
 
@@ -61,7 +61,8 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null)
         {
-            var query = _appointmentRepository.Include(a => a.Client, a => a.Service!);
+            var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .Where(a => !a.IsDeleted);
 
             if (clientId.HasValue)
                 query = query.Where(a => a.ClientId == clientId.Value);
@@ -127,10 +128,14 @@ namespace VoroSalonCrm.Application.Services
 
             _appointmentRepository.Update(appointment);
 
-            // Se mudou para concluído agora, gera o histórico
             if (oldStatus != AppointmentStatus.Completed && appointment.Status == AppointmentStatus.Completed)
             {
                 await CreateHistoryFromAppointmentAsync(appointment);
+            }
+            else if (oldStatus == AppointmentStatus.Completed &&
+                (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
+            {
+                await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -151,6 +156,7 @@ namespace VoroSalonCrm.Application.Services
                 a.TenantId == tenantId &&
                 a.ScheduledDateTime >= startUtc &&
                 a.ScheduledDateTime < endUtc &&
+                !a.IsDeleted &&
                 a.Status != AppointmentStatus.Cancelled);
 
             if (employeeId.HasValue && employeeId.Value != Guid.Empty)
@@ -181,7 +187,7 @@ namespace VoroSalonCrm.Application.Services
             }
 
             var slots = new List<AvailabilitySlotDto>();
-            var current = startOfDay;
+            var current = startOfDay.ToUniversalTime();
 
             // Salon-only Mode: If no active employees exist, treat the salon as a single resource with capacity 1
             if (activeEmployeesCount <= 0 && (!employeeId.HasValue || employeeId.Value == Guid.Empty))
@@ -189,7 +195,7 @@ namespace VoroSalonCrm.Application.Services
                 activeEmployeesCount = 1;
             }
 
-            while (current < endOfDay)
+            while (current < endUtc)
             {
                 var next = current.AddMinutes(30);
 
@@ -215,7 +221,7 @@ namespace VoroSalonCrm.Application.Services
                     isBusy = overlappingCount >= activeEmployeesCount;
                 }
 
-                slots.Add(new AvailabilitySlotDto(current.ToUniversalTime(), next.ToUniversalTime(), !isBusy));
+                slots.Add(new AvailabilitySlotDto(current, next, !isBusy));
                 current = next;
             }
 
@@ -227,6 +233,7 @@ namespace VoroSalonCrm.Application.Services
             var historyDto = new CreateServiceRecordDto(
                 appointment.ClientId,
                 appointment.ServiceId,
+                appointment.Id,
                 DateTimeOffset.UtcNow,
                 appointment.Description ?? "Serviço via agendamento",
                 appointment.Amount,

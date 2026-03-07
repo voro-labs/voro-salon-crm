@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
@@ -34,6 +35,7 @@ namespace VoroSalonCrm.Application.Services
                 TenantId = tenantId,
                 ClientId = dto.ClientId,
                 ServiceId = dto.ServiceId,
+                AppointmentId = dto.AppointmentId,
                 ServiceDate = dto.ServiceDate?.ToUniversalTime() ?? DateTimeOffset.UtcNow,
                 Description = dto.Description,
                 Amount = dto.Amount,
@@ -44,7 +46,7 @@ namespace VoroSalonCrm.Application.Services
             await _serviceRepository.AddAsync(record);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ServiceRecordDto(record.Id, record.ClientId, record.ServiceId, null, record.ServiceDate, record.Description, record.Amount, record.Notes, record.CreatedAt);
+            return MapToDto(record);
         }
 
         public async Task<ServiceRecordDto?> GetByIdAsync(Guid id)
@@ -52,19 +54,19 @@ namespace VoroSalonCrm.Application.Services
             var record = await _serviceRepository.GetByIdAsync(r => r.Id == id, r => r.Include(x => x.Service!));
             if (record is null) return null;
 
-            return new ServiceRecordDto(record.Id, record.ClientId, record.ServiceId, record.Service?.Name, record.ServiceDate, record.Description, record.Amount, record.Notes, record.CreatedAt);
+            return MapToDto(record);
         }
 
         public async Task<IEnumerable<ServiceRecordDto>> GetAllAsync()
         {
             var records = await _serviceRepository.GetAllAsync(r => true, true, r => r.Include(x => x.Service!));
-            return records.Select(r => new ServiceRecordDto(r.Id, r.ClientId, r.ServiceId, r.Service?.Name, r.ServiceDate, r.Description, r.Amount, r.Notes, r.CreatedAt));
+            return records.Select(MapToDto);
         }
 
         public async Task<IEnumerable<ServiceRecordDto>> GetByClientIdAsync(Guid clientId)
         {
             var records = await _serviceRepository.GetAllAsync(r => r.ClientId == clientId, true, r => r.Include(x => x.Service!));
-            return records.Select(r => new ServiceRecordDto(r.Id, r.ClientId, r.ServiceId, r.Service?.Name, r.ServiceDate, r.Description, r.Amount, r.Notes, r.CreatedAt));
+            return records.Select(MapToDto);
         }
 
         public async Task<ServiceRecordDto> UpdateAsync(Guid id, UpdateServiceRecordDto dto)
@@ -83,7 +85,12 @@ namespace VoroSalonCrm.Application.Services
             _serviceRepository.Update(record);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ServiceRecordDto(record.Id, record.ClientId, record.ServiceId, record.Service?.Name, record.ServiceDate, record.Description, record.Amount, record.Notes, record.CreatedAt);
+            return MapToDto(record);
+        }
+
+        public async Task<bool> UpdateStatusAsync(Guid id, AppointmentStatus status)
+        {
+            return true;
         }
 
         public async Task<bool> DeleteAsync(Guid id)
@@ -98,6 +105,41 @@ namespace VoroSalonCrm.Application.Services
             await _unitOfWork.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<bool> DeleteByAppointmentIdAsync(Guid appointmentId)
+        {
+            var records = await _serviceRepository.GetAllAsync(r => r.AppointmentId == appointmentId && !r.IsDeleted);
+            foreach (var record in records)
+            {
+                record.IsDeleted = true;
+                record.DeletedAt = DateTimeOffset.UtcNow;
+                _serviceRepository.Update(record);
+            }
+
+            if (records.Any())
+            {
+                await _unitOfWork.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
+        }
+
+        private static ServiceRecordDto MapToDto(ServiceRecord r)
+        {
+            return new ServiceRecordDto(
+                r.Id,
+                r.ClientId,
+                r.ServiceId,
+                r.Service?.Name,
+                r.AppointmentId,
+                r.ServiceDate,
+                r.Description,
+                r.Amount,
+                r.Notes,
+                r.CreatedAt
+            );
         }
     }
 }
