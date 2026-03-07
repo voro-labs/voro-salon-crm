@@ -138,7 +138,7 @@ namespace VoroSalonCrm.Application.Services
             return true;
         }
 
-        public async Task<IEnumerable<AvailabilitySlotDto>> GetAvailableSlotsAsync(DateTime date, Guid? employeeId = null)
+        public async Task<IEnumerable<AvailabilitySlotDto>> GetAvailableSlotsAsync(DateTime date, Guid? serviceId = null, Guid? employeeId = null)
         {
             var tenantId = _currentUserService.TenantId;
             var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 8, 0, 0, TimeSpan.FromHours(-3)); // TODO: Get from tenant settings
@@ -153,7 +153,7 @@ namespace VoroSalonCrm.Application.Services
                 a.ScheduledDateTime < endUtc &&
                 a.Status != AppointmentStatus.Cancelled);
 
-            if (employeeId.HasValue)
+            if (employeeId.HasValue && employeeId.Value != Guid.Empty)
             {
                 query = query.Where(a => a.EmployeeId == employeeId.Value);
             }
@@ -161,17 +161,44 @@ namespace VoroSalonCrm.Application.Services
             var appointments = await query.ToListAsync();
 
             // Get total active employees to handle "Any professional" case
-            var activeEmployeesCount = await _employeeRepository.Query(e => e.TenantId == tenantId && e.IsActive).CountAsync();
+            int activeEmployeesCount;
+
+            if (employeeId.HasValue && employeeId.Value != Guid.Empty)
+            {
+                activeEmployeesCount = 1;
+            }
+            else if (serviceId.HasValue && serviceId.Value != Guid.Empty)
+            {
+                activeEmployeesCount = await _employeeRepository.Query(e =>
+                    e.TenantId == tenantId &&
+                    e.IsActive &&
+                    e.Specialties.Any(es => es.ServiceId == serviceId.Value))
+                    .CountAsync();
+            }
+            else
+            {
+                activeEmployeesCount = await _employeeRepository.Query(e => e.TenantId == tenantId && e.IsActive).CountAsync();
+            }
 
             var slots = new List<AvailabilitySlotDto>();
             var current = startOfDay;
+
+            // Salon-only Mode: If no active employees exist, treat the salon as a single resource with capacity 1
+            if (activeEmployeesCount <= 0 && (!employeeId.HasValue || employeeId.Value == Guid.Empty))
+            {
+                activeEmployeesCount = 1;
+            }
 
             while (current < endOfDay)
             {
                 var next = current.AddMinutes(30);
 
                 bool isBusy;
-                if (employeeId.HasValue)
+                if (activeEmployeesCount <= 0)
+                {
+                    isBusy = true;
+                }
+                else if (employeeId.HasValue && employeeId.Value != Guid.Empty)
                 {
                     // For specific professional
                     isBusy = appointments.Any(a =>
@@ -180,7 +207,7 @@ namespace VoroSalonCrm.Application.Services
                 }
                 else
                 {
-                    // For "Any professional", busy only if ALL professionals are occupied
+                    // For "Any professional" or Salon-only mode, busy only if ALL (or the default 1) capacity is occupied
                     var overlappingCount = appointments.Count(a =>
                         current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
                         next > a.ScheduledDateTime);
