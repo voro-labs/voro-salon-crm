@@ -89,8 +89,12 @@ export default function DashboardPage() {
   const { data: aptData, mutate: mutateApts } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS, fetcher)
 
   const { data: tenant } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
+  const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
+
   const [timeFilter, setTimeFilter] = useState("today")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  const isSchedulingEnabled = !modules || modules.find((m: any) => m.module === 2)?.isEnabled !== false
 
   const handleCopyLink = () => {
     if (!tenant?.slug) {
@@ -206,33 +210,39 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
-              <Copy className="mr-2 h-4 w-4" />
-              Copiar Link de Agendamento
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/appointments/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Agendamento
-              </Link>
-            </Button>
+            {isSchedulingEnabled && (
+              <>
+                <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar Link de Agendamento
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/appointments/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo Agendamento
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         {/* Metric cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 ${isSchedulingEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-4`}>
           <MetricCard
             title="Receita Mensal"
             value={formatCurrency(data?.monthlyRevenue || 0)}
             description="Faturamento do mes atual"
             icon={DollarSign}
           />
-          <MetricCard
-            title="Atendimentos"
-            value={String(data?.monthlyServiceCount || 0)}
-            description="Servicos neste mes"
-            icon={CalendarDays}
-          />
+          {isSchedulingEnabled && (
+            <MetricCard
+              title="Atendimentos"
+              value={String(data?.monthlyServiceCount || 0)}
+              description="Servicos neste mes"
+              icon={CalendarDays}
+            />
+          )}
           <MetricCard
             title="Total de Clientes"
             value={String(data?.totalClients || 0)}
@@ -243,7 +253,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Revenue chart */}
-          <Card className="lg:col-span-2 border-border/60">
+          <Card className={`${isSchedulingEnabled ? "lg:col-span-2" : "lg:col-span-3"} border-border/60`}>
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -303,88 +313,90 @@ export default function DashboardPage() {
           </Card>
 
           {/* Quick Appointments */}
-          <Card className="border-border/60 overflow-hidden">
-            <CardHeader className="pb-3 border-b border-border/40">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base font-semibold">Agendamentos</CardTitle>
-                <Tabs value={timeFilter} onValueChange={setTimeFilter} className="w-auto">
-                  <TabsList className="h-8 p-0.5 bg-muted/50 border border-border/40">
-                    <TabsTrigger value="today" className="text-[10px] px-2 h-7">Hoje</TabsTrigger>
-                    <TabsTrigger value="week" className="text-[10px] px-2 h-7">Semana</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="flex flex-col divide-y divide-border/40">
-                {filteredApts.length > 0 ? (
-                  filteredApts.map((apt: any) => {
-                    const config = statusConfig[apt.status] || statusConfig[0]
-                    const date = new Date(apt.scheduledDateTime)
-                    const isAptUpdating = updatingId === apt.id
+          {isSchedulingEnabled && (
+            <Card className="border-border/60 overflow-hidden">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base font-semibold">Agendamentos</CardTitle>
+                  <Tabs value={timeFilter} onValueChange={setTimeFilter} className="w-auto">
+                    <TabsList className="h-8 p-0.5 bg-muted/50 border border-border/40">
+                      <TabsTrigger value="today" className="text-[10px] px-2 h-7">Hoje</TabsTrigger>
+                      <TabsTrigger value="week" className="text-[10px] px-2 h-7">Semana</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="flex flex-col divide-y divide-border/40">
+                  {filteredApts.length > 0 ? (
+                    filteredApts.map((apt: any) => {
+                      const config = statusConfig[apt.status] || statusConfig[0]
+                      const date = new Date(apt.scheduledDateTime)
+                      const isAptUpdating = updatingId === apt.id
 
-                    return (
-                      <div key={apt.id} className="p-4 hover:bg-accent/5 transition-colors group">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-primary flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {format(date, "HH:mm")}
-                              </span>
-                              <Badge variant="outline" className={`text-[10px] px-1 h-4 ${config.color} border-none`}>
-                                {config.label}
-                              </Badge>
+                      return (
+                        <div key={apt.id} className="p-4 hover:bg-accent/5 transition-colors group">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-col gap-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-primary flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {format(date, "HH:mm")}
+                                </span>
+                                <Badge variant="outline" className={`text-[10px] px-1 h-4 ${config.color} border-none`}>
+                                  {config.label}
+                                </Badge>
+                              </div>
+                              <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {apt.serviceName || apt.description || "Sem serviço definido"}
+                              </p>
                             </div>
-                            <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {apt.serviceName || apt.description || "Sem serviço definido"}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <Select
-                              key={apt.id}
-                              value={String(apt.status)}
-                              onValueChange={(v) => handleStatusUpdate(apt.id, v)}
-                              disabled={isAptUpdating}
-                            >
-                              <SelectTrigger className="h-7 w-[100px] text-[10px] bg-transparent border-border/40">
-                                {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <SelectValue />}
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(statusConfig).map(([key, cfg]) => (
-                                  <SelectItem key={key} value={key} className="text-[10px]">
-                                    {cfg.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" asChild>
-                              <Link href={`/appointments/${apt.id}`}>
-                                <ChevronRight className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                            <div className="flex flex-col items-end gap-2">
+                              <Select
+                                key={apt.id}
+                                value={String(apt.status)}
+                                onValueChange={(v) => handleStatusUpdate(apt.id, v)}
+                                disabled={isAptUpdating}
+                              >
+                                <SelectTrigger className="h-7 w-[100px] text-[10px] bg-transparent border-border/40">
+                                  {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <SelectValue />}
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(statusConfig).map(([key, cfg]) => (
+                                    <SelectItem key={key} value={key} className="text-[10px]">
+                                      {cfg.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" asChild>
+                                <Link href={`/appointments/${apt.id}`}>
+                                  <ChevronRight className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <div className="p-8 text-center flex flex-col items-center gap-2">
-                    <CalendarDays className="h-8 w-8 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Nenhum agendamento para este período</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-3 bg-muted/20 border-t border-border/40">
-                <Button asChild size="sm" className="w-full">
-                  <Link href="/appointments">
-                    Ver todos os agendamentos
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                      )
+                    })
+                  ) : (
+                    <div className="p-8 text-center flex flex-col items-center gap-2">
+                      <CalendarDays className="h-8 w-8 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Nenhum agendamento para este período</p>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 bg-muted/20 border-t border-border/40">
+                  <Button asChild size="sm" className="w-full">
+                    <Link href="/appointments">
+                      Ver todos os agendamentos
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Top clients */}

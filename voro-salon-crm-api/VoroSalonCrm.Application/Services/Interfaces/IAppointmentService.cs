@@ -10,6 +10,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<AppointmentDto> UpdateAsync(Guid id, UpdateAppointmentDto dto);
         Task<bool> DeleteAsync(Guid id);
         Task<bool> UpdateStatusAsync(Guid id, Domain.Enums.AppointmentStatus status);
-        Task<IEnumerable<AvailabilitySlotDto>> GetAvailableSlotsAsync(DateTime date, Guid? employeeId = null);
+        Task<IEnumerable<AvailabilitySlotDto>> GetAvailableSlotsAsync(DateTime date, Guid? serviceId = null, Guid? employeeId = null);
     }
 }
