@@ -1,4 +1,6 @@
 using VoroSalonCrm.Application.DTOs.CRM;
+using VoroSalonCrm.Application.Services.Interfaces.Base;
+using VoroSalonCrm.Domain.Entities;
 
 namespace VoroSalonCrm.Application.Services.Interfaces
 {

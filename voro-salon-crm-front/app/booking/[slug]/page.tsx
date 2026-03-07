@@ -191,9 +191,7 @@ export default function PublicBookingPage() {
       async function fetchAvailability() {
         setLoadingAvailability(true)
         try {
-          // Use YYYY-MM-DDT00:00:00 to ensure local timezone parsing and avoid off-by-one day
-          const date = new Date(`${form.date}T00:00:00`)
-          const res = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_AVAILABILITY}?tenantSlug=${slug}&date=${date.toISOString()}${form.employeeId && form.employeeId !== 'none' ? `&employeeId=${form.employeeId}` : ""}`)
+          const res = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_AVAILABILITY}?tenantSlug=${slug}&date=${form.date}${form.employeeId && form.employeeId !== 'none' ? `&employeeId=${form.employeeId}` : ""}`)
           setAvailability(res.data || [])
         } catch {
           toast.error("Erro ao carregar horários disponíveis.")

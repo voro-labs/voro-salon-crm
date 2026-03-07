@@ -13,6 +13,9 @@ namespace VoroSalonCrm.Domain.Entities
         public Guid? ServiceId { get; set; }
         public Service? Service { get; set; }
 
+        public Guid? AppointmentId { get; set; }
+        public Appointment? Appointment { get; set; }
+
         public DateTimeOffset ServiceDate { get; set; } = DateTime.UtcNow;
         public string Description { get; set; } = string.Empty;
         public decimal Amount { get; set; } = 0;
