@@ -202,13 +202,8 @@ export default function NovoAgendamentoPage() {
                       <Label htmlFor="serviceId">Serviço (Opcional)</Label>
                       <QuickCreateService
                         onSuccess={async (id) => {
-                          const updatedServices = await mutateServices()
-                          const newService = updatedServices?.find((s: any) => s.id === id)
-                          if (newService) {
-                            handleServiceChange(id)
-                          } else {
-                            setForm(p => ({ ...p, serviceId: id }))
-                          }
+                          await mutateServices()
+                          setForm(p => ({ ...p, serviceId: id }))
                         }}
                       />
                     </div>
