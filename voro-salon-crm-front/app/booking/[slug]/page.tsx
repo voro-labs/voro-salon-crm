@@ -16,7 +16,7 @@ import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags } from "@/lib/flag-utils"
 import { cn } from "@/lib/utils"
 
-type Step = 'IDENTIFICATION' | 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'CONFIRM' | 'SUCCESS'
+type Step = 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'NAME' | 'PHONE' | 'CONFIRM' | 'SUCCESS'
 
 interface ChatMessage {
   id: string
@@ -26,7 +26,7 @@ interface ChatMessage {
 
 export default function PublicBookingPage() {
   const { slug } = useParams()
-  const [step, setStep] = useState<Step>('IDENTIFICATION')
+  const [step, setStep] = useState<Step>('SERVICE')
   const [tenant, setTenant] = useState<any>(null)
   const [services, setServices] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
@@ -59,8 +59,20 @@ export default function PublicBookingPage() {
         }
         setTenant(res.data)
 
+        // Fetch services immediately to check availability
+        const svcRes = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_SERVICES}?tenantSlug=${slug}`)
+        const servicesData = svcRes.data || []
+        setServices(servicesData)
+
+        if (servicesData.length === 0) {
+          // No services available, we'll handle this in the render
+          setLoading(false)
+          return
+        }
+
         // Initial bot message
-        addBotMessage(`Olá! Bem-vindo ao ${res.data.name}. Para começar seu agendamento, por favor me diga seu nome e telefone.`)
+        addBotMessage(`Olá! Bem-vindo ao ${res.data.name}. Qual serviço você gostaria de agendar hoje?`)
+        setStep('SERVICE')
       } catch (err) {
         toast.error("Erro ao carregar dados do estabelecimento.")
       } finally {
@@ -84,34 +96,38 @@ export default function PublicBookingPage() {
     setMessages(prev => [...prev, { id: Math.random().toString(), text, sender: 'user' }])
   }
 
-  const handleIdentification = async (e: React.FormEvent) => {
+  const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.phone) return
+    if (!form.name) return
+    addUserMessage(`Meu nome é ${form.name}`)
+    addBotMessage(`Prazer em te conhecer, ${form.name}! Agora, qual seu WhatsApp para que possamos entrar em contato?`)
+    setStep('PHONE')
+  }
+
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.phone) return
 
     const dialCode = flags[countryCode]?.dialCode || ""
     const fullPhone = `${dialCode}${form.phone}`
 
-    addUserMessage(`Meu nome é ${form.name} e meu telefone é ${fullPhone}`)
+    addUserMessage(`Meu WhatsApp é ${fullPhone}`)
     setLoading(true)
 
     try {
-      const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
-      const phoneForApi = `${dialCode}${form.phone}`
+      const dialCodeNum = flags[countryCode]?.dialCodeOnlyNumber || ""
+      const phoneForApi = `${dialCodeNum}${form.phone}`
 
       // Check if client exists (optional but good for UX)
       const checkRes = await apiCall<any>(`${API_CONFIG.ENDPOINTS.PUBLIC_CHECK_CLIENT}?tenantSlug=${slug}&phone=${phoneForApi}`)
       if (!checkRes.hasError && checkRes.data) {
-        addBotMessage(`Vimos que você já é nosso cliente, ${checkRes.data.name}!`)
+        addBotMessage(`Vimos que você já é nosso cliente!`)
       }
 
-      // Fetch services
-      const svcRes = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_SERVICES}?tenantSlug=${slug}`)
-      setServices(svcRes.data || [])
-
-      addBotMessage("Qual serviço você gostaria de agendar hoje?")
-      setStep('SERVICE')
+      addBotMessage("Quase lá! Tem alguma observação ou pedido especial que gostaria de deixar?")
+      setStep('CONFIRM')
     } catch {
-      toast.error("Erro ao processar sua identificação.")
+      toast.error("Erro ao processar seu telefone.")
     } finally {
       setLoading(false)
     }
@@ -174,8 +190,8 @@ export default function PublicBookingPage() {
 
     const displayDate = new Date(`${form.date}T00:00:00`)
     addUserMessage(`${format(displayDate, "dd/MM/yyyy")} às ${form.time}`)
-    addBotMessage("Quase lá! Tem alguma observação ou pedido especial que gostaria de deixar?")
-    setStep('CONFIRM')
+    addBotMessage("Perfeito! Para finalizar, qual o seu nome?")
+    setStep('NAME')
   }
 
   const handleFinalSubmit = async (e: React.FormEvent) => {
@@ -233,17 +249,22 @@ export default function PublicBookingPage() {
   }
 
   const isSchedulingDisabled = tenant.modules?.find((m: any) => m.module === 2)?.isEnabled === false
+  const hasNoServices = services.length === 0
 
-  if (isSchedulingDisabled) {
+  if (isSchedulingDisabled || hasNoServices) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background text-center">
         <div className="h-20 w-20 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-4">
           <Calendar className="h-10 w-10" />
         </div>
-        <h1 className="text-xl font-bold">Agendamentos temporariamente desativados</h1>
+        <h1 className="text-xl font-bold">
+          {hasNoServices ? "Serviços indisponíveis" : "Agendamentos temporariamente desativados"}
+        </h1>
         <p className="text-muted-foreground mt-2 max-w-md">
-          Este estabelecimento não está aceitando novos agendamentos online no momento. 
-          Entre em contato diretamente para mais informações.
+          {hasNoServices 
+            ? "Este estabelecimento ainda não possui serviços cadastrados para agendamento online."
+            : "Este estabelecimento não está aceitando novos agendamentos online no momento."}
+          {" "}Entre em contato diretamente para mais informações.
         </p>
         {tenant.contactPhone && (
           <Button asChild className="mt-6">
@@ -316,48 +337,56 @@ export default function PublicBookingPage() {
       {/* Input Area */}
       <footer className="sticky bottom-0 bg-background p-4 border-t shadow-lg">
         <div className="max-w-2xl mx-auto w-full">
-          {step === 'IDENTIFICATION' && !loading && (
-            <form onSubmit={handleIdentification} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs font-semibold ml-1">Seu Nome</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="name"
-                      placeholder="Ex: João Silva"
-                      className="pl-9 h-11"
-                      value={form.name}
-                      onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+          {step === 'NAME' && !loading && (
+            <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-semibold ml-1">Seu Nome</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="name"
+                    placeholder="Ex: João Silva"
+                    className="pl-9 h-11"
+                    value={form.name}
+                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full">
+                Próximo
+                <Send className="ml-2 h-4 w-4" />
+              </Button>
+            </form>
+          )}
+
+          {step === 'PHONE' && !loading && (
+            <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-xs font-semibold ml-1">Seu WhatsApp</Label>
+                <div className="flex gap-2">
+                  <div className="w-[120px] shrink-0">
+                    <CountrySelector
+                      value={countryCode}
+                      onChange={setCountryCode}
+                    />
+                  </div>
+                  <div className="flex-1 relative">
+                    <PhoneInput
+                      id="phone"
+                      value={form.phone}
+                      autoComplete="tel"
+                      onChange={v => setForm(p => ({ ...p, phone: v }))}
+                      countryCode={countryCode}
+                      className="h-full"
                       required
                     />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone" className="text-xs font-semibold ml-1">Seu WhatsApp</Label>
-                  <div className="flex gap-2">
-                    <div className="w-[120px] shrink-0">
-                      <CountrySelector
-                        value={countryCode}
-                        onChange={setCountryCode}
-                      />
-                    </div>
-                    <div className="flex-1 relative">
-                      <PhoneInput
-                        id="phone"
-                        value={form.phone}
-                        autoComplete="tel"
-                        onChange={v => setForm(p => ({ ...p, phone: v }))}
-                        countryCode={countryCode}
-                        className="h-full"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
               <Button type="submit" className="w-full">
-                Começar
+                Próximo
                 <Send className="ml-2 h-4 w-4" />
               </Button>
             </form>
@@ -492,7 +521,7 @@ export default function PublicBookingPage() {
               </div>
               <Button asChild className="bg-[#25D366] hover:bg-[#128C7E] border-none font-bold">
                 <a
-                  href={`https://wa.me/${tenant.contactPhone?.replace(/\D/g, '')}?text=Olá, acabei de solicitar um agendamento no ${tenant.name} para o dia ${format(new Date(form.date), "dd/MM")} às ${form.time}.`}
+                  href={`https://wa.me/${tenant.contactPhone?.replace(/\D/g, '')}?text=Olá, acabei de solicitar um agendamento no ${tenant.name} para o dia ${format(new Date(`${form.date}T00:00:00`), "dd/MM")} às ${form.time}.`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
