@@ -59,13 +59,26 @@ export default function PublicBookingPage() {
         }
         setTenant(res.data)
 
+        // Load data from localStorage
+        const savedName = localStorage.getItem('voro_booking_name')
+        const savedPhone = localStorage.getItem('voro_booking_phone')
+        const savedCountry = localStorage.getItem('voro_booking_country')
+
+        if (savedName || savedPhone) {
+          setForm(p => ({
+            ...p,
+            name: savedName || p.name,
+            phone: savedPhone || p.phone
+          }))
+          if (savedCountry) setCountryCode(savedCountry)
+        }
+
         // Fetch services immediately to check availability
         const svcRes = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_SERVICES}?tenantSlug=${slug}`)
         const servicesData = svcRes.data || []
         setServices(servicesData)
 
         if (servicesData.length === 0) {
-          // No services available, we'll handle this in the render
           setLoading(false)
           return
         }
@@ -99,6 +112,10 @@ export default function PublicBookingPage() {
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name) return
+    
+    // Save to localStorage
+    localStorage.setItem('voro_booking_name', form.name)
+    
     addUserMessage(`Meu nome é ${form.name}`)
     addBotMessage(`Prazer em te conhecer, ${form.name}! Agora, qual seu WhatsApp para que possamos entrar em contato?`)
     setStep('PHONE')
@@ -111,13 +128,17 @@ export default function PublicBookingPage() {
     const dialCode = flags[countryCode]?.dialCode || ""
     const fullPhone = `${dialCode}${form.phone}`
 
+    const dialCodeNum = flags[countryCode]?.dialCodeOnlyNumber || ""
+    const phoneForApi = `${dialCodeNum}${form.phone}`
+
+    // Save to localStorage
+    localStorage.setItem('voro_booking_phone', form.phone)
+    localStorage.setItem('voro_booking_country', countryCode)
+
     addUserMessage(`Meu WhatsApp é ${fullPhone}`)
     setLoading(true)
 
     try {
-      const dialCodeNum = flags[countryCode]?.dialCodeOnlyNumber || ""
-      const phoneForApi = `${dialCodeNum}${form.phone}`
-
       // Check if client exists (optional but good for UX)
       const checkRes = await apiCall<any>(`${API_CONFIG.ENDPOINTS.PUBLIC_CHECK_CLIENT}?tenantSlug=${slug}&phone=${phoneForApi}`)
       if (!checkRes.hasError && checkRes.data) {
