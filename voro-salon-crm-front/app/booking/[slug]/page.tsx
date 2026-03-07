@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { User, CheckCircle2, Loader2, Send, MessageCircle } from "lucide-react"
+import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -228,6 +228,34 @@ export default function PublicBookingPage() {
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background text-center">
         <h1 className="text-xl font-bold">Ops! Estabelecimento não encontrado.</h1>
         <p className="text-muted-foreground mt-2">Verifique o link e tente novamente.</p>
+      </div>
+    )
+  }
+
+  const isSchedulingDisabled = tenant.modules?.find((m: any) => m.module === 2)?.isEnabled === false
+
+  if (isSchedulingDisabled) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background text-center">
+        <div className="h-20 w-20 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-4">
+          <Calendar className="h-10 w-10" />
+        </div>
+        <h1 className="text-xl font-bold">Agendamentos temporariamente desativados</h1>
+        <p className="text-muted-foreground mt-2 max-w-md">
+          Este estabelecimento não está aceitando novos agendamentos online no momento. 
+          Entre em contato diretamente para mais informações.
+        </p>
+        {tenant.contactPhone && (
+          <Button asChild className="mt-6">
+            <a
+              href={`https://wa.me/${tenant.contactPhone.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Falar pelo WhatsApp
+            </a>
+          </Button>
+        )}
       </div>
     )
   }
