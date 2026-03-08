@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CurrencyInput } from "@/components/currency-input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
@@ -22,6 +29,7 @@ export default function NovoServicoPage() {
     name: "",
     description: "",
     price: 0,
+    durationMinutes: 30,
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -86,6 +94,27 @@ export default function NovoServicoPage() {
                   value={form.price}
                   onChange={(v) => setForm((p) => ({ ...p, price: v }))}
                 />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="durationMinutes">Duração Estimada</Label>
+                <Select
+                  key={form.durationMinutes}
+                  value={form.durationMinutes.toString()}
+                  onValueChange={(v) => setForm(p => ({ ...p, durationMinutes: parseInt(v) }))}
+                >
+                  <SelectTrigger id="durationMinutes" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="45">45 min</SelectItem>
+                    <SelectItem value="60">1 hora</SelectItem>
+                    <SelectItem value="90">1h 30min</SelectItem>
+                    <SelectItem value="120">2 horas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-2">

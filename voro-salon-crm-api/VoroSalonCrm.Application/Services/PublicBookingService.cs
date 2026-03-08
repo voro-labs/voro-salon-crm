@@ -51,7 +51,7 @@ namespace VoroSalonCrm.Application.Services
 
             var services = await serviceRepository.GetPublicActiveByTenantAsync(tenant.Id);
 
-            return services.Select(s => new PublicServiceDto(s.Id, s.Name, s.Price, 30)); // TODO: Add Duration to Service entity if needed, using 30 default for now manually if it doesn't match
+            return services.Select(s => new PublicServiceDto(s.Id, s.Name, s.Price, s.DurationMinutes));
         }
 
         public async Task<IEnumerable<PublicEmployeeDto>> GetEmployeesByServiceAsync(string tenantSlug, Guid serviceId)
@@ -94,7 +94,7 @@ namespace VoroSalonCrm.Application.Services
                 ServiceId = dto.ServiceId,
                 EmployeeId = dto.EmployeeId,
                 ScheduledDateTime = dto.ScheduledDateTime.ToUniversalTime(),
-                DurationMinutes = 30, // Default duration
+                DurationMinutes = service.DurationMinutes,
                 Amount = service.Price,
                 Status = AppointmentStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
