@@ -18,7 +18,7 @@ const TenantThemeContext = createContext<TenantTheme>({
  * by going through sRGB → linear RGB → XYZ D65 → OKLab → OKLCH.
  * Returns null if the input is invalid.
  */
-function hexToOklch(hex: string): string | null {
+function hexToOklch(hex: string): { str: string; l: number } | null {
   const m = hex.match(/^#?([0-9a-f]{6})$/i)
   if (!m) return null
   const n = parseInt(m[1], 16)
@@ -50,7 +50,10 @@ function hexToOklch(hex: string): string | null {
   const H = (Math.atan2(bOk, a) * 180) / Math.PI
   const deg = H < 0 ? H + 360 : H
 
-  return `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${deg.toFixed(2)})`
+  return {
+    str: `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${deg.toFixed(2)})`,
+    l: L
+  }
 }
 
 function applyColors(primary: string | null, secondary: string | null) {
@@ -58,16 +61,24 @@ function applyColors(primary: string | null, secondary: string | null) {
   if (primary) {
     const ok = hexToOklch(primary)
     if (ok) {
-      root.style.setProperty("--primary", ok)
-      root.style.setProperty("--sidebar-primary", ok)
-      root.style.setProperty("--ring", ok)
+      root.style.setProperty("--primary", ok.str)
+      root.style.setProperty("--sidebar-primary", ok.str)
+      root.style.setProperty("--ring", ok.str)
+      
+      const fg = ok.l > 0.6 ? "oklch(0.10 0.01 285)" : "oklch(0.985 0.002 75)"
+      root.style.setProperty("--primary-foreground", fg)
+      root.style.setProperty("--sidebar-primary-foreground", fg)
     }
   }
   if (secondary) {
     const ok = hexToOklch(secondary)
     if (ok) {
-      root.style.setProperty("--accent", ok)
-      root.style.setProperty("--sidebar-accent", ok)
+      root.style.setProperty("--accent", ok.str)
+      root.style.setProperty("--sidebar-accent", ok.str)
+      
+      const fg = ok.l > 0.6 ? "oklch(0.10 0.01 285)" : "oklch(0.985 0.002 75)"
+      root.style.setProperty("--accent-foreground", fg)
+      root.style.setProperty("--sidebar-accent-foreground", fg)
     }
   }
 }
