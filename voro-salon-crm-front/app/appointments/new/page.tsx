@@ -102,7 +102,8 @@ export default function NovoAgendamentoPage() {
       ...p,
       serviceId,
       amount: selectedService?.price ?? p.amount,
-      description: p.description || selectedService?.name || ""
+      description: p.description || selectedService?.name || "",
+      durationMinutes: selectedService?.durationMinutes ?? p.durationMinutes
     }))
   }
 
