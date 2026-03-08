@@ -126,12 +126,12 @@ export default function DashboardPage() {
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 border-border/60">
+          <Card className="lg:col-span-2 border-border/60 min-w-0">
             <CardContent className="pt-6">
               <Skeleton className="h-[300px] w-full bg-muted" />
             </CardContent>
           </Card>
-          <Card className="border-border/60">
+          <Card className="border-border/60 min-w-0">
             <CardContent className="pt-6">
               <Skeleton className="h-[300px] w-full bg-muted" />
             </CardContent>
@@ -209,7 +209,7 @@ export default function DashboardPage() {
               Visao geral do seu negocio
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isSchedulingEnabled && (
               <>
                 <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
@@ -253,7 +253,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Revenue chart */}
-          <Card className={`${isSchedulingEnabled ? "lg:col-span-2" : "lg:col-span-3"} border-border/60`}>
+          <Card className={`${isSchedulingEnabled ? "lg:col-span-2" : "lg:col-span-3"} border-border/60 min-w-0`}>
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -264,9 +264,9 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {chartData.length > 0 ? (
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} barSize={32}>
+                <div className="h-[300px] w-full min-w-0">
+                  <ResponsiveContainer width="99%" height="100%">
+                    <BarChart data={chartData}>
                       <CartesianGrid
                         strokeDasharray="3 3"
                         vertical={false}
@@ -284,7 +284,8 @@ export default function DashboardPage() {
                         stroke="var(--color-muted-foreground)"
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(v) => `R$${v}`}
+                        tickFormatter={(v) => `R$${v >= 1000 ? (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k' : v}`}
+                        width={60}
                       />
                       <Tooltip
                         contentStyle={{
@@ -300,6 +301,7 @@ export default function DashboardPage() {
                         dataKey="receita"
                         fill="var(--color-primary)"
                         radius={[6, 6, 0, 0]}
+                        maxBarSize={32}
                       />
                     </BarChart>
                   </ResponsiveContainer>
