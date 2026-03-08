@@ -204,6 +204,7 @@ export default function NovoAgendamentoPage() {
                         onSuccess={async (id) => {
                           await mutateServices()
                           setForm(p => ({ ...p, serviceId: id }))
+                          handleServiceChange(id)
                         }}
                       />
                     </div>
