@@ -10,6 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,6 +56,7 @@ export default function EditarServicoPage() {
     name: "",
     description: "",
     price: 0,
+    durationMinutes: 30,
   })
 
   useEffect(() => {
@@ -57,6 +65,7 @@ export default function EditarServicoPage() {
         name: service.name,
         description: service.description || "",
         price: service.price || 0,
+        durationMinutes: service.durationMinutes || 30,
       })
     }
   }, [service])
@@ -198,6 +207,27 @@ export default function EditarServicoPage() {
                   value={form.price}
                   onChange={(v) => setForm((p) => ({ ...p, price: v }))}
                 />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="durationMinutes">Duração Estimada</Label>
+                <Select
+                  key={form.durationMinutes}
+                  value={form.durationMinutes.toString()}
+                  onValueChange={(v) => setForm(p => ({ ...p, durationMinutes: parseInt(v) }))}
+                >
+                  <SelectTrigger id="durationMinutes" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                    <SelectItem value="45">45 min</SelectItem>
+                    <SelectItem value="60">1 hora</SelectItem>
+                    <SelectItem value="90">1h 30min</SelectItem>
+                    <SelectItem value="120">2 horas</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex flex-col gap-2">
