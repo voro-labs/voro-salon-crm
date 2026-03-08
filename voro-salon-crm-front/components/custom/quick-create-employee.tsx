@@ -38,6 +38,7 @@ export function QuickCreateEmployee({ onSuccess }: QuickCreateEmployeeProps) {
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
+		e.stopPropagation()
 		if (!form.name.trim()) {
 			toast.error("O nome do funcionário é obrigatório.")
 			return

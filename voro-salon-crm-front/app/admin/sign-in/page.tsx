@@ -29,7 +29,7 @@ export default function SignInPage() {
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (!authLoading && user?.token) {
-      router.replace("/admin/dashboard")
+      router.replace("/")
     }
   }, [user, authLoading, router])
 
@@ -58,7 +58,7 @@ export default function SignInPage() {
     if (!validateForm()) return
     const result = await signIn(formData)
     if (result.success) {
-      router.push("/admin/dashboard")
+      router.push("/")
     }
   }
 

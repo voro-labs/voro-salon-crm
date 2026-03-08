@@ -36,6 +36,7 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    e.stopPropagation()
     if (!form.name.trim() || !form.phone.trim()) {
       toast.error("Nome e telefone são obrigatórios.")
       return

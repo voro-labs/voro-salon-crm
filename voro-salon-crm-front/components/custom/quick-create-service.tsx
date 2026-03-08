@@ -32,6 +32,7 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    e.stopPropagation()
     if (!form.name.trim()) {
       toast.error("O nome do serviço é obrigatório.")
       return
