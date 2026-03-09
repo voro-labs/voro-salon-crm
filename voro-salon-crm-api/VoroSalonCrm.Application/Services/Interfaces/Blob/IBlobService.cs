@@ -2,9 +2,6 @@
 {
     public interface IBlobService
     {
-        Task<string> UploadAsync(string blobName,
-            Stream stream,
-            string contentType,
-            CancellationToken ct = default);
+        Task<string> UploadAsync(string fileName, Stream stream, string contentType, CancellationToken ct = default);
     }
 }

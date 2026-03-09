@@ -46,8 +46,9 @@ function AuthenticatedImage({ src, alt, className }: { src: string, alt: string,
         const proxyUrl = `/api/blob/proxy?url=${encodeURIComponent(src)}`
         const response = await fetch(proxyUrl)
         if (!response.ok) throw new Error("Failed to fetch signed URL via proxy")
-        const data = await response.json()
-        if (isMounted) setBlobUrl(data.url)
+        const data = await response.blob()
+        const fileUrl = URL.createObjectURL(data);
+        if (isMounted) setBlobUrl(fileUrl)
       } catch (err) {
         console.error("Error fetching signed URL:", err)
         if (isMounted) setBlobUrl(null)

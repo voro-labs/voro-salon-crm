@@ -80,7 +80,7 @@ namespace VoroSalonCrm.API.Controllers
                 if (file == null || file.Length == 0)
                     return ResponseViewModel<object>.Fail("No file uploaded.").ToActionResult();
 
-                var logoUrl = await blobService.UploadAsync("voro-salon-crm", file.OpenReadStream(), file.ContentType);
+                var logoUrl = await blobService.UploadAsync($"{Guid.NewGuid()}_{file.FileName}", file.OpenReadStream(), file.ContentType);
 
                 await tenantService.UpdateLogoAsync(tenantId, logoUrl);
 

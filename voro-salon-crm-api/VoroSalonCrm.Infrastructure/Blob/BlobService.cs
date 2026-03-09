@@ -22,23 +22,19 @@ namespace VoroSalonCrm.Infrastructure.Blob
         }
 
         public async Task<string> UploadAsync(
-            string blobName,
+            string fileName,
             Stream stream,
             string contentType,
             CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(blobName))
-                throw new ArgumentException("Blob name cannot be empty");
-
-            var encodedName = Uri.EscapeDataString(blobName);
-            var url = $"https://blob.vercel-storage.com/{encodedName}";
+            var url = $"https://blob.vercel-storage.com/{_config.BlobName}/{fileName}";
 
             using var request = new HttpRequestMessage(HttpMethod.Put, url);
 
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", _config.Token);
 
-            request.Headers.Add("x-vercel-blob-access", "public");
+            request.Headers.Add("x-vercel-blob-access", "private");
 
             request.Content = new StreamContent(stream);
             request.Content.Headers.ContentType =

@@ -91,7 +91,7 @@ namespace VoroSalonCrm.Application.Services
             var employee = await _repository.GetByIdAsync(id)
                 ?? throw new KeyNotFoundException($"Employee '{id}' not found.");
 
-            var photoUrl = await _blobService.UploadAsync("voro-salon-crm", file.OpenReadStream(), file.ContentType);
+            var photoUrl = await _blobService.UploadAsync($"{Guid.NewGuid()}_{file.FileName}", file.OpenReadStream(), file.ContentType);
 
             employee.PhotoUrl = photoUrl;
             employee.UpdatedAt = DateTimeOffset.UtcNow;

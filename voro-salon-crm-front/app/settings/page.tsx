@@ -112,9 +112,10 @@ function AuthenticatedImage({ src, alt, className }: { src: string, alt: string,
 
         if (!response.ok) throw new Error("Failed to fetch signed URL via proxy")
 
-        const data = await response.json()
+        const data = await response.blob()
+        const fileUrl = URL.createObjectURL(data)
         if (isMounted) {
-          setBlobUrl(data.url)
+          setBlobUrl(fileUrl)
         }
       } catch (err) {
         console.error("Error fetching signed URL:", err)
