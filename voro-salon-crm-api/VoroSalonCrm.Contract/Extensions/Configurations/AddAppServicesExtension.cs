@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VoroSalonCrm.Application.Services;
 using VoroSalonCrm.Application.Services.Identity;
@@ -53,6 +53,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
             services.AddScoped<ITenantModuleRepository, TenantModuleRepository>();
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+            services.AddScoped<ITransactionCategoryRepository, TransactionCategoryRepository>();
+            services.AddScoped<ITransactionRepository, TransactionRepository>();
             #endregion
 
             #region Identity Services
@@ -71,6 +73,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ITenantModuleService, TenantModuleService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IPublicBookingService, PublicBookingService>();
+            services.AddScoped<ITransactionCategoryService, TransactionCategoryService>();
+            services.AddScoped<ITransactionService, TransactionService>();
             #endregion
 
             return services;

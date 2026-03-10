@@ -36,6 +36,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<TenantModule> TenantModules { get; set; }
         public DbSet<Employee> Employees { get; set; }
         public DbSet<EmployeeService> EmployeeServices { get; set; }
+        public DbSet<TransactionCategory> TransactionCategories { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -69,6 +71,12 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             builder.Entity<Employee>().HasQueryFilter(e =>
                 !e.IsDeleted && e.TenantId == _currentUser.TenantId);
+
+            builder.Entity<TransactionCategory>().HasQueryFilter(tc =>
+                !tc.IsDeleted && tc.TenantId == _currentUser.TenantId);
+
+            builder.Entity<Transaction>().HasQueryFilter(t =>
+                !t.IsDeleted && t.TenantId == _currentUser.TenantId);
 
             // ---------------------------
             // TENANT
@@ -247,6 +255,54 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(e => e.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // TRANSACTION CATEGORY
+            // ---------------------------
+            builder.Entity<TransactionCategory>(b =>
+            {
+                b.HasKey(tc => tc.Id);
+                b.Property(tc => tc.Name).HasMaxLength(150).IsRequired();
+                b.Property(tc => tc.Type).HasConversion<int>().IsRequired();
+                b.Property(tc => tc.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.Property(tc => tc.IsActive).HasDefaultValue(true);
+
+                b.HasIndex(tc => tc.TenantId);
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(tc => tc.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // TRANSACTION
+            // ---------------------------
+            builder.Entity<Transaction>(b =>
+            {
+                b.HasKey(t => t.Id);
+                b.Property(t => t.Description).HasMaxLength(300).IsRequired();
+                b.Property(t => t.Amount).HasColumnType("NUMERIC(10,2)").HasDefaultValue(0);
+                b.Property(t => t.PaidAmount).HasColumnType("NUMERIC(10,2)").HasDefaultValue(0);
+                b.Property(t => t.DueDate).IsRequired();
+                b.Property(t => t.Type).HasConversion<int>().IsRequired();
+                b.Property(t => t.PaymentMethod).HasConversion<int>().IsRequired();
+                b.Property(t => t.Status).HasConversion<int>().IsRequired();
+                b.Property(t => t.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(t => t.TenantId);
+                b.HasIndex(t => new { t.TenantId, t.DueDate }).IsDescending(false, true);
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(t => t.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(t => t.Category)
+                 .WithMany()
+                 .HasForeignKey(t => t.CategoryId)
+                 .OnDelete(DeleteBehavior.SetNull); // Categoria excluída não afeta registros já consolidados, apenas anula o vínculo
             });
 
             // ---------------------------
