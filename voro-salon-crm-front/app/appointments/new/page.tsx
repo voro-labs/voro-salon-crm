@@ -277,12 +277,17 @@ export default function NovoAgendamentoPage() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                      <Calendar
+                    <Calendar
                         mode="single"
                         selected={selectedDate}
                         onSelect={(date) => {
                           setSelectedDate(date)
                           setForm(p => ({ ...p, scheduledDateTime: "" })) // Reset slot selection
+                        }}
+                        disabled={(date) => {
+                          const today = new Date()
+                          today.setHours(0, 0, 0, 0)
+                          return date < today
                         }}
                         initialFocus
                         locale={ptBR}
@@ -313,39 +318,47 @@ export default function NovoAgendamentoPage() {
                 </div>
               </div>
 
-              {selectedDate && (
-                <div className="mt-2 flex flex-col gap-2">
-                  <Label className="text-sm font-medium">Horários Disponíveis</Label>
-                  {loadingAvailability ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Carregando horários...
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
-                      {availability?.map((slot: any) => (
-                        <Button
-                          key={slot.startTime}
-                          type="button"
-                          variant={form.scheduledDateTime === slot.startTime ? "default" : "outline"}
-                          size="sm"
-                          className={cn(
-                            "h-9 px-2 text-xs",
-                            !slot.isAvailable && "opacity-30 cursor-not-allowed bg-muted"
-                          )}
-                          disabled={!slot.isAvailable}
-                          onClick={() => setForm(p => ({ ...p, scheduledDateTime: slot.startTime }))}
-                        >
-                          {format(new Date(slot.startTime), "HH:mm")}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                  {availability?.length === 0 && !loadingAvailability && (
-                    <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data.</p>
-                  )}
-                </div>
-              )}
+              {selectedDate && (() => {
+                const now = new Date()
+                const isToday = selectedDate.toDateString() === now.toDateString()
+                const visibleSlots = (availability ?? []).filter((slot: any) => {
+                  if (!isToday) return true
+                  return new Date(slot.startTime) > now
+                })
+                return (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <Label className="text-sm font-medium">Horários Disponíveis</Label>
+                    {loadingAvailability ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando horários...
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+                        {visibleSlots.map((slot: any) => (
+                          <Button
+                            key={slot.startTime}
+                            type="button"
+                            variant={form.scheduledDateTime === slot.startTime ? "default" : "outline"}
+                            size="sm"
+                            className={cn(
+                              "h-9 px-2 text-xs",
+                              !slot.isAvailable && "opacity-30 cursor-not-allowed bg-muted"
+                            )}
+                            disabled={!slot.isAvailable}
+                            onClick={() => setForm(p => ({ ...p, scheduledDateTime: slot.startTime }))}
+                          >
+                            {format(new Date(slot.startTime), "HH:mm")}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    {visibleSlots.length === 0 && !loadingAvailability && (
+                      <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data.</p>
+                    )}
+                  </div>
+                )
+              })()}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
