@@ -736,7 +736,10 @@ export default function ConfiguracoesPage() {
                     1: "Clientes",
                     2: "Agendamentos",
                     3: "Serviços",
-                    4: "Funcionários"
+                    4: "Funcionários",
+                    5: "Financeiros",
+                    6: "Relatórios",
+                    7: "Configurações"
                   };
 
                   return (

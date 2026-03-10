@@ -21,6 +21,8 @@ export const API_CONFIG = {
     SERVICES: "/services",
     APPOINTMENTS: "/appointments",
     APPOINTMENTS_AVAILABILITY: "/appointments/availability",
+    TRANSACTION_CATEGORIES: "/transactioncategories",
+    TRANSACTIONS: "/transactions",
     EXPORT_CLIENTS: "/export/clients",
     EXPORT_SERVICES: "/export/services",
     EXPORT_APPOINTMENTS: "/export/appointments",

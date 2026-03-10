@@ -12,6 +12,7 @@ import {
   Settings,
   Scissors,
   Calendar,
+  Banknote,
 } from "lucide-react"
 import { toTitleCase } from "@/lib/utils"
 import {
@@ -56,6 +57,13 @@ const navItems = [
     icon: Users,
     roles: ["Admin", "User"],
     moduleId: 4 // Employees
+  },
+  {
+    title: "Financeiro",
+    href: "/finance",
+    icon: Banknote,
+    roles: ["Admin", "User"],
+    moduleId: 5 // Finance
   },
   {
     title: "Configurações",
