@@ -1,7 +1,8 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth.context"
-import { API_CONFIG, apiCall } from "@/lib/api"
+import { API_CONFIG, apiCall, secureApiCall } from "@/lib/api"
+import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
 import { AuthDto } from "@/types/DTOs/auth.interface"
 import { SignInDto } from "@/types/DTOs/sign-in.interface"
 import { useState } from "react"
@@ -34,6 +35,17 @@ export function useSignIn() {
         // Salvar token se fornecido pela API
         if (response.data?.token) {
           login(response.data?.token, response.data?.tenants)
+
+          // Buscar e aplicar as cores do tenant imediatamente após o login
+          // sem aguardar o reload — fire-and-forget
+          secureApiCall<{ primaryColor: string | null; secondaryColor: string | null }>(
+            API_CONFIG.ENDPOINTS.TENANT_ME,
+            { method: "GET" }
+          ).then((res) => {
+            if (!res.hasError && res.data) {
+              refreshTenantTheme(res.data.primaryColor, res.data.secondaryColor)
+            }
+          }).catch(() => { })
         }
         return { success: true }
       } else {

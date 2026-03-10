@@ -62,6 +62,24 @@ namespace VoroSalonCrm.Infrastructure.Blob
                 ?? throw new InvalidOperationException("Blob response missing URL");
         }
 
+        public async Task<string?> GetSignedUrlAsync(string blobUrl, CancellationToken ct = default)
+        {
+            // Vercel Blob "head" endpoint — returns metadata including a signed downloadUrl
+            var url = blobUrl;
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Token);
+
+            using var response = await _http.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+
+            var base64 = Convert.ToBase64String(bytes);
+
+            return $"data:image/png;base64,{base64}";
+        }
+
         private sealed record VercelBlobResponse(string Url);
     }
 }
