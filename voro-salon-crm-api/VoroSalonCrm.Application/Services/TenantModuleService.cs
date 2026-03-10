@@ -18,6 +18,9 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<IEnumerable<TenantModuleDto>> GetMyModulesAsync()
         {
+            if (_currentUser.TenantId == Guid.Empty)
+                throw new UnauthorizedAccessException("Usuário não está associado a nenhum salão.");
+
             var modules = await _repository.GetModulesByTenantIdAsync(_currentUser.TenantId);
 
             // Ensure all enums are represented (even if not in DB yet)

@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/auth.context"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import useSWR from "swr"
-import { API_CONFIG } from "@/lib/api"
+import { API_CONFIG, secureApiCall } from "@/lib/api"
 import {
   Users,
   LayoutDashboard,
@@ -74,14 +74,10 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
   const { user, logout, switchTenant } = useAuth()
   const pathname = usePathname()
-  const { data: modulesData } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, async (url) => {
-    const res = await fetch(`${API_CONFIG.BASE_URL}${url}`, {
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("vorolabs_salon_token")}`
-      }
-    });
-    const json = await res.json();
-    return json?.data || [];
+  const { data: modulesData, isLoading: modulesLoading } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, async (url) => {
+    const res = await secureApiCall<any[]>(url, { method: "GET" });
+    if (res.hasError) return [];
+    return res.data ?? [];
   })
 
   if (!user) return null
@@ -176,6 +172,8 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
               return null;
 
             if (item.moduleId) {
+              // Enquanto modules estão carregando, oculta itens com moduleId
+              if (modulesLoading || modulesData === undefined) return null;
               const mod = (modulesData as any[])?.find(m => m.module === item.moduleId);
               if (mod && !mod.isEnabled) return null;
             }
