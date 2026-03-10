@@ -183,7 +183,9 @@ namespace VoroSalonCrm.Application.Services
             }
             else
             {
-                activeEmployeesCount = await _employeeRepository.Query(e => e.TenantId == tenantId && e.IsActive).CountAsync();
+                activeEmployeesCount = await _employeeRepository
+                    .Query(e => e.TenantId == tenantId && e.IsActive)
+                    .CountAsync();
             }
 
             var slots = new List<AvailabilitySlotDto>();
@@ -249,6 +251,7 @@ namespace VoroSalonCrm.Application.Services
                 a.Id,
                 a.ClientId,
                 a.Client?.Name ?? "Unknown",
+                a.Client?.Phone,
                 a.ServiceId,
                 a.Service?.Name,
                 a.ScheduledDateTime,

@@ -21,6 +21,7 @@ import {
   Loader2,
   ChevronRight,
   Copy,
+  Check,
   Link as LinkIcon
 } from "lucide-react"
 import {
@@ -85,7 +86,7 @@ function formatCurrency(value: number) {
 }
 
 export default function DashboardPage() {
-  const { data, isLoading } = useSWR(API_CONFIG.ENDPOINTS.DASHBOARD, fetcher)
+  const { data, isLoading, mutate: mutateDashboard } = useSWR(API_CONFIG.ENDPOINTS.DASHBOARD, fetcher)
   const { data: aptData, mutate: mutateApts } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS, fetcher)
 
   const { data: tenant } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
@@ -93,6 +94,7 @@ export default function DashboardPage() {
 
   const [timeFilter, setTimeFilter] = useState("today")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const isSchedulingEnabled = !modules || modules.find((m: any) => m.module === 2)?.isEnabled !== false
 
@@ -104,6 +106,31 @@ export default function DashboardPage() {
     const url = `${window.location.origin}/booking/${tenant.slug}`
     navigator.clipboard.writeText(url)
     toast.success("Link de agendamento copiado para a área de transferência!")
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleWhatsApp = (apt: any, newStatus: number) => {
+    if (newStatus !== 1 && newStatus !== 2) return
+    if (!apt.clientPhone) {
+      toast.warning("Cliente sem telefone cadastrado — não foi possível abrir o WhatsApp.")
+      return
+    }
+    const phone = apt.clientPhone.replace(/\D/g, "")
+    const date = new Date(apt.scheduledDateTime)
+    const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+    const timeStr = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    const serviceName = apt.serviceName || "serviço"
+    const clientName = apt.clientName || "Cliente"
+    let message = ""
+    if (newStatus === 1) {
+      message = `Olá ${clientName}! Seu agendamento de ${serviceName} foi confirmado para ${dateStr} às ${timeStr}. Aguardamos você! 😊`
+    } else {
+      message = `Olá ${clientName}! Obrigado pelo seu agendamento de ${serviceName}. Foi um prazer atendê-lo(a)! Qualquer dúvida, estamos à disposição. 🙏`
+    }
+    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
+    window.open(url, "_blank")
+    toast.info("WhatsApp aberto com mensagem pré-preenchida.")
   }
 
   if (isLoading) {
@@ -180,6 +207,7 @@ export default function DashboardPage() {
   }).sort((a: any, b: any) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
 
   async function handleStatusUpdate(id: string, newStatus: string) {
+    const apt = (aptData ?? []).find((a: any) => a.id === id)
     setUpdatingId(id)
     try {
       const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`, {
@@ -192,6 +220,8 @@ export default function DashboardPage() {
       }
       toast.success("Status atualizado")
       mutateApts()
+      mutateDashboard()
+      if (apt) handleWhatsApp(apt, Number(newStatus))
     } catch {
       toast.error("Erro ao atualizar status")
     } finally {
@@ -213,8 +243,8 @@ export default function DashboardPage() {
             {isSchedulingEnabled && (
               <>
                 <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copiar Link de Agendamento
+                  {copied ? <Check className="mr-2 h-4 w-4 text-green-500" /> : <Copy className="mr-2 h-4 w-4" />}
+                  {copied ? "Link Copiado!" : "Copiar Link de Agendamento"}
                 </Button>
                 <Button asChild size="sm">
                   <Link href="/appointments/new">

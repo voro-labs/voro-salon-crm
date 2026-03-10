@@ -28,6 +28,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         Guid Id,
         Guid ClientId,
         string ClientName,
+        string? ClientPhone,
         Guid? ServiceId,
         string? ServiceName,
         DateTimeOffset ScheduledDateTime,

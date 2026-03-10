@@ -167,7 +167,7 @@ namespace VoroSalonCrm.Application.Services
 
             while (current < endOfDay)
             {
-                var next = current.AddMinutes(30).ToUniversalTime();
+                var next = current.AddMinutes(30);
 
                 bool isBusy;
                 if (activeEmployeesCount <= 0)
@@ -192,8 +192,8 @@ namespace VoroSalonCrm.Application.Services
                     isBusy = overlappingCount >= activeEmployeesCount;
                 }
 
-                slots.Add(new VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto(current.ToUniversalTime(), next.ToUniversalTime(), !isBusy));
-                current = next.ToUniversalTime();
+                slots.Add(new VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto(current, next, !isBusy));
+                current = next;
             }
 
             return slots;

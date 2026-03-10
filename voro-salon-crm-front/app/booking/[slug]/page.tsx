@@ -112,10 +112,10 @@ export default function PublicBookingPage() {
   const handleNameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name) return
-    
+
     // Save to localStorage
     localStorage.setItem('voro_booking_name', form.name)
-    
+
     addUserMessage(`Meu nome é ${form.name}`)
     addBotMessage(`Prazer em te conhecer, ${form.name}! Agora, qual seu WhatsApp para que possamos entrar em contato?`)
     setStep('PHONE')
@@ -280,7 +280,7 @@ export default function PublicBookingPage() {
           {hasNoServices ? "Serviços indisponíveis" : "Agendamentos temporariamente desativados"}
         </h1>
         <p className="text-muted-foreground mt-2 max-w-md">
-          {hasNoServices 
+          {hasNoServices
             ? "Este estabelecimento ainda não possui serviços cadastrados para agendamento online."
             : "Este estabelecimento não está aceitando novos agendamentos online no momento."}
           {" "}Entre em contato diretamente para mais informações.
@@ -452,63 +452,72 @@ export default function PublicBookingPage() {
             </div>
           )}
 
-          {step === 'DATETIME' && !loading && (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <Label className="text-[10px] text-muted-foreground ml-1">Data</Label>
-                <Input
-                  type="date"
-                  value={form.date}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={e => {
-                    setForm(p => ({ ...p, date: e.target.value, time: '' }))
-                  }}
-                  required
-                />
-              </div>
-
-              {form.date && (
-                <div className="flex flex-col gap-2">
-                  <Label className="text-[10px] text-muted-foreground ml-1">Horários Disponíveis</Label>
-                  {loadingAvailability ? (
-                    <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground justify-center">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Buscando horários...
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-2">
-                      {availability.map(slot => (
-                        <Button
-                          key={slot.startTime}
-                          variant={form.time === format(new Date(slot.startTime), "HH:mm") ? "default" : "outline"}
-                          size="sm"
-                          className={cn(
-                            "h-10 text-[10px] px-1",
-                            !slot.isAvailable && "opacity-30 cursor-not-allowed"
-                          )}
-                          disabled={!slot.isAvailable}
-                          onClick={() => setForm(p => ({ ...p, time: format(new Date(slot.startTime), "HH:mm") }))}
-                        >
-                          {format(new Date(slot.startTime), "HH:mm")}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                  {availability.length === 0 && !loadingAvailability && (
-                    <p className="text-[10px] text-muted-foreground text-center">Nenhum horário disponível para esta data.</p>
-                  )}
+          {step === 'DATETIME' && !loading && (() => {
+            const todayStr = new Date().toLocaleDateString('en-CA') // YYYY-MM-DD no fuso local
+            const isToday = form.date === todayStr
+            const now = new Date()
+            const visibleSlots = availability.filter(slot => {
+              if (!isToday) return true
+              return new Date(slot.startTime) > now
+            })
+            return (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[10px] text-muted-foreground ml-1">Data</Label>
+                  <Input
+                    type="date"
+                    value={form.date}
+                    min={todayStr}
+                    onChange={e => {
+                      setForm(p => ({ ...p, date: e.target.value, time: '' }))
+                    }}
+                    required
+                  />
                 </div>
-              )}
 
-              <Button
-                onClick={handleDateTimeSelect}
-                className="w-full h-10 mt-1"
-                disabled={!form.date || !form.time}
-              >
-                Confirmar Horário
-              </Button>
-            </div>
-          )}
+                {form.date && (
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-[10px] text-muted-foreground ml-1">Horários Disponíveis</Label>
+                    {loadingAvailability ? (
+                      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground justify-center">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Buscando horários...
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-2">
+                        {visibleSlots.map(slot => (
+                          <Button
+                            key={slot.startTime}
+                            variant={form.time === format(new Date(slot.startTime), "HH:mm") ? "default" : "outline"}
+                            size="sm"
+                            className={cn(
+                              "h-10 text-[10px] px-1",
+                              !slot.isAvailable && "opacity-30 cursor-not-allowed"
+                            )}
+                            disabled={!slot.isAvailable}
+                            onClick={() => setForm(p => ({ ...p, time: format(new Date(slot.startTime), "HH:mm") }))}
+                          >
+                            {format(new Date(slot.startTime), "HH:mm")}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    {visibleSlots.length === 0 && !loadingAvailability && (
+                      <p className="text-[10px] text-muted-foreground text-center">Nenhum horário disponível para esta data.</p>
+                    )}
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleDateTimeSelect}
+                  className="w-full h-10 mt-1"
+                  disabled={!form.date || !form.time}
+                >
+                  Confirmar Horário
+                </Button>
+              </div>
+            )
+          })()}
 
           {step === 'CONFIRM' && !loading && (
             <form onSubmit={handleFinalSubmit} className="flex flex-col gap-3">
