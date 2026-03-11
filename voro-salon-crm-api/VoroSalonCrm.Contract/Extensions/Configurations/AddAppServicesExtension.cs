@@ -6,11 +6,13 @@ using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Blob;
 using VoroSalonCrm.Application.Services.Interfaces.Email;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 using VoroSalonCrm.Infrastructure.Blob;
 using VoroSalonCrm.Infrastructure.Email;
+using VoroSalonCrm.Infrastructure.Integration;
 using VoroSalonCrm.Infrastructure.Repositories;
 using VoroSalonCrm.Infrastructure.Repositories.Identity;
 using VoroSalonCrm.Infrastructure.Seeds;
@@ -28,6 +30,11 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(100);
             });
 
+            services.AddHttpClient("whatsapp", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
@@ -39,6 +46,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IBlobService, BlobService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IMailKitEmailService, MailKitEmailService>();
+            services.AddScoped<IWhatsappService, WhatsappService>();
 
             #region Identity Repositories
             services.AddScoped<IRoleRepository, RoleRepository>();

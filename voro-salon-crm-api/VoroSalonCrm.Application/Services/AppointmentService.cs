@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.CRM;
+using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
@@ -13,13 +15,17 @@ namespace VoroSalonCrm.Application.Services
         IServiceRecordService serviceRecordService,
         IEmployeeRepository employeeRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService) : IAppointmentService
+        ICurrentUserService currentUserService,
+        ITenantRepository tenantRepository,
+        IWhatsappService whatsappService) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
         private readonly IEmployeeRepository _employeeRepository = employeeRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly ITenantRepository _tenantRepository = tenantRepository;
+        private readonly IWhatsappService _whatsappService = whatsappService;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -119,7 +125,9 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> UpdateStatusAsync(Guid id, AppointmentStatus status)
         {
-            var appointment = await _appointmentRepository.GetByIdAsync(id);
+            var appointment = await _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
             if (appointment == null) return false;
 
             var oldStatus = appointment.Status;
@@ -139,6 +147,66 @@ namespace VoroSalonCrm.Application.Services
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Send WhatsApp notifications
+            if (oldStatus != status && appointment.Client != null && !string.IsNullOrWhiteSpace(appointment.Client.Phone))
+            {
+                var tenant = await _tenantRepository.GetByIdAsync(appointment.TenantId);
+                var tenantName = tenant?.Name ?? "Voro Salon";
+                var phone = appointment.Client.Phone;
+
+                var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
+
+                if (status == AppointmentStatus.Confirmed)
+                {
+                    var templateMsg = new WhatsappTemplateMessageDto
+                    {
+                        To = phone,
+                        Template = new() {
+                            Name = "appointment_confirmation_1",
+                            Components =
+                            [
+                                new() {
+                                    Type = "body",
+                                    Parameters =
+                                    [
+                                        new() { Type = "text", Text = appointment.Client.Name },
+                                        new() { Type = "text", Text = tenantName },
+                                        new() { Type = "text", Text = appointment.Service?.Name ?? "Serviço" },
+                                        new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") },
+                                        new() { Type = "text", Text = localTime.ToString("HH:mm") }
+                                    ]
+                                }
+                            ]
+                        }
+                    };
+
+                    await _whatsappService.SendTemplateMessageAsync(templateMsg);
+                }
+                else if (status == AppointmentStatus.Cancelled)
+                {
+                    var templateMsg = new WhatsappTemplateMessageDto
+                    {
+                        To = phone,
+                        Template = new() {
+                            Name = "appointment_cancelled",
+                            Components =
+                            [
+                                new() {
+                                    Type = "body",
+                                    Parameters =
+                                    [
+                                        new() { Type = "text", Text = appointment.Client.Name },
+                                        new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") }
+                                    ]
+                                }
+                            ]
+                        }
+                    };
+
+                    await _whatsappService.SendTemplateMessageAsync(templateMsg);
+                }
+            }
 
             return true;
         }
