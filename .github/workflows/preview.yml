@@ -34,7 +34,7 @@ jobs:
         run: |
           flyctl apps create ${{ steps.vars.outputs.APP_NAME }} --yes --org ${{ secrets.FLY_ORG }} || true
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
 
       - name: Set secrets for preview app
         run: |
@@ -54,14 +54,14 @@ jobs:
             KESTREL__CERTIFICATES__DEVELOPMENT__PASSWORD="${{ secrets.KESTREL__CERTIFICATES__DEVELOPMENT__PASSWORD }}" \
             -a ${{ steps.vars.outputs.APP_NAME }}
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
 
       - name: Deploy preview app
         run: |
           cd ${{ secrets.FOLDER__API }}
           flyctl deploy --remote-only -a ${{ steps.vars.outputs.APP_NAME }}
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
 
       # ================================================
       # COMENTÁRIO USANDO O BOT
