@@ -32,7 +32,11 @@ jobs:
 
       - name: Create Fly app (if not exists)
         run: |
-          flyctl apps create ${{ steps.vars.outputs.APP_NAME }} --org ${{ secrets.FLY_ORG }} || true
+          if ! flyctl status -a ${{ steps.vars.outputs.APP_NAME }} >/dev/null 2>&1; then
+            flyctl apps create ${{ steps.vars.outputs.APP_NAME }} --org ${{ secrets.FLY_ORG }}
+          else
+            echo "App ${{ steps.vars.outputs.APP_NAME }} already exists."
+          fi
         env:
           FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
 
