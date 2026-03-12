@@ -4,6 +4,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces.Integration
 {
     public interface IWhatsappChatService
     {
-        Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string phoneNumberId, CancellationToken ct = default);
+        Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default);
     }
 }

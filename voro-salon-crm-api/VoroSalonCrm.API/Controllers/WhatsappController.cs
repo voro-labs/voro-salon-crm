@@ -79,7 +79,7 @@ namespace VoroSalonCrm.API.Controllers
                     foreach (var message in change.Value.Messages)
                     {
                         var chatService = HttpContext.RequestServices.GetRequiredService<IWhatsappChatService>();
-                        await chatService.HandleMessageAsync(message, contactName, metadata.PhoneNumberId);
+                        await chatService.HandleMessageAsync(message, contactName, metadata.DisplayPhoneNumber);
                     }
                 }
             }

@@ -46,7 +46,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public string? SelectedTime { get; set; }
         }
 
-        public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string phoneNumberId, CancellationToken ct = default)
+        public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default)
         {
             var from = message.From;
             var sessionKey = $"{CACHE_PREFIX}{from}";
@@ -55,14 +55,21 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 session = new BookingSession();
                 
-                // Fetch the primary tenant's slug
-                var tenant = await _tenantRepository.Query(t => t.IsActive).FirstOrDefaultAsync(ct);
-                if (tenant == null)
+                // Try to find tenant by receiving phone number
+                var tenant = await _tenantRepository.Query(t => t.IsActive && t.ContactPhone == displayPhoneNumber).FirstOrDefaultAsync(ct);
+                
+                if (tenant != null)
                 {
-                    await _whatsappService.SendTextMessageAsync(from, "Desculpe, o sistema está em manutenção no momento.", ct);
+                    session.TenantSlug = tenant.Slug;
+                    session.State = "START";
+                }
+                else
+                {
+                    session.State = "AWAITING_TENANT";
+                    await AskForTenantAsync(from, contactName, ct);
+                    _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
                     return;
                 }
-                session.TenantSlug = tenant.Slug;
             }
 
             // Handle user response based on current state
@@ -76,6 +83,10 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 switch (session.State)
                 {
+                    case "AWAITING_TENANT":
+                        await HandleTenantSelectionAsync(from, message, session, ct);
+                        break;
+
                     case "START":
                         await StartBookingFlowAsync(from, contactName, session, ct);
                         break;
@@ -120,6 +131,62 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 _logger.LogError(ex, "Error handling WhatsApp message for {From}", from);
                 await _whatsappService.SendTextMessageAsync(from, "Ops, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.", ct);
+            }
+        }
+
+        private async Task AskForTenantAsync(string from, string contactName, CancellationToken ct)
+        {
+            var tenants = await _tenantRepository.Query(t => t.IsActive).Take(10).ToListAsync(ct);
+
+            if (!tenants.Any())
+            {
+                await _whatsappService.SendTextMessageAsync(from, "Desculpe, não encontramos estabelecimentos ativos no sistema.", ct);
+                return;
+            }
+
+            var rows = tenants.Select(t => new
+            {
+                id = t.Slug,
+                title = t.Name.Length > 24 ? t.Name.Substring(0, 21) + "..." : t.Name,
+                description = "Clique para selecionar"
+            }).ToList();
+
+            var interactive = new
+            {
+                type = "list",
+                header = new { type = "text", text = "Voro Salon" },
+                body = new { text = $"Olá {contactName}! Qual estabelecimento você deseja agendar hoje?" },
+                action = new
+                {
+                    button = "Ver estabelecimentos",
+                    sections = new[]
+                    {
+                        new { title = "Estabelecimentos", rows }
+                    }
+                }
+            };
+
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, ct);
+        }
+
+        private async Task HandleTenantSelectionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
+        {
+            string? slug = null;
+            if (message.Type == "interactive" && message.Interactive?.ListReply != null)
+                slug = message.Interactive.ListReply.Id;
+
+            if (!string.IsNullOrEmpty(slug))
+            {
+                session.TenantSlug = slug;
+                session.State = "START";
+                
+                // Get contact name from cache or profile if possible, otherwise use generic
+                // For now, let's just trigger the flow
+                await StartBookingFlowAsync(from, "Cliente", session, ct);
+            }
+            else
+            {
+                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um estabelecimento da lista.", ct);
             }
         }
 
