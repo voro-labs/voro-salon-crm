@@ -14,9 +14,21 @@
   "CorsSettings:AllowedOrigins:2": "https://localhost:3000",
   "CorsSettings:AllowedOrigins:1": "http://localhost:4200",
   "CorsSettings:AllowedOrigins:0": "http://localhost:3000",
-  "ConnectionDB": {
-    "Production":  "Server=SERVER;Port=PORT;Database=DATABASE;User Id=USER_ID;Password=PASSWORD;",
-    "Development": "Server=SERVER;Port=PORT;Database=DATABASE-DEV;User Id=USER_ID;Password=PASSWORD;"
+  "ConnectionString": {
+    "Production": {
+      "Server": "SERVER",
+      "Port": "PORT",
+      "Databse": "DATABASE",
+      "UserId": "USER_ID",
+      "Password": "PASSWORD"
+    },
+    "Development": {
+      "Server": "SERVER",
+      "Port": "PORT",
+      "Databse": "DATABASE",
+      "UserId": "USER_ID",
+      "Password": "PASSWORD"
+    }
   }
 }
 ```
