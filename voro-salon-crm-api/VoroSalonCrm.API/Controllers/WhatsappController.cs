@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Shared.Utils;
 
@@ -59,15 +60,29 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> ReceiveWebhook()
+        public async Task<IActionResult> ReceiveWebhook([FromBody] WhatsappWebhookDto webhook)
         {
-            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-            _logger.LogInformation("\n\nWebhook received {Timestamp}\n", timestamp);
+            if (webhook?.Object != "whatsapp_business_account")
+                return Ok();
 
-            using var reader = new StreamReader(Request.Body);
-            var body = await reader.ReadToEndAsync();
+            foreach (var entry in webhook.Entry)
+            {
+                foreach (var change in entry.Changes)
+                {
+                    if (change.Field != "messages" || change.Value?.Messages == null)
+                        continue;
 
-            _logger.LogInformation("{Body}", body);
+                    var metadata = change.Value.Metadata;
+                    var contact = change.Value.Contacts?.FirstOrDefault();
+                    var contactName = contact?.Profile?.Name ?? "Cliente";
+
+                    foreach (var message in change.Value.Messages)
+                    {
+                        var chatService = HttpContext.RequestServices.GetRequiredService<IWhatsappChatService>();
+                        await chatService.HandleMessageAsync(message, contactName, metadata.PhoneNumberId);
+                    }
+                }
+            }
 
             return Ok();
         }

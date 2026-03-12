@@ -47,6 +47,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IMailKitEmailService, MailKitEmailService>();
             services.AddScoped<IWhatsappService, WhatsappService>();
+            services.AddScoped<IWhatsappChatService, WhatsappChatService>();
 
             #region Identity Repositories
             services.AddScoped<IRoleRepository, RoleRepository>();
