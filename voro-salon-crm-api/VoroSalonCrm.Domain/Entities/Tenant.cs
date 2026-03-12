@@ -19,6 +19,12 @@ namespace VoroSalonCrm.Domain.Entities
         public string SecondaryColor { get; set; } = "#6366f1";
         public string? ContactPhone { get; set; }
         public string? ContactEmail { get; set; }
+        
+        // WhatsApp Integration
+        public bool UseWhatsappBooking { get; set; } = false;
+        public string? WhatsappPhoneNumberId { get; set; }
+        public string? WhatsappBusinessAccountId { get; set; }
+        
         public string ThemeMode { get; set; } = "system";
 
         public bool IsActive { get; set; } = true;

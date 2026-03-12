@@ -39,6 +39,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public string State { get; set; } = "START";
             public string? TenantSlug { get; set; }
             public string? TenantName { get; set; }
+            public string? WhatsappPhoneNumberId { get; set; }
+            public bool UseWhatsappBooking { get; set; }
             public Guid? ServiceId { get; set; }
             public string? ServiceName { get; set; }
             public Guid? EmployeeId { get; set; }
@@ -61,12 +63,22 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (tenant != null)
                 {
+                    if (!tenant.UseWhatsappBooking)
+                    {
+                        // Tenant has WhatsApp booking disabled
+                        return;
+                    }
+
                     session.TenantSlug = tenant.Slug;
                     session.TenantName = tenant.Name;
+                    session.WhatsappPhoneNumberId = tenant.WhatsappPhoneNumberId;
+                    session.UseWhatsappBooking = tenant.UseWhatsappBooking;
                     session.State = "START";
                 }
                 else
                 {
+                    // For global/unknown tenant lookup, we don't have UseWhatsappBooking yet
+                    // But if we are in AWAITING_TENANT, we will check it once selected
                     session.State = "AWAITING_TENANT";
                     await AskForTenantAsync(from, contactName, ct);
                     _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
@@ -79,7 +91,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 if (message.Type == "audio")
                 {
-                    await _whatsappService.SendTextMessageAsync(from, "Ainda estou aprendendo a ouvir áudios! 🎧 Por favor, pode digitar sua mensagem?", ct);
+                    await _whatsappService.SendTextMessageAsync(from, "Ainda estou aprendendo a ouvir áudios! 🎧 Por favor, pode digitar sua mensagem?", session.WhatsappPhoneNumberId, ct);
                     return;
                 }
 
@@ -132,7 +144,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling WhatsApp message for {From}", from);
-                await _whatsappService.SendTextMessageAsync(from, "Ops, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.", ct);
+                await _whatsappService.SendTextMessageAsync(from, "Ops, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.", session?.WhatsappPhoneNumberId, ct);
             }
         }
 
@@ -142,7 +154,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
             if (tenants.Count == 0)
             {
-                await _whatsappService.SendTextMessageAsync(from, "Desculpe, não encontramos estabelecimentos ativos no sistema.", ct);
+                await _whatsappService.SendTextMessageAsync(from, "Desculpe, não encontramos estabelecimentos ativos no sistema.", null, ct);
                 return;
             }
 
@@ -168,7 +180,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 }
             };
 
-            await _whatsappService.SendInteractiveMessageAsync(from, interactive, ct);
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, null, ct);
         }
 
         private async Task HandleTenantSelectionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
@@ -180,15 +192,24 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (!string.IsNullOrEmpty(slug))
             {
                 var tenant = await _tenantRepository.Query(t => t.Slug == slug).FirstOrDefaultAsync(ct);
+                
+                if (tenant == null || !tenant.UseWhatsappBooking)
+                {
+                    await _whatsappService.SendTextMessageAsync(from, "Desculpe, este estabelecimento não está aceitando agendamentos via WhatsApp no momento.", session.WhatsappPhoneNumberId, ct);
+                    return;
+                }
+
                 session.TenantSlug = slug;
-                session.TenantName = tenant?.Name ?? "Salão";
+                session.TenantName = tenant.Name;
+                session.WhatsappPhoneNumberId = tenant.WhatsappPhoneNumberId;
+                session.UseWhatsappBooking = tenant.UseWhatsappBooking;
                 session.State = "START";
 
                 await StartBookingFlowAsync(from, "Cliente", session, ct);
             }
             else
             {
-                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um estabelecimento da lista.", ct);
+                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um estabelecimento da lista.", null, ct);
             }
         }
 
@@ -198,7 +219,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
             if (!services.Any())
             {
-                await _whatsappService.SendTextMessageAsync(from, $"Olá {contactName}! No momento não temos serviços disponíveis para agendamento.", ct);
+                await _whatsappService.SendTextMessageAsync(from, $"Olá {contactName}! No momento não temos serviços disponíveis para agendamento.", session.WhatsappPhoneNumberId, ct);
                 return;
             }
 
@@ -220,7 +241,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 action = new { buttons }
             };
 
-            await _whatsappService.SendInteractiveMessageAsync(from, interactive, ct);
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
             session.State = "AWAITING_SERVICE";
         }
 
@@ -232,7 +253,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             else if (message.Type == "text")
             {
                 // Simple text matching fallback could be implemented here
-                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um dos serviços clicando nos botões acima.", ct);
+                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um dos serviços clicando nos botões acima.", session.WhatsappPhoneNumberId, ct);
                 return;
             }
 
@@ -275,7 +296,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     action = new { buttons }
                 };
 
-                await _whatsappService.SendInteractiveMessageAsync(from, interactive, ct);
+                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
                 session.State = "AWAITING_EMPLOYEE";
             }
         }
@@ -299,7 +320,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
             else
             {
-                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um profissional nos botões.", ct);
+                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um profissional nos botões.", session.WhatsappPhoneNumberId, ct);
                 return;
             }
 
@@ -328,7 +349,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 action = new { buttons }
             };
 
-            await _whatsappService.SendInteractiveMessageAsync(from, interactive, ct);
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
         }
 
         private async Task HandleDateSelectionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
@@ -346,7 +367,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (!availableSlots.Any())
                 {
-                    await _whatsappService.SendTextMessageAsync(from, "Desculpe, não há horários disponíveis para esta data. Por favor, escolha outro dia.", ct);
+                    await _whatsappService.SendTextMessageAsync(from, "Desculpe, não há horários disponíveis para esta data. Por favor, escolha outro dia.", session.WhatsappPhoneNumberId, ct);
                     await AskForDateAsync(from, session, ct);
                     return;
                 }
@@ -373,12 +394,12 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     }
                 };
 
-                await _whatsappService.SendInteractiveMessageAsync(from, interactive, ct);
+                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
                 session.State = "AWAITING_TIME";
             }
             else
             {
-                await _whatsappService.SendTextMessageAsync(from, "Por favor, escolha uma data válida clicando nos botões.", ct);
+                await _whatsappService.SendTextMessageAsync(from, "Por favor, escolha uma data válida clicando nos botões.", session.WhatsappPhoneNumberId, ct);
             }
         }
 
@@ -412,7 +433,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     action = new { buttons }
                 };
 
-                await _whatsappService.SendInteractiveMessageAsync(from, interactive, ct);
+                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
                 session.State = "AWAITING_CONFIRMATION";
             }
         }
@@ -443,17 +464,17 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (result.Success)
                 {
-                    await _whatsappService.SendTextMessageAsync(from, $"✅ *Agendamento Confirmado!*\n\n{contactName}, seu horário para {session.ServiceName} em *{session.TenantName}* foi marcado para o dia {session.SelectedDate:dd/MM} às {session.SelectedTime}. Esperamos por você!", ct);
+                    await _whatsappService.SendTextMessageAsync(from, $"✅ *Agendamento Confirmado!*\n\n{contactName}, seu horário para {session.ServiceName} em *{session.TenantName}* foi marcado para o dia {session.SelectedDate:dd/MM} às {session.SelectedTime}. Esperamos por você!", session.WhatsappPhoneNumberId, ct);
                 }
                 else
                 {
-                    await _whatsappService.SendTextMessageAsync(from, "Desculpe, não conseguimos concluir seu agendamento. Por favor, tente novamente.", ct);
+                    await _whatsappService.SendTextMessageAsync(from, "Desculpe, não conseguimos concluir seu agendamento. Por favor, tente novamente.", session.WhatsappPhoneNumberId, ct);
                 }
                 session.State = "COMPLETED";
             }
             else
             {
-                await _whatsappService.SendTextMessageAsync(from, "Agendamento cancelado. Se precisar de algo mais, é só chamar!", ct);
+                await _whatsappService.SendTextMessageAsync(from, "Agendamento cancelado. Se precisar de algo mais, é só chamar!", session.WhatsappPhoneNumberId, ct);
                 session.State = "COMPLETED";
             }
         }

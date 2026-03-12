@@ -25,11 +25,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             _logger = logger;
         }
 
-        public async Task<bool> SendTemplateMessageAsync(WhatsappTemplateMessageDto message, CancellationToken ct = default)
+        public async Task<bool> SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? phoneIdOverride = null, CancellationToken ct = default)
         {
-            var phoneId = _config.Whatsapp.PhoneId;
-            var url = $"https://graph.facebook.com/v22.0/{phoneId}/messages";
-            
             var payload = new 
             {
                 messaging_product = "whatsapp",
@@ -53,10 +50,11 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 }
             };
             
-            return await SendToWhatsappAsync(payload, ct);
+            return await SendToWhatsappAsync(payload, phoneIdOverride, ct);
         }
+#pragma warning restore CS1998
 
-        public async Task<bool> SendTextMessageAsync(string to, string text, CancellationToken ct = default)
+        public async Task<bool> SendTextMessageAsync(string to, string text, string? phoneIdOverride = null, CancellationToken ct = default)
         {
             var payload = new
             {
@@ -67,10 +65,10 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 text = new { body = text }
             };
 
-            return await SendToWhatsappAsync(payload, ct);
+            return await SendToWhatsappAsync(payload, phoneIdOverride, ct);
         }
 
-        public async Task<bool> SendInteractiveMessageAsync(string to, object interactive, CancellationToken ct = default)
+        public async Task<bool> SendInteractiveMessageAsync(string to, object interactive, string? phoneIdOverride = null, CancellationToken ct = default)
         {
             var payload = new
             {
@@ -81,12 +79,12 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 interactive
             };
 
-            return await SendToWhatsappAsync(payload, ct);
+            return await SendToWhatsappAsync(payload, phoneIdOverride, ct);
         }
 
-        private async Task<bool> SendToWhatsappAsync(object payload, CancellationToken ct)
+        private async Task<bool> SendToWhatsappAsync(object payload, string? phoneIdOverride, CancellationToken ct)
         {
-            var phoneId = _config.Whatsapp.PhoneId;
+            var phoneId = phoneIdOverride ?? _config.Whatsapp.PhoneId;
             var url = $"https://graph.facebook.com/v22.0/{phoneId}/messages";
 
             using var request = new HttpRequestMessage(HttpMethod.Post, url);

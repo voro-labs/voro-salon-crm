@@ -18,14 +18,14 @@
     "Production": {
       "Server": "SERVER",
       "Port": "PORT",
-      "Databse": "DATABASE",
+      "Database": "DATABASE",
       "UserId": "USER_ID",
       "Password": "PASSWORD"
     },
     "Development": {
       "Server": "SERVER",
       "Port": "PORT",
-      "Databse": "DATABASE",
+      "Database": "DATABASE",
       "UserId": "USER_ID",
       "Password": "PASSWORD"
     }
