@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using VoroSalonCrm.Application.DTOs.Integration;
@@ -5,8 +7,6 @@ using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
-using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace VoroSalonCrm.Infrastructure.Integration
 {
@@ -38,6 +38,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         {
             public string State { get; set; } = "START";
             public string? TenantSlug { get; set; }
+            public string? TenantName { get; set; }
             public Guid? ServiceId { get; set; }
             public string? ServiceName { get; set; }
             public Guid? EmployeeId { get; set; }
@@ -54,13 +55,14 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (!_cache.TryGetValue(sessionKey, out BookingSession? session) || session == null)
             {
                 session = new BookingSession();
-                
+
                 // Try to find tenant by receiving phone number
                 var tenant = await _tenantRepository.Query(t => t.IsActive && t.ContactPhone == displayPhoneNumber).FirstOrDefaultAsync(ct);
-                
+
                 if (tenant != null)
                 {
                     session.TenantSlug = tenant.Slug;
+                    session.TenantName = tenant.Name;
                     session.State = "START";
                 }
                 else
@@ -73,7 +75,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
 
             // Handle user response based on current state
-            try 
+            try
             {
                 if (message.Type == "audio")
                 {
@@ -138,7 +140,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         {
             var tenants = await _tenantRepository.Query(t => t.IsActive).Take(10).ToListAsync(ct);
 
-            if (!tenants.Any())
+            if (tenants.Count == 0)
             {
                 await _whatsappService.SendTextMessageAsync(from, "Desculpe, não encontramos estabelecimentos ativos no sistema.", ct);
                 return;
@@ -154,7 +156,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var interactive = new
             {
                 type = "list",
-                header = new { type = "text", text = "Voro Salon" },
+                header = new { type = "text", text = "VoroLabs" },
                 body = new { text = $"Olá {contactName}! Qual estabelecimento você deseja agendar hoje?" },
                 action = new
                 {
@@ -177,11 +179,11 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
             if (!string.IsNullOrEmpty(slug))
             {
+                var tenant = await _tenantRepository.Query(t => t.Slug == slug).FirstOrDefaultAsync(ct);
                 session.TenantSlug = slug;
+                session.TenantName = tenant?.Name ?? "Salão";
                 session.State = "START";
-                
-                // Get contact name from cache or profile if possible, otherwise use generic
-                // For now, let's just trigger the flow
+
                 await StartBookingFlowAsync(from, "Cliente", session, ct);
             }
             else
@@ -213,8 +215,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var interactive = new
             {
                 type = "button",
-                header = new { type = "text", text = "Voro Salon" },
-                body = new { text = $"Olá {contactName}! Bem-vindo ao Voro Salon. Qual serviço você gostaria de agendar?" },
+                header = new { type = "text", text = session.TenantName },
+                body = new { text = $"Olá {contactName}! Bem-vindo ao {session.TenantName}. Qual serviço você gostaria de agendar?" },
                 action = new { buttons }
             };
 
@@ -308,7 +310,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private async Task AskForDateAsync(string from, BookingSession session, CancellationToken ct)
         {
             var dates = Enumerable.Range(0, 5).Select(i => DateTime.Today.AddDays(i)).ToList();
-            
+
             var buttons = dates.Take(3).Select(d => new
             {
                 type = "reply",
@@ -338,7 +340,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (DateTime.TryParseExact(dateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             {
                 session.SelectedDate = date;
-                
+
                 var slots = await _publicBookingService.GetAvailableSlotsAsync(session.TenantSlug!, date, session.ServiceId!.Value, session.EmployeeId);
                 var availableSlots = slots.Where(s => s.IsAvailable).Take(10).ToList();
 
@@ -359,7 +361,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 var interactive = new
                 {
                     type = "list",
-                    header = new { type = "text", text = "Horários" },
+                    header = new { type = "text", text = session.TenantName },
                     body = new { text = "Selecione o melhor horário para você:" },
                     action = new
                     {
@@ -389,7 +391,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (!string.IsNullOrEmpty(timeStr))
             {
                 session.SelectedTime = timeStr;
-                
+
                 var summary = $"*Resumo do Agendamento*\n\n" +
                               $"*Serviço:* {session.ServiceName}\n" +
                               $"*Profissional:* {session.EmployeeName ?? "Qualquer"}\n" +
@@ -441,7 +443,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (result.Success)
                 {
-                    await _whatsappService.SendTextMessageAsync(from, $"✅ *Agendamento Confirmado!*\n\n{contactName}, seu horário para {session.ServiceName} foi marcado para o dia {session.SelectedDate:dd/MM} às {session.SelectedTime}. Esperamos por você!", ct);
+                    await _whatsappService.SendTextMessageAsync(from, $"✅ *Agendamento Confirmado!*\n\n{contactName}, seu horário para {session.ServiceName} em *{session.TenantName}* foi marcado para o dia {session.SelectedDate:dd/MM} às {session.SelectedTime}. Esperamos por você!", ct);
                 }
                 else
                 {
