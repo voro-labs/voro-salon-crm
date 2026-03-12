@@ -13,22 +13,24 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
         {
             var config = configuration.Get<ConfigUtil>();
 
-            var connectionString = "Server={0};Port={1};Database={2};Username={3};Password={4}";
+            var connectionString = "";
+
+            var baseConnectionString = "Server={0};Port={1};Database={2};Username={3};Password={4}";
 
             if (env.IsDevelopment())
             {
-                connectionString = string.Format(connectionString, config?.ConnectionString?.Development?.Server, config?.ConnectionString?.Development?.Port, config?.ConnectionString?.Development?.Database, config?.ConnectionString?.Development?.UserId, config?.ConnectionString?.Development?.Password);
+                connectionString = string.Format(baseConnectionString, config?.ConnectionString?.Development?.Server, config?.ConnectionString?.Development?.Port, config?.ConnectionString?.Development?.Database, config?.ConnectionString?.Development?.UserId, config?.ConnectionString?.Development?.Password);
             }
             else
             {
-                connectionString = string.Format(connectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
+                connectionString = string.Format(baseConnectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
             }
 
             // FORCE DEV
-            // connectionString = string.Format(connectionString, config?.ConnectionString?.Development?.Server, config?.ConnectionString?.Development?.Port, config?.ConnectionString?.Development?.Database, config?.ConnectionString?.Development?.UserId, config?.ConnectionString?.Development?.Password);
+            // connectionString = string.Format(baseConnectionString, config?.ConnectionString?.Development?.Server, config?.ConnectionString?.Development?.Port, config?.ConnectionString?.Development?.Database, config?.ConnectionString?.Development?.UserId, config?.ConnectionString?.Development?.Password);
 
             // FORCE PROD
-            // connectionString = string.Format(connectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
+            // connectionString = string.Format(baseConnectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
 
             services.AddDbContext<JasmimDbContext>(options =>
                 options.UseNpgsql(connectionString));
