@@ -13,20 +13,22 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
         {
             var config = configuration.Get<ConfigUtil>();
 
-            var connectionString = $"{config?.ConnectionDB}";
+            var connectionString = "Server={0};Port={1};Database={2};Username={3};Password={4}";
 
-            if (string.IsNullOrEmpty(connectionString))
+            if (env.IsDevelopment())
             {
-                connectionString = env.IsDevelopment()
-                    ? config?.ConnectionString?.Development
-                    : config?.ConnectionString?.Production;
+                connectionString = string.Format(connectionString, config?.ConnectionString?.Development?.Server, config?.ConnectionString?.Development?.Port, config?.ConnectionString?.Development?.Database, config?.ConnectionString?.Development?.UserId, config?.ConnectionString?.Development?.Password);
+            }
+            else
+            {
+                connectionString = string.Format(connectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
             }
 
-            // Force to use development connection string
-            // connectionString = config?.ConnectionString?.Development;
+            // FORCE DEV
+            // connectionString = string.Format(connectionString, config?.ConnectionString?.Development?.Server, config?.ConnectionString?.Development?.Port, config?.ConnectionString?.Development?.Database, config?.ConnectionString?.Development?.UserId, config?.ConnectionString?.Development?.Password);
 
-            // Force to use production connection string
-            // connectionString = config?.ConnectionString?.Production;
+            // FORCE PROD
+            // connectionString = string.Format(connectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
 
             services.AddDbContext<JasmimDbContext>(options =>
                 options.UseNpgsql(connectionString));
