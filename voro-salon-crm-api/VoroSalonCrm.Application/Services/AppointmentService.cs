@@ -176,6 +176,14 @@ namespace VoroSalonCrm.Application.Services
                                         new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") },
                                         new() { Type = "text", Text = localTime.ToString("HH:mm") }
                                     ]
+                                },
+                                new() {
+                                    Type = "button",
+                                    SubType = "url",
+                                    Index = "0",
+                                    Parameters = [
+                                        new() { Type = "text", Text = appointment.Id.ToString() }
+                                    ]
                                 }
                             ]
                         }
@@ -200,6 +208,14 @@ namespace VoroSalonCrm.Application.Services
                                         new() { Type = "text", Text = tenantName },
                                         new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") },
                                         new() { Type = "text", Text = localTime.ToString("HH:mm") }
+                                    ]
+                                },
+                                new() {
+                                    Type = "button",
+                                    SubType = "url",
+                                    Index = "0",
+                                    Parameters = [
+                                        new() { Type = "text", Text = appointment.Id.ToString() }
                                     ]
                                 }
                             ]

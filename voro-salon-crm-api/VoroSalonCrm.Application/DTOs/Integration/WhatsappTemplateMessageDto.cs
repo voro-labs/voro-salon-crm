@@ -21,6 +21,8 @@ namespace VoroSalonCrm.Application.DTOs.Integration
     public class WhatsappComponentDto
     {
         public string Type { get; set; } = "body";
+        public string? SubType { get; set; }
+        public string? Index { get; set; }
         public List<WhatsappParameterDto> Parameters { get; set; } = new();
     }
 

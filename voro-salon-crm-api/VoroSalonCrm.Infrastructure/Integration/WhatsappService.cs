@@ -40,6 +40,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     components = message.Template.Components?.Select(c => new
                     {
                         type = c.Type,
+                        sub_type = c.SubType,
+                        index = c.Index,
                         parameters = c.Parameters.Select(p => new
                         {
                             type = p.Type,
