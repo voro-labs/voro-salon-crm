@@ -11,7 +11,7 @@ using System.Globalization;
 
 namespace VoroSalonCrm.API.Controllers
 {
-    [Route("api/v{version:version}/[controller]")]
+    [Route("api/[controller]")]
     [Tags("WhatsApp Integration")]
     [ApiController]
     [AllowAnonymous]
@@ -32,15 +32,26 @@ namespace VoroSalonCrm.API.Controllers
             [FromQuery(Name = "hub.challenge")] string? challenge,
             [FromQuery(Name = "hub.verify_token")] string? token)
         {
-            var verifyToken = _integrationUtil.Whatsapp.VerifyToken;
+            _logger.LogInformation("Webhook Verification Request Received: mode={Mode}, token={Token}, challenge={Challenge}", mode, token, challenge);
+
+            var verifyToken = _integrationUtil?.Whatsapp?.VerifyToken;
+
+            if (string.IsNullOrEmpty(verifyToken))
+            {
+                _logger.LogError("WhatsApp VerifyToken is not configured in IntegrationSettings.");
+                return StatusCode(500, "Configuration Error");
+            }
 
             if (mode == "subscribe" && token == verifyToken)
             {
-                _logger.LogInformation("WEBHOOK VERIFIED");
+                _logger.LogInformation("WEBHOOK VERIFIED successfully");
 
+                // Facebook expects the challenge to be returned as plain text. 
+                // Using ContentResult ensures it is returned as a direct string without extra formatting.
                 return Content(challenge ?? string.Empty, "text/plain");
             }
 
+            _logger.LogWarning("Webhook Verification Failed: Token mismatch or invalid mode.");
             return StatusCode(403);
         }
 
