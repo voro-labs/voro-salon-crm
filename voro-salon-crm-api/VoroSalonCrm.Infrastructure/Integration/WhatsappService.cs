@@ -53,6 +53,42 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 }
             };
             
+            return await SendToWhatsappAsync(payload, ct);
+        }
+
+        public async Task<bool> SendTextMessageAsync(string to, string text, CancellationToken ct = default)
+        {
+            var payload = new
+            {
+                messaging_product = "whatsapp",
+                recipient_type = "individual",
+                to,
+                type = "text",
+                text = new { body = text }
+            };
+
+            return await SendToWhatsappAsync(payload, ct);
+        }
+
+        public async Task<bool> SendInteractiveMessageAsync(string to, object interactive, CancellationToken ct = default)
+        {
+            var payload = new
+            {
+                messaging_product = "whatsapp",
+                recipient_type = "individual",
+                to,
+                type = "interactive",
+                interactive
+            };
+
+            return await SendToWhatsappAsync(payload, ct);
+        }
+
+        private async Task<bool> SendToWhatsappAsync(object payload, CancellationToken ct)
+        {
+            var phoneId = _config.Whatsapp.PhoneId;
+            var url = $"https://graph.facebook.com/v22.0/{phoneId}/messages";
+
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _config.Whatsapp.Token);
 
