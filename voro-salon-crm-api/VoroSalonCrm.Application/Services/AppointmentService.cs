@@ -181,7 +181,7 @@ namespace VoroSalonCrm.Application.Services
                         }
                     };
 
-                    await _whatsappService.SendTemplateMessageAsync(templateMsg);
+                    await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
                 }
                 else if (status == AppointmentStatus.Cancelled)
                 {
@@ -189,7 +189,7 @@ namespace VoroSalonCrm.Application.Services
                     {
                         To = phone,
                         Template = new() {
-                            Name = "appointment_cancelled",
+                            Name = "appointment_cancellation_1",
                             Components =
                             [
                                 new() {
@@ -197,14 +197,16 @@ namespace VoroSalonCrm.Application.Services
                                     Parameters =
                                     [
                                         new() { Type = "text", Text = appointment.Client.Name },
-                                        new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") }
+                                        new() { Type = "text", Text = tenantName },
+                                        new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") },
+                                        new() { Type = "text", Text = localTime.ToString("HH:mm") }
                                     ]
                                 }
                             ]
                         }
                     };
 
-                    await _whatsappService.SendTemplateMessageAsync(templateMsg);
+                    await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
                 }
             }
 
