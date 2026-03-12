@@ -12,6 +12,7 @@ using VoroSalonCrm.Shared.Utils;
 namespace VoroSalonCrm.API.Controllers
 {
     [Route("api/v{version:version}/[controller]")]
+    [Route("api/[controller]")]
     [Tags("WhatsApp Integration")]
     [ApiController]
     [AllowAnonymous]
@@ -39,8 +40,10 @@ namespace VoroSalonCrm.API.Controllers
             if (string.IsNullOrEmpty(verifyToken))
             {
                 _logger.LogError("WhatsApp VerifyToken is not configured in IntegrationSettings.");
-                return StatusCode(500, "Configuration Error");
+                return StatusCode(500, "Configuration Error: VerifyToken not set.");
             }
+
+            _logger.LogInformation("Comparing tokens: Received={ReceivedToken}, Expected={ExpectedToken}", token, verifyToken);
 
             if (mode == "subscribe" && token == verifyToken)
             {
@@ -51,7 +54,7 @@ namespace VoroSalonCrm.API.Controllers
                 return Content(challenge ?? string.Empty, "text/plain");
             }
 
-            _logger.LogWarning("Webhook Verification Failed: Token mismatch or invalid mode.");
+            _logger.LogWarning("Webhook Verification Failed: mode={Mode}, token_match={TokenMatch}", mode, token == verifyToken);
             return StatusCode(403);
         }
 
