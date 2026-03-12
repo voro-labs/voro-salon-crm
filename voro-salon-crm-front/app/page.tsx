@@ -112,6 +112,11 @@ export default function DashboardPage() {
 
   const handleWhatsApp = (apt: any, newStatus: number) => {
     if (newStatus !== 1 && newStatus !== 2) return
+
+    if (tenant?.useWhatsappBooking) {
+      return
+    }
+
     if (!apt.clientPhone) {
       toast.warning("Cliente sem telefone cadastrado — não foi possível abrir o WhatsApp.")
       return
@@ -128,7 +133,7 @@ export default function DashboardPage() {
     } else {
       message = `Olá ${clientName}! Obrigado pelo seu agendamento de ${serviceName}. Foi um prazer atendê-lo(a)! Qualquer dúvida, estamos à disposição. 🙏`
     }
-    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
     window.open(url, "_blank")
     toast.info("WhatsApp aberto com mensagem pré-preenchida.")
   }

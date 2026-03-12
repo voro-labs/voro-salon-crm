@@ -152,7 +152,9 @@ namespace VoroSalonCrm.Application.Services
             if (oldStatus != status && appointment.Client != null && !string.IsNullOrWhiteSpace(appointment.Client.Phone))
             {
                 var tenant = await _tenantRepository.GetByIdAsync(appointment.TenantId);
-                var tenantName = tenant?.Name ?? "Voro Salon";
+                if (tenant == null || !tenant.UseWhatsappBooking) return true;
+
+                var tenantName = tenant.Name;
                 var phone = appointment.Client.Phone;
 
                 var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
