@@ -158,12 +158,14 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 return;
             }
 
-            var rows = tenants.Select(t => new
-            {
-                id = t.Slug,
-                title = t.Name.Length > 24 ? t.Name.Substring(0, 21) + "..." : t.Name,
-                description = "Clique para selecionar"
-            }).ToList();
+            var rows = tenants
+                .Where(t => t.UseWhatsappBooking)
+                .Select(t => new
+                {
+                    id = t.Slug,
+                    title = t.Name.Length > 24 ? $"{t.Name[..21]}..." : t.Name,
+                    description = "Clique para selecionar"
+                }).ToList();
 
             var interactive = new
             {
@@ -192,7 +194,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (!string.IsNullOrEmpty(slug))
             {
                 var tenant = await _tenantRepository.Query(t => t.Slug == slug).FirstOrDefaultAsync(ct);
-                
+
                 if (tenant == null || !tenant.UseWhatsappBooking)
                 {
                     await _whatsappService.SendTextMessageAsync(from, "Desculpe, este estabelecimento não está aceitando agendamentos via WhatsApp no momento.", session.WhatsappPhoneNumberId, ct);
@@ -229,7 +231,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 reply = new
                 {
                     id = s.Id.ToString(),
-                    title = s.Name.Length > 20 ? s.Name.Substring(0, 17) + "..." : s.Name
+                    title = s.Name.Length > 20 ? $"{s.Name[..17]}..." : s.Name
                 }
             }).ToList();
 
@@ -285,7 +287,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     reply = new
                     {
                         id = e.Id.ToString(),
-                        title = e.Name.Length > 20 ? e.Name.Substring(0, 17) + "..." : e.Name
+                        title = e.Name.Length > 20 ? $"{e.Name[..17]}..." : e.Name
                     }
                 }));
 
@@ -365,7 +367,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 var slots = await _publicBookingService.GetAvailableSlotsAsync(session.TenantSlug!, date, session.ServiceId!.Value, session.EmployeeId);
                 var availableSlots = slots.Where(s => s.IsAvailable).Take(10).ToList();
 
-                if (!availableSlots.Any())
+                if (availableSlots.Count == 0)
                 {
                     await _whatsappService.SendTextMessageAsync(from, "Desculpe, não há horários disponíveis para esta data. Por favor, escolha outro dia.", session.WhatsappPhoneNumberId, ct);
                     await AskForDateAsync(from, session, ct);
