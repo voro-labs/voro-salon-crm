@@ -1,22 +1,22 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Shared.Utils;
-using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace VoroSalonCrm.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/v{version:version}/[controller]")]
     [Tags("WhatsApp Integration")]
     [ApiController]
     [AllowAnonymous]
     public class WhatsappController(
-        IOptions<IntegrationUtil> integrationUtil, 
+        IOptions<IntegrationUtil> integrationUtil,
         ILogger<WhatsappController> logger,
         IPublicBookingService publicBookingService,
         ITenantRepository tenantRepository) : ControllerBase
@@ -107,8 +107,8 @@ namespace VoroSalonCrm.API.Controllers
         private async Task<IActionResult> LoadInitialDataAsync(string tenantSlug)
         {
             var servicesDto = await _publicBookingService.GetServicesByTenantAsync(tenantSlug);
-            
-            var services = servicesDto.Select(s => new 
+
+            var services = servicesDto.Select(s => new
             {
                 id = s.Id.ToString(),
                 title = $"{s.Name} - {s.Price:C}"
@@ -129,13 +129,13 @@ namespace VoroSalonCrm.API.Controllers
                 return BadRequest("Invalid service Id");
 
             var employeesDto = await _publicBookingService.GetEmployeesByServiceAsync(tenantSlug, serviceId);
-            
+
             var employees = new List<object>
             {
                 new { id = "any", title = "Nenhum em específico" }
             };
 
-            employees.AddRange(employeesDto.Select(e => new 
+            employees.AddRange(employeesDto.Select(e => new
             {
                 id = e.Id.ToString(),
                 title = e.Name
@@ -152,7 +152,7 @@ namespace VoroSalonCrm.API.Controllers
 
         private async Task<IActionResult> DateSelectedAsync(string tenantSlug, FlowRequestDto request)
         {
-            if (!Guid.TryParse(request.ServiceId, out var serviceId) || 
+            if (!Guid.TryParse(request.ServiceId, out var serviceId) ||
                 !DateTime.TryParseExact(request.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             {
                 return BadRequest("Invalid service Id or date");
@@ -166,8 +166,8 @@ namespace VoroSalonCrm.API.Controllers
             }
 
             var slotsDto = await _publicBookingService.GetAvailableSlotsAsync(tenantSlug, date, serviceId, employeeId);
-            
-            var times = slotsDto.Where(s => s.IsAvailable).Select(s => new 
+
+            var times = slotsDto.Where(s => s.IsAvailable).Select(s => new
             {
                 id = s.StartTime.ToString("HH:mm"),
                 title = s.StartTime.ToString("HH:mm")
@@ -184,7 +184,7 @@ namespace VoroSalonCrm.API.Controllers
 
         private async Task<IActionResult> ConfirmBookingAsync(string tenantSlug, FlowRequestDto request)
         {
-            if (!Guid.TryParse(request.ServiceId, out var serviceId) || 
+            if (!Guid.TryParse(request.ServiceId, out var serviceId) ||
                 !DateTime.TryParseExact($"{request.Date} {request.Time}", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var scheduledDateTime))
             {
                 return BadRequest("Invalid data");
