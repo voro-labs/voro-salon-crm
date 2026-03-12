@@ -33,7 +33,8 @@ jobs:
       - name: Create Fly app (if not exists)
         run: |
           if ! flyctl status -a ${{ steps.vars.outputs.APP_NAME }} >/dev/null 2>&1; then
-            flyctl apps create ${{ steps.vars.outputs.APP_NAME }} --org vorolabs
+            flyctl apps create ${{ steps.vars.outputs.APP_NAME }}
+            flyctl apps move ${{ steps.vars.outputs.APP_NAME }} --org ${{ secrets.FLY_ORG }}
           else
             echo "App ${{ steps.vars.outputs.APP_NAME }} already exists."
           fi
