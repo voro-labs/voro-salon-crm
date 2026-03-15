@@ -390,33 +390,43 @@ export default function DashboardPage() {
 
                       return (
                         <div key={apt.id} className="p-4 hover:bg-accent/5 transition-colors group">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex flex-col gap-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-primary flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {format(date, "HH:mm")}
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4 min-w-0 flex-1">
+                              <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+                                <span className="text-[10px] font-bold uppercase leading-none">
+                                  {format(date, "MMM", { locale: ptBR })}
                                 </span>
-                                <Badge variant="outline" className={`text-[10px] px-1 h-4 ${config.color} border-none`}>
-                                  {config.label}
-                                </Badge>
+                                <span className="text-lg font-bold leading-tight">
+                                  {format(date, "dd")}
+                                </span>
                               </div>
-                              <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {apt.serviceName || apt.description || "Sem serviço definido"}
-                              </p>
+                              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                <div className="flex flex-col xs:flex-row xs:items-center gap-1.5">
+                                  <span className="text-xs font-bold text-primary flex items-center gap-1 shrink-0">
+                                    <Clock className="h-3 w-3" />
+                                    {format(date, "HH:mm")}
+                                  </span>
+                                  <Badge variant="outline" className={`text-[10px] px-1.5 h-4 w-fit ${config.color} border-none shrink-0`}>
+                                    {config.label}
+                                  </Badge>
+                                </div>
+                                <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {apt.serviceName || apt.description || "Sem serviço definido"}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
+                            <div className="flex flex-col items-end gap-2 shrink-0">
                               <Select
                                 key={apt.id}
                                 value={String(apt.status)}
                                 onValueChange={(v) => handleStatusUpdate(apt.id, v)}
                                 disabled={isAptUpdating}
                               >
-                                <SelectTrigger className="h-7 w-[100px] text-[10px] bg-transparent border-border/40">
+                                <SelectTrigger className="h-7 w-[100px] text-[10px] bg-transparent border-border/40 shrink-0">
                                   {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <SelectValue />}
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="min-w-[120px]">
                                   {Object.entries(statusConfig).map(([key, cfg]) => (
                                     <SelectItem key={key} value={key} className="text-[10px]">
                                       {cfg.label}
