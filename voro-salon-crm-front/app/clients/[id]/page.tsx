@@ -39,6 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -58,6 +64,9 @@ import { toast } from "sonner"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { ClipboardList, History } from "lucide-react"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -95,6 +104,10 @@ export default function ClienteDetailPage() {
     `${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`,
     fetcher
   )
+  const { data: anamnesisHistory, isLoading: anamnesisLoading } = useSWR(
+    `${API_CONFIG.ENDPOINTS.ANAMNESIS}/client/${clientId}`,
+    fetcher
+  )
   const { data: catalogServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
 
   const [editOpen, setEditOpen] = useState(false)
@@ -111,6 +124,11 @@ export default function ClienteDetailPage() {
     notes: "",
   })
   const [svcSubmitting, setSvcSubmitting] = useState(false)
+
+  const [anamnesisOpen, setAnamnesisOpen] = useState(false)
+  const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
+  const [anamnesisSubmitting, setAnamnesisSubmitting] = useState(false)
+
   const [deleting, setDeleting] = useState(false)
 
   const services = servicesData ?? []
@@ -213,6 +231,40 @@ export default function ClienteDetailPage() {
       toast.error("Erro de conexao.")
     } finally {
       setSvcSubmitting(false)
+    }
+  }
+  
+  async function handleAnamnesisSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (anamnesisResponses.length === 0) {
+      toast.error("Por favor, preencha pelo menos uma resposta.")
+      return
+    }
+    setAnamnesisSubmitting(true)
+    try {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.ANAMNESIS}`, {
+        method: "POST",
+        body: JSON.stringify({
+          clientId: clientId,
+          professionalId: "00000000-0000-0000-0000-000000000000",
+          date: new Date().toISOString(),
+          responses: anamnesisResponses,
+          signatures: [],
+          evidences: []
+        }),
+      })
+      if (res.hasError) {
+        toast.error(res.message || "Erro ao salvar anamnese.")
+        return
+      }
+      toast.success("Anamnese salva com sucesso!")
+      setAnamnesisOpen(false)
+      setAnamnesisResponses([])
+      mutate(`${API_CONFIG.ENDPOINTS.ANAMNESIS}/client/${clientId}`)
+    } catch {
+      toast.error("Erro de conexao.")
+    } finally {
+      setAnamnesisSubmitting(false)
     }
   }
 
@@ -380,214 +432,326 @@ export default function ClienteDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Service History */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-foreground">Historico de Serviços</CardTitle>
-              <CardDescription>Serviços realizados para este cliente</CardDescription>
-            </div>
-            <Dialog open={svcOpen} onOpenChange={setSvcOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Registrar
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Registrar Serviço</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAddService} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="svc-catalog">Serviço Predefinido</Label>
-                    <Select
-                      key={catalogServices?.id}
-                      value={svcForm.serviceId || "none"}
-                      onValueChange={(val) => {
-                        if (val === "none") {
-                          setSvcForm((p) => ({ ...p, serviceId: "none" }))
-                        } else {
-                          const selected = (catalogServices || []).find((s: any) => s.id === val)
-                          if (selected) {
-                            setSvcForm((p) => ({
-                              ...p,
-                              serviceId: val,
-                              description: selected.name,
-                              amount: selected.price,
-                            }))
-                          }
-                        }
-                      }}
-                    >
-                      <SelectTrigger id="svc-catalog" className="w-full">
-                        <SelectValue placeholder="Selecione um serviço (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum (personalizado)</SelectItem>
-                        {(catalogServices || []).map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name} - {formatCurrency(s.price)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+        {/* Tabs for History */}
+        <Tabs defaultValue="services" className="w-full">
+          <TabsList className="w-full sm:w-auto grid grid-cols-2">
+            <TabsTrigger value="services">
+              <CalendarDays className="h-4 w-4" />
+              Serviços
+            </TabsTrigger>
+            <TabsTrigger value="anamnesis">
+              <ClipboardList className="h-4 w-4" />
+              Anamnese
+            </TabsTrigger>
+          </TabsList>
 
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="svc-desc">Descrição *</Label>
-                    <Input
-                      id="svc-desc"
-                      placeholder="Ex: Corte + Escova"
-                      value={svcForm.description}
-                      onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="svc-price">Valor (R$)</Label>
-                      <CurrencyInput
-                        id="svc-price"
-                        value={svcForm.amount}
-                        onChange={(v) => setSvcForm((p) => ({ ...p, amount: v }))}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="svc-date">Data</Label>
-                      <Input
-                        id="svc-date"
-                        type="date"
-                        value={svcForm.serviceDate}
-                        onChange={(e) =>
-                          setSvcForm((p) => ({ ...p, serviceDate: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="svc-notes">Observações</Label>
-                    <Textarea
-                      id="svc-notes"
-                      rows={2}
-                      placeholder="Anotações sobre o serviço..."
-                      value={svcForm.notes}
-                      onChange={(e) => setSvcForm((p) => ({ ...p, notes: e.target.value }))}
-                    />
-                  </div>
-                  <DialogFooter className="gap-2 sm:gap-0">
-                    <DialogClose asChild>
-                      <Button type="button" variant="outline">
-                        Cancelar
-                      </Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={svcSubmitting}>
-                      {svcSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Salvar
+          <TabsContent value="services" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-foreground">Historico de Serviços</CardTitle>
+                  <CardDescription>Serviços realizados para este cliente</CardDescription>
+                </div>
+                <Dialog open={svcOpen} onOpenChange={setSvcOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="mr-1.5 h-3.5 w-3.5" />
+                      Registrar
                     </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            {svcLoading ? (
-              <div className="flex flex-col gap-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                    <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
-                    <div className="flex flex-1 flex-col gap-1.5">
-                      <div className="h-4 w-36 animate-pulse rounded bg-muted" />
-                      <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : services.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-center">
-                <Clock className="mb-3 h-10 w-10 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">Nenhum serviço registrado ainda.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {services.map(
-                  (svc: {
-                    id: string
-                    description: string
-                    amount: number
-                    serviceDate: string
-                    notes: string
-                  }) => (
-                    <div
-                      key={svc.id}
-                      className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate)
-                        ? "border-primary/30 bg-primary/5"
-                        : "border-border"
-                        }`}
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                        <CalendarDays className="h-4 w-4" />
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Registrar Serviço</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddService} className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="svc-catalog">Serviço Predefinido</Label>
+                        <Select
+                          key={catalogServices?.id}
+                          value={svcForm.serviceId || "none"}
+                          onValueChange={(val) => {
+                            if (val === "none") {
+                              setSvcForm((p) => ({ ...p, serviceId: "none" }))
+                            } else {
+                              const selected = (catalogServices || []).find((s: any) => s.id === val)
+                              if (selected) {
+                                setSvcForm((p) => ({
+                                  ...p,
+                                  serviceId: val,
+                                  description: selected.name,
+                                  amount: selected.price,
+                                }))
+                              }
+                            }
+                          }}
+                        >
+                          <SelectTrigger id="svc-catalog" className="w-full">
+                            <SelectValue placeholder="Selecione um serviço (opcional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum (personalizado)</SelectItem>
+                            {(catalogServices || []).map((s: any) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name} - {formatCurrency(s.price)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate font-medium text-foreground">
-                            {svc.description}
-                          </span>
-                          {isRecent(svc.serviceDate) && (
-                            <Badge variant="outline" className="shrink-0 text-xs border-primary/30 text-primary">
-                              Recente
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                          <span>{formatDate(svc.serviceDate)}</span>
-                          {svc.amount > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Banknote className="h-3 w-3" />
-                              {formatCurrency(svc.amount)}
-                            </span>
-                          )}
-                        </div>
-                        {svc.notes && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">{svc.notes}</p>
-                        )}
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="svc-desc">Descrição *</Label>
+                        <Input
+                          id="svc-desc"
+                          placeholder="Ex: Corte + Escova"
+                          value={svcForm.description}
+                          onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))}
+                          required
+                        />
                       </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="sr-only">Excluir serviço</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="svc-price">Valor (R$)</Label>
+                          <CurrencyInput
+                            id="svc-price"
+                            value={svcForm.amount}
+                            onChange={(v) => setSvcForm((p) => ({ ...p, amount: v }))}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="svc-date">Data</Label>
+                          <Input
+                            id="svc-date"
+                            type="date"
+                            value={svcForm.serviceDate}
+                            onChange={(e) =>
+                              setSvcForm((p) => ({ ...p, serviceDate: e.target.value }))
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="svc-notes">Observações</Label>
+                        <Textarea
+                          id="svc-notes"
+                          rows={2}
+                          placeholder="Anotações sobre o serviço..."
+                          value={svcForm.notes}
+                          onChange={(e) => setSvcForm((p) => ({ ...p, notes: e.target.value }))}
+                        />
+                      </div>
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline">
+                            Cancelar
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Essa acao ira remover o registro deste serviço permanentemente.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteService(svc.id)}
-                              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
-                            >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  )
+                        </DialogClose>
+                        <Button type="submit" disabled={svcSubmitting}>
+                          {svcSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Salvar
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {svcLoading ? (
+                  <div className="flex flex-col gap-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                        <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
+                        <div className="flex flex-1 flex-col gap-1.5">
+                          <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : services.length === 0 ? (
+                  <div className="flex flex-col items-center py-8 text-center">
+                    <Clock className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">Nenhum serviço registrado ainda.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {services.map(
+                      (svc: {
+                        id: string
+                        description: string
+                        amount: number
+                        serviceDate: string
+                        notes: string
+                      }) => (
+                        <div
+                          key={svc.id}
+                          className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate)
+                            ? "border-primary/30 bg-primary/5"
+                            : "border-border"
+                            }`}
+                        >
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                            <CalendarDays className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate font-medium text-foreground">
+                                {svc.description}
+                              </span>
+                              {isRecent(svc.serviceDate) && (
+                                <Badge variant="outline" className="shrink-0 text-xs border-primary/30 text-primary">
+                                  Recente
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                              <span>{formatDate(svc.serviceDate)}</span>
+                              {svc.amount > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Banknote className="h-3 w-3" />
+                                  {formatCurrency(svc.amount)}
+                                </span>
+                              )}
+                            </div>
+                            {svc.notes && (
+                              <p className="mt-0.5 text-xs text-muted-foreground">{svc.notes}</p>
+                            )}
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="sr-only">Excluir serviço</span>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Essa acao ira remover o registro deste serviço permanentemente.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteService(svc.id)}
+                                  className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="anamnesis" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-foreground text-lg">Histórico de Anamnese</CardTitle>
+                  <CardDescription>Avaliações capilares registradas</CardDescription>
+                </div>
+                <Dialog open={anamnesisOpen} onOpenChange={setAnamnesisOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="mr-1.5 h-3.5 w-3.5" />
+                      Nova Avaliação
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col p-0">
+                    <DialogHeader className="px-6 py-4 border-b">
+                      <DialogTitle>Nova Ficha de Anamnese</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden">
+                      <ScrollArea className="h-full px-6 py-4">
+                        <AnamnesisForm onChange={setAnamnesisResponses} />
+                      </ScrollArea>
+                    </div>
+                    <DialogFooter className="px-6 py-4 border-t flex-row justify-end gap-2">
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline">Cancelar</Button>
+                      </DialogClose>
+                      <Button
+                        onClick={handleAnamnesisSubmit}
+                        disabled={anamnesisSubmitting || anamnesisResponses.length === 0}
+                      >
+                        {anamnesisSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Salvar Avaliação
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {anamnesisLoading ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i} className="h-24 w-full animate-pulse rounded-lg bg-muted" />
+                    ))}
+                  </div>
+                ) : !anamnesisHistory || anamnesisHistory.length === 0 ? (
+                  <div className="flex flex-col items-center py-12 text-center text-muted-foreground bg-muted/10 rounded-xl border border-dashed">
+                    <ClipboardList className="mb-3 h-10 w-10 opacity-30" />
+                    <p className="text-sm">Nenhuma ficha de anamnese registrada.</p>
+                    <Button
+                      variant="link"
+                      onClick={() => setAnamnesisOpen(true)}
+                      className="mt-2"
+                    >
+                      Criar primeira avaliação
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {anamnesisHistory.map((sheet: any) => (
+                      <div
+                        key={sheet.id}
+                        className="group flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-sm"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <History className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-foreground">
+                              {new Date(sheet.date).toLocaleDateString("pt-BR", {
+                                day: "2-digit",
+                                month: "long",
+                                year: "numeric",
+                              })}
+                            </p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-green-500" />
+                                {sheet.responses.length} respostas registradas
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/clients/${clientId}/anamnesis/${sheet.id}`}>
+                            Ver Detalhes
+                          </Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>

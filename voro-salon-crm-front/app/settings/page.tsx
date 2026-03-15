@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
   Save,
@@ -19,6 +20,7 @@ import {
   X,
   LayoutGrid,
   ClipboardList,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -383,6 +385,10 @@ export default function ConfiguracoesPage() {
             <TabsTrigger value="exportar">
               <Download className="mr-2 h-4 w-4" />
               Exportar
+            </TabsTrigger>
+            <TabsTrigger value="anamnesis">
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Anamnese
             </TabsTrigger>
           </TabsList>
 
@@ -806,6 +812,32 @@ export default function ConfiguracoesPage() {
                   <Button variant="outline" size="sm" onClick={() => handleExport("services")} disabled={exportingServices}>
                     {exportingServices ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     Exportar Serviços
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="anamnesis">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5 text-primary" />
+                  <CardTitle>Configurar Anamnese</CardTitle>
+                </div>
+                <CardDescription>Gerencie as perguntas e seções da ficha de avaliação capilar</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-6">
+                <div className="p-4 rounded-lg border border-border bg-muted/20 flex items-center justify-between">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-foreground">Gerenciar Perguntas</span>
+                    <span className="text-sm text-muted-foreground text-balance">Personalize sua ficha de anamnese para atender melhor seus clientes</span>
+                  </div>
+                  <Button asChild>
+                    <Link href="/settings/anamnesis">
+                      Abrir Editor
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Link>
                   </Button>
                 </div>
               </CardContent>

@@ -18,6 +18,9 @@ import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags } from "@/lib/flag-utils"
 import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { Switch } from "@/components/ui/switch"
+import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface QuickCreateClientProps {
   onSuccess: (clientId: string) => void
@@ -27,6 +30,8 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [countryCode, setCountryCode] = useState("BR")
+  const [showAnamnesis, setShowAnamnesis] = useState(false)
+  const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -46,12 +51,28 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
       const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
       const phoneForApi = `${dialCode}${form.phone}`
 
-      const res = await secureApiCall<any>(API_CONFIG.ENDPOINTS.CLIENTS, {
+      let endpoint = API_CONFIG.ENDPOINTS.CLIENTS
+      let body: any = {
+        ...form,
+        phone: phoneForApi
+      }
+
+      if (showAnamnesis && anamnesisResponses.length > 0) {
+        endpoint = `${API_CONFIG.ENDPOINTS.ANAMNESIS}/with-client`
+        body = {
+          client: body,
+          anamnesis: {
+            date: new Date().toISOString(),
+            professionalId: "00000000-0000-0000-0000-000000000000", // Will be handled by service if 0 or empty for now
+            responses: anamnesisResponses,
+            signatures: []
+          }
+        }
+      }
+
+      const res = await secureApiCall<any>(endpoint, {
         method: "POST",
-        body: JSON.stringify({
-          ...form,
-          phone: phoneForApi
-        }),
+        body: JSON.stringify(body),
       })
 
       if (res.hasError) {
@@ -59,11 +80,13 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
         return
       }
 
-      toast.success("Cliente cadastrado com sucesso!")
+      toast.success(showAnamnesis ? "Cliente e Anamnese cadastrados!" : "Cliente cadastrado com sucesso!")
       onSuccess(res.data.id)
       setOpen(false)
       // Clear form
       setForm({ name: "", phone: "", email: "", notes: "" })
+      setAnamnesisResponses([])
+      setShowAnamnesis(false)
     } catch {
       toast.error("Erro de conexão. Tente novamente.")
     } finally {
@@ -138,13 +161,30 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex items-center space-x-2 py-2">
+            <Switch
+              id="show-anamnesis"
+              checked={showAnamnesis}
+              onCheckedChange={setShowAnamnesis}
+            />
+            <Label htmlFor="show-anamnesis" className="cursor-pointer">Adicionar Anamnese agora?</Label>
+          </div>
+
+          {showAnamnesis && (
+            <div className="border rounded-lg p-3 bg-muted/20">
+              <ScrollArea className="h-[300px] pr-4">
+                <AnamnesisForm onChange={setAnamnesisResponses} />
+              </ScrollArea>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t mt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Cadastrar
+              {showAnamnesis ? "Cadastrar com Anamnese" : "Cadastrar Cliente"}
             </Button>
           </div>
         </form>
