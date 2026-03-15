@@ -150,14 +150,14 @@ export default function NovoAgendamentoPage() {
 
   return (
     <AuthGuard requiredRoles={["User"]}>
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-4 sm:p-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
             <Link href="/appointments">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo Agendamento</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground text-balance truncate">Novo Agendamento</h1>
         </div>
 
         <Card>
@@ -334,7 +334,7 @@ export default function NovoAgendamentoPage() {
                         Carregando horários...
                       </div>
                     ) : (
-                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+                      <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
                         {visibleSlots.map((slot: any) => (
                           <Button
                             key={slot.startTime}
@@ -342,7 +342,7 @@ export default function NovoAgendamentoPage() {
                             variant={form.scheduledDateTime === slot.startTime ? "default" : "outline"}
                             size="sm"
                             className={cn(
-                              "h-9 px-2 text-xs",
+                              "h-9 px-1 text-[10px] sm:text-xs",
                               !slot.isAvailable && "opacity-30 cursor-not-allowed bg-muted"
                             )}
                             disabled={!slot.isAvailable}
@@ -392,13 +392,13 @@ export default function NovoAgendamentoPage() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={loading}>
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+                <Button type="button" variant="outline" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
+                  <Link href="/appointments">Cancelar</Link>
+                </Button>
+                <Button type="submit" disabled={loading} className="w-full sm:w-auto h-11 text-sm sm:text-base">
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Confirmar Agendamento
-                </Button>
-                <Button type="button" variant="outline" asChild>
-                  <Link href="/appointments">Cancelar</Link>
                 </Button>
               </div>
             </form>

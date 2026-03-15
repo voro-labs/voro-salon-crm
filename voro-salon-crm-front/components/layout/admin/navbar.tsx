@@ -36,14 +36,14 @@ export function Navbar({ isOpen, onMenuClick, tenant }: NavbarProps) {
         ${isOpen ? "z-0" : "z-50"}`}
       >
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={onMenuClick}
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors shrink-0"
             >
               <Menu size={20} />
             </button>
-            <span className="text-xl font-bold text-gray-600">{tenant?.name || "VoroLabs"}</span>
+            <span className="text-xl font-bold text-gray-600 truncate">{tenant?.name || "VoroLabs"}</span>
           </div>
         </div>
       </nav>

@@ -341,9 +341,9 @@ export default function ClienteDetailPage() {
         {/* Client info card */}
         <Card>
           <CardContent className="p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-4 min-w-0">
+                <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-base sm:text-lg">
                   {client.name
                     .split(" ")
                     .map((n: string) => n[0])
@@ -351,27 +351,27 @@ export default function ClienteDetailPage() {
                     .join("")
                     .toUpperCase()}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-lg font-semibold text-foreground">{client.name}</h2>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <h2 className="text-lg font-bold text-foreground text-balance truncate">{client.name}</h2>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
                       <Phone className="h-3.5 w-3.5" />
                       {formatPhone(client.phone)}
                     </span>
                     {client.email && (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 truncate">
                         <Mail className="h-3.5 w-3.5" />
                         {client.email}
                       </span>
                     )}
                   </div>
                   {client.notes && (
-                    <p className="mt-1 text-sm text-muted-foreground">{client.notes}</p>
+                    <p className="mt-1 text-xs text-muted-foreground text-balance line-clamp-2">{client.notes}</p>
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={openEdit}>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button variant="outline" size="sm" onClick={openEdit} className="flex-1 sm:flex-none">
                   <Edit2 className="mr-1.5 h-3.5 w-3.5" />
                   Editar
                 </Button>
@@ -380,18 +380,17 @@ export default function ClienteDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white hover:border-destructive"
+                      className="flex-1 sm:flex-none border-destructive/40 text-destructive hover:bg-destructive hover:text-white hover:border-destructive"
                     >
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                       Excluir
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="sm:max-w-[425px]">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Essa acao ira remover {client.name} e todo o historico de servicos. Essa acao
-                        nao pode ser desfeita.
+                        Essa ação irá remover {client.name} e todo o histórico de serviços. Essa ação não pode ser desfeita.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -399,7 +398,7 @@ export default function ClienteDetailPage() {
                       <AlertDialogAction
                         onClick={handleDelete}
                         disabled={deleting}
-                        className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
                         {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Excluir
@@ -411,20 +410,20 @@ export default function ClienteDetailPage() {
             </div>
 
             {/* Summary stats */}
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 xs:grid-cols-3 gap-3 border-t border-border pt-4">
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-muted-foreground">Servicos Realizados</span>
-                <span className="text-lg font-semibold text-foreground">{services.length}</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-medium">Serviços</span>
+                <span className="text-base sm:text-lg font-bold text-foreground">{services.length}</span>
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-muted-foreground">Total Gasto</span>
-                <span className="text-lg font-semibold text-foreground">
+                <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-medium">Total Gasto</span>
+                <span className="text-base sm:text-lg font-bold text-foreground">
                   {formatCurrency(totalSpent)}
                 </span>
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-muted-foreground">Cliente desde</span>
-                <span className="text-lg font-semibold text-foreground">
+              <div className="flex flex-col gap-0.5 xs:col-span-1 col-span-2">
+                <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-medium text-balance">Cliente desde</span>
+                <span className="text-base sm:text-lg font-bold text-foreground">
                   {formatDate(client.createdAt)}
                 </span>
               </div>

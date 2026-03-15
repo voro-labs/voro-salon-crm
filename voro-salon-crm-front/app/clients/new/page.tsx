@@ -84,12 +84,12 @@ export default function NovoClientePage() {
     <AuthGuard requiredRoles={["User"]}>
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
             <Link href="/clients">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo Cliente</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">Novo Cliente</h1>
         </div>
 
         <Card>
@@ -111,8 +111,8 @@ export default function NovoClientePage() {
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="phone">Telefone *</Label>
-                <div className="flex gap-2">
-                  <div className="w-[120px] shrink-0">
+                <div className="flex flex-col xs:flex-row gap-2">
+                  <div className="w-full xs:w-[120px] shrink-0">
                     <CountrySelector
                       value={countryCode}
                       onChange={setCountryCode}
@@ -159,7 +159,9 @@ export default function NovoClientePage() {
                   checked={showAnamnesis}
                   onCheckedChange={setShowAnamnesis}
                 />
-                <Label htmlFor="show-anamnesis" className="cursor-pointer font-semibold">Iniciar Anamnese Capilar agora?</Label>
+                <Label htmlFor="show-anamnesis" className="cursor-pointer font-semibold text-sm sm:text-base text-balance">
+                  Iniciar Anamnese Capilar agora?
+                </Label>
               </div>
 
               {showAnamnesis && (
@@ -172,12 +174,12 @@ export default function NovoClientePage() {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={loading} size="lg">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Button type="submit" disabled={loading} size="lg" className="w-full sm:w-auto h-11 text-sm sm:text-base">
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {showAnamnesis ? "Cadastrar e Salvar Anamnese" : "Cadastrar Cliente"}
+                  {showAnamnesis ? "Cadastrar com Anamnese" : "Cadastrar Cliente"}
                 </Button>
-                <Button type="button" variant="outline" asChild>
+                <Button type="button" variant="outline" size="lg" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
                   <Link href="/dashboard/clientes">Cancelar</Link>
                 </Button>
               </div>

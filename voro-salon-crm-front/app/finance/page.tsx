@@ -273,27 +273,27 @@ export default function FinancialPage() {
 
   return (
     <AuthGuard requiredRoles={["Admin", "User"]}>
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-3 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
-            <p className="text-muted-foreground mt-2">
-              Acompanhe o fluxo de caixa, despesas e receitas do mês.
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Financeiro</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 text-balance">
+              Fluxo de caixa, despesas e receitas.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link href="/finance/categories">
-              <Button variant="outline">
+          <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
+            <Link href="/finance/categories" className="flex-1 sm:flex-none">
+              <Button variant="outline" className="w-full h-10 text-xs sm:text-sm">
                 <Settings className="mr-2 h-4 w-4" />
                 Categorias
               </Button>
             </Link>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleOpenDialog}>
+              <DialogTrigger asChild className="flex-1 sm:flex-none">
+                <Button onClick={handleOpenDialog} className="w-full h-10 text-xs sm:text-sm">
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo Lançamento
+                  Novo
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
@@ -392,59 +392,60 @@ export default function FinancialPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Receitas Previstas</CardTitle>
-              <Banknote className="h-4 w-4 text-emerald-500" />
+              <CardTitle className="text-xs font-medium">Receitas</CardTitle>
+              <Banknote className="h-4 w-4 text-emerald-500 shrink-0" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">{formatCurrency(totalReceitas)}</div>
-              <p className="text-xs text-muted-foreground mt-1">Ganhos cadastrados gerais</p>
+              <div className="text-lg sm:text-2xl font-bold text-emerald-600 truncate">{formatCurrency(totalReceitas)}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">Ganhos gerais</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Despesas Cadastradas</CardTitle>
-              <Banknote className="h-4 w-4 text-rose-500" />
+              <CardTitle className="text-xs sm:text-sm font-medium">Despesas</CardTitle>
+              <Banknote className="h-4 w-4 text-rose-500 shrink-0" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-rose-600">{formatCurrency(totalDespesas)}</div>
-              <p className="text-xs text-muted-foreground mt-1">Contas a pagar e gastos</p>
+              <div className="text-lg sm:text-2xl font-bold text-rose-600 truncate">{formatCurrency(totalDespesas)}</div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">Contas e gastos</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="min-w-0 xs:col-span-2 md:col-span-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Saldo Previsto</CardTitle>
-              <Landmark className={`h-4 w-4 ${saldoPrevisto >= 0 ? 'text-primary' : 'text-rose-500'}`} />
+              <CardTitle className="text-xs sm:text-sm font-medium">Saldo Previsto</CardTitle>
+              <Landmark className={`h-4 w-4 shrink-0 ${saldoPrevisto >= 0 ? 'text-primary' : 'text-rose-500'}`} />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${saldoPrevisto >= 0 ? '' : 'text-rose-600'}`}>
+              <div className={`text-lg sm:text-2xl font-bold truncate ${saldoPrevisto >= 0 ? '' : 'text-rose-600'}`}>
                 {formatCurrency(saldoPrevisto)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Balanço geral do período</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">Balanço do pedido</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
+        <Card className="min-w-0 w-full overflow-hidden">
           <CardHeader className="pb-3 border-b">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-lg">Transações</CardTitle>
               <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Buscar lançamento..."
-                  className="w-full pl-8"
+                  className="w-full pl-8 h-10 text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="rounded-md">
+          <CardContent className="p-0 overflow-hidden">
+            <div className="overflow-x-auto no-scrollbar">
+              <div className="min-w-[600px]">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -549,8 +550,9 @@ export default function FinancialPage() {
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
       </div>
 
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>

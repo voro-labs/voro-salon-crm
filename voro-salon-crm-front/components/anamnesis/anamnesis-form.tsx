@@ -158,7 +158,7 @@ export function AnamnesisForm({ onChange }: AnamnesisFormProps) {
       case AnamnesisFieldType.MultipleSelection:
         const selectedOptions = value ? JSON.parse(value) : []
         return (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
             {options.map((opt: string) => (
               <div key={opt} className="flex items-center space-x-2">
                 <Checkbox
@@ -171,7 +171,7 @@ export function AnamnesisForm({ onChange }: AnamnesisFormProps) {
                     handleResponseChange(question.id, JSON.stringify(newSelected))
                   }}
                 />
-                <Label htmlFor={`${question.id}-${opt}`} className="text-sm font-normal">
+                <Label htmlFor={`${question.id}-${opt}`} className="text-sm font-normal text-balance">
                   {opt}
                 </Label>
               </div>
@@ -206,8 +206,9 @@ export function AnamnesisForm({ onChange }: AnamnesisFormProps) {
               <CardContent className="p-4 pt-0 flex flex-col gap-4">
                 {sectionQuestions.map((question: AnamnesisQuestion) => (
                   <div key={question.id} className="flex flex-col gap-2">
-                    <Label htmlFor={question.id} className="text-sm font-semibold">
-                      {question.label} {question.isRequired && <span className="text-destructive">*</span>}
+                    <Label htmlFor={question.id} className="text-sm font-semibold text-balance flex flex-wrap gap-1">
+                      <span>{question.label}</span>
+                      {question.isRequired && <span className="text-destructive">*</span>}
                     </Label>
                     {renderField(question)}
                   </div>

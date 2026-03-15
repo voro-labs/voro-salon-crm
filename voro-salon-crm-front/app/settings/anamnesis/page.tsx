@@ -291,44 +291,48 @@ export default function AnamnesisConfigPage() {
   return (
     <AuthGuard requiredRoles={["Admin"]}>
       <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/settings">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Configurar Anamnese</h1>
-            <p className="text-sm text-muted-foreground">Gerencie as perguntas da ficha de avaliação capilar</p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" asChild className="shrink-0">
+              <Link href="/settings">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">Configurar Anamnese</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">Gerencie as perguntas da ficha</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center border rounded-lg p-1 bg-muted/30">
-              <span className="text-[10px] font-bold uppercase px-2 text-muted-foreground">Templates:</span>
-              <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => downloadTemplate('json')}>
+          <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 sm:ml-auto">
+            <div className="flex items-center border rounded-lg p-1 bg-muted/30 overflow-x-auto no-scrollbar justify-center">
+              <span className="text-[10px] font-bold uppercase px-2 text-muted-foreground whitespace-nowrap">Templates:</span>
+              <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2" onClick={() => downloadTemplate('json')}>
                 <FileJson className="mr-1 h-3 w-3" />
                 JSON
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => downloadTemplate('csv')}>
+              <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2" onClick={() => downloadTemplate('csv')}>
                 <FileSpreadsheet className="mr-1 h-3 w-3" />
                 CSV
               </Button>
             </div>
             
-            <input
-              type="file"
-              id="import-file"
-              accept=".json,.csv"
-              className="hidden"
-              onChange={handleImport}
-            />
-            <Button variant="outline" onClick={() => document.getElementById('import-file')?.click()} disabled={submitting}>
-              <Upload className="mr-2 h-4 w-4" />
-              Importar
-            </Button>
-            <Button onClick={openCreate} disabled={submitting}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Pergunta
-            </Button>
+            <div className="flex gap-2">
+              <input
+                type="file"
+                id="import-file"
+                accept=".json,.csv"
+                className="hidden"
+                onChange={handleImport}
+              />
+              <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-9 text-xs sm:text-sm" onClick={() => document.getElementById('import-file')?.click()} disabled={submitting}>
+                <Upload className="mr-2 h-4 w-4" />
+                Importar
+              </Button>
+              <Button size="sm" className="flex-1 sm:flex-none h-9 text-xs sm:text-sm" onClick={openCreate} disabled={submitting}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -374,29 +378,29 @@ export default function AnamnesisConfigPage() {
                           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                             <GripVertical className="h-4 w-4" />
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-foreground">{q.label}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-sm sm:text-base text-foreground text-balance">{q.label}</span>
                               {q.isRequired && (
-                                <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase">
+                                <span className="text-[9px] sm:text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase whitespace-nowrap">
                                   Obrigatório
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 mt-1">
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                              <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
                                 <HelpCircle className="h-3 w-3" />
                                 {fieldTypes.find(t => t.value === q.fieldType)?.label || "Desconhecido"}
                               </span>
                               {q.options && (
-                                <span className="text-xs text-muted-foreground border-l pl-3">
+                                <span className="text-[10px] sm:text-xs text-muted-foreground border-l pl-3">
                                   {q.options.split(',').length} opções
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(q)}>
                             <Edit2 className="h-4 w-4 text-muted-foreground hover:text-primary" />
                           </Button>

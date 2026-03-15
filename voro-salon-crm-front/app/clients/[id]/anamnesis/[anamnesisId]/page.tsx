@@ -103,20 +103,20 @@ export default function AnamnesisDetailPage() {
     <AuthGuard>
       <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto print:p-0">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 print:hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" asChild className="shrink-0">
               <Link href={`/clients/${clientId}`}>
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Ficha de Anamnese</h1>
-              <p className="text-sm text-muted-foreground">Detalhes da avaliação capilar</p>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-balance">Ficha de Anamnese</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">Detalhes da avaliação capilar</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handlePrint}>
+            <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 text-xs sm:text-sm flex-1 sm:flex-none">
               <Printer className="mr-2 h-4 w-4" />
               Imprimir
             </Button>
@@ -245,9 +245,9 @@ export default function AnamnesisDetailPage() {
                         }
 
                         return (
-                          <div key={question.id} className="flex flex-col gap-1 border-b border-border/40 pb-2 md:border-none md:pb-0 print:border-b print:pb-1">
-                            <span className="text-xs font-semibold text-muted-foreground/80">{question.label}</span>
-                            <span className="text-sm font-medium">{displayValue}</span>
+                          <div key={question.id} className="flex flex-col gap-1 border-b border-border/40 pb-2 md:border-none md:pb-0 print:border-b print:pb-1 min-w-0">
+                            <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground/80 text-balance">{question.label}</span>
+                            <span className="text-sm font-medium text-pretty">{displayValue}</span>
                           </div>
                         )
                       })}

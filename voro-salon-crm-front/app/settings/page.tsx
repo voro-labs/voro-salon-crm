@@ -363,34 +363,36 @@ export default function ConfiguracoesPage() {
 
   return (
     <AuthGuard requiredRoles={["Admin"]}>
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-4 sm:p-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Configurações</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Configurações</h1>
         </div>
 
         <Tabs defaultValue="geral" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="geral">
-              <Building2 className="mr-2 h-4 w-4" />
-              Estabelecimento
-            </TabsTrigger>
-            <TabsTrigger value="aparencia">
-              <Palette className="mr-2 h-4 w-4" />
-              Aparência
-            </TabsTrigger>
-            <TabsTrigger value="modulos">
-              <LayoutGrid className="mr-2 h-4 w-4" />
-              Módulos
-            </TabsTrigger>
-            <TabsTrigger value="exportar">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </TabsTrigger>
-            <TabsTrigger value="anamnesis">
-              <ClipboardList className="mr-2 h-4 w-4" />
-              Anamnese
-            </TabsTrigger>
-          </TabsList>
+          <div className="relative overflow-hidden">
+            <TabsList className="w-full justify-start overflow-x-auto no-scrollbar flex-nowrap h-auto p-1 bg-muted/50">
+              <TabsTrigger value="geral" className="shrink-0 py-2">
+                <Building2 className="mr-2 h-4 w-4" />
+                Estabelecimento
+              </TabsTrigger>
+              <TabsTrigger value="aparencia" className="shrink-0 py-2">
+                <Palette className="mr-2 h-4 w-4" />
+                Aparência
+              </TabsTrigger>
+              <TabsTrigger value="modulos" className="shrink-0 py-2">
+                <LayoutGrid className="mr-2 h-4 w-4" />
+                Módulos
+              </TabsTrigger>
+              <TabsTrigger value="exportar" className="shrink-0 py-2">
+                <Download className="mr-2 h-4 w-4" />
+                Exportar
+              </TabsTrigger>
+              <TabsTrigger value="anamnesis" className="shrink-0 py-2">
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Anamnese
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="geral">
             {/* ── Estabelecimento ── */}
