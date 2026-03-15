@@ -38,6 +38,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<EmployeeService> EmployeeServices { get; set; }
         public DbSet<TransactionCategory> TransactionCategories { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<AnamnesisQuestion> AnamnesisQuestions { get; set; }
+        public DbSet<AnamnesisSheet> AnamnesisSheets { get; set; }
+        public DbSet<AnamnesisResponse> AnamnesisResponses { get; set; }
+        public DbSet<AnamnesisEvidence> AnamnesisEvidences { get; set; }
+        public DbSet<AnamnesisSignature> AnamnesisSignatures { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -77,6 +82,12 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             builder.Entity<Transaction>().HasQueryFilter(t =>
                 !t.IsDeleted && t.TenantId == _currentUser.TenantId);
+
+            builder.Entity<AnamnesisQuestion>().HasQueryFilter(aq =>
+                !aq.IsDeleted && aq.TenantId == _currentUser.TenantId);
+
+            builder.Entity<AnamnesisSheet>().HasQueryFilter(asheet =>
+                !asheet.IsDeleted && asheet.TenantId == _currentUser.TenantId);
 
             // ---------------------------
             // TENANT
@@ -370,6 +381,99 @@ namespace VoroSalonCrm.Infrastructure.Factories
             builder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins");
             builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens");
             builder.Entity<IdentityRoleClaim<Guid>>().ToTable("RoleClaims");
+
+            // ---------------------------
+            // ANAMNESIS QUESTION
+            // ---------------------------
+            builder.Entity<AnamnesisQuestion>(b =>
+            {
+                b.HasKey(aq => aq.Id);
+                b.Property(aq => aq.Identifier).HasMaxLength(150).IsRequired();
+                b.Property(aq => aq.Text).IsRequired();
+                b.Property(aq => aq.FieldType).HasConversion<int>().IsRequired();
+                b.Property(aq => aq.Section).HasConversion<int>().IsRequired();
+                b.Property(aq => aq.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(aq => aq.TenantId);
+                b.HasIndex(aq => new { aq.TenantId, aq.Identifier }).IsUnique();
+            });
+
+            // ---------------------------
+            // ANAMNESIS SHEET
+            // ---------------------------
+            builder.Entity<AnamnesisSheet>(b =>
+            {
+                b.HasKey(asheet => asheet.Id);
+                b.Property(asheet => asheet.Date).IsRequired();
+                b.Property(asheet => asheet.Status).HasConversion<int>().IsRequired();
+                b.Property(asheet => asheet.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(asheet => asheet.TenantId);
+                b.HasIndex(asheet => asheet.ClientId);
+                b.HasIndex(asheet => new { asheet.TenantId, asheet.Date });
+
+                b.HasOne(asheet => asheet.Client)
+                 .WithMany()
+                 .HasForeignKey(asheet => asheet.ClientId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // ANAMNESIS RESPONSE
+            // ---------------------------
+            builder.Entity<AnamnesisResponse>(b =>
+            {
+                b.HasKey(ar => ar.Id);
+                b.Property(ar => ar.Value).IsRequired();
+
+                b.HasOne(ar => ar.Sheet)
+                 .WithMany(asheet => asheet.Responses)
+                 .HasForeignKey(ar => ar.SheetId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(ar => ar.Question)
+                 .WithMany()
+                 .HasForeignKey(ar => ar.QuestionId)
+                 .OnDelete(DeleteBehavior.Restrict); // Prevent deleting questions used in response
+
+                b.HasIndex(ar => ar.SheetId);
+                b.HasIndex(ar => ar.QuestionId);
+            });
+
+            // ---------------------------
+            // ANAMNESIS EVIDENCE
+            // ---------------------------
+            builder.Entity<AnamnesisEvidence>(b =>
+            {
+                b.HasKey(ae => ae.Id);
+                b.Property(ae => ae.Url).IsRequired();
+                b.Property(ae => ae.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasOne(ae => ae.Sheet)
+                 .WithMany(asheet => asheet.Evidences)
+                 .HasForeignKey(ae => ae.SheetId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasIndex(ae => ae.SheetId);
+            });
+
+            // ---------------------------
+            // ANAMNESIS SIGNATURE
+            // ---------------------------
+            builder.Entity<AnamnesisSignature>(b =>
+            {
+                b.HasKey(asign => asign.Id);
+                b.Property(asign => asign.Type).HasConversion<int>().IsRequired();
+                b.Property(asign => asign.SignatureData).IsRequired();
+                b.Property(asign => asign.SignedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasOne(asign => asign.Sheet)
+                 .WithMany(asheet => asheet.Signatures)
+                 .HasForeignKey(asign => asign.SheetId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasIndex(asign => asign.SheetId);
+            });
         }
     }
 }

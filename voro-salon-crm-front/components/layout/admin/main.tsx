@@ -84,9 +84,9 @@ export function Main({ children }: MainProps) {
       <div className="flex">
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} tenant={tenant} />
 
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <Navbar isOpen={isSidebarOpen} onMenuClick={() => setIsSidebarOpen(true)} tenant={tenant} />
-          <main>{children}</main>
+          <main className="min-w-0">{children}</main>
         </div>
       </div>
     </div>

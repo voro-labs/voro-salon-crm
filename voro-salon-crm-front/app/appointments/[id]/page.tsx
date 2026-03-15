@@ -246,25 +246,29 @@ export default function AppointmentDetailPage() {
 
   return (
     <AuthGuard requiredRoles={["User"]}>
-      <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
+      <div className="flex flex-col gap-6 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" asChild className="shrink-0">
               <Link href="/appointments">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground truncate max-w-[200px] sm:max-w-md">
-              Agendamento: {appointment?.clientName}
-            </h1>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground text-balance truncate">
+                Agendamento: {appointment?.clientName}
+              </h1>
+              <p className="text-xs text-muted-foreground truncate sm:hidden">Detalhes do cliente</p>
+            </div>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white">
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Excluir</span>
-              </Button>
-            </AlertDialogTrigger>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-10 border-destructive/40 text-destructive hover:bg-destructive hover:text-white">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Excluir
+                </Button>
+              </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir agendamento?</AlertDialogTitle>
@@ -286,6 +290,7 @@ export default function AppointmentDetailPage() {
             </AlertDialogContent>
           </AlertDialog>
         </div>
+      </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
@@ -429,13 +434,13 @@ export default function AppointmentDetailPage() {
                     />
                   </div>
 
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit" disabled={loading}>
+                  <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+                    <Button type="button" variant="outline" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
+                      <Link href="/appointments">Cancelar</Link>
+                    </Button>
+                    <Button type="submit" disabled={loading} className="w-full sm:w-auto h-11 text-sm sm:text-base">
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Salvar Alterações
-                    </Button>
-                    <Button type="button" variant="outline" asChild>
-                      <Link href="/appointments">Cancelar</Link>
                     </Button>
                   </div>
                 </form>
