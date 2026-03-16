@@ -5,6 +5,7 @@ export const API_CONFIG = {
   BASE_URL: `${process.env.NEXT_PUBLIC_BASE_URL}/${process.env.NEXT_PUBLIC_API_URL}`,
   ENDPOINTS: {
     SIGNIN: "/auth/sign-in",
+    REFRESH_TOKEN: "/auth/refresh-token",
     VERIFY_CODE: "/auth/verify-code",
     CONFIRM_EMAIL: "/auth/confirm-email",
     RESET_PASSWORD: "/auth/reset-password",
@@ -63,6 +64,39 @@ export function setAuthToken(token: string): void {
   }
 }
 
+// Função para obter o refresh token
+export function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("vorolabs_salon_refresh_token")
+}
+
+// Função para salvar o refresh token
+export function setRefreshToken(refreshToken: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("vorolabs_salon_refresh_token", refreshToken)
+  }
+}
+
+// Função para remover o refresh token
+export function removeRefreshToken(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("vorolabs_salon_refresh_token")
+  }
+}
+
+// Variáveis para controle da fila de refresh token
+let isRefreshing = false
+let refreshSubscribers: ((token: string) => void)[] = []
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb)
+}
+
+function onRefreshed(token: string) {
+  refreshSubscribers.map((cb) => cb(token))
+  refreshSubscribers = []
+}
+
 // Função helper para fazer chamadas à API com ResponseViewModel
 export async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<ResponseViewModel<T>> {
   try {
@@ -111,9 +145,124 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
         json!.message = `Erro ${status}: ${response.statusText}`
       }
 
-      // 🔥 Se for 401, remove o token localmente — o redirect é feito pelo Main
+      // 🔥 Se for 401, tenta o fluxo de Refresh Token
       if (status === 401) {
-        removeAuthToken()
+        const refreshToken = getRefreshToken()
+        if (refreshToken) {
+          if (!isRefreshing) {
+            isRefreshing = true
+
+            try {
+              const refreshResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refreshToken }),
+              })
+
+              const refreshData = await refreshResponse.json()
+
+              if (refreshResponse.ok && !refreshData.hasError && refreshData.data?.token) {
+                const newToken = refreshData.data.token
+                const newRefreshToken = refreshData.data.refreshToken
+
+                setAuthToken(newToken)
+                if (newRefreshToken) {
+                  setRefreshToken(newRefreshToken)
+                }
+
+                isRefreshing = false
+                onRefreshed(newToken)
+
+                // Refaz a requisição original com o novo token
+                const retryHeaders = {
+                  ...headers,
+                  Authorization: `Bearer ${newToken}`,
+                }
+
+                const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
+                const retryText = await retryResponse.text()
+
+                try {
+                  const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
+                  return {
+                    status: retryResponse.status,
+                    data: retryJson.data ?? null,
+                    message: retryJson.message ?? null,
+                    hasError: !retryResponse.ok || retryJson.hasError,
+                  }
+                } catch {
+                   return {
+                     status: retryResponse.status,
+                     message: retryText || "Erro inesperado no servidor.",
+                     data: null,
+                     hasError: true,
+                   }
+                }
+
+              } else {
+                // Refresh falhou
+                isRefreshing = false
+                removeAuthToken()
+                removeRefreshToken()
+                if (typeof window !== "undefined") {
+                  window.location.href = "/admin/sign-in"
+                }
+              }
+            } catch (err) {
+              isRefreshing = false
+              removeAuthToken()
+              removeRefreshToken()
+              if (typeof window !== "undefined") {
+                window.location.href = "/admin/sign-in"
+              }
+            }
+          } else {
+            // Já está renovando o token. Coloca na fila e aguarda.
+            return new Promise((resolve) => {
+              subscribeTokenRefresh(async (newToken: string) => {
+                const retryHeaders = {
+                  ...headers,
+                  Authorization: `Bearer ${newToken}`,
+                }
+
+                try {
+                  const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
+                  const retryText = await retryResponse.text()
+                  
+                  try {
+                    const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
+                    resolve({
+                      status: retryResponse.status,
+                      data: retryJson.data ?? null,
+                      message: retryJson.message ?? null,
+                      hasError: !retryResponse.ok || retryJson.hasError,
+                    })
+                  } catch {
+                    resolve({
+                      status: retryResponse.status,
+                      message: retryText || "Erro inesperado no servidor.",
+                      data: null,
+                      hasError: true,
+                    })
+                  }
+                } catch {
+                  resolve({
+                    status: 0,
+                    message: "Erro de conexão com o servidor ao repetir requisição.",
+                    data: null,
+                    hasError: true,
+                  })
+                }
+              })
+            })
+          }
+        } else {
+           // 401 sem refresh token
+           removeAuthToken()
+           if (typeof window !== "undefined") {
+             window.location.href = "/admin/sign-in"
+           }
+        }
       }
 
       return {

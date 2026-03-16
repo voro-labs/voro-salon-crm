@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { getAuthToken, removeAuthToken, setAuthToken } from "@/lib/api"
+import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken } from "@/lib/api"
 import { AuthDto } from "@/types/DTOs/auth.interface"
 import { jwtDecode } from "jwt-decode"
 
@@ -20,7 +20,7 @@ interface JwtPayload {
 // Tipo do contexto
 export interface AuthContextType {
   user: AuthDto | null
-  login: (token: string, tenants?: any[]) => void
+  login: (token: string, refreshToken?: string, tenants?: any[]) => void
   logout: () => void
   switchTenant: (tenantId: string) => Promise<void>
   loading: boolean
@@ -46,29 +46,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const decoded = jwtDecode<JwtPayload>(token)
 
-        // Verificar expiração
-        const now = Date.now() / 1000
-        if (decoded.exp && decoded.exp < now) {
-          removeAuthToken()
-          localStorage.removeItem("user_tenants")
-          setUser(null)
-        } else {
-          const userData: AuthDto = {
-            userId: decoded.userId,
-            firstName: decoded.firstName,
-            lastName: decoded.lastName,
-            userName: decoded.userName,
-            email: decoded.email,
-            roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
-            expiration: new Date(decoded.exp * 1000),
-            token: token,
-            tenants: storedTenants ? JSON.parse(storedTenants) : []
-          }
-          setUser(userData)
+        // Nota: O checkAuth não irá mais remover o token se expirar.
+        // Iremos carregar o User na memória de qualquer maneira, e delegar 
+        // a responsabilidade do fluxo de 401 e recarga (refresh) ao apiCall 
+        // intercepetor. Só remove se não tiver payload para ler.
+        
+        const refreshToken = getRefreshToken() || undefined
+
+        const userData: AuthDto = {
+          userId: decoded.userId,
+          firstName: decoded.firstName,
+          lastName: decoded.lastName,
+          userName: decoded.userName,
+          email: decoded.email,
+          roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
+          token: token,
+          refreshToken: refreshToken,
+          tenants: storedTenants ? JSON.parse(storedTenants) : []
         }
+        setUser(userData)
       } catch (err) {
         console.error("Token inválido:", err)
         removeAuthToken()
+        removeRefreshToken()
         setUser(null)
       } finally {
         setLoading(false)
@@ -78,15 +78,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth()
   }, [])
 
-  const login = (token: string, tenants?: any[]) => {
+  const login = (token: string, refreshToken?: string, tenants?: any[]) => {
     setAuthToken(token);
+    
+    if (refreshToken) {
+      setRefreshToken(refreshToken)
+    }
+
     if (tenants) {
       localStorage.setItem("user_tenants", JSON.stringify(tenants))
     }
 
     try {
       const decoded = jwtDecode<JwtPayload>(token)
-
 
       const userData: AuthDto = {
         userId: decoded.userId,
@@ -95,8 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userName: decoded.userName,
         email: decoded.email,
         roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
-        expiration: new Date(decoded.exp * 1000),
         token: token,
+        refreshToken: refreshToken,
         tenants: tenants || []
       }
 
@@ -104,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Erro ao decodificar token:", err)
       removeAuthToken()
+      removeRefreshToken()
       setUser(null)
     }
   }
@@ -111,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null)
     removeAuthToken()
+    removeRefreshToken()
     localStorage.removeItem("user_tenants")
   }
 
@@ -124,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.hasError) throw new Error(result.message ?? "Erro ao trocar de salão")
 
       if (result.data?.token) {
-        login(result.data.token, result.data.tenants)
+        login(result.data.token, result.data.refreshToken, result.data.tenants)
         // Recarregar a página para atualizar todos os contextos vinculados ao tenant
         window.location.reload()
       }

@@ -34,7 +34,7 @@ export function useSignIn() {
       if (response.data) {
         // Salvar token se fornecido pela API
         if (response.data?.token) {
-          login(response.data?.token, response.data?.tenants)
+          login(response.data.token, response.data.refreshToken, response.data.tenants)
 
           // Buscar e aplicar as cores do tenant imediatamente após o login
           // sem aguardar o reload — fire-and-forget
