@@ -4,6 +4,8 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VoroSalonCrm.Application.DTOs.Integration;
+using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Shared.Utils;
 
@@ -14,15 +16,21 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly IntegrationUtil _config;
         private readonly HttpClient _http;
         private readonly ILogger<WhatsappService> _logger;
+        private readonly IIntegrationAuditService _auditService;
+        private readonly ICurrentUserService _currentUser;
 
         public WhatsappService(
             IOptions<IntegrationUtil> integrationUtil,
             IHttpClientFactory httpClientFactory,
-            ILogger<WhatsappService> logger)
+            ILogger<WhatsappService> logger,
+            IIntegrationAuditService auditService,
+            ICurrentUserService currentUser)
         {
             _config = integrationUtil.Value;
             _http = httpClientFactory.CreateClient("whatsapp");
             _logger = logger;
+            _auditService = auditService;
+            _currentUser = currentUser;
         }
 
         public async Task<bool> SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? phoneIdOverride = null, CancellationToken ct = default)

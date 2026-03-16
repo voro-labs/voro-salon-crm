@@ -1,4 +1,4 @@
-﻿using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Domain.Entities.Identity;
 
 namespace VoroSalonCrm.Application.Services.Interfaces
@@ -7,6 +7,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
     {
         // Autenticação
         Task<AuthDto> SignInAsync(SignInDto signInDto);
+        Task<AuthDto> RefreshTokenAsync(VoroSalonCrm.Application.DTOs.Auth.RefreshTokenDto model);
 
         // Registro de usuário
         Task<AuthDto> SignUpAsync(SignUpDto signUpDto, List<string> roles);

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Auth;
@@ -8,6 +8,7 @@ using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Shared.Constants;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -66,6 +67,7 @@ namespace VoroSalonCrm.API.Controllers
 
         [HttpPost("sign-in")]
         [AllowAnonymous]
+        [EnableRateLimiting("LoginPolicy")]
         public async Task<IActionResult> SignIn([FromBody] SignInDto signInDto)
         {
             try
@@ -74,6 +76,26 @@ namespace VoroSalonCrm.API.Controllers
 
                 return ResponseViewModel<AuthDto>
                     .SuccessWithMessage("Sign-in successful.", authDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<AuthDto>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        [HttpPost("refresh-token")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+        {
+            try
+            {
+                var authDto = await authService.RefreshTokenAsync(refreshTokenDto);
+
+                return ResponseViewModel<AuthDto>
+                    .SuccessWithMessage("Token refreshed successfully.", authDto)
                     .ToActionResult();
             }
             catch (Exception ex)

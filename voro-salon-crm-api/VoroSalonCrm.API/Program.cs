@@ -21,6 +21,7 @@ builder.Services
     .AddDatabase(builder.Configuration, builder.Environment)
     .AddCustomIdentity()
     .AddJwtAuthentication(builder.Configuration)
+    .AddRateLimitingConf()
     .AddMemoryCache()
     .AddLogging()
     .AddHttpContextAccessor()
@@ -69,7 +70,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseMiddleware<AuditMiddleware>();
+
 app.UseCors("JasmimCors");
+
+app.UseRateLimiter();
 
 app.UseHttpsRedirection();
 

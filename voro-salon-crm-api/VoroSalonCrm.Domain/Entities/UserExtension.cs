@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using VoroSalonCrm.Domain.Entities.Identity;
 
 namespace VoroSalonCrm.Domain.Entities
@@ -8,5 +8,7 @@ namespace VoroSalonCrm.Domain.Entities
         [Key]
         public Guid UserId { get; set; }
         public User User { get; set; } = null!;
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; }
     }
 }

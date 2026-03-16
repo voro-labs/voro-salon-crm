@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using AutoMapper;
@@ -10,6 +10,7 @@ using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Identity;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
 using VoroSalonCrm.Shared.Structs;
 using VoroSalonCrm.Shared.Utils;
@@ -18,18 +19,21 @@ namespace VoroSalonCrm.Application.Services
 {
     public class AuthService(IOptions<CookieUtil> cookieUtil, IConfiguration configuration,
         IMapper mapper, INotificationService notificationService, IUserService userService,
-        ICurrentUserService currentUserService) : IAuthService
+        ICurrentUserService currentUserService, VoroSalonCrm.Domain.Interfaces.Repositories.IUserExtensionRepository userExtensionRepository,
+        VoroSalonCrm.Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork) : IAuthService
     {
         private readonly INotificationService _notificationService = notificationService;
         private readonly CookieUtil _cookieUtil = cookieUtil.Value;
         private readonly IUserService _userService = userService;
         private readonly ICurrentUserService _currentUser = currentUserService;
+        private readonly VoroSalonCrm.Domain.Interfaces.Repositories.IUserExtensionRepository _userExtensionRepository = userExtensionRepository;
+        private readonly VoroSalonCrm.Domain.Interfaces.UnitOfWork.IUnitOfWork _unitOfWork = unitOfWork;
 
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
             var (user, rolesNames) = await _userService.GetByEmailAndPassword(signInDto.Email, signInDto.Password);
 
-            return GenerateAuthDto(user, rolesNames);
+            return await GenerateAuthDtoAsync(user, rolesNames);
         }
 
         public async Task<AuthDto> SignUpAsync(SignUpDto signUpDto, List<string> roles)
@@ -42,7 +46,7 @@ namespace VoroSalonCrm.Application.Services
 
             await _notificationService.SendWelcomeAsync($"{user.Email}", userName);
 
-            return GenerateAuthDto(user, roles);
+            return await GenerateAuthDtoAsync(user, roles);
         }
 
         public async Task ConfirmEmailAsync(string email)
@@ -101,7 +105,7 @@ namespace VoroSalonCrm.Application.Services
 
             var roles = await _userService.GetRolesAsync(user);
 
-            return GenerateAuthDto(user, roles, tenantId);
+            return await GenerateAuthDtoAsync(user, roles, tenantId);
         }
 
         private static List<Claim> GenerateClaims(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
@@ -138,7 +142,52 @@ namespace VoroSalonCrm.Application.Services
             return claims;
         }
 
-        private AuthDto GenerateAuthDto(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
+        public async Task<AuthDto> RefreshTokenAsync(VoroSalonCrm.Application.DTOs.Auth.RefreshTokenDto model)
+        {
+            var principal = GetPrincipalFromExpiredToken(model.Token, configuration.Get<ConfigUtil>()?.JwtKey!);
+            if (principal == null)
+                throw new UnauthorizedAccessException("Invalid access token or refresh token");
+
+            var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == CustomClaimTypes.UserId) 
+                ?? principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+                
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
+                throw new UnauthorizedAccessException("Invalid token claims.");
+
+            var user = await _userService.GetByIdAsync(userId);
+            if (user == null)
+                throw new UnauthorizedAccessException("User not found.");
+
+            var userExtension = await _userExtensionRepository.GetByIdAsync(userId);
+            if (userExtension == null || userExtension.RefreshToken != model.RefreshToken || userExtension.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                throw new UnauthorizedAccessException("Invalid refresh token.");
+
+            var roles = await _userService.GetRolesAsync(user);
+            return await GenerateAuthDtoAsync(user, roles);
+        }
+
+        private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token, string key)
+        {
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+                ValidateIssuer = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+                ValidateLifetime = false // We ignore expiration here
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+            var jwtSecurityToken = securityToken as JwtSecurityToken;
+
+            if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                throw new SecurityTokenException("Invalid token");
+
+            return principal;
+        }
+
+        private async Task<AuthDto> GenerateAuthDtoAsync(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
         {
             var primaryTenantId = targetTenantId
                                 ?? user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.TenantId
@@ -149,7 +198,7 @@ namespace VoroSalonCrm.Application.Services
 
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var expiration = DateTime.UtcNow.AddHours(double.Parse(_cookieUtil.ExpireHours));
+            var expiration = DateTime.UtcNow.AddMinutes(15);
 
             var token = new JwtSecurityToken(
                 issuer: _cookieUtil.Issuer,
@@ -160,6 +209,27 @@ namespace VoroSalonCrm.Application.Services
             );
 
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+
+            var refreshToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64));
+
+            var userExtension = await _userExtensionRepository.GetByIdAsync(user.Id);
+            if (userExtension == null)
+            {
+                userExtension = new UserExtension
+                {
+                    UserId = user.Id,
+                    RefreshToken = refreshToken,
+                    RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
+                };
+                await _userExtensionRepository.AddAsync(userExtension);
+            }
+            else
+            {
+                userExtension.RefreshToken = refreshToken;
+                userExtension.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+                _userExtensionRepository.Update(userExtension);
+            }
+            await _unitOfWork.SaveChangesAsync();
 
             var tenants = user.UserTenants?.Select(ut => new TenantDto
             {
@@ -179,7 +249,8 @@ namespace VoroSalonCrm.Application.Services
                 Email = $"{user.Email}".ToLower(),
                 FirstName = $"{user.FirstName}".ToLower(),
                 LastName = $"{user.LastName}".ToLower(),
-                Token = jwt
+                Token = jwt,
+                RefreshToken = refreshToken
             };
         }
     }
