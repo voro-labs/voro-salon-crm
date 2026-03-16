@@ -16,11 +16,12 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { PageHeader } from "@/components/ui/custom/page-header"
 import {
   Dialog,
   DialogContent,
@@ -106,7 +107,7 @@ const getPaymentMethodName = (method: PaymentMethod) => {
 }
 
 export default function FinancialPage() {
-  const { transactions, isLoading, createTransaction, updateTransaction, payTransaction, cancelTransaction, deleteTransaction } = useTransactions()
+  const { transactions, isLoading, createTransaction, payTransaction, cancelTransaction, deleteTransaction } = useTransactions()
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
 
@@ -117,7 +118,6 @@ export default function FinancialPage() {
    // Modais de Ação
   const [selectedTx, setSelectedTx] = useState<TransactionDto | null>(null)
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [txToCancel, setTxToCancel] = useState<TransactionDto | null>(null)
   const [txToDelete, setTxToDelete] = useState<TransactionDto | null>(null)
 
@@ -274,33 +274,29 @@ export default function FinancialPage() {
   return (
     <AuthGuard requiredRoles={["Admin", "User"]}>
       <div className="flex flex-col gap-6 p-3 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Financeiro</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1 text-balance">
-              Fluxo de caixa, despesas e receitas.
-            </p>
-          </div>
-
-          <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
-            <Link href="/finance/categories" className="flex-1 sm:flex-none">
-              <Button variant="outline" className="w-full h-10 text-xs sm:text-sm">
-                <Settings className="mr-2 h-4 w-4" />
-                Categorias
-              </Button>
-            </Link>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild className="flex-1 sm:flex-none">
-                <Button onClick={handleOpenDialog} className="w-full h-10 text-xs sm:text-sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo
+        <PageHeader 
+          title="Financeiro" 
+          description="Fluxo de caixa, despesas e receitas."
+          action={
+            <>
+              <Link href="/finance/categories" className="flex-1 sm:flex-none">
+                <Button variant="outline" className="w-full h-10 text-xs sm:text-sm">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Categorias
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Novo Lançamento</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              </Link>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild className="flex-1 sm:flex-none">
+                  <Button onClick={handleOpenDialog} className="w-full h-10 text-xs sm:text-sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Novo Lançamento</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="type">Tipo</Label>
@@ -389,8 +385,9 @@ export default function FinancialPage() {
                 </form>
               </DialogContent>
             </Dialog>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <Card className="min-w-0">

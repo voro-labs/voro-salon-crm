@@ -1,16 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import useSWR, { mutate } from "swr"
 import {
   ArrowLeft,
   Plus,
   Trash2,
   Edit2,
   GripVertical,
-  Save,
   Loader2,
   Settings2,
   HelpCircle,
@@ -22,13 +18,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
@@ -40,241 +35,90 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-  } from "@/components/ui/alert-dialog"
-import { toast } from "sonner"
-import { API_CONFIG, secureApiCall } from "@/lib/api"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { AnamnesisFieldType, AnamnesisSection, ANAMNESIS_SECTION_LABELS } from "@/types/anamnesis.types"
+import { useAnamnesisConfig } from "@/hooks/use-anamnesis-config.hook"
 
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<any>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Error")
-  return result.data
+function downloadTemplate(format: "json" | "csv") {
+  const templateData = [
+    {
+      label: "Exemplo de Pergunta Texto",
+      placeholder: "Digite aqui...",
+      section: 1,
+      fieldType: 1,
+      options: "",
+      isRequired: true,
+      order: 0,
+    },
+    {
+      label: "Exemplo de Seleção",
+      placeholder: "Selecione uma opção",
+      section: 2,
+      fieldType: 4,
+      options: "Opção A, Opção B, Opção C",
+      isRequired: false,
+      order: 1,
+    },
+  ]
+
+  let content = ""
+  let mimeType = ""
+  const fileName = `template_anamnese.${format}`
+
+  if (format === "json") {
+    content = JSON.stringify(templateData, null, 2)
+    mimeType = "application/json"
+  } else {
+    const headers = "label,placeholder,section,fieldType,options,isRequired,order"
+    const rows = templateData.map(
+      (item) =>
+        `"${item.label}","${item.placeholder}",${item.section},${item.fieldType},"${item.options}",${item.isRequired},${item.order}`
+    )
+    content = [headers, ...rows].join("\n")
+    mimeType = "text/csv"
+  }
+
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 export default function AnamnesisConfigPage() {
-  const router = useRouter()
-  const { data: questions, isLoading } = useSWR(API_CONFIG.ENDPOINTS.ANAMNESIS + "/questions", fetcher)
-
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingQuestion, setEditingQuestion] = useState<any>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  const [form, setForm] = useState({
-    label: "",
-    placeholder: "",
-    section: AnamnesisSection.ClientData as AnamnesisSection,
-    fieldType: AnamnesisFieldType.ShortText as AnamnesisFieldType,
-    options: "",
-    isRequired: false,
-    order: 0,
-  })
-
-  function openCreate() {
-    setEditingQuestion(null)
-    setForm({
-      label: "",
-      placeholder: "",
-      section: AnamnesisSection.ClientData,
-      fieldType: AnamnesisFieldType.ShortText,
-      options: "",
-      isRequired: false,
-      order: (questions?.length || 0),
-    })
-    setDialogOpen(true)
-  }
-
-  function openEdit(q: any) {
-    setEditingQuestion(q)
-    setForm({
-      label: q.label,
-      placeholder: q.placeholder || "",
-      section: q.section as AnamnesisSection,
-      fieldType: q.fieldType as AnamnesisFieldType,
-      options: q.options || "",
-      isRequired: q.isRequired,
-      order: q.order,
-    })
-    setDialogOpen(true)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.label.trim()) {
-      toast.error("O rótulo da pergunta é obrigatório.")
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      const url = editingQuestion 
-        ? `${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions/${editingQuestion.id}`
-        : `${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions`
-      
-      const method = editingQuestion ? "PUT" : "POST"
-
-      const res = await secureApiCall(url, {
-        method,
-        body: JSON.stringify({
-          ...form,
-          id: editingQuestion?.id,
-          // Convert back to numbers for API if needed, though they already are
-        }),
-      })
-
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao salvar pergunta.")
-        return
-      }
-
-      toast.success(editingQuestion ? "Pergunta atualizada!" : "Pergunta criada!")
-      setDialogOpen(false)
-      mutate(API_CONFIG.ENDPOINTS.ANAMNESIS + "/questions")
-    } catch {
-      toast.error("Erro de conexão.")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions/${id}`, {
-        method: "DELETE",
-      })
-      if (res.hasError) {
-        toast.error("Erro ao excluir pergunta.")
-        return
-      }
-      toast.success("Pergunta excluída!")
-      mutate(API_CONFIG.ENDPOINTS.ANAMNESIS + "/questions")
-    } catch {
-      toast.error("Erro de conexão.")
-    }
-  }
-
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = async (event) => {
-      const content = event.target?.result as string
-      try {
-        let items: any[] = []
-        
-        if (file.name.endsWith('.json')) {
-          items = JSON.parse(content)
-        } else if (file.name.endsWith('.csv')) {
-          // Simple CSV parsing
-          const lines = content.split('\n')
-          const headers = lines[0].split(',')
-          items = lines.slice(1).filter(l => l.trim()).map(line => {
-            const values = line.split(',')
-            const obj: any = {}
-            headers.forEach((h, i) => {
-              const key = h.trim().toLowerCase()
-              let val: any = values[i]?.trim()
-              
-              if (key === 'section' || key === 'fieldtype' || key === 'order') val = parseInt(val)
-              if (key === 'isrequired') val = val.toLowerCase() === 'true'
-              if (key === 'label') obj.label = val
-              else obj[key] = val
-            })
-            return obj
-          })
-        }
-
-        if (items.length === 0) {
-          toast.error("Nenhum dado encontrado no arquivo.")
-          return
-        }
-
-        setSubmitting(true)
-        const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions/bulk`, {
-          method: "POST",
-          body: JSON.stringify(items),
-        })
-
-        if (res.hasError) {
-          toast.error(res.message || "Erro ao importar perguntas.")
-          return
-        }
-
-        toast.success(`${items.length} perguntas importadas com sucesso!`)
-        mutate(API_CONFIG.ENDPOINTS.ANAMNESIS + "/questions")
-      } catch (err) {
-        toast.error("Erro ao processar arquivo. Verifique o formato.")
-        console.error(err)
-      } finally {
-        setSubmitting(false)
-        e.target.value = "" // Reset input
-      }
-    }
-    reader.readAsText(file)
-  }
-
-  function downloadTemplate(format: 'json' | 'csv') {
-    const templateData = [
-      {
-        label: "Exemplo de Pergunta Texto",
-        placeholder: "Digite aqui...",
-        section: 1, // ClientData
-        fieldType: 1, // ShortText
-        options: "",
-        isRequired: true,
-        order: 0
-      },
-      {
-        label: "Exemplo de Seleção",
-        placeholder: "Selecione uma opção",
-        section: 2, // MainComplaint
-        fieldType: 4, // SingleSelection
-        options: "Opção A, Opção B, Opção C",
-        isRequired: false,
-        order: 1
-      }
-    ]
-
-    let content = ""
-    let mimeType = ""
-    let fileName = `template_anamnese.${format}`
-
-    if (format === 'json') {
-      content = JSON.stringify(templateData, null, 2)
-      mimeType = "application/json"
-    } else {
-      const headers = "label,placeholder,section,fieldType,options,isRequired,order"
-      const rows = templateData.map(item => 
-        `"${item.label}","${item.placeholder}",${item.section},${item.fieldType},"${item.options}",${item.isRequired},${item.order}`
-      )
-      content = [headers, ...rows].join("\n")
-      mimeType = "text/csv"
-    }
-
-    const blob = new Blob([content], { type: mimeType })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = fileName
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
+  const {
+    questions,
+    isLoading,
+    dialogOpen,
+    setDialogOpen,
+    editingQuestion,
+    form,
+    setForm,
+    isSubmitting,
+    openCreate,
+    openEdit,
+    saveQuestion,
+    deleteQuestion,
+    importQuestions,
+  } = useAnamnesisConfig()
 
   const sections = Object.entries(ANAMNESIS_SECTION_LABELS).map(([key, label]) => ({
     value: parseInt(key) as AnamnesisSection,
-    label
+    label,
   }))
 
   const fieldTypes: { value: AnamnesisFieldType; label: string }[] = [
@@ -306,29 +150,41 @@ export default function AnamnesisConfigPage() {
           <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 sm:ml-auto">
             <div className="flex items-center border rounded-lg p-1 bg-muted/30 overflow-x-auto no-scrollbar justify-center">
               <span className="text-[10px] font-bold uppercase px-2 text-muted-foreground whitespace-nowrap">Templates:</span>
-              <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2" onClick={() => downloadTemplate('json')}>
+              <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2" onClick={() => downloadTemplate("json")}>
                 <FileJson className="mr-1 h-3 w-3" />
                 JSON
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2" onClick={() => downloadTemplate('csv')}>
+              <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2" onClick={() => downloadTemplate("csv")}>
                 <FileSpreadsheet className="mr-1 h-3 w-3" />
                 CSV
               </Button>
             </div>
-            
+
             <div className="flex gap-2">
               <input
                 type="file"
                 id="import-file"
                 accept=".json,.csv"
                 className="hidden"
-                onChange={handleImport}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    await importQuestions(file)
+                    e.target.value = ""
+                  }
+                }}
               />
-              <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-9 text-xs sm:text-sm" onClick={() => document.getElementById('import-file')?.click()} disabled={submitting}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 sm:flex-none h-9 text-xs sm:text-sm"
+                onClick={() => document.getElementById("import-file")?.click()}
+                disabled={isSubmitting}
+              >
                 <Upload className="mr-2 h-4 w-4" />
                 Importar
               </Button>
-              <Button size="sm" className="flex-1 sm:flex-none h-9 text-xs sm:text-sm" onClick={openCreate} disabled={submitting}>
+              <Button size="sm" className="flex-1 sm:flex-none h-9 text-xs sm:text-sm" onClick={openCreate} disabled={isSubmitting}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nova
               </Button>
@@ -358,7 +214,7 @@ export default function AnamnesisConfigPage() {
           </Card>
         ) : (
           <div className="flex flex-col gap-8">
-            {sections.map(section => {
+            {sections.map((section) => {
               const sectionQuestions = questions.filter((q: any) => q.section === section.value)
               if (sectionQuestions.length === 0) return null
 
@@ -370,7 +226,7 @@ export default function AnamnesisConfigPage() {
                   </h2>
                   <div className="flex flex-col gap-3">
                     {sectionQuestions.sort((a: any, b: any) => a.order - b.order).map((q: any) => (
-                      <div 
+                      <div
                         key={q.id}
                         className="group flex items-center justify-between p-4 rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-sm"
                       >
@@ -390,11 +246,11 @@ export default function AnamnesisConfigPage() {
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                               <span className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
                                 <HelpCircle className="h-3 w-3" />
-                                {fieldTypes.find(t => t.value === q.fieldType)?.label || "Desconhecido"}
+                                {fieldTypes.find((t) => t.value === q.fieldType)?.label || "Desconhecido"}
                               </span>
                               {q.options && (
                                 <span className="text-[10px] sm:text-xs text-muted-foreground border-l pl-3">
-                                  {q.options.split(',').length} opções
+                                  {q.options.split(",").length} opções
                                 </span>
                               )}
                             </div>
@@ -419,7 +275,7 @@ export default function AnamnesisConfigPage() {
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(q.id)} className="bg-red-600 text-white">
+                                <AlertDialogAction onClick={() => deleteQuestion(q.id)} className="bg-red-600 text-white">
                                   Excluir
                                 </AlertDialogAction>
                               </AlertDialogFooter>
@@ -435,37 +291,39 @@ export default function AnamnesisConfigPage() {
           </div>
         )}
 
-        {/* Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{editingQuestion ? "Editar Pergunta" : "Nova Pergunta"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4 py-4">
+            <form
+              onSubmit={(e) => { e.preventDefault(); saveQuestion() }}
+              className="flex flex-col gap-4 py-4"
+            >
               <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="label">Título / Pergunta *</Label>
-                  <Input 
-                    id="label" 
-                    placeholder="Ex: Você possui alguma alergia?" 
+                  <Input
+                    id="label"
+                    placeholder="Ex: Você possui alguma alergia?"
                     value={form.label}
-                    onChange={e => setForm(p => ({ ...p, label: e.target.value }))}
+                    onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))}
                     required
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="section">Seção</Label>
-                    <Select 
-                      value={form.section.toString()} 
-                      onValueChange={v => setForm(p => ({ ...p, section: parseInt(v) as AnamnesisSection }))}
+                    <Select
+                      value={form.section.toString()}
+                      onValueChange={(v) => setForm((p) => ({ ...p, section: parseInt(v) as AnamnesisSection }))}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {sections.map(s => (
+                        {sections.map((s) => (
                           <SelectItem key={s.value} value={s.value.toString()}>{s.label}</SelectItem>
                         ))}
                       </SelectContent>
@@ -473,15 +331,15 @@ export default function AnamnesisConfigPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="type">Tipo de Resposta</Label>
-                    <Select 
-                      value={form.fieldType.toString()} 
-                      onValueChange={v => setForm(p => ({ ...p, fieldType: parseInt(v) as AnamnesisFieldType }))}
+                    <Select
+                      value={form.fieldType.toString()}
+                      onValueChange={(v) => setForm((p) => ({ ...p, fieldType: parseInt(v) as AnamnesisFieldType }))}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {fieldTypes.map(t => (
+                        {fieldTypes.map((t) => (
                           <SelectItem key={t.value} value={t.value.toString()}>{t.label}</SelectItem>
                         ))}
                       </SelectContent>
@@ -491,33 +349,34 @@ export default function AnamnesisConfigPage() {
 
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="placeholder">Dica / Exemplo (Placeholder)</Label>
-                  <Input 
-                    id="placeholder" 
-                    placeholder="Ex: Descreva aqui suas alergias..." 
+                  <Input
+                    id="placeholder"
+                    placeholder="Ex: Descreva aqui suas alergias..."
                     value={form.placeholder}
-                    onChange={e => setForm(p => ({ ...p, placeholder: e.target.value }))}
+                    onChange={(e) => setForm((p) => ({ ...p, placeholder: e.target.value }))}
                   />
                 </div>
 
-                {(form.fieldType === AnamnesisFieldType.SingleSelection || form.fieldType === AnamnesisFieldType.MultipleSelection) && (
+                {(form.fieldType === AnamnesisFieldType.SingleSelection ||
+                  form.fieldType === AnamnesisFieldType.MultipleSelection) && (
                   <div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-lg border border-border">
                     <Label htmlFor="options">Opções (separadas por vírgula)</Label>
-                    <Textarea 
-                      id="options" 
-                      placeholder="Opção 1, Opção 2, Opção 3" 
+                    <Textarea
+                      id="options"
+                      placeholder="Opção 1, Opção 2, Opção 3"
                       value={form.options}
-                      onChange={e => setForm(p => ({ ...p, options: e.target.value }))}
+                      onChange={(e) => setForm((p) => ({ ...p, options: e.target.value }))}
                     />
                     <p className="text-[10px] text-muted-foreground uppercase">Importante: use vírgula para separar as opções.</p>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2 py-2">
-                  <input 
-                    type="checkbox" 
-                    id="required" 
+                  <input
+                    type="checkbox"
+                    id="required"
                     checked={form.isRequired}
-                    onChange={e => setForm(p => ({ ...p, isRequired: e.target.checked }))}
+                    onChange={(e) => setForm((p) => ({ ...p, isRequired: e.target.checked }))}
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label htmlFor="required" className="cursor-pointer">Resposta obrigatória?</Label>
@@ -525,11 +384,11 @@ export default function AnamnesisConfigPage() {
 
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="order">Ordem de exibição</Label>
-                  <Input 
-                    id="order" 
-                    type="number" 
+                  <Input
+                    id="order"
+                    type="number"
                     value={form.order}
-                    onChange={e => setForm(p => ({ ...p, order: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) => setForm((p) => ({ ...p, order: parseInt(e.target.value) || 0 }))}
                   />
                 </div>
               </div>
@@ -538,8 +397,8 @@ export default function AnamnesisConfigPage() {
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancelar</Button>
                 </DialogClose>
-                <Button type="submit" disabled={submitting}>
-                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {editingQuestion ? "Atualizar" : "Criar Pergunta"}
                 </Button>
               </DialogFooter>

@@ -29,14 +29,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { toast } from "sonner"
-import useSWR from "swr"
-import { API_CONFIG, secureApiCall, getAuthToken } from "@/lib/api"
 import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { useSettings } from "@/hooks/use-settings.hook"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
-import { flags, getCountryFromPhone } from "@/lib/flag-utils"
 
 interface TenantData {
   id: string
@@ -69,11 +66,6 @@ const RADIUS_PRESETS = [
   { label: "Pill", value: "1.5rem" },
 ]
 
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<TenantData>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Failed to fetch tenant")
-  return result.data
-}
 
 function applyRadius(value: string) {
   document.documentElement.style.setProperty("--radius", value)
@@ -154,67 +146,32 @@ function AuthenticatedImage({ src, alt, className }: { src: string, alt: string,
 
 export default function ConfiguracoesPage() {
   const { theme, setTheme } = useTheme()
-  const { data: tenant, isLoading, mutate } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
-  const [saving, setSaving] = useState(false)
-  const [uploadingLogo, setUploadingLogo] = useState(false)
-  const [exportingClients, setExportingClients] = useState(false)
-  const [exportingServices, setExportingServices] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
-  const [countryCode, setCountryCode] = useState("BR")
-  const { data: modules, mutate: mutateModules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, async (url) => {
-    const res = await secureApiCall<any[]>(url, { method: "GET" })
-    if (res.hasError) throw new Error(res.message || "Failed to fetch modules")
-    return res.data
-  })
 
-  const [form, setForm] = useState<{
-    name: string
-    slug: string
-    logoUrl: string
-    primaryColor: string
-    secondaryColor: string
-    contactPhone: string
-    contactEmail: string
-  } | null>(null)
-
-  useEffect(() => {
-    if (tenant && !form) {
-      const { countryCode: cCode, phoneNumber } = getCountryFromPhone(tenant.contactPhone || "")
-      setForm({
-        name: tenant.name ?? "",
-        slug: tenant.slug ?? "",
-        logoUrl: tenant.logoUrl ?? "",
-        primaryColor: tenant.primaryColor ?? "#8B4513",
-        secondaryColor: tenant.secondaryColor ?? "#A0522D",
-        contactPhone: phoneNumber,
-        contactEmail: tenant.contactEmail ?? "",
-      })
-      setCountryCode(cCode)
-    }
-  }, [tenant, form])
+  const {
+    modules,
+    form,
+    setForm,
+    formData,
+    countryCode,
+    setCountryCode,
+    isLoading,
+    isSaving: saving,
+    isUploadingLogo: uploadingLogo,
+    isExportingClients: exportingClients,
+    isExportingServices: exportingServices,
+    handlePreset,
+    saveTenant,
+    handleLogoUpload,
+    exportData: handleExport,
+    updateModule: handleModuleUpdate,
+  } = useSettings()
 
   useEffect(() => {
     setMounted(true)
     const saved = typeof window !== "undefined" ? localStorage.getItem("voro:radius") : null
-    if (saved) {
-      setCurrentRadius(saved)
-    }
-  }, [])
-
-  const formData = form ?? {
-    name: "",
-    slug: "",
-    logoUrl: "",
-    primaryColor: "#8B4513",
-    secondaryColor: "#A0522D",
-    contactPhone: "",
-    contactEmail: "",
-  }
-
-  const handlePreset = useCallback((primary: string, secondary: string) => {
-    setForm((p) => p ? { ...p, primaryColor: primary, secondaryColor: secondary } : null)
-    refreshTenantTheme(primary, secondary)
+    if (saved) setCurrentRadius(saved)
   }, [])
 
   const handleRadiusChange = useCallback((value: string) => {
@@ -222,127 +179,6 @@ export default function ConfiguracoesPage() {
     applyRadius(value)
   }, [])
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    if (!formData.name.trim()) {
-      toast.error("Nome do estabelecimento é obrigatório.")
-      return
-    }
-    if (!formData.slug.trim()) {
-      toast.error("Slug é obrigatório.")
-      return
-    }
-    setSaving(true)
-    try {
-      const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
-      const phoneForApi = `${dialCode}${formData.contactPhone}`
-
-      const res = await secureApiCall(API_CONFIG.ENDPOINTS.TENANT_ME, {
-        method: "PATCH",
-        body: JSON.stringify({
-          ...formData,
-          contactPhone: phoneForApi
-        }),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao salvar configurações.")
-        return
-      }
-      toast.success("Configurações salvas com sucesso!")
-      mutate()
-      refreshTenantTheme(formData.primaryColor, formData.secondaryColor)
-    } catch {
-      toast.error("Erro de conexão.")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Preview localmente
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setForm(p => p ? { ...p, logoUrl: reader.result as string } : null)
-    }
-    reader.readAsDataURL(file)
-
-    setUploadingLogo(true)
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TENANT_ME}/logo`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${getAuthToken()}`,
-        },
-        body: formData,
-      })
-
-      const res = await response.json()
-      if (!response.ok || res.hasError) {
-        toast.error(res.message || "Erro ao fazer upload da logo.")
-        // Reverter para o original do tenant se falhar
-        setForm(p => p ? { ...p, logoUrl: tenant?.logoUrl ?? "" } : null)
-        return
-      }
-
-      toast.success("Logo atualizada com sucesso!")
-      setForm(p => p ? { ...p, logoUrl: res.data } : null)
-      mutate()
-    } catch {
-      toast.error("Erro de conexão ao enviar logo.")
-      setForm(p => p ? { ...p, logoUrl: tenant?.logoUrl ?? "" } : null)
-    } finally {
-      setUploadingLogo(false)
-    }
-  }
-
-  async function handleExport(type: "clients" | "services") {
-    const setter = type === "clients" ? setExportingClients : setExportingServices
-    setter(true)
-    try {
-      const endpoint = type === "clients" ? API_CONFIG.ENDPOINTS.EXPORT_CLIENTS : API_CONFIG.ENDPOINTS.EXPORT_SERVICES
-      const res = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      })
-      if (!res.ok) { toast.error("Erro ao exportar dados."); return }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${type}-${new Date().toISOString().split("T")[0]}.csv`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      toast.success("Arquivo exportado!")
-    } catch {
-      toast.error("Erro ao exportar.")
-    } finally {
-      setter(false)
-    }
-  }
-
-  async function handleModuleUpdate(moduleId: number, isEnabled: boolean, configuration?: string) {
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.TENANT_MODULES}/${moduleId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ isEnabled, configuration }),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao atualizar módulo.")
-        return
-      }
-      toast.success("Módulo atualizado!")
-      mutateModules()
-    } catch {
-      toast.error("Erro de conexão.")
-    }
-  }
 
   if (isLoading) {
     return (
@@ -405,7 +241,7 @@ export default function ConfiguracoesPage() {
                 <CardDescription>Nome, slug, logo e informações de contato do seu salão</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSave} className="flex flex-col gap-5">
+                <form onSubmit={(e) => { e.preventDefault(); saveTenant(formData) }} className="flex flex-col gap-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="tenant-name">Nome do Estabelecimento *</Label>

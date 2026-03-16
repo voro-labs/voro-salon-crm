@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Scissors } from "lucide-react"
+import { ArrowLeft, Loader2, Calendar as CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,10 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CurrencyInput } from "@/components/currency-input"
-import { toast } from "sonner"
-import useSWR from "swr"
-
-import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -30,6 +25,9 @@ import { ptBR } from "date-fns/locale"
 import { QuickCreateClient } from "@/components/custom/quick-create-client"
 import { QuickCreateService } from "@/components/custom/quick-create-service"
 import { QuickCreateEmployee } from "@/components/custom/quick-create-employee"
+import useSWR from "swr"
+import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { useAppointmentForm } from "@/hooks/use-appointment-form.hook"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -38,38 +36,22 @@ const fetcher = async (url: string) => {
 }
 
 export default function NovoAgendamentoPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-
-  // Fetch data for dropdowns
-  const { data: clients, mutate: mutateClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
-  const { data: services, mutate: mutateServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
-  const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
-
-  const isModuleEnabled = (moduleId: number) => {
-    return modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
-  }
-
-  const [form, setForm] = useState({
-    clientId: "",
-    serviceId: "none",
-    employeeId: "none",
-    scheduledDateTime: "",
-    durationMinutes: 30,
-    description: "",
-    amount: 0,
-    notes: ""
-  })
+  const {
+    clients,
+    services,
+    employees,
+    form,
+    setForm,
+    isCreating,
+    isModuleEnabled,
+    handleServiceChange,
+    createAppointment,
+    mutateClients,
+    mutateServices,
+    mutateEmployees,
+  } = useAppointmentForm()
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-
-  // Fetch employees based on service
-  const { data: employees, mutate: mutateEmployees } = useSWR(
-    form.serviceId !== "none"
-      ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
-      : API_CONFIG.ENDPOINTS.EMPLOYEES,
-    fetcher
-  )
 
   const { data: availability, isLoading: loadingAvailability } = useSWR(
     selectedDate
@@ -84,69 +66,11 @@ export default function NovoAgendamentoPage() {
     now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30)
     now.setSeconds(0)
     now.setMilliseconds(0)
-
-    // Set selected date
     setSelectedDate(now)
-
-    // Format for datetime-local input (YYYY-MM-DDTHH:mm) - still keeping for compatibility or fallback
     const tzOffset = now.getTimezoneOffset() * 60000
     const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16)
-
-    setForm(p => ({ ...p, scheduledDateTime: localISOTime }))
-  }, [])
-
-  // Update amount when service changes
-  function handleServiceChange(serviceId: string) {
-    const selectedService = services?.find((s: any) => s.id === serviceId)
-    setForm(p => ({
-      ...p,
-      serviceId,
-      amount: selectedService?.price ?? p.amount,
-      description: p.description || selectedService?.name || "",
-      durationMinutes: selectedService?.durationMinutes ?? p.durationMinutes
-    }))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.clientId) {
-      toast.error("Selecione um cliente.")
-      return
-    }
-    if (!form.scheduledDateTime) {
-      toast.error("Selecione a data e hora.")
-      return
-    }
-
-    setLoading(true)
-    try {
-      // Convert local time string to ISO with offset properly handled by API
-      const date = new Date(form.scheduledDateTime)
-
-      const res = await secureApiCall(API_CONFIG.ENDPOINTS.APPOINTMENTS, {
-        method: "POST",
-        body: JSON.stringify({
-          ...form,
-          scheduledDateTime: date.toISOString(),
-          serviceId: form.serviceId === "none" ? null : form.serviceId,
-          employeeId: form.employeeId === "none" ? null : form.employeeId
-        }),
-      })
-
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao criar agendamento.")
-        return
-      }
-
-      toast.success("Agendamento criado com sucesso!")
-      router.push("/appointments")
-      router.refresh()
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.")
-    } finally {
-      setLoading(false)
-    }
-  }
+    setForm((p) => ({ ...p, scheduledDateTime: localISOTime }))
+  }, [setForm])
 
   return (
     <AuthGuard requiredRoles={["User"]}>
@@ -165,8 +89,10 @@ export default function NovoAgendamentoPage() {
             <CardTitle className="text-foreground">Informações do Agendamento</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-
+            <form
+              onSubmit={(e) => { e.preventDefault(); createAppointment(form) }}
+              className="flex flex-col gap-5"
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
@@ -174,23 +100,21 @@ export default function NovoAgendamentoPage() {
                     <QuickCreateClient
                       onSuccess={async (id) => {
                         await mutateClients()
-                        setForm(p => ({ ...p, clientId: id }))
+                        setForm((p) => ({ ...p, clientId: id }))
                       }}
                     />
                   </div>
                   <Select
                     key={clients ? "clients-loaded" : "clients-loading"}
                     value={form.clientId}
-                    onValueChange={(v) => setForm(p => ({ ...p, clientId: v }))}
+                    onValueChange={(v) => setForm((p) => ({ ...p, clientId: v }))}
                   >
                     <SelectTrigger id="clientId" className="w-full">
                       <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                     <SelectContent>
                       {clients?.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -203,7 +127,7 @@ export default function NovoAgendamentoPage() {
                       <QuickCreateService
                         onSuccess={async (id) => {
                           await mutateServices()
-                          setForm(p => ({ ...p, serviceId: id }))
+                          setForm((p) => ({ ...p, serviceId: id }))
                           handleServiceChange(id)
                         }}
                       />
@@ -219,9 +143,7 @@ export default function NovoAgendamentoPage() {
                       <SelectContent>
                         <SelectItem value="none">Nenhum / Customizado</SelectItem>
                         {services?.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -235,14 +157,14 @@ export default function NovoAgendamentoPage() {
                       <QuickCreateEmployee
                         onSuccess={async (id) => {
                           await mutateEmployees()
-                          setForm(p => ({ ...p, employeeId: id }))
+                          setForm((p) => ({ ...p, employeeId: id }))
                         }}
                       />
                     </div>
                     <Select
                       key={employees ? "employees-loaded" : "employees-loading"}
                       value={form.employeeId}
-                      onValueChange={(v) => setForm(p => ({ ...p, employeeId: v }))}
+                      onValueChange={(v) => setForm((p) => ({ ...p, employeeId: v }))}
                     >
                       <SelectTrigger id="employeeId" className="w-full">
                         <SelectValue placeholder="Selecione um funcionário" />
@@ -250,9 +172,7 @@ export default function NovoAgendamentoPage() {
                       <SelectContent>
                         <SelectItem value="none">Qualquer um</SelectItem>
                         {employees?.map((e: any) => (
-                          <SelectItem key={e.id} value={e.id}>
-                            {e.name}
-                          </SelectItem>
+                          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -266,7 +186,7 @@ export default function NovoAgendamentoPage() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        variant={"outline"}
+                        variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !selectedDate && "text-muted-foreground"
@@ -277,12 +197,12 @@ export default function NovoAgendamentoPage() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                    <Calendar
+                      <Calendar
                         mode="single"
                         selected={selectedDate}
                         onSelect={(date) => {
                           setSelectedDate(date)
-                          setForm(p => ({ ...p, scheduledDateTime: "" })) // Reset slot selection
+                          setForm((p) => ({ ...p, scheduledDateTime: "" }))
                         }}
                         disabled={(date) => {
                           const today = new Date()
@@ -301,7 +221,7 @@ export default function NovoAgendamentoPage() {
                   <Select
                     key={form.durationMinutes}
                     value={form.durationMinutes.toString()}
-                    onValueChange={(v) => setForm(p => ({ ...p, durationMinutes: parseInt(v) }))}
+                    onValueChange={(v) => setForm((p) => ({ ...p, durationMinutes: parseInt(v) }))}
                   >
                     <SelectTrigger id="durationMinutes" className="w-full">
                       <SelectValue />
@@ -346,7 +266,7 @@ export default function NovoAgendamentoPage() {
                               !slot.isAvailable && "opacity-30 cursor-not-allowed bg-muted"
                             )}
                             disabled={!slot.isAvailable}
-                            onClick={() => setForm(p => ({ ...p, scheduledDateTime: slot.startTime }))}
+                            onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
                           >
                             {format(new Date(slot.startTime), "HH:mm")}
                           </Button>
@@ -366,7 +286,7 @@ export default function NovoAgendamentoPage() {
                   <CurrencyInput
                     id="amount"
                     value={form.amount}
-                    onChange={(v) => setForm(p => ({ ...p, amount: v }))}
+                    onChange={(v) => setForm((p) => ({ ...p, amount: v }))}
                   />
                 </div>
 
@@ -376,7 +296,7 @@ export default function NovoAgendamentoPage() {
                     id="description"
                     placeholder="Ex: Corte e Barba"
                     value={form.description}
-                    onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))}
+                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                   />
                 </div>
               </div>
@@ -388,7 +308,7 @@ export default function NovoAgendamentoPage() {
                   placeholder="Observações adicionais sobre o agendamento..."
                   rows={3}
                   value={form.notes}
-                  onChange={(e) => setForm(p => ({ ...p, notes: e.target.value }))}
+                  onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                 />
               </div>
 
@@ -396,8 +316,8 @@ export default function NovoAgendamentoPage() {
                 <Button type="button" variant="outline" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
                   <Link href="/appointments">Cancelar</Link>
                 </Button>
-                <Button type="submit" disabled={loading} className="w-full sm:w-auto h-11 text-sm sm:text-base">
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isCreating} className="w-full sm:w-auto h-11 text-sm sm:text-base">
+                  {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Confirmar Agendamento
                 </Button>
               </div>
@@ -405,6 +325,6 @@ export default function NovoAgendamentoPage() {
           </CardContent>
         </Card>
       </div>
-    </AuthGuard >
+    </AuthGuard>
   )
 }
