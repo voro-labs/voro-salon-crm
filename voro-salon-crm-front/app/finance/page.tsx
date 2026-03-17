@@ -16,11 +16,12 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { PageHeader } from "@/components/ui/custom/page-header"
 import {
   Dialog,
   DialogContent,
@@ -106,7 +107,7 @@ const getPaymentMethodName = (method: PaymentMethod) => {
 }
 
 export default function FinancialPage() {
-  const { transactions, isLoading, createTransaction, updateTransaction, payTransaction, cancelTransaction, deleteTransaction } = useTransactions()
+  const { transactions, isLoading, createTransaction, payTransaction, cancelTransaction, deleteTransaction } = useTransactions()
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
 
@@ -114,10 +115,9 @@ export default function FinancialPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-   // Modais de Ação
+  // Modais de Ação
   const [selectedTx, setSelectedTx] = useState<TransactionDto | null>(null)
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [txToCancel, setTxToCancel] = useState<TransactionDto | null>(null)
   const [txToDelete, setTxToDelete] = useState<TransactionDto | null>(null)
 
@@ -230,7 +230,7 @@ export default function FinancialPage() {
       setIsSubmitting(false)
     }
   }
-  
+
   const handleCancelTransaction = async () => {
     if (!txToCancel) return
     setIsSubmitting(true)
@@ -274,123 +274,120 @@ export default function FinancialPage() {
   return (
     <AuthGuard requiredRoles={["Admin", "User"]}>
       <div className="flex flex-col gap-6 p-3 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Financeiro</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1 text-balance">
-              Fluxo de caixa, despesas e receitas.
-            </p>
-          </div>
-
-          <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
-            <Link href="/finance/categories" className="flex-1 sm:flex-none">
-              <Button variant="outline" className="w-full h-10 text-xs sm:text-sm">
-                <Settings className="mr-2 h-4 w-4" />
-                Categorias
-              </Button>
-            </Link>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild className="flex-1 sm:flex-none">
-                <Button onClick={handleOpenDialog} className="w-full h-10 text-xs sm:text-sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo
+        <PageHeader
+          title="Financeiro"
+          description="Fluxo de caixa, despesas e receitas."
+          action={
+            <>
+              <Link href="/finance/categories" className="w-full flex-1 sm:flex-none">
+                <Button variant="outline" className="w-full h-10 text-xs sm:text-sm">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Categorias
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Novo Lançamento</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Tipo</Label>
-                      <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                        <SelectTrigger id="type" className="w-full">
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="2">Saída (Despesa)</SelectItem>
-                          <SelectItem value="1">Entrada (Ganho)</SelectItem>
-                        </SelectContent>
-                      </Select>
+              </Link>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild className="flex-1 sm:flex-none">
+                  <Button onClick={handleOpenDialog} className="w-full h-10 text-xs sm:text-sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Novo Lançamento</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="type">Tipo</Label>
+                        <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                          <SelectTrigger id="type" className="w-full">
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2">Saída (Despesa)</SelectItem>
+                            <SelectItem value="1">Entrada (Ganho)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="date">Vencimento / Data</Label>
+                        <Input
+                          id="date"
+                          type="date"
+                          value={form.dueDate}
+                          onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                        />
+                      </div>
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="date">Vencimento / Data</Label>
+                      <Label htmlFor="description">Descrição</Label>
                       <Input
-                        id="date"
-                        type="date"
-                        value={form.dueDate}
-                        onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                        id="description"
+                        placeholder="Ex: Aluguel do mês, Faturamento diário..."
+                        value={form.description}
+                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        autoFocus
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Descrição</Label>
-                    <Input
-                      id="description"
-                      placeholder="Ex: Aluguel do mês, Faturamento diário..."
-                      value={form.description}
-                      onChange={(e) => setForm({ ...form, description: e.target.value })}
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="amount">Valor</Label>
-                      <CurrencyInput
-                        id="amount"
-                        value={form.amount}
-                        onChange={(v) => setForm(p => ({ ...p, amount: v }))}
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="amount">Valor</Label>
+                        <CurrencyInput
+                          id="amount"
+                          value={form.amount}
+                          onChange={(v) => setForm(p => ({ ...p, amount: v }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="category">Categoria</Label>
+                        <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
+                          <SelectTrigger id="category" className="w-full">
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhuma</SelectItem>
+                            {(categories || [])
+                              .filter(c => c.type.toString() === form.type)
+                              .map(c => (
+                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="category">Categoria</Label>
-                      <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
-                        <SelectTrigger id="category" className="w-full">
+                      <Label htmlFor="paymentMethod">Método de Pagamento</Label>
+                      <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>
+                        <SelectTrigger id="paymentMethod" className="w-full">
                           <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {(categories || [])
-                            .filter(c => c.type.toString() === form.type)
-                            .map(c => (
-                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
+                          <SelectItem value="6">Pix</SelectItem>
+                          <SelectItem value="2">Cartão de Crédito</SelectItem>
+                          <SelectItem value="3">Cartão de Débito</SelectItem>
+                          <SelectItem value="1">Dinheiro</SelectItem>
+                          <SelectItem value="5">Boleto</SelectItem>
+                          <SelectItem value="7">Outro</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="paymentMethod">Método de Pagamento</Label>
-                    <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>
-                      <SelectTrigger id="paymentMethod" className="w-full">
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="6">Pix</SelectItem>
-                        <SelectItem value="2">Cartão de Crédito</SelectItem>
-                        <SelectItem value="3">Cartão de Débito</SelectItem>
-                        <SelectItem value="1">Dinheiro</SelectItem>
-                        <SelectItem value="5">Boleto</SelectItem>
-                        <SelectItem value="7">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex justify-end pt-4">
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Criar Lançamento
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
+                    <div className="flex justify-end pt-4">
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Criar Lançamento
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </>
+          }
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <Card className="min-w-0">
@@ -446,113 +443,113 @@ export default function FinancialPage() {
           <CardContent className="p-0 overflow-hidden">
             <div className="overflow-x-auto no-scrollbar">
               <div className="min-w-[600px]">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-[100px] pl-4">Vencimento</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Valor / Pago</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right pr-4">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                        Carregando transações...
-                      </TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[100px] pl-4">Vencimento</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Valor / Pago</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right pr-4">Ações</TableHead>
                     </TableRow>
-                  ) : filteredTransactions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                        Nenhum lançamento encontrado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredTransactions.map((tx) => (
-                      <TableRow key={tx.id}>
-                        <TableCell className="pl-4 font-medium">
-                          {format(new Date(tx.dueDate), "dd/MM/yyyy", { locale: ptBR })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-semibold">{tx.description}</span>
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              {getPaymentMethodIcon(tx.paymentMethod)}
-                              {getPaymentMethodName(tx.paymentMethod)}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {tx.category ? (
-                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                              <Tag className="h-3.5 w-3.5" />
-                              {tx.category.name}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm italic">Sem categoria</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <span className={`font-medium ${tx.type === TransactionType.Income ? 'text-emerald-600' : 'text-rose-600'}`}>
-                              {tx.type === TransactionType.Income ? '+' : '-'} {formatCurrency(tx.amount)}
-                            </span>
-                            {tx.paidAmount > 0 && (
-                              <span className="text-xs text-muted-foreground">
-                                Pago: {formatCurrency(tx.paidAmount)}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(tx.status)}
-                        </TableCell>
-                        <TableCell className="text-right pr-4">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => {}} disabled>
-                              <FileEdit className="mr-2 h-4 w-4" />
-                              Editar Lançamento
-                            </DropdownMenuItem>
-                            {tx.status !== TransactionStatus.Paid && tx.status !== TransactionStatus.Cancelled && (
-                              <DropdownMenuItem onClick={() => handleOpenPayDialog(tx)}>
-                                <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" />
-                                Pagar / Dar Baixa
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            {tx.status !== TransactionStatus.Cancelled && (
-                              <DropdownMenuItem onClick={() => setTxToCancel(tx)}>
-                                <Ban className="mr-2 h-4 w-4 text-amber-500" />
-                                Cancelar Lançamento
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => setTxToDelete(tx)}>
-                              <Trash2 className="mr-2 h-4 w-4 text-rose-500" />
-                              Apagar Registro
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Carregando transações...
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : filteredTransactions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Nenhum lançamento encontrado.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredTransactions.map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="pl-4 font-medium">
+                            {format(new Date(tx.dueDate), "dd/MM/yyyy", { locale: ptBR })}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-semibold">{tx.description}</span>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                {getPaymentMethodIcon(tx.paymentMethod)}
+                                {getPaymentMethodName(tx.paymentMethod)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {tx.category ? (
+                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                <Tag className="h-3.5 w-3.5" />
+                                {tx.category.name}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm italic">Sem categoria</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <span className={`font-medium ${tx.type === TransactionType.Income ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {tx.type === TransactionType.Income ? '+' : '-'} {formatCurrency(tx.amount)}
+                              </span>
+                              {tx.paidAmount > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  Pago: {formatCurrency(tx.paidAmount)}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(tx.status)}
+                          </TableCell>
+                          <TableCell className="text-right pr-4">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Abrir menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => { }} disabled>
+                                  <FileEdit className="mr-2 h-4 w-4" />
+                                  Editar Lançamento
+                                </DropdownMenuItem>
+                                {tx.status !== TransactionStatus.Paid && tx.status !== TransactionStatus.Cancelled && (
+                                  <DropdownMenuItem onClick={() => handleOpenPayDialog(tx)}>
+                                    <CheckCircle className="mr-2 h-4 w-4 text-emerald-500" />
+                                    Pagar / Dar Baixa
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {tx.status !== TransactionStatus.Cancelled && (
+                                  <DropdownMenuItem onClick={() => setTxToCancel(tx)}>
+                                    <Ban className="mr-2 h-4 w-4 text-amber-500" />
+                                    Cancelar Lançamento
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => setTxToDelete(tx)}>
+                                  <Trash2 className="mr-2 h-4 w-4 text-rose-500" />
+                                  Apagar Registro
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
@@ -561,7 +558,7 @@ export default function FinancialPage() {
             <DialogTitle>Registrar Pagamento</DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePaySubmit} className="space-y-4 pt-4">
-          <div className="rounded-md bg-muted/50 p-3 mb-2 flex flex-col gap-1">
+            <div className="rounded-md bg-muted/50 p-3 mb-2 flex flex-col gap-1">
               <span className="text-sm font-semibold">{selectedTx?.description}</span>
               <span className="text-sm text-muted-foreground">Valor Restante: <strong className="text-foreground">{formatCurrency((selectedTx?.amount || 0) - (selectedTx?.paidAmount || 0))}</strong></span>
             </div>

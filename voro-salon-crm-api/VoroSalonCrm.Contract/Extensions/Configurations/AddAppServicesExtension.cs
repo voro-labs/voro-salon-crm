@@ -46,6 +46,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IBlobService, BlobService>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IMailKitEmailService, MailKitEmailService>();
+            services.AddScoped<IIntegrationAuditService, IntegrationAuditService>();
             services.AddScoped<IWhatsappService, WhatsappService>();
             services.AddScoped<IWhatsappChatService, WhatsappChatService>();
 
@@ -56,6 +57,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<ITenantRepository, TenantRepository>();
+            services.AddScoped<IIntegrationAuditRepository, IntegrationAuditRepository>();
             services.AddScoped<IClientRepository, ClientRepository>();
             services.AddScoped<IServiceRepository, ServiceRepository>();
             services.AddScoped<IServiceRecordRepository, ServiceRecordRepository>();

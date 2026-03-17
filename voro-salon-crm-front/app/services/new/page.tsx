@@ -1,7 +1,5 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,46 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { toast } from "sonner"
-
-import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { useServiceDetail } from "@/hooks/use-service-detail.hook"
 
 export default function NovoServicoPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    durationMinutes: 30,
-  })
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name.trim()) {
-      toast.error("O nome do serviço é obrigatório.")
-      return
-    }
-    setLoading(true)
-    try {
-      const res = await secureApiCall(API_CONFIG.ENDPOINTS.SERVICES, {
-        method: "POST",
-        body: JSON.stringify(form),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao cadastrar serviço.")
-        return
-      }
-      toast.success("Serviço cadastrado com sucesso!")
-      router.push("/services")
-      router.refresh()
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { form, setForm, isSaving, createService } = useServiceDetail()
 
   return (
     <AuthGuard requiredRoles={["User"]}>
@@ -75,7 +38,7 @@ export default function NovoServicoPage() {
             <CardTitle className="text-foreground">Dados do Serviço</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); createService(form) }} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="name">Nome *</Label>
                 <Input
@@ -101,7 +64,7 @@ export default function NovoServicoPage() {
                 <Select
                   key={form.durationMinutes}
                   value={form.durationMinutes.toString()}
-                  onValueChange={(v) => setForm(p => ({ ...p, durationMinutes: parseInt(v) }))}
+                  onValueChange={(v) => setForm((p) => ({ ...p, durationMinutes: parseInt(v) }))}
                 >
                   <SelectTrigger id="durationMinutes" className="w-full">
                     <SelectValue />
@@ -129,8 +92,8 @@ export default function NovoServicoPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Cadastrar
                 </Button>
                 <Button type="button" variant="outline" asChild>

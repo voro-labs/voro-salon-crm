@@ -1,4 +1,4 @@
-﻿using VoroSalonCrm.Application.DTOs.CRM;
+using VoroSalonCrm.Application.DTOs.CRM;
 
 namespace VoroSalonCrm.Application.DTOs
 {
@@ -13,6 +13,7 @@ namespace VoroSalonCrm.Application.DTOs
         public string? Email { get; set; }
         public DateTimeOffset? Expiration { get; set; }
         public string? Token { get; set; }
+        public string? RefreshToken { get; set; }
 
         public AuthDto() { }
 

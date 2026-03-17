@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
-import useSWR, { mutate } from "swr"
+import { useClientDetails } from "@/hooks/use-client-details.hook"
+import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import {
   ArrowLeft,
   Phone,
@@ -62,17 +63,12 @@ import { formatPhone } from "@/lib/mask-utils"
 import { CurrencyInput } from "@/components/currency-input"
 import { toast } from "sonner"
 
-import { API_CONFIG, secureApiCall } from "@/lib/api"
+
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ClipboardList, History } from "lucide-react"
 
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<any>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Error")
-  return result.data
-}
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -96,23 +92,28 @@ function isRecent(dateStr: string) {
 
 export default function ClienteDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const clientId = params.id as string
 
-  const { data: client, isLoading } = useSWR(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, fetcher)
-  const { data: servicesData, isLoading: svcLoading } = useSWR(
-    `${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`,
-    fetcher
-  )
-  const { data: anamnesisHistory, isLoading: anamnesisLoading } = useSWR(
-    `${API_CONFIG.ENDPOINTS.ANAMNESIS}/client/${clientId}`,
-    fetcher
-  )
-  const { data: catalogServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const {
+    client,
+    services,
+    anamnesisHistory,
+    catalogServices,
+    isLoading,
+    isClientLoading,
+    isUpdating: editLoading,
+    isDeleting: deleting,
+    isAddingService: svcSubmitting,
+    isAddingAnamnesis: anamnesisSubmitting,
+    updateClient,
+    deleteClient,
+    addService,
+    deleteService,
+    addAnamnesis,
+  } = useClientDetails(clientId)
 
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "" })
-  const [editLoading, setEditLoading] = useState(false)
   const [countryCode, setCountryCode] = useState("BR")
 
   const [svcOpen, setSvcOpen] = useState(false)
@@ -123,15 +124,9 @@ export default function ClienteDetailPage() {
     serviceDate: new Date().toISOString().split("T")[0],
     notes: "",
   })
-  const [svcSubmitting, setSvcSubmitting] = useState(false)
 
   const [anamnesisOpen, setAnamnesisOpen] = useState(false)
   const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
-  const [anamnesisSubmitting, setAnamnesisSubmitting] = useState(false)
-
-  const [deleting, setDeleting] = useState(false)
-
-  const services = servicesData ?? []
 
   function openEdit() {
     if (client) {
@@ -150,73 +145,30 @@ export default function ClienteDetailPage() {
   async function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!editForm.name.trim() || !editForm.phone.trim()) {
-      toast.error("Nome e telefone sao obrigatorios.")
+      toast.error("Nome e telefone são obrigatórios.")
       return
     }
-    setEditLoading(true)
-    try {
-      const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
-      const phoneForApi = `${dialCode}${editForm.phone}`
-
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          ...editForm,
-          phone: phoneForApi
-        }),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao atualizar.")
-        return
-      }
-      toast.success("Cliente atualizado!")
-      setEditOpen(false)
-      mutate(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`)
-    } catch {
-      toast.error("Erro de conexao.")
-    } finally {
-      setEditLoading(false)
-    }
+    const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
+    const phoneForApi = `${dialCode}${editForm.phone}`
+    const success = await updateClient({ ...editForm, phone: phoneForApi })
+    if (success) setEditOpen(false)
   }
 
   async function handleDelete() {
-    setDeleting(true)
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, { method: "DELETE" })
-      if (res.hasError) {
-        toast.error("Erro ao excluir cliente.")
-        return
-      }
-      toast.success("Cliente excluido!")
-      router.push("/dashboard/clientes")
-    } catch {
-      toast.error("Erro de conexao.")
-    } finally {
-      setDeleting(false)
-    }
+    await deleteClient()
   }
 
   async function handleAddService(e: React.FormEvent) {
     e.preventDefault()
     if (!svcForm.description.trim()) {
-      toast.error("Descricao do serviço e obrigatoria.")
+      toast.error("Descrição do serviço é obrigatória.")
       return
     }
-    setSvcSubmitting(true)
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}`, {
-        method: "POST",
-        body: JSON.stringify({
-          ...svcForm,
-          clientId: clientId,
-          serviceId: svcForm.serviceId === "none" ? null : svcForm.serviceId,
-        }),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao registrar serviço.")
-        return
-      }
-      toast.success("Serviço registrado!")
+    const success = await addService({
+      ...svcForm,
+      serviceId: svcForm.serviceId === "none" ? null : svcForm.serviceId,
+    })
+    if (success) {
       setSvcOpen(false)
       setSvcForm({
         serviceId: "none",
@@ -225,84 +177,43 @@ export default function ClienteDetailPage() {
         serviceDate: new Date().toISOString().split("T")[0],
         notes: "",
       })
-      mutate(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`)
-      mutate(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`)
-    } catch {
-      toast.error("Erro de conexao.")
-    } finally {
-      setSvcSubmitting(false)
     }
   }
-  
+
   async function handleAnamnesisSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (anamnesisResponses.length === 0) {
       toast.error("Por favor, preencha pelo menos uma resposta.")
       return
     }
-    setAnamnesisSubmitting(true)
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.ANAMNESIS}`, {
-        method: "POST",
-        body: JSON.stringify({
-          clientId: clientId,
-          professionalId: "00000000-0000-0000-0000-000000000000",
-          date: new Date().toISOString(),
-          responses: anamnesisResponses,
-          signatures: [],
-          evidences: []
-        }),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao salvar anamnese.")
-        return
-      }
-      toast.success("Anamnese salva com sucesso!")
+    const success = await addAnamnesis({
+      date: new Date().toISOString(),
+      responses: anamnesisResponses,
+      signatures: [],
+      evidences: [],
+    })
+    if (success) {
       setAnamnesisOpen(false)
       setAnamnesisResponses([])
-      mutate(`${API_CONFIG.ENDPOINTS.ANAMNESIS}/client/${clientId}`)
-    } catch {
-      toast.error("Erro de conexao.")
-    } finally {
-      setAnamnesisSubmitting(false)
     }
   }
 
   async function handleDeleteService(serviceId: string) {
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}/${serviceId}`, { method: "DELETE" })
-      if (res.hasError) {
-        toast.error("Erro ao excluir serviço.")
-        return
-      }
-      toast.success("Serviço excluido!")
-      mutate(`${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`)
-      mutate(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`)
-    } catch {
-      toast.error("Erro de conexao.")
-    }
+    await deleteService(serviceId)
   }
 
-  if (isLoading) {
+  if (isClientLoading) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/clientes">
+            <Link href="/clients">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div className="h-6 w-40 animate-pulse rounded bg-muted" />
         </div>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col gap-3">
-              <div className="h-5 w-48 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-56 animate-pulse rounded bg-muted" />
-            </div>
-          </CardContent>
-        </Card>
+        <ListSkeleton count={1} type="cards" />
       </div>
     )
   }
@@ -555,18 +466,8 @@ export default function ClienteDetailPage() {
                 </Dialog>
               </CardHeader>
               <CardContent>
-                {svcLoading ? (
-                  <div className="flex flex-col gap-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                        <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
-                        <div className="flex flex-1 flex-col gap-1.5">
-                          <div className="h-4 w-36 animate-pulse rounded bg-muted" />
-                          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                {isLoading ? (
+                  <ListSkeleton count={3} type="cards" />
                 ) : services.length === 0 ? (
                   <div className="flex flex-col items-center py-8 text-center">
                     <Clock className="mb-3 h-10 w-10 text-muted-foreground/50" />
@@ -693,7 +594,7 @@ export default function ClienteDetailPage() {
                 </Dialog>
               </CardHeader>
               <CardContent>
-                {anamnesisLoading ? (
+                {isLoading ? (
                   <div className="space-y-4">
                     {Array.from({ length: 2 }).map((_, i) => (
                       <div key={i} className="h-24 w-full animate-pulse rounded-lg bg-muted" />

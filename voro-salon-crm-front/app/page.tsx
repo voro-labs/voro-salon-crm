@@ -4,7 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { MetricCard } from "@/components/metric-card"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,16 +14,10 @@ import {
   TrendingUp,
   Plus,
   Clock,
-  CheckCircle2,
-  Circle,
-  XCircle,
-  AlertCircle,
   Loader2,
   ChevronRight,
   Copy,
-  Check,
-  Link as LinkIcon
-} from "lucide-react"
+  Check} from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -32,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import {
   BarChart,
@@ -48,19 +41,15 @@ import { ptBR } from "date-fns/locale"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { useWhatsApp } from "@/hooks/use-whatsapp.hook"
+import { PageHeader } from "@/components/ui/custom/page-header"
+import { StatusBadge, appointmentStatusConfig } from "@/components/ui/custom/status-badge"
+import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
   if (result.hasError) throw new Error(result.message || "Error")
   return result.data
-}
-
-const statusConfig: Record<number, { label: string; color: string; icon: any }> = {
-  0: { label: "Pendente", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Circle },
-  1: { label: "Confirmado", color: "bg-blue-100 text-blue-800 border-blue-200", icon: CalendarDays },
-  2: { label: "Concluído", color: "bg-green-100 text-green-800 border-green-200", icon: CheckCircle2 },
-  3: { label: "Cancelado", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle },
-  4: { label: "Faltou", color: "bg-gray-100 text-gray-800 border-gray-200", icon: AlertCircle },
 }
 
 const MONTH_NAMES: Record<string, string> = {
@@ -95,6 +84,7 @@ export default function DashboardPage() {
   const [timeFilter, setTimeFilter] = useState("today")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const { sendWhatsAppMessage } = useWhatsApp()
 
   const isSchedulingEnabled = !modules || modules.find((m: any) => m.module === 2)?.isEnabled !== false
 
@@ -111,68 +101,15 @@ export default function DashboardPage() {
   }
 
   const handleWhatsApp = (apt: any, newStatus: number) => {
-    const supportedStatuses = [0, 1, 2, 3, 4]
-    if (!supportedStatuses.includes(newStatus)) return
-
-    if (tenant?.useWhatsappBooking) {
-      return
-    }
-
-    if (!apt.clientPhone) {
-      toast.warning("Cliente sem telefone cadastrado — não foi possível abrir o WhatsApp.")
-      return
-    }
-    const phone = apt.clientPhone.replace(/\D/g, "")
-    const date = new Date(apt.scheduledDateTime)
-    const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
-    const timeStr = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-    const serviceName = apt.serviceName || "serviço"
-    const clientName = apt.clientName || "Cliente"
-    
-    let message = ""
-    switch (newStatus) {
-      case 0: // Pending
-        message = `Olá ${clientName}! Recebemos sua solicitação de agendamento para ${serviceName} em ${dateStr} às ${timeStr}. Estamos analisando e logo te confirmamos! ⏳`
-        break
-      case 1: // Confirmed
-        message = `Olá ${clientName}! Seu agendamento de ${serviceName} foi confirmado para ${dateStr} às ${timeStr}. Aguardamos você! 😊`
-        break
-      case 2: // Completed
-        message = `Olá ${clientName}! Obrigado pelo seu agendamento de ${serviceName}. Foi um prazer atendê-lo(a)! Qualquer dúvida, estamos à disposição. 🙏`
-        break
-      case 3: // Cancelled
-        message = `Olá ${clientName}! Infelizmente seu agendamento de ${serviceName} para ${dateStr} às ${timeStr} precisou ser cancelado. Se desejar, podemos reagendar para outro horário! 😊`
-        break
-      case 4: // NoShow
-        message = `Olá ${clientName}, sentimos sua falta hoje no agendamento de ${serviceName}. Aconteceu algum imprevisto? Se quiser agendar uma nova data, estamos por aqui! 👋`
-        break
-      default:
-        return
-    }
-    
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-    window.open(url, "_blank")
-    toast.info("WhatsApp aberto com mensagem pré-preenchida.")
+    sendWhatsAppMessage(apt, newStatus, !!tenant?.useWhatsappBooking)
   }
 
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 p-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground text-balance">Painel</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Visao geral do seu negocio
-          </p>
-        </div>
+        <PageHeader title="Painel" description="Visao geral do seu negocio" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="border-border/60">
-              <CardContent className="pt-6">
-                <Skeleton className="h-4 w-24 mb-2 bg-muted" />
-                <Skeleton className="h-8 w-32 bg-muted" />
-              </CardContent>
-            </Card>
-          ))}
+          <ListSkeleton count={3} type="cards" />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 border-border/60 min-w-0">
@@ -254,15 +191,11 @@ export default function DashboardPage() {
   return (
     <AuthGuard requiredRoles={["User"]}>
       <div className="flex flex-col gap-6 p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground text-balance">Painel</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Visao geral do seu negocio
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {isSchedulingEnabled && (
+        <PageHeader 
+          title="Painel" 
+          description="Visao geral do seu negocio"
+          action={
+            isSchedulingEnabled ? (
               <>
                 <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
                   {copied ? <Check className="mr-2 h-4 w-4 text-green-500" /> : <Copy className="mr-2 h-4 w-4" />}
@@ -275,9 +208,9 @@ export default function DashboardPage() {
                   </Link>
                 </Button>
               </>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+        />
 
         {/* Metric cards */}
         <div className={`grid grid-cols-1 ${isSchedulingEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-4`}>
@@ -384,40 +317,47 @@ export default function DashboardPage() {
                 <div className="flex flex-col divide-y divide-border/40">
                   {filteredApts.length > 0 ? (
                     filteredApts.map((apt: any) => {
-                      const config = statusConfig[apt.status] || statusConfig[0]
                       const date = new Date(apt.scheduledDateTime)
                       const isAptUpdating = updatingId === apt.id
 
                       return (
                         <div key={apt.id} className="p-4 hover:bg-accent/5 transition-colors group">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex flex-col gap-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-primary flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {format(date, "HH:mm")}
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4 min-w-0 flex-1">
+                              <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+                                <span className="text-[10px] font-bold uppercase leading-none">
+                                  {format(date, "MMM", { locale: ptBR })}
                                 </span>
-                                <Badge variant="outline" className={`text-[10px] px-1 h-4 ${config.color} border-none`}>
-                                  {config.label}
-                                </Badge>
+                                <span className="text-lg font-bold leading-tight">
+                                  {format(date, "dd")}
+                                </span>
                               </div>
-                              <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {apt.serviceName || apt.description || "Sem serviço definido"}
-                              </p>
+                              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                <div className="flex flex-col xs:flex-row xs:items-center gap-1.5">
+                                  <span className="text-xs font-bold text-primary flex items-center gap-1 shrink-0">
+                                    <Clock className="h-3 w-3" />
+                                    {format(date, "HH:mm")}
+                                  </span>
+                                  <StatusBadge status={apt.status} />
+                                </div>
+                                <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
+                                <p className="text-[11px] text-muted-foreground truncate">
+                                  {apt.serviceName || apt.description || "Sem serviço definido"}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2">
+                            <div className="flex flex-col items-end gap-2 shrink-0">
                               <Select
                                 key={apt.id}
                                 value={String(apt.status)}
                                 onValueChange={(v) => handleStatusUpdate(apt.id, v)}
                                 disabled={isAptUpdating}
                               >
-                                <SelectTrigger className="h-7 w-[100px] text-[10px] bg-transparent border-border/40">
+                                <SelectTrigger className="h-7 w-[100px] text-[10px] bg-transparent border-border/40 shrink-0">
                                   {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <SelectValue />}
                                 </SelectTrigger>
-                                <SelectContent>
-                                  {Object.entries(statusConfig).map(([key, cfg]) => (
+                                <SelectContent className="min-w-[120px]">
+                                  {Object.entries(appointmentStatusConfig).map(([key, cfg]) => (
                                     <SelectItem key={key} value={key} className="text-[10px]">
                                       {cfg.label}
                                     </SelectItem>

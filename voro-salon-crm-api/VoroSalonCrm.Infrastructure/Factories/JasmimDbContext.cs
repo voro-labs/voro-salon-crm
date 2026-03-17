@@ -44,7 +44,69 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<AnamnesisEvidence> AnamnesisEvidences { get; set; }
         public DbSet<AnamnesisSignature> AnamnesisSignatures { get; set; }
 
+        public DbSet<EntityAuditLog> EntityAuditLogs { get; set; }
+        public DbSet<RouteAuditLog> RouteAuditLogs { get; set; }
+        public DbSet<IntegrationAuditLog> IntegrationAuditLogs { get; set; }
 
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var entries = ChangeTracker.Entries()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
+                .ToList();
+
+            foreach (var entry in entries)
+            {
+                if (entry.Entity is EntityAuditLog || entry.Entity is RouteAuditLog || entry.Entity is IntegrationAuditLog)
+                    continue;
+
+                var auditLog = new EntityAuditLog
+                {
+                    EntityName = entry.Entity.GetType().Name,
+                    Action = entry.State.ToString(),
+                    Timestamp = DateTime.UtcNow,
+                    TenantId = _currentUser.TenantId,
+                    UserId = _currentUser.UserId
+                };
+
+                var primaryKey = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey());
+                if (primaryKey != null)
+                {
+                    auditLog.PrimaryKey = primaryKey.CurrentValue?.ToString();
+                }
+
+                if (entry.State == EntityState.Modified)
+                {
+                    var oldValues = new Dictionary<string, object?>();
+                    var newValues = new Dictionary<string, object?>();
+
+                    foreach (var property in entry.Properties)
+                    {
+                        if (property.IsModified)
+                        {
+                            oldValues[property.Metadata.Name] = property.OriginalValue;
+                            newValues[property.Metadata.Name] = property.CurrentValue;
+                        }
+                    }
+
+                    auditLog.OldValues = System.Text.Json.JsonSerializer.Serialize(oldValues);
+                    auditLog.NewValues = System.Text.Json.JsonSerializer.Serialize(newValues);
+                }
+                else if (entry.State == EntityState.Added)
+                {
+                    var newValues = entry.Properties.ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+                    auditLog.NewValues = System.Text.Json.JsonSerializer.Serialize(newValues);
+                }
+                else if (entry.State == EntityState.Deleted)
+                {
+                    var oldValues = entry.Properties.ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
+                    auditLog.OldValues = System.Text.Json.JsonSerializer.Serialize(oldValues);
+                }
+
+                EntityAuditLogs.Add(auditLog);
+            }
+
+            return await base.SaveChangesAsync(cancellationToken);
+        }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

@@ -17,11 +17,11 @@ import {
   Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { fetcher } from "@/lib/fetcher"
 import { 
   AnamnesisSheet, 
   AnamnesisQuestion, 
@@ -30,12 +30,6 @@ import {
   AnamnesisFieldType
 } from "@/types/anamnesis.types"
 import { useState } from "react"
-
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<any>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Error")
-  return result.data
-}
 
 export default function AnamnesisDetailPage() {
   const params = useParams()

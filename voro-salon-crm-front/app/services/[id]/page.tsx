@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -28,92 +27,23 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { CurrencyInput } from "@/components/currency-input"
-import { toast } from "sonner"
-import useSWR, { mutate } from "swr"
-
-import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
-
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<any>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Error")
-  return result.data
-}
+import { useServiceDetail } from "@/hooks/use-service-detail.hook"
 
 export default function EditarServicoPage() {
   const params = useParams()
-  const router = useRouter()
   const serviceId = params.id as string
 
-  const { data: service, isLoading } = useSWR(
-    serviceId ? `${API_CONFIG.ENDPOINTS.SERVICES}/${serviceId}` : null,
-    fetcher
-  )
-
-  const [loading, setLoading] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    durationMinutes: 30,
-  })
-
-  useEffect(() => {
-    if (service) {
-      setForm({
-        name: service.name,
-        description: service.description || "",
-        price: service.price || 0,
-        durationMinutes: service.durationMinutes || 30,
-      })
-    }
-  }, [service])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name.trim()) {
-      toast.error("O nome do serviço é obrigatório.")
-      return
-    }
-    setLoading(true)
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICES}/${serviceId}`, {
-        method: "PUT",
-        body: JSON.stringify(form),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao atualizar serviço.")
-        return
-      }
-      toast.success("Serviço atualizado com sucesso!")
-      mutate(`${API_CONFIG.ENDPOINTS.SERVICES}/${serviceId}`)
-      router.push("/services")
-    } catch {
-      toast.error("Erro de conexão. Tente novamente.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleDelete() {
-    setDeleting(true)
-    try {
-      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.SERVICES}/${serviceId}`, {
-        method: "DELETE",
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao excluir serviço.")
-        return
-      }
-      toast.success("Serviço excluído com sucesso!")
-      router.push("/services")
-    } catch {
-      toast.error("Erro de conexão.")
-    } finally {
-      setDeleting(false)
-    }
-  }
+  const {
+    service,
+    form,
+    setForm,
+    isLoading,
+    isSaving,
+    isDeleting,
+    updateService,
+    deleteService,
+  } = useServiceDetail(serviceId)
 
   if (isLoading) {
     return (
@@ -171,11 +101,11 @@ export default function EditarServicoPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleDelete}
-                  disabled={deleting}
+                  onClick={deleteService}
+                  disabled={isDeleting}
                   className="bg-red-600 text-white hover:bg-red-700"
                 >
-                  {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Excluir
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -188,7 +118,7 @@ export default function EditarServicoPage() {
             <CardTitle className="text-foreground">Dados do Serviço</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); updateService(form) }} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="name">Nome *</Label>
                 <Input
@@ -214,7 +144,7 @@ export default function EditarServicoPage() {
                 <Select
                   key={form.durationMinutes}
                   value={form.durationMinutes.toString()}
-                  onValueChange={(v) => setForm(p => ({ ...p, durationMinutes: parseInt(v) }))}
+                  onValueChange={(v) => setForm((p) => ({ ...p, durationMinutes: parseInt(v) }))}
                 >
                   <SelectTrigger id="durationMinutes" className="w-full">
                     <SelectValue />
@@ -242,8 +172,8 @@ export default function EditarServicoPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Salvar Alterações
                 </Button>
                 <Button type="button" variant="outline" asChild>

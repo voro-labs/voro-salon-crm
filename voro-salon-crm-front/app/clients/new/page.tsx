@@ -1,7 +1,5 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,76 +7,25 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
-import { flags } from "@/lib/flag-utils"
-import { toast } from "sonner"
-import { Switch } from "@/components/ui/switch"
 import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
-
-import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { useClientForm } from "@/hooks/use-client-form.hook"
 
 export default function NovoClientePage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [countryCode, setCountryCode] = useState("BR")
-  const [showAnamnesis, setShowAnamnesis] = useState(false)
-  const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    notes: "",
-  })
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name.trim() || !form.phone.trim()) {
-      toast.error("Nome e telefone sao obrigatorios.")
-      return
-    }
-    setLoading(true)
-    try {
-      const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
-      const phoneForApi = `${dialCode}${form.phone}`
-
-      let endpoint = API_CONFIG.ENDPOINTS.CLIENTS
-      let body: any = {
-        ...form,
-        phone: phoneForApi
-      }
-
-      if (showAnamnesis && anamnesisResponses.length > 0) {
-        endpoint = `${API_CONFIG.ENDPOINTS.ANAMNESIS}/with-client`
-        body = {
-          client: body,
-          anamnesis: {
-            date: new Date().toISOString(),
-            professionalId: "00000000-0000-0000-0000-000000000000",
-            responses: anamnesisResponses,
-            signatures: []
-          }
-        }
-      }
-
-      const res = await secureApiCall(endpoint, {
-        method: "POST",
-        body: JSON.stringify(body),
-      })
-      if (res.hasError) {
-        toast.error(res.message || "Erro ao cadastrar cliente.")
-        return
-      }
-      toast.success(showAnamnesis ? "Cliente e Anamnese cadastrados!" : "Cliente cadastrado com sucesso!")
-      router.push("/clients")
-      router.refresh()
-    } catch {
-      toast.error("Erro de conexao. Tente novamente.")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const {
+    form,
+    setForm,
+    countryCode,
+    setCountryCode,
+    showAnamnesis,
+    setShowAnamnesis,
+    setAnamnesisResponses,
+    isCreating,
+    createClient,
+  } = useClientForm()
 
   return (
     <AuthGuard requiredRoles={["User"]}>
@@ -97,7 +44,7 @@ export default function NovoClientePage() {
             <CardTitle className="text-foreground">Dados do Cliente</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={(e) => { e.preventDefault(); createClient() }} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="name">Nome *</Label>
                 <Input
@@ -113,10 +60,7 @@ export default function NovoClientePage() {
                 <Label htmlFor="phone">Telefone *</Label>
                 <div className="flex flex-col xs:flex-row gap-2">
                   <div className="w-full xs:w-[120px] shrink-0">
-                    <CountrySelector
-                      value={countryCode}
-                      onChange={setCountryCode}
-                    />
+                    <CountrySelector value={countryCode} onChange={setCountryCode} />
                   </div>
                   <div className="flex-1">
                     <PhoneInput
@@ -143,10 +87,10 @@ export default function NovoClientePage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="notes">Observacoes</Label>
+                <Label htmlFor="notes">Observações</Label>
                 <Textarea
                   id="notes"
-                  placeholder="Anotacoes sobre o cliente..."
+                  placeholder="Anotações sobre o cliente..."
                   rows={3}
                   value={form.notes}
                   onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
@@ -175,12 +119,12 @@ export default function NovoClientePage() {
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Button type="submit" disabled={loading} size="lg" className="w-full sm:w-auto h-11 text-sm sm:text-base">
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isCreating} size="lg" className="w-full sm:w-auto h-11 text-sm sm:text-base">
+                  {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {showAnamnesis ? "Cadastrar com Anamnese" : "Cadastrar Cliente"}
                 </Button>
                 <Button type="button" variant="outline" size="lg" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
-                  <Link href="/dashboard/clientes">Cancelar</Link>
+                  <Link href="/clients">Cancelar</Link>
                 </Button>
               </div>
             </form>

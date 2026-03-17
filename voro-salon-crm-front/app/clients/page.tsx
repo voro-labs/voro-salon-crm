@@ -1,7 +1,5 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import useSWR from "swr"
 import Link from "next/link"
 import { Plus, Search, Phone, Mail, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,46 +7,39 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { formatPhone } from "@/lib/mask-utils"
 
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<any>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Error")
-  return result.data
-}
+import { useDataList } from "@/hooks/use-data-list.hook"
+import { PageHeader } from "@/components/ui/custom/page-header"
+import { EmptyState } from "@/components/ui/custom/empty-state"
+import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 
 export default function ClientesPage() {
-  const [search, setSearch] = useState("")
-  const { data, isLoading } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
-
-  const clients = data ?? []
-
-  const filtered = useCallback(() => {
-    if (!search.trim()) return clients
-    const q = search.toLowerCase()
-    return clients.filter(
-      (c: { name: string; phone: string; email: string }) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q) ||
-        (c.email && c.email.toLowerCase().includes(q))
-    )
-  }, [search, clients])
+  const { filteredData: filtered, isLoading, search, setSearch } = useDataList(
+    API_CONFIG.ENDPOINTS.CLIENTS,
+    (c: any, q: string) =>
+      c.name.toLowerCase().includes(q) ||
+      c.phone.includes(q) ||
+      (c.email && c.email.toLowerCase().includes(q))
+  )
 
   return (
     <AuthGuard requiredRoles={["User"]}>
       <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Clientes</h1>
-          <Button asChild size="sm">
-            <Link href="/clients/new">
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Novo Cliente</span>
-              <span className="sm:hidden">Novo</span>
-            </Link>
-          </Button>
-        </div>
+        <PageHeader 
+          title="Clientes" 
+          action={
+            <Button asChild size="sm">
+              <Link href="/clients/new">
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Novo Cliente</span>
+                <span className="sm:hidden">Novo</span>
+              </Link>
+            </Button>
+          } 
+        />
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -61,46 +52,24 @@ export default function ClientesPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex flex-col gap-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
-                    <div className="flex flex-1 flex-col gap-2">
-                      <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-                      <div className="h-3 w-48 animate-pulse rounded bg-muted" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : filtered().length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <UserRound className="mb-4 h-12 w-12 text-muted-foreground/50" />
-              <h3 className="text-lg font-semibold text-foreground">
-                {search ? "Nenhum resultado encontrado" : "Nenhum cliente cadastrado"}
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {search
-                  ? "Tente buscar por outro termo."
-                  : "Comece adicionando seu primeiro cliente."}
-              </p>
-              {!search && (
-                <Button asChild className="mt-4" size="sm">
-                  <Link href="/clients/new">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Cliente
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          <ListSkeleton type="cards" count={5} />
+        ) : filtered.length === 0 ? (
+          <EmptyState 
+            icon={UserRound}
+            title={search ? "Nenhum resultado encontrado" : "Nenhum cliente cadastrado"}
+            description={search ? "Tente buscar por outro termo." : "Comece adicionando seu primeiro cliente."}
+            action={!search ? (
+              <Button asChild size="sm">
+                <Link href="/clients/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar Cliente
+                </Link>
+              </Button>
+            ) : undefined}
+          />
         ) : (
           <div className="flex flex-col gap-3">
-            {filtered().map(
+            {filtered.map(
               (client: {
                 id: string
                 name: string

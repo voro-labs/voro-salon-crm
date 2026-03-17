@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-import { API_CONFIG, secureApiCall, getAuthToken } from "@/lib/api"
+import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { fetcher } from "@/lib/fetcher"
 
 function AuthenticatedImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -76,19 +77,10 @@ function AuthenticatedImage({ src, alt, className }: { src: string, alt: string,
   return <img src={blobUrl} alt={alt} className={className} />
 }
 
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<any[]>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Error")
-  return result.data
-}
-
 export default function EmployeesPage() {
   const [search, setSearch] = useState("")
   const { data: employees, isLoading } = useSWR(API_CONFIG.ENDPOINTS.EMPLOYEES, fetcher)
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, async (url) => {
-    const res = await secureApiCall<any[]>(url, { method: "GET" })
-    return res.data || []
-  })
+  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
 
   const filtered = useCallback(() => {
     if (!employees) return []
@@ -101,7 +93,7 @@ export default function EmployeesPage() {
   }, [search, employees])
 
   const getServiceName = (id: string) => {
-    return services?.find(s => s.id === id)?.name || "Serviço"
+    return services?.find((s: any) => s.id === id)?.name || "Serviço"
   }
 
   return (

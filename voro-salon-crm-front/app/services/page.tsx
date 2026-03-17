@@ -3,20 +3,14 @@
 import { useState, useCallback } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Scissors, Banknote, Clock } from "lucide-react"
+import { Plus, Search, Scissors, Banknote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 
-import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
-
-const fetcher = async (url: string) => {
-  const result = await secureApiCall<any>(url, { method: "GET" })
-  if (result.hasError) throw new Error(result.message || "Error")
-  return result.data
-}
+import { fetcher } from "@/lib/fetcher"
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("pt-BR", {
