@@ -8,7 +8,7 @@ interface ListSkeletonProps {
 
 export function ListSkeleton({ count = 5, type = "cards" }: ListSkeletonProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <>
       {Array.from({ length: count }).map((_, i) => (
         <Card key={i} className="border-border/60">
           <CardContent className="p-4">
@@ -22,6 +22,6 @@ export function ListSkeleton({ count = 5, type = "cards" }: ListSkeletonProps) {
           </CardContent>
         </Card>
       ))}
-    </div>
+    </>
   )
 }
