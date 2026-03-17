@@ -9,12 +9,15 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native"
-import { useAuth } from "../../lib/use-auth-store"
+import { useAuth } from "../../contexts/auth.context"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 export function SignUpScreen({ navigation }: any) {
-  const { signUp, isLoading, error, clearError } = useAuth()
+  const { login } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const clearError = () => setError(null)
 
   const [form, setForm] = useState({
     UserName: "",
@@ -33,10 +36,31 @@ export function SignUpScreen({ navigation }: any) {
   }
 
   const handleSignUp = async () => {
+    setIsLoading(true)
+    setError(null)
     try {
-      await signUp(form)
+      const { apiCall, API_CONFIG } = await import("../../lib/api")
+      const response = await apiCall<any>("/auth/sign-up", { // Note: SIGNUP missing in API_CONFIG.ENDPOINTS in web, hardcoding for now
+        method: "POST",
+        body: JSON.stringify(form)
+      })
+
+      if (response.hasError) {
+        setError(response.message || "Erro ao criar conta")
+        return
+      }
+
+      const authData = response.data
+      if (authData?.token) {
+        await login(authData.token, authData.refreshToken, authData.tenants)
+      } else {
+        navigation.navigate("SignIn")
+      }
+
     } catch (e) {
-      // Error handled by store
+      setError("Ocorreu um erro ao criar conta.")
+    } finally {
+      setIsLoading(false)
     }
   }
 

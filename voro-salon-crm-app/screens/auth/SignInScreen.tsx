@@ -9,21 +9,21 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native"
-import { useAuth } from "../../lib/use-auth-store"
+import { useSignIn } from "../../hooks/use-sign-in.hook"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 export function SignInScreen({ navigation }: any) {
-  const { signIn, isLoading, error, clearError } = useAuth()
+  const { signIn, loading: isLoading, error, clearError } = useSignIn()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
   const handleSignIn = async () => {
     if (!email || !password) return
     try {
-      await signIn(email, password)
+      await signIn({ email, password })
     } catch (e) {
-      // Error handled by store
+      // Error handled by hook
     }
   }
 

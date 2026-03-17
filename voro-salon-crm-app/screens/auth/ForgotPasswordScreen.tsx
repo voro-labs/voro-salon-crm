@@ -14,20 +14,37 @@ import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 export function ForgotPasswordScreen({ navigation }: any) {
-    const { forgotPassword, isLoading, error, clearError } = useAuth()
     const [email, setEmail] = useState("")
     const [success, setSuccess] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const clearError = () => setError(null)
 
     const handleForgot = async () => {
         if (!email) return
+        setIsLoading(true)
+        setError(null)
         try {
-            await forgotPassword(email)
+            const { apiCall, API_CONFIG } = await import("../../lib/api")
+            const response = await apiCall(API_CONFIG.ENDPOINTS.FORGOT_PASSWORD, {
+                method: "POST",
+                body: JSON.stringify({ email })
+            })
+
+            if (response.hasError) {
+                setError(response.message || "Erro ao solicitar recuperação")
+                return
+            }
+
             setSuccess(true)
             setTimeout(() => {
                 navigation.navigate("ResetPassword", { email })
             }, 2000)
         } catch (e) {
-            // Error handled by store
+            setError("Ocorreu um erro. Tente novamente.")
+        } finally {
+            setIsLoading(false)
         }
     }
 

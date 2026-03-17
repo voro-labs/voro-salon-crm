@@ -7,13 +7,13 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { useAuth } from '../lib/use-auth-store';
+import { useAuth } from '../contexts/auth.context';
 import { useSwipeStore } from '../lib/use-swipe-store';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const ProfileScreen: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, logout: signOut } = useAuth();
   const { profile, liked, history, isSyncing } = useSwipeStore();
 
   const preferences = useMemo(() => {

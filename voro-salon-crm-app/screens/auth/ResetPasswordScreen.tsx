@@ -9,13 +9,16 @@ import {
     ActivityIndicator,
     ScrollView,
 } from "react-native"
-import { useAuth } from "../../lib/use-auth-store"
+import { useAuth } from "../../contexts/auth.context"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 export function ResetPasswordScreen({ navigation, route }: any) {
-    const { resetPassword, isLoading, error, clearError } = useAuth()
     const initialEmail = route.params?.email || ""
+
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const clearError = () => setError(null)
 
     const [form, setForm] = useState({
         Email: initialEmail,
@@ -32,15 +35,28 @@ export function ResetPasswordScreen({ navigation, route }: any) {
     const handleReset = async () => {
         if (!form.Token || !form.NewPassword || !form.ConfirmPassword) return
         if (form.NewPassword !== form.ConfirmPassword) {
-            // Could set a local error here, but store handles matching if API does
             return
         }
 
+        setIsLoading(true)
+        setError(null)
         try {
-            await resetPassword(form)
+            const { apiCall, API_CONFIG } = await import("../../lib/api")
+            const response = await apiCall(API_CONFIG.ENDPOINTS.RESET_PASSWORD, {
+                method: "POST",
+                body: JSON.stringify(form)
+            })
+
+            if (response.hasError) {
+                setError(response.message || "Erro ao redefinir a senha")
+                return
+            }
+
             navigation.navigate("SignIn")
         } catch (e) {
-            // Error handled by store
+            setError("Erro ao se conectar. Tente novamente.")
+        } finally {
+            setIsLoading(false)
         }
     }
 

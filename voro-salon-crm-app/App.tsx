@@ -6,7 +6,7 @@ import { View, ActivityIndicator } from 'react-native';
 
 import { TabNavigator } from './navigation/TabNavigator';
 import { AuthNavigator } from './navigation/AuthNavigator';
-import { AuthProvider, useAuth } from './lib/use-auth-store';
+import { AuthProvider, useAuth } from './contexts/auth.context';
 import { SwipeProvider } from './lib/use-swipe-store';
 import './global.css';
 

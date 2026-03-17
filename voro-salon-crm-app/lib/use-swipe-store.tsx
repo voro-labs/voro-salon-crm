@@ -14,7 +14,7 @@ import {
 } from "./types"
 
 import { extractKeywords } from "./keyword-extractor"
-import { useAuth } from "./use-auth-store"
+import { useAuth } from "../contexts/auth.context"
 
 const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/v1`
 
@@ -206,7 +206,9 @@ interface SwipeContextType {
 const SwipeContext = createContext<SwipeContextType | undefined>(undefined)
 
 export function SwipeProvider({ children }: { children: React.ReactNode }) {
-  const { token, isAuthenticated, signOut } = useAuth()
+  const { user, isAuthenticated, logout } = useAuth()
+  const token = user?.token
+  const signOut = logout
 
   // Debug log for authentication
   useEffect(() => {
