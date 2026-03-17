@@ -2,55 +2,87 @@ import React from "react"
 import { View, Text, Pressable, ScrollView, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
+import { useRouter } from "expo-router"
 import { useAuth } from "contexts/auth.context"
 import { ScreenHeader } from "components/ScreenHeader"
 
-interface SettingRowProps {
+interface NavRowProps {
   icon: string
   label: string
-  value?: string
+  subtitle?: string
   onPress?: () => void
   danger?: boolean
+  iconBg?: string
+  iconColor?: string
 }
 
-function SettingRow({ icon, label, value, onPress, danger }: SettingRowProps) {
+function NavRow({ icon, label, subtitle, onPress, danger, iconBg, iconColor }: NavRowProps) {
   return (
-    <Pressable onPress={onPress} className="flex-row items-center gap-3 py-3.5 border-b border-zinc-100 active:bg-zinc-50">
-      <View className={`h-9 w-9 rounded-xl items-center justify-center ${danger ? "bg-red-50" : "bg-purple-50"}`}>
-        <Ionicons name={icon as any} size={18} color={danger ? "#ef4444" : "#7c3aed"} />
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3 py-3.5 border-b border-zinc-50 active:bg-zinc-50"
+    >
+      <View
+        className="h-9 w-9 rounded-xl items-center justify-center shrink-0"
+        style={{ backgroundColor: iconBg ?? (danger ? "#fef2f2" : "#f5f3ff") }}
+      >
+        <Ionicons
+          name={icon as any}
+          size={18}
+          color={iconColor ?? (danger ? "#ef4444" : "#7c3aed")}
+        />
       </View>
-      <View className="flex-1">
-        <Text className={`font-bold text-base ${danger ? "text-red-600" : "text-zinc-900"}`}>{label}</Text>
-        {value && <Text className="text-zinc-500 text-sm">{value}</Text>}
+      <View className="flex-1 min-w-0">
+        <Text className={`font-bold text-base ${danger ? "text-red-600" : "text-zinc-900"}`}>
+          {label}
+        </Text>
+        {subtitle ? (
+          <Text className="text-zinc-500 text-xs mt-0.5" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
       {!danger && <Ionicons name="chevron-forward" size={16} color="#d4d4d8" />}
     </Pressable>
   )
 }
 
+function SectionLabel({ title }: { title: string }) {
+  return (
+    <Text className="text-zinc-500 text-xs font-bold uppercase tracking-wider px-5 mb-2 mt-5">
+      {title}
+    </Text>
+  )
+}
+
 export default function SettingsScreen() {
+  const router = useRouter()
   const { user, logout } = useAuth()
+
+  const initials =
+    `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "U"
 
   const handleLogout = () => {
     Alert.alert("Sair", "Tem certeza que deseja sair?", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Sair", style: "destructive", onPress: logout },
+      { text: "Sair", style: "destructive", onPress: () => logout() },
     ])
   }
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Configurações" />
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
-        <View className="bg-white mx-4 mt-4 rounded-3xl p-5 border border-zinc-100 items-center mb-4">
+
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Profile Card */}
+        <View className="bg-white mx-4 mt-4 rounded-3xl p-5 border border-zinc-100 items-center">
           <View className="h-20 w-20 bg-purple-100 rounded-3xl items-center justify-center mb-3">
-            <Text className="text-purple-700 font-black text-2xl">
-              {`${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "U"}
-            </Text>
+            <Text className="text-purple-700 font-black text-2xl">{initials}</Text>
           </View>
-          <Text className="text-xl font-black text-zinc-900">{user?.firstName} {user?.lastName}</Text>
-          <Text className="text-zinc-500 text-sm">{user?.email}</Text>
+          <Text className="text-xl font-black text-zinc-900 text-center">
+            {user?.firstName} {user?.lastName}
+          </Text>
+          <Text className="text-zinc-500 text-sm mt-0.5">{user?.email}</Text>
           {user?.tenants?.[0]?.name && (
             <View className="mt-2 px-3 py-1 bg-purple-50 rounded-full">
               <Text className="text-purple-600 text-xs font-bold">{user.tenants[0].name}</Text>
@@ -58,20 +90,53 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Settings List */}
-        <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100 mb-4">
-          <SettingRow icon="person-outline" label="Meu Perfil" />
-          <SettingRow icon="business-outline" label="Dados do Salão" />
-          <SettingRow icon="notifications-outline" label="Notificações" />
-          <SettingRow icon="color-palette-outline" label="Aparência" />
-          <SettingRow icon="help-circle-outline" label="Ajuda e Suporte" />
+        {/* Estabelecimento */}
+        <SectionLabel title="Estabelecimento" />
+        <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100">
+          <NavRow
+            icon="business-outline"
+            label="Dados do Salão"
+            subtitle="Nome, slug, logo, contato e cores"
+            onPress={() => router.push("/(tabs)/settings/salon" as any)}
+          />
+          <NavRow
+            icon="grid-outline"
+            label="Módulos"
+            subtitle="Ativar/desativar funcionalidades"
+            onPress={() => router.push("/(tabs)/settings/modules" as any)}
+            iconBg="#f0f9ff"
+            iconColor="#0284c7"
+          />
+          <NavRow
+            icon="download-outline"
+            label="Exportar Dados"
+            subtitle="Clientes e serviços em CSV"
+            onPress={() => router.push("/(tabs)/settings/export" as any)}
+            iconBg="#f0fdf4"
+            iconColor="#059669"
+          />
+          <NavRow
+            icon="clipboard-outline"
+            label="Anamnese"
+            subtitle="Configurar ficha de avaliação"
+            onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
+            iconBg="#fff7ed"
+            iconColor="#d97706"
+          />
         </View>
 
-        <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100 mb-4">
-          <SettingRow icon="log-out-outline" label="Sair" onPress={handleLogout} danger />
+        {/* Conta */}
+        <SectionLabel title="Conta" />
+        <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100">
+          <NavRow
+            icon="log-out-outline"
+            label="Sair"
+            onPress={handleLogout}
+            danger
+          />
         </View>
 
-        <Text className="text-center text-zinc-400 text-xs mb-8">Voro Salon CRM v1.0.0</Text>
+        <Text className="text-center text-zinc-400 text-xs mt-6">Voro Salon CRM v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   )
