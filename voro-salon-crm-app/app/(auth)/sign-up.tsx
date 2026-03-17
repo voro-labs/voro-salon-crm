@@ -14,6 +14,7 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSignUp = async () => {
     if (!firstName || !email || !password) return
@@ -52,22 +53,25 @@ export default function SignUpScreen() {
               <Text className="text-zinc-500 font-medium mt-2 text-center">Preencha seus dados para começar</Text>
             </View>
 
-            <View className="gap-3">
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center">
+            <View className="mt-2 gap-3">
+              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
                 <Ionicons name="person-outline" size={20} color="#71717a" />
                 <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Nome" placeholderTextColor="#a1a1aa" value={firstName} onChangeText={setFirstName} />
               </View>
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center">
+              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
                 <Ionicons name="person-outline" size={20} color="#71717a" />
                 <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Sobrenome" placeholderTextColor="#a1a1aa" value={lastName} onChangeText={setLastName} />
               </View>
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center">
+              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
                 <Ionicons name="mail-outline" size={20} color="#71717a" />
                 <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="E-mail" placeholderTextColor="#a1a1aa" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
               </View>
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center">
+              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
                 <Ionicons name="lock-closed-outline" size={20} color="#71717a" />
-                <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Senha" placeholderTextColor="#a1a1aa" value={password} onChangeText={setPassword} secureTextEntry />
+                <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Senha" placeholderTextColor="#a1a1aa" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+                <Pressable onPress={() => setShowPassword(v => !v)} className="ml-2 p-1">
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#71717a" />
+                </Pressable>
               </View>
 
               {error && (

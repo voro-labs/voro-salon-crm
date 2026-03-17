@@ -49,7 +49,7 @@ export default function ResetPasswordScreen() {
               </Text>
               <Text className="text-zinc-500 font-medium mt-2 text-center">Digite o código recebido e sua nova senha</Text>
             </View>
-            <View className="gap-3">
+            <View className="space-y-6 gap-3">
               <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center">
                 <Ionicons name="keypad-outline" size={20} color="#71717a" />
                 <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Código de verificação" placeholderTextColor="#a1a1aa" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={6} />

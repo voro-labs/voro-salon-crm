@@ -45,7 +45,7 @@ export default function ForgotPasswordScreen() {
               </Text>
               <Text className="text-zinc-500 font-medium mt-2 text-center">Informe seu e-mail para receber o código</Text>
             </View>
-            <View className="gap-3">
+            <View className="mt-2 gap-3">
               <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center">
                 <Ionicons name="mail-outline" size={20} color="#71717a" />
                 <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Seu e-mail" placeholderTextColor="#a1a1aa" value={email} onChangeText={(t) => { setEmail(t); setError(null) }} autoCapitalize="none" keyboardType="email-address" />
