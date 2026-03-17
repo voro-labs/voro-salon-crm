@@ -1,7 +1,5 @@
-"use client"
-
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken } from "lib/api"
+import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG } from "lib/api"
 import { AuthDto } from "types/DTOs/auth.interface"
 import { jwtDecode } from "jwt-decode"
 import * as SecureStore from "expo-secure-store"
@@ -39,34 +37,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       const token = await getAuthToken()
       const storedTenantsStr = await SecureStore.getItemAsync("user_tenants")
+      const storedTenants = storedTenantsStr ? JSON.parse(storedTenantsStr) : []
+
+      // Aplica um JWT válido ao estado do usuário
+      const applyToken = (jwt: string, refresh?: string) => {
+        const decoded = jwtDecode<JwtPayload>(jwt)
+        setUser({
+          userId: decoded.userId,
+          firstName: decoded.firstName,
+          lastName: decoded.lastName,
+          userName: decoded.userName,
+          email: decoded.email,
+          roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
+          token: jwt,
+          refreshToken: refresh,
+          tenants: storedTenants,
+        })
+      }
+
+      // Tenta renovar o token silenciosamente usando o refresh token
+      const attemptSilentRefresh = async (): Promise<boolean> => {
+        const refreshToken = await getRefreshToken()
+        if (!refreshToken) return false
+        try {
+          const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          })
+          const data = await res.json()
+          if (res.ok && !data.hasError && data.data?.token) {
+            const newToken = data.data.token
+            const newRefresh = data.data.refreshToken
+            await setAuthToken(newToken)
+            if (newRefresh) await setRefreshToken(newRefresh)
+            applyToken(newToken, newRefresh || refreshToken)
+            return true
+          }
+        } catch {}
+        return false
+      }
 
       if (!token) {
-        setUser(null)
+        // Sem access token — tenta refresh antes de deslogar
+        const refreshed = await attemptSilentRefresh()
+        if (!refreshed) setUser(null)
         setLoading(false)
         return
       }
 
       try {
         const decoded = jwtDecode<JwtPayload>(token)
-        const refreshToken = (await getRefreshToken()) || undefined
+        const isExpired = decoded.exp * 1000 < Date.now()
 
-        const userData: AuthDto = {
-          userId: decoded.userId,
-          firstName: decoded.firstName,
-          lastName: decoded.lastName,
-          userName: decoded.userName,
-          email: decoded.email,
-          roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
-          token: token,
-          refreshToken: refreshToken,
-          tenants: storedTenantsStr ? JSON.parse(storedTenantsStr) : []
+        if (isExpired) {
+          // Token expirado — tenta refresh silencioso
+          const refreshed = await attemptSilentRefresh()
+          if (!refreshed) {
+            await removeAuthToken()
+            await removeRefreshToken()
+            setUser(null)
+          }
+        } else {
+          // Token ainda válido — usa normalmente
+          const refreshToken = (await getRefreshToken()) || undefined
+          applyToken(token, refreshToken)
         }
-        setUser(userData)
       } catch (err) {
-        console.error("Token inválido:", err)
-        await removeAuthToken()
-        await removeRefreshToken()
-        setUser(null)
+        // Token malformado — tenta refresh antes de deslogar
+        console.error("Erro ao decodificar token:", err)
+        const refreshed = await attemptSilentRefresh()
+        if (!refreshed) {
+          await removeAuthToken()
+          await removeRefreshToken()
+          setUser(null)
+        }
       } finally {
         setLoading(false)
       }

@@ -25,11 +25,17 @@ export default function ServicesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Serviços" />
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100">
-        <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
+      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+        <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
           <Ionicons name="search" size={18} color="#a1a1aa" />
           <TextInput className="flex-1 text-zinc-900 font-medium text-sm py-1" placeholder="Buscar serviços..." placeholderTextColor="#a1a1aa" value={search} onChangeText={setSearch} />
         </View>
+        <Pressable
+          onPress={() => router.push("/(tabs)/services/new" as any)}
+          className="h-11 w-11 bg-purple-600 rounded-2xl items-center justify-center"
+        >
+          <Ionicons name="add" size={24} color="white" />
+        </Pressable>
       </View>
 
       {isLoading ? (
@@ -64,9 +70,6 @@ export default function ServicesScreen() {
         />
       )}
 
-      <Pressable onPress={() => router.push("/(tabs)/services/new" as any)} className="absolute bottom-24 right-5 h-14 w-14 bg-purple-600 rounded-2xl items-center justify-center shadow-lg shadow-purple-200">
-        <Ionicons name="add" size={28} color="white" />
-      </Pressable>
     </SafeAreaView>
   )
 }

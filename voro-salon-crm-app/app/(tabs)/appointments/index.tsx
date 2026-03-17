@@ -11,82 +11,190 @@ interface Appointment {
   id: string
   clientName?: string
   serviceName?: string
+  description?: string
+  scheduledDateTime?: string
   date?: string
   startTime?: string
-  status?: string
-  client?: { firstName: string; lastName: string }
+  durationMinutes?: number
+  status?: string | number
+  client?: { firstName?: string; lastName?: string; name?: string }
   service?: { name: string }
 }
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  Scheduled: { label: "Agendado", bg: "bg-blue-50", text: "text-blue-600" },
-  Completed: { label: "Concluído", bg: "bg-green-50", text: "text-green-600" },
-  Cancelled: { label: "Cancelado", bg: "bg-red-50", text: "text-red-600" },
-  NoShow: { label: "Faltou", bg: "bg-yellow-50", text: "text-yellow-600" },
+// Suporta tanto status numérico (0-4) quanto string (Scheduled, etc.)
+const STATUS_MAP: Record<string | number, { label: string; bg: string; text: string; border: string }> = {
+  0:           { label: "Pendente",   bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
+  1:           { label: "Confirmado", bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+  2:           { label: "Concluído",  bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" },
+  3:           { label: "Cancelado",  bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+  4:           { label: "Faltou",     bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
+  Scheduled:   { label: "Agendado",   bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+  Confirmed:   { label: "Confirmado", bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+  Completed:   { label: "Concluído",  bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" },
+  Cancelled:   { label: "Cancelado",  bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+  NoShow:      { label: "Faltou",     bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
+}
+
+const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
+function parseDateInfo(item: Appointment): { day: string; month: string; time: string } | null {
+  if (item.scheduledDateTime) {
+    const d = new Date(item.scheduledDateTime)
+    if (isNaN(d.getTime())) return null
+    return {
+      day: String(d.getDate()).padStart(2, "0"),
+      month: MONTHS_SHORT[d.getMonth()],
+      time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+    }
+  }
+  if (item.date) {
+    const [y, m, d] = item.date.split("-").map(Number)
+    if (!y || !m || !d) return null
+    return {
+      day: String(d).padStart(2, "0"),
+      month: MONTHS_SHORT[m - 1] ?? "",
+      time: item.startTime ?? "",
+    }
+  }
+  return null
+}
+
+function AppointmentCard({ item, onPress }: { item: Appointment; onPress: () => void }) {
+  const status = STATUS_MAP[item.status ?? 1] ?? STATUS_MAP[1]
+  const clientName = (
+    item.clientName ??
+    item.client?.name ??
+    `${item.client?.firstName ?? ""} ${item.client?.lastName ?? ""}`.trim()
+  ) || "Cliente"
+  const serviceName = item.serviceName ?? item.service?.name ?? item.description ?? ""
+  const dateInfo = parseDateInfo(item)
+  const initials = clientName[0]?.toUpperCase() ?? "?"
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className="bg-white rounded-2xl mb-2 border border-zinc-100 active:bg-zinc-50 flex-row overflow-hidden"
+    >
+      {/* Date block */}
+      {dateInfo ? (
+        <View className="w-16 bg-purple-50 items-center justify-center py-4 px-4 shrink-0">
+          <Text className="text-2xl font-black text-purple-700 leading-tight">{dateInfo.day}</Text>
+          <Text className="text-xs font-bold text-purple-400 uppercase tracking-wide">{dateInfo.month}</Text>
+        </View>
+      ) : (
+        <View className="w-16 bg-zinc-50 items-center justify-center py-4 shrink-0">
+          <Ionicons name="calendar-outline" size={22} color="#a1a1aa" />
+        </View>
+      )}
+
+      {/* Main content */}
+      <View className="flex-1 px-3 py-3 min-w-0">
+        {/* Client name + status */}
+        <View className="flex-row items-center gap-2 mb-1">
+          <View className="h-6 w-6 bg-purple-100 rounded-lg items-center justify-center shrink-0">
+            <Text className="text-purple-700 font-black text-xs">{initials}</Text>
+          </View>
+          <Text className="flex-1 text-zinc-900 font-bold text-sm" numberOfLines={1}>{clientName}</Text>
+          <View
+            className="px-4 py-0.5 rounded-2xl border shrink-0"
+            style={{ backgroundColor: status.bg, borderColor: status.border }}
+          >
+            <Text className="text-xs font-bold" style={{ color: status.text }}>{status.label}</Text>
+          </View>
+        </View>
+
+        {/* Service name */}
+        {serviceName ? (
+          <Text className="text-zinc-500 text-xs mb-2" numberOfLines={1}>{serviceName}</Text>
+        ) : null}
+
+        {/* Time + Duration */}
+        <View className="flex-row items-center gap-3">
+          {dateInfo?.time ? (
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="time-outline" size={12} color="#a1a1aa" />
+              <Text className="text-zinc-500 text-xs font-semibold">{dateInfo.time}</Text>
+            </View>
+          ) : null}
+          {item.durationMinutes ? (
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="hourglass-outline" size={12} color="#a1a1aa" />
+              <Text className="text-zinc-500 text-xs font-semibold">{item.durationMinutes} min</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Chevron */}
+      <View className="items-center justify-center pr-3 shrink-0">
+        <Ionicons name="chevron-forward" size={16} color="#d4d4d8" />
+      </View>
+    </Pressable>
+  )
 }
 
 export default function AppointmentsScreen() {
   const router = useRouter()
   const { filteredData, isLoading, search, setSearch } = useDataList<Appointment>(
     API_CONFIG.ENDPOINTS.APPOINTMENTS,
-    (a, q) => `${a.clientName ?? ""} ${a.client?.firstName ?? ""} ${a.serviceName ?? ""} ${a.service?.name ?? ""}`.toLowerCase().includes(q)
+    (a, q) =>
+      `${a.clientName ?? ""} ${a.client?.name ?? ""} ${a.client?.firstName ?? ""} ${a.serviceName ?? ""} ${a.service?.name ?? ""}`.toLowerCase().includes(q)
   )
-
-  const renderItem = ({ item }: { item: Appointment }) => {
-    const status = STATUS_CONFIG[item.status ?? ""] ?? STATUS_CONFIG.Scheduled
-    const clientName = item.clientName ?? `${item.client?.firstName ?? ""} ${item.client?.lastName ?? ""}`.trim()
-    const serviceName = item.serviceName ?? item.service?.name ?? "Serviço"
-
-    return (
-      <Pressable onPress={() => router.push(`/(tabs)/appointments/${item.id}` as any)} className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 active:bg-zinc-50">
-        <View className="flex-row items-start justify-between mb-1">
-          <Text className="text-zinc-900 font-bold text-base flex-1">{clientName}</Text>
-          <View className={`px-2.5 py-0.5 rounded-full ${status.bg}`}>
-            <Text className={`text-xs font-bold ${status.text}`}>{status.label}</Text>
-          </View>
-        </View>
-        <Text className="text-zinc-500 text-sm">{serviceName}</Text>
-        {(item.date || item.startTime) && (
-          <View className="flex-row items-center gap-1 mt-1">
-            <Ionicons name="time-outline" size={13} color="#a1a1aa" />
-            <Text className="text-zinc-400 text-xs">{item.date} {item.startTime}</Text>
-          </View>
-        )}
-      </Pressable>
-    )
-  }
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Agendamentos" />
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100">
-        <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
+
+      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+        <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
           <Ionicons name="search" size={18} color="#a1a1aa" />
-          <TextInput className="flex-1 text-zinc-900 font-medium text-sm py-1" placeholder="Buscar agendamentos..." placeholderTextColor="#a1a1aa" value={search} onChangeText={setSearch} />
+          <TextInput
+            className="flex-1 text-zinc-900 font-medium text-sm py-1"
+            placeholder="Buscar agendamentos..."
+            placeholderTextColor="#a1a1aa"
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch("")}>
+              <Ionicons name="close-circle" size={18} color="#a1a1aa" />
+            </Pressable>
+          )}
         </View>
+        <Pressable
+          onPress={() => router.push("/(tabs)/appointments/new" as any)}
+          className="h-11 w-11 bg-purple-600 rounded-2xl items-center justify-center"
+        >
+          <Ionicons name="add" size={24} color="white" />
+        </Pressable>
       </View>
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#7c3aed" /></View>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#7c3aed" />
+        </View>
       ) : (
         <FlatList
           data={filteredData}
           keyExtractor={(item) => item.id}
-          renderItem={renderItem}
+          renderItem={({ item }) => (
+            <AppointmentCard
+              item={item}
+              onPress={() => router.push(`/(tabs)/appointments/${item.id}` as any)}
+            />
+          )}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View className="items-center py-16">
               <Ionicons name="calendar-outline" size={48} color="#d4d4d8" />
-              <Text className="text-zinc-400 font-semibold mt-3">Nenhum agendamento</Text>
+              <Text className="text-zinc-400 font-semibold mt-3 text-base">
+                {search ? "Nenhum resultado encontrado" : "Nenhum agendamento"}
+              </Text>
             </View>
           }
         />
       )}
-
-      <Pressable onPress={() => router.push("/(tabs)/appointments/new" as any)} className="absolute bottom-24 right-5 h-14 w-14 bg-purple-600 rounded-2xl items-center justify-center shadow-lg shadow-purple-200">
-        <Ionicons name="add" size={28} color="white" />
-      </Pressable>
     </SafeAreaView>
   )
 }

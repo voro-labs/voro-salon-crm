@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { API_CONFIG, secureApiCall } from "lib/api"
 import type { DashboardDataDto } from "types/DTOs/dashboard-data.interface"

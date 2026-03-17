@@ -6,28 +6,56 @@ import { useRouter } from "expo-router"
 import { useDataList } from "hooks/use-data-list.hook"
 import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
+import { formatPhone } from "@/lib/mask-utils"
 
 interface Client {
   id: string
-  firstName: string
-  lastName: string
+  name: string
   email?: string
   phone?: string
+  serviceCount?: number
 }
 
 function ClientCard({ client, onPress }: { client: Client; onPress: () => void }) {
-  const initials = `${client.firstName?.[0] ?? ""}${client.lastName?.[0] ?? ""}`.toUpperCase()
+  const initials = `${client.name?.[0] ?? ""}`.toUpperCase()
+
   return (
-    <Pressable onPress={onPress} className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50">
-      <View className="h-12 w-12 bg-purple-100 rounded-2xl items-center justify-center">
+    <Pressable
+      onPress={onPress}
+      className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50"
+    >
+      <View className="w-16 bg-purple-50 items-center justify-center rounded-2xl py-4 px-4 shrink-0">
         <Text className="text-purple-700 font-black text-base">{initials}</Text>
       </View>
-      <View className="flex-1">
-        <Text className="text-zinc-900 font-bold text-base">{client.firstName} {client.lastName}</Text>
-        {client.phone && <Text className="text-zinc-500 text-sm">{client.phone}</Text>}
-        {client.email && <Text className="text-zinc-400 text-xs">{client.email}</Text>}
+
+      <View className="flex-1 min-w-0">
+        <Text className="text-zinc-900 font-bold text-base" numberOfLines={1}>{client.name}</Text>
+        <View className="flex-row flex-wrap gap-x-3 mt-0.5">
+          {client.phone ? (
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="call-outline" size={12} color="#a1a1aa" />
+              <Text className="text-zinc-500 text-xs">{formatPhone(client.phone)}</Text>
+            </View>
+          ) : null}
+          {client.email ? (
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="mail-outline" size={12} color="#a1a1aa" />
+              <Text className="text-zinc-400 text-xs" numberOfLines={1}>{client.email}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#d4d4d8" />
+
+      <View className="flex-row items-center gap-2 shrink-0">
+        {(client.serviceCount ?? 0) > 0 && (
+          <View className="bg-purple-50 border border-purple-100 rounded-full px-2.5 py-0.5">
+            <Text className="text-purple-600 text-xs font-bold">
+              {client.serviceCount} {client.serviceCount === 1 ? "serviço" : "serviços"}
+            </Text>
+          </View>
+        )}
+        <Ionicons name="chevron-forward" size={16} color="#d4d4d8" />
+      </View>
     </Pressable>
   )
 }
@@ -36,49 +64,64 @@ export default function ClientsScreen() {
   const router = useRouter()
   const { filteredData, isLoading, search, setSearch } = useDataList<Client>(
     API_CONFIG.ENDPOINTS.CLIENTS,
-    (c, q) => `${c.firstName} ${c.lastName} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q)
+    (c, q) => `${c.name} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q)
   )
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Clientes" />
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100">
-        <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
+
+      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+        <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
           <Ionicons name="search" size={18} color="#a1a1aa" />
           <TextInput
             className="flex-1 text-zinc-900 font-medium text-sm py-1"
-            placeholder="Buscar clientes..."
+            placeholder="Buscar por nome, telefone ou e-mail..."
             placeholderTextColor="#a1a1aa"
             value={search}
             onChangeText={setSearch}
           />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch("")}>
+              <Ionicons name="close-circle" size={18} color="#a1a1aa" />
+            </Pressable>
+          )}
         </View>
+        <Pressable
+          onPress={() => router.push("/(tabs)/clients/new" as any)}
+          className="h-11 w-11 bg-purple-600 rounded-2xl items-center justify-center"
+        >
+          <Ionicons name="add" size={24} color="white" />
+        </Pressable>
       </View>
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#7c3aed" /></View>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#7c3aed" />
+        </View>
       ) : (
         <FlatList
           data={filteredData}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ClientCard client={item} onPress={() => router.push(`/(tabs)/clients/${item.id}` as any)} />}
+          renderItem={({ item }) => (
+            <ClientCard client={item} onPress={() => router.push(`/(tabs)/clients/${item.id}` as any)} />
+          )}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View className="items-center py-16">
               <Ionicons name="people-outline" size={48} color="#d4d4d8" />
-              <Text className="text-zinc-400 font-semibold mt-3">Nenhum cliente encontrado</Text>
+              <Text className="text-zinc-400 font-semibold mt-3 text-base">
+                {search ? "Nenhum resultado encontrado" : "Nenhum cliente cadastrado"}
+              </Text>
+              {!search && (
+                <Text className="text-zinc-300 text-sm mt-1">Comece adicionando seu primeiro cliente</Text>
+              )}
             </View>
           }
         />
       )}
 
-      <Pressable
-        onPress={() => router.push("/(tabs)/clients/new" as any)}
-        className="absolute bottom-24 right-5 h-14 w-14 bg-purple-600 rounded-2xl items-center justify-center shadow-lg shadow-purple-200"
-      >
-        <Ionicons name="add" size={28} color="white" />
-      </Pressable>
     </SafeAreaView>
   )
 }
