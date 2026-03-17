@@ -137,6 +137,9 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
               isRefreshing = false
               onRefreshed(newToken)
 
+              // Notifica o AuthContext para atualizar user.token com o novo JWT
+              DeviceEventEmitter.emit("auth:tokenRefreshed", newToken)
+
               // Refaz a requisição original com o novo token
               const retryHeaders = {
                 ...headers,

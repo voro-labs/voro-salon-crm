@@ -1,9 +1,9 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG } from "lib/api"
 import { AuthDto } from "types/DTOs/auth.interface"
 import { jwtDecode } from "jwt-decode"
 import * as SecureStore from "expo-secure-store"
-import { DeviceEventEmitter } from "react-native"
+import { AppState, type AppStateStatus, DeviceEventEmitter } from "react-native"
 
 // Tipo do payload esperado no token JWT
 interface JwtPayload {
@@ -33,50 +33,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthDto | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Aplica um JWT válido ao estado do usuário — nível de componente para reusar em listeners
+  const applyToken = useCallback(async (jwt: string, refresh?: string) => {
+    const storedTenantsStr = await SecureStore.getItemAsync("user_tenants")
+    const storedTenants = storedTenantsStr ? JSON.parse(storedTenantsStr) : []
+    const decoded = jwtDecode<JwtPayload>(jwt)
+    setUser({
+      userId: decoded.userId,
+      firstName: decoded.firstName,
+      lastName: decoded.lastName,
+      userName: decoded.userName,
+      email: decoded.email,
+      roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
+      token: jwt,
+      refreshToken: refresh,
+      tenants: storedTenants,
+    })
+  }, [])
+
+  // Tenta renovar o token silenciosamente usando o refresh token
+  const attemptSilentRefresh = useCallback(async (): Promise<boolean> => {
+    const refreshToken = await getRefreshToken()
+    if (!refreshToken) return false
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      })
+      const data = await res.json()
+      if (res.ok && !data.hasError && data.data?.token) {
+        const newToken = data.data.token
+        const newRefresh = data.data.refreshToken
+        await setAuthToken(newToken)
+        if (newRefresh) await setRefreshToken(newRefresh)
+        await applyToken(newToken, newRefresh || refreshToken)
+        return true
+      }
+    } catch {}
+    return false
+  }, [applyToken])
+
   useEffect(() => {
     const checkAuth = async () => {
       const token = await getAuthToken()
-      const storedTenantsStr = await SecureStore.getItemAsync("user_tenants")
-      const storedTenants = storedTenantsStr ? JSON.parse(storedTenantsStr) : []
-
-      // Aplica um JWT válido ao estado do usuário
-      const applyToken = (jwt: string, refresh?: string) => {
-        const decoded = jwtDecode<JwtPayload>(jwt)
-        setUser({
-          userId: decoded.userId,
-          firstName: decoded.firstName,
-          lastName: decoded.lastName,
-          userName: decoded.userName,
-          email: decoded.email,
-          roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
-          token: jwt,
-          refreshToken: refresh,
-          tenants: storedTenants,
-        })
-      }
-
-      // Tenta renovar o token silenciosamente usando o refresh token
-      const attemptSilentRefresh = async (): Promise<boolean> => {
-        const refreshToken = await getRefreshToken()
-        if (!refreshToken) return false
-        try {
-          const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refreshToken }),
-          })
-          const data = await res.json()
-          if (res.ok && !data.hasError && data.data?.token) {
-            const newToken = data.data.token
-            const newRefresh = data.data.refreshToken
-            await setAuthToken(newToken)
-            if (newRefresh) await setRefreshToken(newRefresh)
-            applyToken(newToken, newRefresh || refreshToken)
-            return true
-          }
-        } catch {}
-        return false
-      }
 
       if (!token) {
         // Sem access token — tenta refresh antes de deslogar
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           // Token ainda válido — usa normalmente
           const refreshToken = (await getRefreshToken()) || undefined
-          applyToken(token, refreshToken)
+          await applyToken(token, refreshToken)
         }
       } catch (err) {
         // Token malformado — tenta refresh antes de deslogar
@@ -117,16 +117,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Re-verifica token quando app volta ao primeiro plano
+    const handleAppStateChange = async (nextState: AppStateStatus) => {
+      if (nextState !== "active") return
+      const token = await getAuthToken()
+      if (!token) {
+        await attemptSilentRefresh()
+        return
+      }
+      try {
+        const decoded = jwtDecode<JwtPayload>(token)
+        if (decoded.exp * 1000 < Date.now()) {
+          const refreshed = await attemptSilentRefresh()
+          if (!refreshed) {
+            await removeAuthToken()
+            await removeRefreshToken()
+            setUser(null)
+          }
+        }
+      } catch {
+        await attemptSilentRefresh()
+      }
+    }
+
     checkAuth()
 
-    const listener = DeviceEventEmitter.addListener("auth:logout", () => {
+    const appStateSub = AppState.addEventListener("change", handleAppStateChange)
+
+    // Deslogar quando apiCall emite auth:logout (refresh falhou mid-session)
+    const logoutListener = DeviceEventEmitter.addListener("auth:logout", () => {
       setUser(null)
     })
 
+    // Atualiza user.token quando apiCall renova o token via interceptor 401
+    const tokenRefreshedListener = DeviceEventEmitter.addListener("auth:tokenRefreshed", (newToken: string) => {
+      getRefreshToken().then((rt) => applyToken(newToken, rt || undefined))
+    })
+
     return () => {
-      listener.remove()
+      appStateSub.remove()
+      logoutListener.remove()
+      tokenRefreshedListener.remove()
     }
-  }, [])
+  }, [applyToken, attemptSilentRefresh])
 
   const login = async (token: string, refreshToken?: string, tenants?: any[]) => {
     await setAuthToken(token)
