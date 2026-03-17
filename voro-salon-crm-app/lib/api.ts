@@ -2,7 +2,7 @@ import type { ResponseViewModel } from "types/response.interface"
 import * as SecureStore from "expo-secure-store"
 import { DeviceEventEmitter } from "react-native"
 export const API_CONFIG = {
-  BASE_URL: `${process.env.NEXT_PUBLIC_BASE_URL}/${process.env.NEXT_PUBLIC_API_URL}`,
+  BASE_URL: `${process.env.EXPO_PUBLIC_BASE_URL}/${process.env.EXPO_PUBLIC_API_URL}`,
   ENDPOINTS: {
     SIGNIN: "/auth/sign-in",
     REFRESH_TOKEN: "/auth/refresh-token",

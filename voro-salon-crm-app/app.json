@@ -1,10 +1,12 @@
 {
   "expo": {
-    "name": "voro-salon-crm-app",
+    "name": "Voro Salon CRM",
     "slug": "voro-salon-crm-app",
     "version": "1.0.0",
+    "scheme": "vorosaloncrm",
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "experiments": {
       "tsconfigPaths": true
@@ -25,14 +27,15 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vorolabs.vorosaloncrm"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.vorolabs.voroswipeentertainmentapp"
+      "package": "com.vorolabs.vorosaloncrm"
     },
     "extra": {
       "eas": {
