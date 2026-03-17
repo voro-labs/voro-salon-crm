@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "voro-salon-crm-app",
+    "slug": "voro-salon-crm-app",
+    "version": "1.0.0",
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.vorolabs.voroswipeentertainmentapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1c48e812-db83-4c56-a7f9-4b11a95f96fd"
+      }
+    }
+  }
+}
