@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useTransactions } from "hooks/use-transactions.hook"
 import { useTransactionCategories } from "hooks/use-transaction-categories.hook"
+import { ScreenHeader } from "components/ScreenHeader"
 
 type FilterType = "all" | "income" | "expense"
 
@@ -22,9 +23,9 @@ export default function FinanceScreen() {
   const totalExpense = (transactions ?? []).filter((t: any) => t.type === "Expense" || t.amount < 0).reduce((sum: number, t: any) => sum + Math.abs(t.amount ?? 0), 0)
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
-      <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100">
-        <Text className="text-2xl font-black text-zinc-900 mb-4">Finanças</Text>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
+      <ScreenHeader title="Finanças" />
+      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100">
         <View className="flex-row gap-3 mb-4">
           <View className="flex-1 bg-green-50 rounded-2xl p-3 border border-green-100">
             <Text className="text-xs text-green-600 font-semibold">Receitas</Text>

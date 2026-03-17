@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "contexts/auth.context"
+import { ScreenHeader } from "components/ScreenHeader"
 
 interface SettingRowProps {
   icon: string
@@ -38,11 +39,8 @@ export default function SettingsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
-      <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100">
-        <Text className="text-2xl font-black text-zinc-900">Configurações</Text>
-      </View>
-
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
+      <ScreenHeader title="Configurações" />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Profile Section */}
         <View className="bg-white mx-4 mt-4 rounded-3xl p-5 border border-zinc-100 items-center mb-4">
