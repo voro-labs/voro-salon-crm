@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, Pressable, ScrollView,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from "react-native"
+import { router } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useClientForm } from "hooks/use-client-form.hook"
 import { ScreenHeader } from "components/ScreenHeader"
@@ -27,7 +28,7 @@ export default function NewClientScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
-      <ScreenHeader title="Novo Cliente" showBack />
+      <ScreenHeader title="Novo Cliente" showBack onBack={() => router.back()} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
         <ScrollView
           className="flex-1"

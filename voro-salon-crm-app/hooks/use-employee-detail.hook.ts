@@ -137,7 +137,7 @@ export function useEmployeeDetail(employeeId?: string) {
       }
 
       Toast.success(isNew ? "Funcionário cadastrado!" : "Dados atualizados!")
-      router.push("/employees")
+      router.push("/(tabs)/employees" as any)
       return true
     } catch {
       Toast.error("Erro de conexão.")
@@ -158,7 +158,7 @@ export function useEmployeeDetail(employeeId?: string) {
         return false
       }
       Toast.success("Funcionário excluído.")
-      router.push("/employees")
+      router.push("/(tabs)/employees" as any)
       return true
     } catch {
       Toast.error("Erro de conexão.")

@@ -14,6 +14,7 @@ const TAB_ICONS: Record<string, { active: IconName; inactive: IconName; label: s
   clients: { active: "people", inactive: "people-outline", label: "Clientes" },
   appointments: { active: "calendar", inactive: "calendar-outline", label: "Agenda" },
   services: { active: "cut", inactive: "cut-outline", label: "Serviços" },
+  employees: { active: "person", inactive: "person-outline", label: "Equipe" },
   finance: { active: "wallet", inactive: "wallet-outline", label: "Finanças" },
   settings: { active: "settings", inactive: "settings-outline", label: "Config." },
 }
@@ -23,6 +24,7 @@ const TAB_MODULE_IDS: Record<string, number> = {
   clients: 1,
   appointments: 2,
   services: 3,
+  employees: 4,
   finance: 5,
 }
 
@@ -95,6 +97,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="clients" options={{ href: isTabEnabled("clients") ? undefined : null }} />
       <Tabs.Screen name="appointments" options={{ href: isTabEnabled("appointments") ? undefined : null }} />
       <Tabs.Screen name="services" options={{ href: isTabEnabled("services") ? undefined : null }} />
+      <Tabs.Screen name="employees" options={{ href: isTabEnabled("employees") ? undefined : null }} />
       <Tabs.Screen name="finance" options={{ href: isTabEnabled("finance") ? undefined : null }} />
       <Tabs.Screen name="settings" />
     </Tabs>
