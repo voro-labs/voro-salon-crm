@@ -4,9 +4,11 @@ import { useRouter, useLocalSearchParams } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { apiCall, API_CONFIG } from "lib/api"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function ResetPasswordScreen() {
   const router = useRouter()
+  const { primaryColor } = useTenantTheme()
   const { email } = useLocalSearchParams<{ email: string }>()
   const [code, setCode] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -41,11 +43,11 @@ export default function ResetPasswordScreen() {
               <Ionicons name="chevron-back" size={20} color="#18181b" />
             </Pressable>
             <View className="items-center mb-8">
-              <View className="h-20 w-20 bg-purple-600 rounded-3xl items-center justify-center shadow-lg shadow-purple-200">
+              <View className="h-20 w-20 rounded-3xl items-center justify-center shadow-lg" style={{ backgroundColor: primaryColor }}>
                 <Ionicons name="key-outline" size={40} color="white" />
               </View>
               <Text className="text-3xl font-black text-zinc-900 mt-6 tracking-tighter text-center">
-                Nova <Text className="text-purple-600">Senha</Text>
+                Nova <Text style={{ color: primaryColor }}>Senha</Text>
               </Text>
               <Text className="text-zinc-500 font-medium mt-2 text-center">Digite o código recebido e sua nova senha</Text>
             </View>
@@ -67,7 +69,12 @@ export default function ResetPasswordScreen() {
             </View>
           </View>
           <View className="px-8 mt-10 pb-8">
-            <Pressable onPress={handleReset} disabled={loading || success} className={`h-16 rounded-2xl items-center justify-center shadow-lg ${loading || success ? "bg-purple-400" : "bg-purple-600 shadow-purple-200"}`}>
+            <Pressable
+              onPress={handleReset}
+              disabled={loading || success}
+              className="h-16 rounded-2xl items-center justify-center shadow-lg"
+              style={{ backgroundColor: loading || success ? primaryColor + "99" : primaryColor }}
+            >
               {loading ? <ActivityIndicator color="white" /> : <Text className="text-white text-lg font-black">Redefinir Senha</Text>}
             </Pressable>
           </View>

@@ -4,9 +4,11 @@ import { useRouter } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { apiCall, API_CONFIG } from "lib/api"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function SignUpScreen() {
   const router = useRouter()
+  const { primaryColor } = useTenantTheme()
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
@@ -48,7 +50,7 @@ export default function SignUpScreen() {
             </Pressable>
             <View className="items-center mb-8">
               <Text className="text-3xl font-black text-zinc-900 tracking-tighter">
-                Criar <Text className="text-purple-600">conta</Text>
+                Criar <Text style={{ color: primaryColor }}>conta</Text>
               </Text>
               <Text className="text-zinc-500 font-medium mt-2 text-center">Preencha seus dados para começar</Text>
             </View>
@@ -90,13 +92,18 @@ export default function SignUpScreen() {
           </View>
 
           <View className="px-8 mt-10 pb-8">
-            <Pressable onPress={handleSignUp} disabled={loading || success} className={`h-16 rounded-2xl items-center justify-center shadow-lg ${loading || success ? "bg-purple-400" : "bg-purple-600 shadow-purple-200"}`}>
+            <Pressable
+              onPress={handleSignUp}
+              disabled={loading || success}
+              className="h-16 rounded-2xl items-center justify-center shadow-lg"
+              style={{ backgroundColor: loading || success ? primaryColor + "99" : primaryColor }}
+            >
               {loading ? <ActivityIndicator color="white" /> : <Text className="text-white text-lg font-black">Criar conta</Text>}
             </Pressable>
             <View className="flex-row justify-center mt-6">
               <Text className="text-zinc-500 font-bold">Já tem conta? </Text>
               <Pressable onPress={() => router.replace("/(auth)/sign-in")}>
-                <Text className="text-purple-600 font-black">Entrar</Text>
+                <Text className="font-black" style={{ color: primaryColor }}>Entrar</Text>
               </Pressable>
             </View>
           </View>

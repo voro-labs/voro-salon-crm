@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 import { useDataList } from "hooks/use-data-list.hook"
 import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 interface Appointment {
   id: string
@@ -59,7 +60,7 @@ function parseDateInfo(item: Appointment): { day: string; month: string; time: s
   return null
 }
 
-function AppointmentCard({ item, onPress }: { item: Appointment; onPress: () => void }) {
+function AppointmentCard({ item, onPress, primaryColor }: { item: Appointment; onPress: () => void; primaryColor: string }) {
   const status = STATUS_MAP[item.status ?? 1] ?? STATUS_MAP[1]
   const clientName = (
     item.clientName ??
@@ -77,9 +78,9 @@ function AppointmentCard({ item, onPress }: { item: Appointment; onPress: () => 
     >
       {/* Date block */}
       {dateInfo ? (
-        <View className="w-16 bg-purple-50 items-center justify-center py-4 px-4 shrink-0">
-          <Text className="text-2xl font-black text-purple-700 leading-tight">{dateInfo.day}</Text>
-          <Text className="text-xs font-bold text-purple-400 uppercase tracking-wide">{dateInfo.month}</Text>
+        <View className="w-16 items-center justify-center py-4 px-4 shrink-0" style={{ backgroundColor: primaryColor + "15" }}>
+          <Text className="text-2xl font-black leading-tight" style={{ color: primaryColor }}>{dateInfo.day}</Text>
+          <Text className="text-xs font-bold uppercase tracking-wide" style={{ color: primaryColor + "99" }}>{dateInfo.month}</Text>
         </View>
       ) : (
         <View className="w-16 bg-zinc-50 items-center justify-center py-4 shrink-0">
@@ -91,8 +92,8 @@ function AppointmentCard({ item, onPress }: { item: Appointment; onPress: () => 
       <View className="flex-1 px-3 py-3 min-w-0">
         {/* Client name + status */}
         <View className="flex-row items-center gap-2 mb-1">
-          <View className="h-6 w-6 bg-purple-100 rounded-lg items-center justify-center shrink-0">
-            <Text className="text-purple-700 font-black text-xs">{initials}</Text>
+          <View className="h-6 w-6 rounded-lg items-center justify-center shrink-0" style={{ backgroundColor: primaryColor + "25" }}>
+            <Text className="font-black text-xs" style={{ color: primaryColor }}>{initials}</Text>
           </View>
           <Text className="flex-1 text-zinc-900 font-bold text-sm" numberOfLines={1}>{clientName}</Text>
           <View
@@ -135,6 +136,7 @@ function AppointmentCard({ item, onPress }: { item: Appointment; onPress: () => 
 
 export default function AppointmentsScreen() {
   const router = useRouter()
+  const { primaryColor } = useTenantTheme()
   const { filteredData, isLoading, search, setSearch } = useDataList<Appointment>(
     API_CONFIG.ENDPOINTS.APPOINTMENTS,
     (a, q) =>
@@ -145,7 +147,7 @@ export default function AppointmentsScreen() {
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Agendamentos" />
 
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+      <View className="bg-white px-5 pt-3 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
         <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
           <Ionicons name="search" size={18} color="#a1a1aa" />
           <TextInput
@@ -163,7 +165,8 @@ export default function AppointmentsScreen() {
         </View>
         <Pressable
           onPress={() => router.push("/(tabs)/appointments/new" as any)}
-          className="h-11 w-11 bg-purple-600 rounded-2xl items-center justify-center"
+          className="h-11 w-11 rounded-2xl items-center justify-center"
+          style={{ backgroundColor: primaryColor }}
         >
           <Ionicons name="add" size={24} color="white" />
         </Pressable>
@@ -171,7 +174,7 @@ export default function AppointmentsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#7c3aed" />
+          <ActivityIndicator color={primaryColor} />
         </View>
       ) : (
         <FlatList
@@ -180,6 +183,7 @@ export default function AppointmentsScreen() {
           renderItem={({ item }) => (
             <AppointmentCard
               item={item}
+              primaryColor={primaryColor}
               onPress={() => router.push(`/(tabs)/appointments/${item.id}` as any)}
             />
           )}

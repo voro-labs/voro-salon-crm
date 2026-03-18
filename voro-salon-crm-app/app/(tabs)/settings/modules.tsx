@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useSettings } from "hooks/use-settings.hook"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const MODULE_NAMES: Record<number, string> = {
   1: "Clientes",
@@ -36,6 +37,7 @@ const MODULE_ICONS: Record<number, string> = {
 export default function ModulesSettingsScreen() {
   const router = useRouter()
   const { modules, isLoading, updateModule } = useSettings()
+  const { primaryColor } = useTenantTheme()
 
   // Local editing state: moduleId → displayName being typed
   const [editingNames, setEditingNames] = useState<Record<number, string>>({})
@@ -72,7 +74,7 @@ export default function ModulesSettingsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -121,8 +123,8 @@ export default function ModulesSettingsScreen() {
             >
               {/* Module row */}
               <View className="flex-row items-center gap-3 px-4 py-4">
-                <View className="h-10 w-10 bg-purple-50 rounded-xl items-center justify-center shrink-0">
-                  <Ionicons name={icon as any} size={20} color="#7c3aed" />
+                <View className="h-10 w-10 rounded-xl items-center justify-center shrink-0" style={{ backgroundColor: primaryColor + "15" }}>
+                  <Ionicons name={icon as any} size={20} color={primaryColor} />
                 </View>
                 <View className="flex-1 min-w-0">
                   <Text className="text-zinc-900 font-black text-base">
@@ -133,14 +135,14 @@ export default function ModulesSettingsScreen() {
                   </Text>
                 </View>
                 {isSavingThis ? (
-                  <ActivityIndicator color="#7c3aed" size="small" />
+                  <ActivityIndicator color={primaryColor} size="small" />
                 ) : (
                   <Switch
                     value={mod.isEnabled}
                     onValueChange={(checked) =>
                       handleToggle(mod.module, checked, mod.configuration)
                     }
-                    trackColor={{ false: "#e4e4e7", true: "#7c3aed" }}
+                    trackColor={{ false: "#e4e4e7", true: primaryColor }}
                     thumbColor="white"
                   />
                 )}
@@ -167,9 +169,8 @@ export default function ModulesSettingsScreen() {
                         handleSaveName(mod.module, mod.isEnabled, mod.configuration)
                       }
                       disabled={localName === undefined || isSavingThis}
-                      className={`h-10 w-10 rounded-xl items-center justify-center ${
-                        localName !== undefined ? "bg-purple-600" : "bg-zinc-100"
-                      }`}
+                      className="h-10 w-10 rounded-xl items-center justify-center"
+                      style={{ backgroundColor: localName !== undefined ? primaryColor : "#f4f4f5" }}
                     >
                       <Ionicons
                         name="checkmark"

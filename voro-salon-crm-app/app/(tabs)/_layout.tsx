@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -13,13 +14,15 @@ const TAB_ICONS: Record<string, { active: IconName; inactive: IconName; label: s
 }
 
 export default function TabsLayout() {
+  const { primaryColor } = useTenantTheme()
+
   return (
     <Tabs
       screenOptions={({ route }) => {
         const icon = TAB_ICONS[route.name] ?? TAB_ICONS["index"]
         return {
           headerShown: false,
-          tabBarActiveTintColor: "#7c3aed",
+          tabBarActiveTintColor: primaryColor,
           tabBarInactiveTintColor: "#9ca3af",
           tabBarStyle: {
             backgroundColor: "#ffffff",

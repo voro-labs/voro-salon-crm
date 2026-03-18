@@ -13,6 +13,7 @@ interface JwtPayload {
   userName: string
   email: string
   roles?: string
+  TenantId?: string
   exp: number
 }
 
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: jwt,
       refreshToken: refresh,
       tenants: storedTenants,
+      currentTenantId: decoded.TenantId,
     })
   }, [])
 
@@ -184,7 +186,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
         token: token,
         refreshToken: refreshToken,
-        tenants: tenants || []
+        tenants: tenants || [],
+        currentTenantId: decoded.TenantId,
       }
 
       setUser(userData)

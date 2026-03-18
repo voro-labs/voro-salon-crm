@@ -3,6 +3,7 @@ import { View, Text, Pressable } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 interface ScreenHeaderProps {
   title: string
@@ -13,6 +14,7 @@ interface ScreenHeaderProps {
 export function ScreenHeader({ title, showBack = false, right }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const { primaryColor } = useTenantTheme()
 
   return (
     <View
@@ -22,7 +24,7 @@ export function ScreenHeader({ title, showBack = false, right }: ScreenHeaderPro
       <View className="flex-row items-center px-5 h-14">
         {showBack ? (
           <Pressable onPress={() => router.back()} className="h-9 w-9 items-center justify-center -ml-1 mr-2">
-            <Ionicons name="chevron-back" size={24} color="#7c3aed" />
+            <Ionicons name="chevron-back" size={24} color={primaryColor} />
           </Pressable>
         ) : null}
         <Text className="flex-1 text-xl font-black text-zinc-900">{title}</Text>

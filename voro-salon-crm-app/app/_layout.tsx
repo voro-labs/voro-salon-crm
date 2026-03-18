@@ -3,11 +3,12 @@ import { useEffect } from "react"
 import { View, ActivityIndicator } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider, useAuth } from "contexts/auth.context"
-import { TenantThemeProvider } from "contexts/tenant-theme.context"
+import { TenantThemeProvider, useTenantTheme } from "contexts/tenant-theme.context"
 import "../global.css"
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth()
+  const { primaryColor } = useTenantTheme()
   const segments = useSegments()
   const router = useRouter()
 
@@ -24,7 +25,7 @@ function RootLayoutNav() {
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={primaryColor} />
       </View>
     )
   }

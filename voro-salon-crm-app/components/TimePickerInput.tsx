@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { View, Text, Pressable, Modal, ScrollView } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"))
 const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]
@@ -24,6 +25,7 @@ interface TimePickerInputProps {
 
 export function TimePickerInput({ value, onChange, placeholder = "Selecionar horário" }: TimePickerInputProps) {
   const insets = useSafeAreaInsets()
+  const { primaryColor } = useTenantTheme()
   const [open, setOpen] = useState(false)
   const [selHour, setSelHour] = useState(() => parseTime(value).hour)
   const [selMinute, setSelMinute] = useState(() => parseTime(value).minute)
@@ -74,8 +76,10 @@ export function TimePickerInput({ value, onChange, placeholder = "Selecionar hor
                   <View key={h} className="flex-1 items-center px-1">
                     <Pressable
                       onPress={() => setSelHour(h)}
-                      className={`h-12 w-full rounded-2xl items-center justify-center
-                        ${selHour === h ? "bg-purple-600" : "bg-zinc-50 border border-zinc-100 active:bg-zinc-100"}`}
+                      className="h-12 w-full rounded-2xl items-center justify-center"
+                      style={selHour === h
+                        ? { backgroundColor: primaryColor }
+                        : { backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#f4f4f5" }}
                     >
                       <Text className={`text-base font-bold ${selHour === h ? "text-white" : "text-zinc-800"}`}>
                         {h}
@@ -93,8 +97,10 @@ export function TimePickerInput({ value, onChange, placeholder = "Selecionar hor
                   <View key={m} className="flex-1 items-center px-1">
                     <Pressable
                       onPress={() => setSelMinute(m)}
-                      className={`h-12 w-full rounded-2xl items-center justify-center
-                        ${selMinute === m ? "bg-purple-600" : "bg-zinc-50 border border-zinc-100 active:bg-zinc-100"}`}
+                      className="h-12 w-full rounded-2xl items-center justify-center"
+                      style={selMinute === m
+                        ? { backgroundColor: primaryColor }
+                        : { backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#f4f4f5" }}
                     >
                       <Text className={`text-base font-bold ${selMinute === m ? "text-white" : "text-zinc-800"}`}>
                         {m}
@@ -108,14 +114,15 @@ export function TimePickerInput({ value, onChange, placeholder = "Selecionar hor
 
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <View className="flex-row items-center justify-center gap-1 mb-4">
-              <Ionicons name="checkmark-circle" size={16} color="#7c3aed" />
-              <Text className="text-purple-600 font-bold text-sm">
+              <Ionicons name="checkmark-circle" size={16} color={primaryColor} />
+              <Text className="font-bold text-sm" style={{ color: primaryColor }}>
                 {selHour}:{selMinute} selecionado
               </Text>
             </View>
             <Pressable
               onPress={confirm}
-              className="h-14 bg-purple-600 rounded-2xl items-center justify-center shadow-sm shadow-purple-200"
+              className="h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: primaryColor }}
             >
               <Text className="text-white font-black text-base">Confirmar</Text>
             </Pressable>

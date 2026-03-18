@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { View, Text, Pressable, Modal, FlatList } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const DAYS_OF_WEEK = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
@@ -48,6 +49,7 @@ interface DatePickerInputProps {
 
 export function DatePickerInput({ value, onChange, placeholder = "Selecionar data" }: DatePickerInputProps) {
   const insets = useSafeAreaInsets()
+  const { primaryColor } = useTenantTheme()
   const [open, setOpen] = useState(false)
 
   const initial = value ? parseDate(value) : new Date()
@@ -148,11 +150,21 @@ export function DatePickerInput({ value, onChange, placeholder = "Selecionar dat
                       {day ? (
                         <Pressable
                           onPress={() => selectDay(day)}
-                          className={`h-10 w-10 rounded-2xl items-center justify-center
-                            ${isSelected ? "bg-purple-600" : isToday ? "bg-purple-50 border border-purple-200" : "active:bg-zinc-100"}`}
+                          className="h-10 w-10 rounded-2xl items-center justify-center active:bg-zinc-100"
+                          style={isSelected
+                            ? { backgroundColor: primaryColor }
+                            : isToday
+                            ? { backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "40" }
+                            : undefined}
                         >
-                          <Text className={`text-sm font-bold
-                            ${isSelected ? "text-white" : isToday ? "text-purple-600" : "text-zinc-800"}`}>
+                          <Text
+                            className="text-sm font-bold"
+                            style={isSelected
+                              ? { color: "white" }
+                              : isToday
+                              ? { color: primaryColor }
+                              : { color: "#27272a" }}
+                          >
                             {day}
                           </Text>
                         </Pressable>
@@ -170,15 +182,16 @@ export function DatePickerInput({ value, onChange, placeholder = "Selecionar dat
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100 mt-auto">
             {selected ? (
               <View className="flex-row items-center justify-center gap-1 mb-4">
-                <Ionicons name="checkmark-circle" size={16} color="#7c3aed" />
-                <Text className="text-purple-600 font-bold text-sm">
+                <Ionicons name="checkmark-circle" size={16} color={primaryColor} />
+                <Text className="font-bold text-sm" style={{ color: primaryColor }}>
                   {formatDisplay(selected)} selecionado
                 </Text>
               </View>
             ) : null}
             <Pressable
               onPress={confirm}
-              className="h-14 bg-purple-600 rounded-2xl items-center justify-center shadow-sm shadow-purple-200"
+              className="h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: primaryColor }}
             >
               <Text className="text-white font-black text-base">Confirmar</Text>
             </Pressable>

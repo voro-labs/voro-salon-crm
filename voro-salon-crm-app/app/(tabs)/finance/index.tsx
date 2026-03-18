@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 import { useTransactions } from "hooks/use-transactions.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { TransactionType, TransactionStatus } from "types/DTOs/financial.interface"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 type FilterType = "all" | "income" | "expense"
 
@@ -35,6 +36,7 @@ export default function FinanceScreen() {
   const [filter, setFilter] = useState<FilterType>("all")
   const [search, setSearch] = useState("")
   const { transactions, isLoading } = useTransactions()
+  const { primaryColor } = useTenantTheme()
 
   const isIncome = (t: any) => t.type === TransactionType.Income || t.type === 1
   const isExpense = (t: any) => t.type === TransactionType.Expense || t.type === 2
@@ -58,7 +60,7 @@ export default function FinanceScreen() {
         right={
           <Pressable
             onPress={() => router.push("/(tabs)/finance/categories" as any)}
-            className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-1.5 border border-zinc-200"
+            className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-2 border border-zinc-200"
           >
             <Ionicons name="pricetags-outline" size={15} color="#52525b" />
             <Text className="text-zinc-700 font-bold text-xs">Categorias</Text>
@@ -67,19 +69,24 @@ export default function FinanceScreen() {
       />
 
       {/* Summary */}
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100">
+      <View className="bg-white px-5 pt-3 p-4 pb-4 border-b border-zinc-100">
         <View className="flex-row gap-3 mb-3">
-          <View className="flex-1 bg-green-50 rounded-2xl p-3 border border-green-100">
+          <View className="flex-1 bg-green-50 rounded-2xl p-4 border border-green-100">
             <Text className="text-xs text-green-600 font-semibold mb-0.5">Receitas</Text>
             <Text className="text-base font-black text-green-700" numberOfLines={1}>R$ {fmtCurrency(totalIncome)}</Text>
           </View>
-          <View className="flex-1 bg-red-50 rounded-2xl p-3 border border-red-100">
+          <View className="flex-1 bg-red-50 rounded-2xl p-4 border border-red-100">
             <Text className="text-xs text-red-600 font-semibold mb-0.5">Despesas</Text>
             <Text className="text-base font-black text-red-700" numberOfLines={1}>R$ {fmtCurrency(totalExpense)}</Text>
           </View>
-          <View className={`flex-1 rounded-2xl p-3 border ${balance >= 0 ? "bg-purple-50 border-purple-100" : "bg-orange-50 border-orange-100"}`}>
-            <Text className={`text-xs font-semibold mb-0.5 ${balance >= 0 ? "text-purple-600" : "text-orange-600"}`}>Saldo</Text>
-            <Text className={`text-base font-black ${balance >= 0 ? "text-purple-700" : "text-orange-700"}`} numberOfLines={1}>R$ {fmtCurrency(balance)}</Text>
+          <View
+            className="flex-1 rounded-2xl p-4 border"
+            style={balance >= 0
+              ? { backgroundColor: primaryColor + "15", borderColor: primaryColor + "25" }
+              : { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }}
+          >
+            <Text className="text-xs font-semibold mb-0.5" style={balance >= 0 ? { color: primaryColor } : { color: "#ea580c" }}>Saldo</Text>
+            <Text className="text-base font-black" style={balance >= 0 ? { color: primaryColor } : { color: "#c2410c" }} numberOfLines={1}>R$ {fmtCurrency(balance)}</Text>
           </View>
         </View>
 
@@ -102,7 +109,8 @@ export default function FinanceScreen() {
           </View>
           <Pressable
             onPress={() => router.push("/(tabs)/finance/new" as any)}
-            className="h-11 w-11 bg-purple-600 rounded-2xl items-center justify-center"
+            className="h-11 w-11 rounded-2xl items-center justify-center"
+            style={{ backgroundColor: primaryColor }}
           >
             <Ionicons name="add" size={24} color="white" />
           </Pressable>
@@ -114,7 +122,8 @@ export default function FinanceScreen() {
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl ${filter === f ? "bg-purple-600" : "bg-zinc-100"}`}
+              className="px-4 py-2 mb-2 rounded-xl"
+              style={{ backgroundColor: filter === f ? primaryColor : "#f4f4f5" }}
             >
               <Text className={`text-xs font-bold ${filter === f ? "text-white" : "text-zinc-600"}`}>
                 {f === "all" ? "Todos" : f === "income" ? "Receitas" : "Despesas"}
@@ -125,7 +134,7 @@ export default function FinanceScreen() {
       </View>
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#7c3aed" /></View>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={primaryColor} /></View>
       ) : (
         <FlatList
           data={filtered}

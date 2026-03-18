@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useSettings } from "hooks/use-settings.hook"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 interface ExportCardProps {
   icon: string
@@ -43,7 +44,7 @@ function ExportCard({
       <Pressable
         onPress={onPress}
         disabled={isLoading}
-        className="h-10 px-4 rounded-xl items-center justify-center flex-row gap-1.5"
+        className="h-10 px-4 rounded-xl items-center justify-center flex-row gap-2"
         style={{ backgroundColor: isLoading ? "#e4e4e7" : bg, borderWidth: 1, borderColor: border }}
       >
         {isLoading ? (
@@ -64,6 +65,7 @@ function ExportCard({
 export default function ExportSettingsScreen() {
   const router = useRouter()
   const { isExportingClients, isExportingServices, exportData } = useSettings()
+  const { primaryColor } = useTenantTheme()
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
@@ -117,9 +119,9 @@ export default function ExportSettingsScreen() {
           buttonLabel="Exportar"
           isLoading={isExportingServices}
           onPress={() => exportData("services")}
-          color="#7c3aed"
-          bg="#f5f3ff"
-          border="#ddd6fe"
+          color={primaryColor}
+          bg={primaryColor + "15"}
+          border={primaryColor + "30"}
         />
       </ScrollView>
     </SafeAreaView>

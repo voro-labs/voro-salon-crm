@@ -7,6 +7,7 @@ import { useDataList } from "hooks/use-data-list.hook"
 import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 interface Client {
   id: string
@@ -16,7 +17,7 @@ interface Client {
   serviceCount?: number
 }
 
-function ClientCard({ client, onPress }: { client: Client; onPress: () => void }) {
+function ClientCard({ client, onPress, primaryColor }: { client: Client; onPress: () => void; primaryColor: string }) {
   const initials = `${client.name?.[0] ?? ""}`.toUpperCase()
 
   return (
@@ -24,8 +25,8 @@ function ClientCard({ client, onPress }: { client: Client; onPress: () => void }
       onPress={onPress}
       className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50"
     >
-      <View className="w-16 bg-purple-50 items-center justify-center rounded-2xl py-4 px-4 shrink-0">
-        <Text className="text-purple-700 font-black text-base">{initials}</Text>
+      <View className="w-16 items-center justify-center rounded-2xl py-4 px-4 shrink-0" style={{ backgroundColor: primaryColor + "15" }}>
+        <Text className="font-black text-base" style={{ color: primaryColor }}>{initials}</Text>
       </View>
 
       <View className="flex-1 min-w-0">
@@ -48,8 +49,8 @@ function ClientCard({ client, onPress }: { client: Client; onPress: () => void }
 
       <View className="flex-row items-center gap-2 shrink-0">
         {(client.serviceCount ?? 0) > 0 && (
-          <View className="bg-purple-50 border border-purple-100 rounded-full px-2.5 py-0.5">
-            <Text className="text-purple-600 text-xs font-bold">
+          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}>
+            <Text className="text-xs font-bold" style={{ color: primaryColor }}>
               {client.serviceCount} {client.serviceCount === 1 ? "serviço" : "serviços"}
             </Text>
           </View>
@@ -62,6 +63,7 @@ function ClientCard({ client, onPress }: { client: Client; onPress: () => void }
 
 export default function ClientsScreen() {
   const router = useRouter()
+  const { primaryColor } = useTenantTheme()
   const { filteredData, isLoading, search, setSearch } = useDataList<Client>(
     API_CONFIG.ENDPOINTS.CLIENTS,
     (c, q) => `${c.name} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q)
@@ -71,7 +73,7 @@ export default function ClientsScreen() {
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Clientes" />
 
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+      <View className="bg-white px-5 pt-3 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
         <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
           <Ionicons name="search" size={18} color="#a1a1aa" />
           <TextInput
@@ -89,7 +91,8 @@ export default function ClientsScreen() {
         </View>
         <Pressable
           onPress={() => router.push("/(tabs)/clients/new" as any)}
-          className="h-11 w-11 bg-purple-600 rounded-2xl items-center justify-center"
+          className="h-11 w-11 rounded-2xl items-center justify-center"
+          style={{ backgroundColor: primaryColor }}
         >
           <Ionicons name="add" size={24} color="white" />
         </Pressable>
@@ -97,14 +100,14 @@ export default function ClientsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#7c3aed" />
+          <ActivityIndicator color={primaryColor} />
         </View>
       ) : (
         <FlatList
           data={filteredData}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <ClientCard client={item} onPress={() => router.push(`/(tabs)/clients/${item.id}` as any)} />
+            <ClientCard client={item} primaryColor={primaryColor} onPress={() => router.push(`/(tabs)/clients/${item.id}` as any)} />
           )}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}

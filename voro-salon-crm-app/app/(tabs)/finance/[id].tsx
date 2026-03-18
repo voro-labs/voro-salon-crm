@@ -10,6 +10,7 @@ import type { TransactionDto, PayTransactionDto } from "types/DTOs/financial.int
 import { CurrencyInput } from "components/CurrencyInput"
 import { DatePickerInput } from "components/DatePickerInput"
 import { SelectPickerInput } from "components/SelectPickerInput"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const STATUS_CONFIG: Record<number, { label: string; bg: string; text: string; border: string }> = {
   1: { label: "Pendente",  bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
@@ -69,6 +70,7 @@ function InfoRow({
 export default function TransactionDetailScreen() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { primaryColor } = useTenantTheme()
 
   const { data: transaction, isLoading, mutate } = useSWR<TransactionDto>(
     id ? `${API_CONFIG.ENDPOINTS.TRANSACTIONS}/${id}` : null,
@@ -92,7 +94,7 @@ export default function TransactionDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -160,9 +162,10 @@ export default function TransactionDetailScreen() {
         <Text className="flex-1 text-xl font-black text-zinc-900">Transação</Text>
         <Pressable
           onPress={() => router.push(`/(tabs)/finance/edit?id=${id}` as any)}
-          className="h-9 w-9 bg-purple-50 rounded-xl items-center justify-center border border-purple-100"
+          className="h-9 w-9 rounded-xl items-center justify-center"
+          style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}
         >
-          <Ionicons name="create-outline" size={18} color="#7c3aed" />
+          <Ionicons name="create-outline" size={18} color={primaryColor} />
         </Pressable>
         <Pressable
           onPress={handleDelete}
@@ -215,7 +218,7 @@ export default function TransactionDetailScreen() {
         {/* Details */}
         <View className="bg-white rounded-2xl px-4 border border-zinc-100">
           {transaction.category?.name && (
-            <InfoRow icon="pricetag-outline" label="Categoria" value={transaction.category.name} color="#7c3aed" />
+            <InfoRow icon="pricetag-outline" label="Categoria" value={transaction.category.name} color={primaryColor} />
           )}
           <InfoRow icon="calendar-outline"  label="Vencimento"         value={formatDate(transaction.dueDate)} color="#d97706" />
           {transaction.paymentDate && (
@@ -245,7 +248,8 @@ export default function TransactionDetailScreen() {
           )}
           <Pressable
             onPress={() => router.push(`/(tabs)/finance/edit?id=${id}` as any)}
-            className="h-14 bg-purple-600 rounded-2xl items-center justify-center flex-row gap-2"
+            className="h-14 rounded-2xl items-center justify-center flex-row gap-2"
+            style={{ backgroundColor: primaryColor }}
           >
             <Ionicons name="create-outline" size={20} color="white" />
             <Text className="text-white font-black text-base">Editar Transação</Text>

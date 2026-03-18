@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { useAppointmentDetail } from "hooks/use-appointment-detail.hook"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const STATUS_OPTIONS = [
   { value: 0, label: "Pendente",   bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
@@ -58,6 +59,7 @@ export default function AppointmentDetailScreen() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { appointment, isLoading, isSaving, isDeleting, updateStatus, deleteAppointment } = useAppointmentDetail(id)
+  const { primaryColor } = useTenantTheme()
 
   const [statusModal, setStatusModal] = useState(false)
 
@@ -65,7 +67,7 @@ export default function AppointmentDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -103,9 +105,10 @@ export default function AppointmentDetailScreen() {
 
         <Pressable
           onPress={() => router.push(`/(tabs)/appointments/edit?id=${id}` as any)}
-          className="h-9 w-9 bg-purple-50 rounded-xl items-center justify-center border border-purple-100"
+          className="h-9 w-9 rounded-xl items-center justify-center"
+          style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}
         >
-          <Ionicons name="create-outline" size={18} color="#7c3aed" />
+          <Ionicons name="create-outline" size={18} color={primaryColor} />
         </Pressable>
         <Pressable
           onPress={confirmDelete}
@@ -126,21 +129,21 @@ export default function AppointmentDetailScreen() {
       >
         {/* Date / Time hero card */}
         {dt && (
-          <View className="bg-purple-600 rounded-3xl p-5 flex-row items-center gap-4">
+          <View className="rounded-3xl p-5 flex-row items-center gap-4" style={{ backgroundColor: primaryColor }}>
             <View className="bg-white/20 rounded-2xl px-4 py-3 items-center min-w-[56px]">
               <Text className="text-white text-3xl font-black leading-tight">{dt.day}</Text>
-              <Text className="text-purple-200 text-xs font-bold uppercase tracking-wide">{dt.month.slice(0, 3)}</Text>
+              <Text className="text-xs font-bold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.7)" }}>{dt.month.slice(0, 3)}</Text>
             </View>
             <View className="flex-1">
               <Text className="text-white font-black text-lg">{dt.weekday}</Text>
-              <Text className="text-purple-200 text-sm font-semibold">{dt.month} de {dt.year}</Text>
+              <Text className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>{dt.month} de {dt.year}</Text>
               <View className="flex-row items-center gap-3 mt-2">
-                <View className="flex-row items-center gap-1.5">
+                <View className="flex-row items-center gap-2">
                   <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
                   <Text className="text-white font-bold text-sm">{dt.time}</Text>
                 </View>
                 {appt.durationMinutes ? (
-                  <View className="flex-row items-center gap-1.5">
+                  <View className="flex-row items-center gap-2">
                     <Ionicons name="hourglass-outline" size={14} color="rgba(255,255,255,0.8)" />
                     <Text className="text-white font-bold text-sm">{appt.durationMinutes} min</Text>
                   </View>
@@ -171,13 +174,13 @@ export default function AppointmentDetailScreen() {
 
         {/* Details card */}
         <View className="bg-white rounded-2xl px-4 border border-zinc-100">
-          <InfoRow icon="person-outline"  label="Cliente"      value={clientName} />
+          <InfoRow icon="person-outline"  label="Cliente"      value={clientName} color={primaryColor} />
           <InfoRow icon="cut-outline"     label="Serviço"      value={serviceName} color="#059669" />
           {appt.amount > 0 && (
             <InfoRow icon="wallet-outline" label="Valor"        value={fmtCurrency(appt.amount)} color="#d97706" />
           )}
           {employeeName ? (
-            <InfoRow icon="person-circle-outline" label="Profissional" value={employeeName} color="#7c3aed" />
+            <InfoRow icon="person-circle-outline" label="Profissional" value={employeeName} color={primaryColor} />
           ) : null}
           {appt.description && appt.description !== serviceName ? (
             <InfoRow icon="document-text-outline" label="Descrição" value={appt.description} color="#52525b" />
@@ -195,7 +198,8 @@ export default function AppointmentDetailScreen() {
         {/* Edit button */}
         <Pressable
           onPress={() => router.push(`/(tabs)/appointments/edit?id=${id}` as any)}
-          className="h-14 bg-purple-600 rounded-2xl items-center justify-center flex-row gap-2 mt-2"
+          className="h-14 rounded-2xl items-center justify-center flex-row gap-2 mt-2"
+          style={{ backgroundColor: primaryColor }}
         >
           <Ionicons name="create-outline" size={20} color="white" />
           <Text className="text-white font-black text-base">Editar Agendamento</Text>
@@ -221,7 +225,7 @@ export default function AppointmentDetailScreen() {
                 <View className="h-3 w-3 rounded-full" style={{ backgroundColor: opt.text }} />
                 <Text className="flex-1 text-zinc-900 font-semibold">{opt.label}</Text>
                 {(appt.status ?? 0) === opt.value && (
-                  <Ionicons name="checkmark" size={18} color="#7c3aed" />
+                  <Ionicons name="checkmark" size={18} color={primaryColor} />
                 )}
               </Pressable>
             ))}

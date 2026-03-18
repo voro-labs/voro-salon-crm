@@ -10,10 +10,12 @@ import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
 import { SelectPickerInput } from "components/SelectPickerInput"
 import { formatPhone } from "@/lib/mask-utils"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function NewAppointmentScreen() {
   const router = useRouter()
   const { clients, services, employees, form, setForm, isLoading, isCreating, handleServiceChange, createAppointment } = useAppointmentForm()
+  const { primaryColor } = useTenantTheme()
 
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
@@ -66,7 +68,7 @@ export default function NewAppointmentScreen() {
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#7c3aed" size="large" />
+            <ActivityIndicator color={primaryColor} size="large" />
           </View>
         ) : (
           <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -159,7 +161,8 @@ export default function NewAppointmentScreen() {
             <Pressable
               onPress={() => createAppointment(form)}
               disabled={isCreating}
-              className={`h-14 rounded-2xl items-center justify-center ${isCreating ? "bg-purple-400" : "bg-purple-600"}`}
+              className="h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: isCreating ? primaryColor + "99" : primaryColor }}
             >
               {isCreating ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar Agendamento</Text>}
             </Pressable>

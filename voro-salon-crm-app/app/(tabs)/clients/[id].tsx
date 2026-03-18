@@ -14,6 +14,7 @@ import { CurrencyInput } from "components/CurrencyInput"
 import { DatePickerInput } from "components/DatePickerInput"
 import { flags, getCountryFromPhone } from "lib/flag-utils"
 import { formatPhone } from "lib/mask-utils"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 function formatCurrency(val: number) {
   return `R$ ${val.toFixed(2).replace(".", ",")}`
@@ -39,6 +40,7 @@ export default function ClientDetailScreen() {
     isDeleting, isAddingService,
     updateClient, deleteClient, addService, deleteService,
   } = useClientDetails(id)
+  const { primaryColor } = useTenantTheme()
 
   const [tab, setTab] = useState<TabType>("services")
 
@@ -119,7 +121,7 @@ export default function ClientDetailScreen() {
       <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
         <ScreenHeader title="Cliente" showBack />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#7c3aed" size="large" />
+          <ActivityIndicator color={primaryColor} size="large" />
         </View>
       </SafeAreaView>
     )
@@ -149,26 +151,26 @@ export default function ClientDetailScreen() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => {}} tintColor="#7c3aed" />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => {}} tintColor={primaryColor} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       >
         {/* Profile Card */}
         <View className="bg-white rounded-3xl p-5 border border-zinc-100 mb-4">
           <View className="flex-row items-start gap-4">
-            <View className="h-16 w-16 bg-purple-100 rounded-2xl items-center justify-center shrink-0">
-              <Text className="text-purple-700 font-black text-xl">{initials}</Text>
+            <View className="h-16 w-16 rounded-2xl items-center justify-center shrink-0" style={{ backgroundColor: primaryColor + "25" }}>
+              <Text className="font-black text-xl" style={{ color: primaryColor }}>{initials}</Text>
             </View>
             <View className="flex-1 min-w-0">
               <Text className="text-lg font-black text-zinc-900" numberOfLines={1}>{fullName}</Text>
               <View className="mt-1 gap-1">
                 {c.phone ? (
-                  <View className="flex-row items-center gap-1.5">
+                  <View className="flex-row items-center gap-2">
                     <Ionicons name="call-outline" size={13} color="#71717a" />
                     <Text className="text-zinc-500 text-sm">{formatPhone(c.phone)}</Text>
                   </View>
                 ) : null}
                 {c.email ? (
-                  <View className="flex-row items-center gap-1.5">
+                  <View className="flex-row items-center gap-2">
                     <Ionicons name="mail-outline" size={13} color="#71717a" />
                     <Text className="text-zinc-500 text-sm" numberOfLines={1}>{c.email}</Text>
                   </View>
@@ -184,7 +186,7 @@ export default function ClientDetailScreen() {
           <View className="flex-row gap-2 mt-4">
             <Pressable
               onPress={openEdit}
-              className="flex-1 flex-row items-center justify-center gap-1.5 h-10 bg-zinc-50 border border-zinc-200 rounded-xl"
+              className="flex-1 flex-row items-center justify-center gap-2 h-10 bg-zinc-50 border border-zinc-200 rounded-xl"
             >
               <Ionicons name="pencil-outline" size={15} color="#18181b" />
               <Text className="text-zinc-800 font-bold text-sm">Editar</Text>
@@ -192,7 +194,7 @@ export default function ClientDetailScreen() {
             <Pressable
               onPress={handleDelete}
               disabled={isDeleting}
-              className="flex-1 flex-row items-center justify-center gap-1.5 h-10 bg-red-50 border border-red-100 rounded-xl"
+              className="flex-1 flex-row items-center justify-center gap-2 h-10 bg-red-50 border border-red-100 rounded-xl"
             >
               {isDeleting
                 ? <ActivityIndicator size="small" color="#ef4444" />
@@ -229,14 +231,14 @@ export default function ClientDetailScreen() {
             <Pressable
               key={t}
               onPress={() => setTab(t)}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl ${tab === t ? "bg-white shadow-sm" : ""}`}
+              className={`flex-1 flex-row items-center justify-center gap-2 h-10 rounded-xl ${tab === t ? "bg-white shadow-sm" : ""}`}
             >
               <Ionicons
                 name={t === "services" ? "calendar-outline" : "clipboard-outline"}
                 size={15}
-                color={tab === t ? "#7c3aed" : "#71717a"}
+                color={tab === t ? primaryColor : "#71717a"}
               />
-              <Text className={`text-sm font-bold ${tab === t ? "text-purple-600" : "text-zinc-500"}`}>
+              <Text className={`text-sm font-bold ${tab === t ? "" : "text-zinc-500"}`} style={tab === t ? { color: primaryColor } : undefined}>
                 {t === "services" ? "Serviços" : "Anamnese"}
               </Text>
             </Pressable>
@@ -253,7 +255,8 @@ export default function ClientDetailScreen() {
               </View>
               <Pressable
                 onPress={() => setSvcOpen(true)}
-                className="flex-row items-center gap-1 bg-purple-600 px-3 h-9 rounded-xl"
+                className="flex-row items-center gap-1 px-3 h-9 rounded-xl"
+                style={{ backgroundColor: primaryColor }}
               >
                 <Ionicons name="add" size={16} color="white" />
                 <Text className="text-white font-bold text-sm">Registrar</Text>
@@ -261,7 +264,7 @@ export default function ClientDetailScreen() {
             </View>
 
             {isLoading ? (
-              <View className="py-10 items-center"><ActivityIndicator color="#7c3aed" /></View>
+              <View className="py-10 items-center"><ActivityIndicator color={primaryColor} /></View>
             ) : (services ?? []).length === 0 ? (
               <View className="py-12 items-center px-6">
                 <Ionicons name="time-outline" size={40} color="#d4d4d8" />
@@ -272,7 +275,8 @@ export default function ClientDetailScreen() {
                 {(services as any[]).map((svc) => (
                   <View
                     key={svc.id}
-                    className={`flex-row items-start gap-3 rounded-2xl border p-3.5 ${isRecent(svc.serviceDate) ? "border-purple-100 bg-purple-50/40" : "border-zinc-100"}`}
+                    className={`flex-row items-start gap-3 rounded-2xl border p-3.5 ${isRecent(svc.serviceDate) ? "border-zinc-100" : "border-zinc-100"}`}
+                    style={isRecent(svc.serviceDate) ? { borderColor: primaryColor + "25", backgroundColor: primaryColor + "08" } : undefined}
                   >
                     <View className="h-10 w-10 bg-zinc-100 rounded-xl items-center justify-center shrink-0">
                       <Ionicons name="calendar-outline" size={18} color="#71717a" />
@@ -283,8 +287,8 @@ export default function ClientDetailScreen() {
                           {svc.description ?? svc.serviceName ?? "Serviço"}
                         </Text>
                         {isRecent(svc.serviceDate) && (
-                          <View className="bg-white border border-purple-200 rounded-full px-2 py-0.5">
-                            <Text className="text-purple-600 text-[10px] font-bold">Recente</Text>
+                          <View className="bg-white rounded-full px-2 py-0.5" style={{ borderWidth: 1, borderColor: primaryColor + "40" }}>
+                            <Text className="text-[10px] font-bold" style={{ color: primaryColor }}>Recente</Text>
                           </View>
                         )}
                       </View>
@@ -318,7 +322,7 @@ export default function ClientDetailScreen() {
             </View>
 
             {isLoading ? (
-              <View className="py-10 items-center"><ActivityIndicator color="#7c3aed" /></View>
+              <View className="py-10 items-center"><ActivityIndicator color={primaryColor} /></View>
             ) : !anamnesisHistory || (anamnesisHistory as any[]).length === 0 ? (
               <View className="py-12 items-center px-6 border border-dashed border-zinc-200 rounded-2xl m-4">
                 <Ionicons name="clipboard-outline" size={40} color="#d4d4d8" />
@@ -328,8 +332,8 @@ export default function ClientDetailScreen() {
               <View className="px-4 py-3 gap-2">
                 {(anamnesisHistory as any[]).map((sheet) => (
                   <View key={sheet.id} className="flex-row items-center gap-3 p-4 rounded-2xl border border-zinc-100">
-                    <View className="h-12 w-12 bg-purple-50 rounded-2xl items-center justify-center">
-                      <Ionicons name="time-outline" size={22} color="#7c3aed" />
+                    <View className="h-12 w-12 rounded-2xl items-center justify-center" style={{ backgroundColor: primaryColor + "15" }}>
+                      <Ionicons name="time-outline" size={22} color={primaryColor} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-zinc-900 font-bold">{formatDate(sheet.date)}</Text>
@@ -415,7 +419,8 @@ export default function ClientDetailScreen() {
             <Pressable
               onPress={handleEditSubmit}
               disabled={isSaving}
-              className={`h-14 rounded-2xl items-center justify-center ${isSaving ? "bg-purple-400" : "bg-purple-600"}`}
+              className="h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: isSaving ? primaryColor + "99" : primaryColor }}
             >
               {isSaving
                 ? <ActivityIndicator color="white" />
@@ -451,7 +456,10 @@ export default function ClientDetailScreen() {
                           setSvcForm((p) => ({ ...p, serviceId: "", description: "", amount: 0 }))
                         }
                       }}
-                      className={`mx-1 px-3 py-2 rounded-xl border ${svcForm.serviceId === s.id ? "bg-purple-600 border-purple-600" : "bg-zinc-50 border-zinc-200"}`}
+                      className="mx-1 px-3 py-2 rounded-xl border"
+                      style={svcForm.serviceId === s.id
+                        ? { backgroundColor: primaryColor, borderColor: primaryColor }
+                        : { backgroundColor: "#fafafa", borderColor: "#e4e4e7" }}
                     >
                       <Text className={`text-sm font-bold ${svcForm.serviceId === s.id ? "text-white" : "text-zinc-700"}`}>
                         {s.name}
@@ -507,7 +515,8 @@ export default function ClientDetailScreen() {
             <Pressable
               onPress={handleAddService}
               disabled={isAddingService || !svcForm.description.trim()}
-              className={`h-14 rounded-2xl items-center justify-center ${isAddingService || !svcForm.description.trim() ? "bg-purple-400" : "bg-purple-600"}`}
+              className="h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: (isAddingService || !svcForm.description.trim()) ? primaryColor + "99" : primaryColor }}
             >
               {isAddingService
                 ? <ActivityIndicator color="white" />

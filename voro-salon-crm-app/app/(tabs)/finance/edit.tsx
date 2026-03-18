@@ -12,6 +12,7 @@ import type { TransactionDto, UpdateTransactionDto } from "types/DTOs/financial.
 import { CurrencyInput } from "components/CurrencyInput"
 import { DatePickerInput } from "components/DatePickerInput"
 import { SelectPickerInput } from "components/SelectPickerInput"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const PAYMENT_OPTIONS = [
   { id: "1", label: "Dinheiro" },
@@ -27,6 +28,7 @@ export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { updateTransaction } = useTransactions()
   const { categories } = useTransactionCategories()
+  const { primaryColor } = useTenantTheme()
 
   const { data: transaction, isLoading } = useSWR<TransactionDto>(
     id ? `${API_CONFIG.ENDPOINTS.TRANSACTIONS}/${id}` : null,
@@ -92,7 +94,7 @@ export default function EditTransactionScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -100,7 +102,7 @@ export default function EditTransactionScreen() {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+        <View className="bg-white px-5 pt-4 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
           <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
             <Ionicons name="chevron-back" size={20} color="#18181b" />
           </Pressable>
@@ -115,14 +117,16 @@ export default function EditTransactionScreen() {
             <View className="flex-row gap-3">
               <Pressable
                 onPress={() => setForm(p => ({ ...p, type: TransactionType.Income, categoryId: undefined }))}
-                className={`flex-1 h-12 rounded-2xl items-center justify-center flex-row gap-2 border ${isIncome ? "bg-green-500 border-green-400" : "bg-zinc-50 border-zinc-200"}`}
+                style={{ backgroundColor: isIncome ? primaryColor : "#f4f4f5", borderColor: isIncome ? primaryColor : "#e4e4e7" }}
+                className={`flex-1 h-12 rounded-2xl items-center justify-center flex-row gap-2 border`}
               >
                 <Ionicons name="arrow-up" size={16} color={isIncome ? "white" : "#71717a"} />
                 <Text className={`font-bold text-sm ${isIncome ? "text-white" : "text-zinc-600"}`}>Receita</Text>
               </Pressable>
               <Pressable
                 onPress={() => setForm(p => ({ ...p, type: TransactionType.Expense, categoryId: undefined }))}
-                className={`flex-1 h-12 rounded-2xl items-center justify-center flex-row gap-2 border ${!isIncome ? "bg-red-500 border-red-400" : "bg-zinc-50 border-zinc-200"}`}
+                style={{ backgroundColor: !isIncome ? primaryColor : "#f4f4f5", borderColor: !isIncome ? primaryColor : "#f4f4f5" }}
+                className={`flex-1 h-12 rounded-2xl items-center justify-center flex-row gap-2 border`}
               >
                 <Ionicons name="arrow-down" size={16} color={!isIncome ? "white" : "#71717a"} />
                 <Text className={`font-bold text-sm ${!isIncome ? "text-white" : "text-zinc-600"}`}>Despesa</Text>
@@ -200,7 +204,8 @@ export default function EditTransactionScreen() {
           <Pressable
             onPress={handleSave}
             disabled={isSaving}
-            className={`h-14 rounded-2xl items-center justify-center ${isSaving ? "bg-purple-400" : "bg-purple-600"}`}
+            className="h-14 rounded-2xl items-center justify-center"
+            style={{ backgroundColor: isSaving ? primaryColor + "99" : primaryColor }}
           >
             {isSaving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar Alterações</Text>}
           </Pressable>

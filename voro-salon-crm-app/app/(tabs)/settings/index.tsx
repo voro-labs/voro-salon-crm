@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useAuth } from "contexts/auth.context"
 import { ScreenHeader } from "components/ScreenHeader"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 interface NavRowProps {
   icon: string
@@ -29,7 +30,7 @@ function NavRow({ icon, label, subtitle, onPress, danger, iconBg, iconColor }: N
         <Ionicons
           name={icon as any}
           size={18}
-          color={iconColor ?? (danger ? "#ef4444" : "#7c3aed")}
+          color={iconColor ?? (danger ? "#ef4444" : undefined)}
         />
       </View>
       <View className="flex-1 min-w-0">
@@ -58,6 +59,7 @@ function SectionLabel({ title }: { title: string }) {
 export default function SettingsScreen() {
   const router = useRouter()
   const { user, logout } = useAuth()
+  const { primaryColor } = useTenantTheme()
 
   const initials =
     `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "U"
@@ -75,17 +77,21 @@ export default function SettingsScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Profile Card */}
-        <View className="bg-white mx-4 mt-4 rounded-3xl p-5 border border-zinc-100 items-center">
-          <View className="h-20 w-20 bg-purple-100 rounded-3xl items-center justify-center mb-3">
-            <Text className="text-purple-700 font-black text-2xl">{initials}</Text>
+        <View className="bg-white mx-4 mt-4 rounded-3xl p-4 border border-zinc-100 items-center">
+          <View className="h-20 w-20 rounded-3xl items-center justify-center mb-3" style={{ backgroundColor: primaryColor + "25" }}>
+            <Text className="font-black text-2xl" style={{ color: primaryColor }}>{initials}</Text>
           </View>
           <Text className="text-xl font-black text-zinc-900 text-center">
             {user?.firstName} {user?.lastName}
           </Text>
           <Text className="text-zinc-500 text-sm mt-0.5">{user?.email}</Text>
-          {user?.tenants?.[0]?.name && (
-            <View className="mt-2 px-3 py-1 bg-purple-50 rounded-full">
-              <Text className="text-purple-600 text-xs font-bold">{user.tenants[0].name}</Text>
+          {(user?.tenants?.length ?? 0) > 0 && (
+            <View className="mt-2 flex-row flex-wrap gap-3 justify-center">
+              {user?.tenants?.map((t) => (
+                <View key={t.id} className="px-3 py-1 rounded-full" style={{ backgroundColor: primaryColor + "15" }}>
+                  <Text className="text-xs font-bold" style={{ color: primaryColor }}>{t.name}</Text>
+                </View>
+              ))}
             </View>
           )}
         </View>
@@ -98,6 +104,7 @@ export default function SettingsScreen() {
             label="Dados do Salão"
             subtitle="Nome, slug, logo, contato e cores"
             onPress={() => router.push("/(tabs)/settings/salon" as any)}
+            iconColor={primaryColor}
           />
           <NavRow
             icon="grid-outline"

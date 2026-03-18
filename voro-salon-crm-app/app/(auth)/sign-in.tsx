@@ -4,10 +4,12 @@ import { useRouter } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useSignIn } from "hooks/use-sign-in.hook"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function SignInScreen() {
   const router = useRouter()
   const { signIn, loading, error, clearError } = useSignIn()
+  const { primaryColor } = useTenantTheme()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -23,11 +25,11 @@ export default function SignInScreen() {
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
           <View className="bg-white px-8 pt-12 pb-10 rounded-b-[40px] shadow-sm shadow-zinc-200">
             <View className="items-center mb-10">
-              <View className="h-20 w-20 bg-purple-600 rounded-3xl items-center justify-center shadow-lg shadow-purple-200">
+              <View className="h-20 w-20 rounded-3xl items-center justify-center shadow-lg" style={{ backgroundColor: primaryColor }}>
                 <Ionicons name="cut" size={40} color="white" />
               </View>
               <Text className="text-3xl font-black text-zinc-900 mt-6 tracking-tighter">
-                Voro <Text className="text-purple-600">Salon</Text>
+                Voro <Text style={{ color: primaryColor }}>Salon</Text>
               </Text>
               <Text className="text-zinc-500 font-medium mt-2">Entre para gerenciar seu salão</Text>
             </View>
@@ -62,7 +64,7 @@ export default function SignInScreen() {
               </View>
 
               <Pressable onPress={() => router.push("/(auth)/forgot-password")} className="self-end">
-                <Text className="text-purple-600 text-xs font-black uppercase tracking-wider">Esqueceu a senha?</Text>
+                <Text className="text-xs font-black uppercase tracking-wider" style={{ color: primaryColor }}>Esqueceu a senha?</Text>
               </Pressable>
 
               {error && (
@@ -78,7 +80,8 @@ export default function SignInScreen() {
             <Pressable
               onPress={handleSignIn}
               disabled={loading}
-              className={`h-16 rounded-2xl items-center justify-center shadow-lg ${loading ? "bg-purple-400" : "bg-purple-600 shadow-purple-200"}`}
+              className="h-16 rounded-2xl items-center justify-center shadow-lg"
+              style={{ backgroundColor: loading ? primaryColor + "99" : primaryColor }}
             >
               {loading ? (
                 <ActivityIndicator color="white" />
@@ -93,7 +96,7 @@ export default function SignInScreen() {
             <View className="flex-row justify-center mt-12">
               <Text className="text-zinc-500 font-bold text-base">Não tem conta? </Text>
               <Pressable onPress={() => router.push("/(auth)/sign-up")}>
-                <Text className="text-purple-600 text-base font-black">Cadastre-se</Text>
+                <Text className="text-base font-black" style={{ color: primaryColor }}>Cadastre-se</Text>
               </Pressable>
             </View>
           </View>

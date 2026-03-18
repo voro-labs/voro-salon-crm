@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { useServiceDetail } from "hooks/use-service-detail.hook"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 function fmtCurrency(v: number) {
   return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -32,11 +33,12 @@ export default function ServiceDetailScreen() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { service, isLoading, isDeleting, deleteService } = useServiceDetail(id)
+  const { primaryColor } = useTenantTheme()
 
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -70,9 +72,10 @@ export default function ServiceDetailScreen() {
 
         <Pressable
           onPress={() => router.push(`/(tabs)/services/edit?id=${id}` as any)}
-          className="h-9 w-9 bg-purple-50 rounded-xl items-center justify-center border border-purple-100"
+          className="h-9 w-9 rounded-xl items-center justify-center"
+          style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}
         >
-          <Ionicons name="create-outline" size={18} color="#7c3aed" />
+          <Ionicons name="create-outline" size={18} color={primaryColor} />
         </Pressable>
         <Pressable
           onPress={confirmDelete}
@@ -93,8 +96,8 @@ export default function ServiceDetailScreen() {
       >
         {/* Identity card */}
         <View className="bg-white rounded-3xl p-6 border border-zinc-100 items-center">
-          <View className="h-20 w-20 bg-purple-50 rounded-3xl items-center justify-center mb-4">
-            <Ionicons name="cut-outline" size={36} color="#7c3aed" />
+          <View className="h-20 w-20 rounded-3xl items-center justify-center mb-4" style={{ backgroundColor: primaryColor + "15" }}>
+            <Ionicons name="cut-outline" size={36} color={primaryColor} />
           </View>
           <Text className="text-2xl font-black text-zinc-900 text-center">{svc.name}</Text>
           {svc.description ? (
@@ -109,7 +112,7 @@ export default function ServiceDetailScreen() {
               icon="hourglass-outline"
               label="Duração"
               value={`${svc.durationMinutes ?? svc.duration} min`}
-              color="#7c3aed"
+              color={primaryColor}
             />
           ) : null}
           {svc.price != null && svc.price > 0 ? (
@@ -125,7 +128,8 @@ export default function ServiceDetailScreen() {
         {/* Edit button */}
         <Pressable
           onPress={() => router.push(`/(tabs)/services/edit?id=${id}` as any)}
-          className="h-14 bg-purple-600 rounded-2xl items-center justify-center flex-row gap-2 mt-2"
+          className="h-14 rounded-2xl items-center justify-center flex-row gap-2 mt-2"
+          style={{ backgroundColor: primaryColor }}
         >
           <Ionicons name="create-outline" size={20} color="white" />
           <Text className="text-white font-black text-base">Editar Serviço</Text>

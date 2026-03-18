@@ -14,7 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useSettings } from "hooks/use-settings.hook"
-import { refreshTenantTheme } from "contexts/tenant-theme.context"
+import { refreshTenantTheme, useTenantTheme } from "contexts/tenant-theme.context"
 import { PhoneInput } from "components/PhoneInput"
 import { CountrySelector } from "components/CountrySelector"
 
@@ -116,7 +116,7 @@ function ColorPickerModal({ visible, value, title, onSelect, onClose }: ColorPic
             <Text className="text-zinc-400 text-xs font-semibold">Cor selecionada</Text>
             <Text className="text-zinc-900 font-black text-base mt-0.5 uppercase">{value}</Text>
           </View>
-          <View className="h-6 w-6 rounded-full border-2 border-purple-600 items-center justify-center">
+          <View className="h-6 w-6 rounded-full items-center justify-center" style={{ borderWidth: 2, borderColor: "#7c3aed" }}>
             <View className="h-3 w-3 rounded-full" style={{ backgroundColor: value }} />
           </View>
         </View>
@@ -194,6 +194,7 @@ export default function SalonSettingsScreen() {
     isLoading,
     saveTenant,
   } = useSettings()
+  const { primaryColor } = useTenantTheme()
 
   const [primaryPickerOpen, setPrimaryPickerOpen] = useState(false)
   const [secondaryPickerOpen, setSecondaryPickerOpen] = useState(false)
@@ -201,7 +202,7 @@ export default function SalonSettingsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -279,7 +280,7 @@ export default function SalonSettingsScreen() {
             </View>
 
             {/* Logo URL */}
-            <View className="px-4 pt-3 pb-4">
+            <View className="px-4 pt-3 p-4 pb-4">
               <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">
                 Logo (URL)
               </Text>
@@ -324,7 +325,7 @@ export default function SalonSettingsScreen() {
             </View>
 
             {/* Email */}
-            <View className="px-4 pt-3 pb-4">
+            <View className="px-4 pt-3 p-4 pb-4">
               <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">
                 E-mail de Contato
               </Text>
@@ -404,9 +405,8 @@ export default function SalonSettingsScreen() {
           <Pressable
             onPress={() => saveTenant(formData)}
             disabled={isSaving}
-            className={`h-14 rounded-3xl items-center justify-center flex-row gap-2 ${
-              isSaving ? "bg-purple-300" : "bg-purple-600"
-            }`}
+            className="h-14 rounded-3xl items-center justify-center flex-row gap-2"
+            style={{ backgroundColor: isSaving ? primaryColor + "60" : primaryColor }}
           >
             {isSaving ? (
               <ActivityIndicator color="white" />

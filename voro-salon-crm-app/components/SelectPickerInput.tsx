@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { View, Text, Pressable, Modal, FlatList, TextInput } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export interface SelectOption {
   id: string
@@ -27,6 +28,7 @@ export function SelectPickerInput({
   searchPlaceholder = "Buscar...",
 }: SelectPickerInputProps) {
   const insets = useSafeAreaInsets()
+  const { primaryColor } = useTenantTheme()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
 
@@ -97,12 +99,13 @@ export function SelectPickerInput({
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => handleSelect(item.id)}
-                className={`flex-row items-center px-4 py-3 rounded-2xl mb-2 border ${
-                  item.id === value ? "bg-purple-50 border-purple-200" : "bg-white border-zinc-100 active:bg-zinc-50"
-                }`}
+                className="flex-row items-center px-4 py-3 rounded-2xl mb-2 border"
+                style={item.id === value
+                  ? { backgroundColor: primaryColor + "15", borderColor: primaryColor + "40" }
+                  : { backgroundColor: "white", borderColor: "#f4f4f5" }}
               >
                 <View className="flex-1">
-                  <Text className={`font-bold text-base ${item.id === value ? "text-purple-700" : "text-zinc-900"}`}>
+                  <Text className="font-bold text-base" style={item.id === value ? { color: primaryColor } : { color: "#18181b" }}>
                     {item.label}
                   </Text>
                   {item.subtitle ? (
@@ -110,7 +113,7 @@ export function SelectPickerInput({
                   ) : null}
                 </View>
                 {item.id === value && (
-                  <Ionicons name="checkmark-circle" size={20} color="#7c3aed" />
+                  <Ionicons name="checkmark-circle" size={20} color={primaryColor} />
                 )}
               </Pressable>
             )}

@@ -10,6 +10,7 @@ import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
 import { SelectPickerInput } from "components/SelectPickerInput"
 import { formatPhone } from "@/lib/mask-utils"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function EditAppointmentScreen() {
   const router = useRouter()
@@ -19,6 +20,7 @@ export default function EditAppointmentScreen() {
     form, setForm, isLoading, isSaving,
     handleServiceChange, updateAppointment,
   } = useAppointmentDetail(id)
+  const { primaryColor } = useTenantTheme()
 
   // Split scheduledDateTime into date and time for the pickers
   const [date, setDate] = useState("")
@@ -71,7 +73,7 @@ export default function EditAppointmentScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -192,7 +194,8 @@ export default function EditAppointmentScreen() {
           <Pressable
             onPress={() => updateAppointment(form)}
             disabled={isSaving}
-            className={`h-14 rounded-2xl items-center justify-center ${isSaving ? "bg-purple-400" : "bg-purple-600"}`}
+            className="h-14 rounded-2xl items-center justify-center"
+            style={{ backgroundColor: isSaving ? primaryColor + "99" : primaryColor }}
           >
             {isSaving
               ? <ActivityIndicator color="white" />

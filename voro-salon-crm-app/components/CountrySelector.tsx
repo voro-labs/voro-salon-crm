@@ -6,6 +6,7 @@ import {
 import { Ionicons } from "@expo/vector-icons"
 import { flags } from "lib/flag-utils"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const COUNTRIES = Object.entries(flags).map(([code, data]) => ({
   code,
@@ -21,6 +22,7 @@ export function CountrySelector({ value, onChange }: CountrySelectorProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const insets = useSafeAreaInsets()
+  const { primaryColor } = useTenantTheme()
 
   const selected = flags[value] ?? flags["BR"]
   const filtered = search.trim()
@@ -91,7 +93,8 @@ export function CountrySelector({ value, onChange }: CountrySelectorProps) {
               return (
                 <Pressable
                   onPress={() => handleSelect(item.code)}
-                  className={`flex-row items-center gap-3 px-5 py-3.5 border-b border-zinc-50 ${isSelected ? "bg-purple-50" : "active:bg-zinc-50"}`}
+                  className="flex-row items-center gap-3 px-5 py-3.5 border-b border-zinc-50 active:bg-zinc-50"
+                  style={isSelected ? { backgroundColor: primaryColor + "15" } : undefined}
                 >
                   <Image
                     source={{ uri: item.flagUrl }}
@@ -100,7 +103,7 @@ export function CountrySelector({ value, onChange }: CountrySelectorProps) {
                   />
                   <Text className="flex-1 text-zinc-900 font-semibold text-base">{item.name}</Text>
                   <Text className="text-zinc-400 font-medium text-sm">{item.dialCode}</Text>
-                  {isSelected && <Ionicons name="checkmark" size={18} color="#7c3aed" />}
+                  {isSelected && <Ionicons name="checkmark" size={18} color={primaryColor} />}
                 </Pressable>
               )
             }}

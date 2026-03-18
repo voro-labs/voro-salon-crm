@@ -6,12 +6,14 @@ import { useRouter } from "expo-router"
 import { useTransactionCategories } from "hooks/use-transaction-categories.hook"
 import { TransactionType } from "types/DTOs/financial.interface"
 import type { TransactionCategoryDto } from "types/DTOs/financial.interface"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 type TabType = "all" | "income" | "expense"
 
 export default function CategoriesScreen() {
   const router = useRouter()
   const { categories, isLoading, createCategory, updateCategory, deleteCategory } = useTransactionCategories()
+  const { primaryColor } = useTenantTheme()
 
   const [tab, setTab] = useState<TabType>("all")
 
@@ -91,14 +93,15 @@ export default function CategoriesScreen() {
         <Text className="flex-1 text-xl font-black text-zinc-900">Categorias</Text>
         <Pressable
           onPress={() => { setNewName(""); setNewType(TransactionType.Income); setCreateOpen(true) }}
-          className="h-9 w-9 bg-purple-600 rounded-xl items-center justify-center"
+          className="h-9 w-9 rounded-xl items-center justify-center"
+          style={{ backgroundColor: primaryColor }}
         >
           <Ionicons name="add" size={22} color="white" />
         </Pressable>
       </View>
 
       {/* Summary */}
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100">
+      <View className="bg-white px-5 pt-3 p-4 pb-4 border-b border-zinc-100">
         <View className="flex-row gap-3 mb-3">
           <View className="flex-1 bg-green-50 rounded-2xl p-3 border border-green-100 items-center">
             <Text className="text-2xl font-black text-green-700">{incomeCount}</Text>
@@ -111,7 +114,12 @@ export default function CategoriesScreen() {
         </View>
         <View className="flex-row gap-2">
           {(["all", "income", "expense"] as TabType[]).map((t) => (
-            <Pressable key={t} onPress={() => setTab(t)} className={`px-4 py-2 rounded-xl ${tab === t ? "bg-purple-600" : "bg-zinc-100"}`}>
+            <Pressable
+              key={t}
+              onPress={() => setTab(t)}
+              className="px-4 py-2 mb-2 rounded-xl"
+              style={{ backgroundColor: tab === t ? primaryColor : "#f4f4f5" }}
+            >
               <Text className={`text-xs font-bold ${tab === t ? "text-white" : "text-zinc-600"}`}>
                 {t === "all" ? "Todas" : t === "income" ? "Receitas" : "Despesas"}
               </Text>
@@ -121,7 +129,7 @@ export default function CategoriesScreen() {
       </View>
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#7c3aed" /></View>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={primaryColor} /></View>
       ) : (
         <FlatList
           data={filtered}
@@ -161,7 +169,8 @@ export default function CategoriesScreen() {
               <Text className="text-zinc-400 font-semibold mt-3 text-base">Nenhuma categoria</Text>
               <Pressable
                 onPress={() => { setNewName(""); setNewType(TransactionType.Income); setCreateOpen(true) }}
-                className="mt-4 h-11 px-5 bg-purple-600 rounded-2xl items-center justify-center"
+                className="mt-4 h-11 p-4 rounded-2xl items-center justify-center"
+                style={{ backgroundColor: primaryColor }}
               >
                 <Text className="text-white font-bold">Criar primeira categoria</Text>
               </Pressable>
@@ -173,14 +182,14 @@ export default function CategoriesScreen() {
       {/* Create Modal */}
       <Modal visible={createOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setCreateOpen(false)}>
         <View className="flex-1 bg-white">
-          <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
+          <View className="flex-row items-center justify-between px-5 pt-6 p-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Nova Categoria</Text>
             <Pressable onPress={() => setCreateOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
               <Ionicons name="close" size={20} color="#71717a" />
             </Pressable>
           </View>
 
-          <View className="p-5 gap-4">
+          <View className="p-4 gap-4">
             {/* Type */}
             <View>
               <Text className="text-zinc-700 font-bold text-sm mb-1.5">Tipo *</Text>
@@ -218,7 +227,8 @@ export default function CategoriesScreen() {
             <Pressable
               onPress={handleCreate}
               disabled={isSaving || !newName.trim()}
-              className={`h-14 rounded-2xl items-center justify-center mt-2 ${isSaving || !newName.trim() ? "bg-purple-300" : "bg-purple-600"}`}
+              className="h-14 rounded-2xl items-center justify-center mt-2"
+              style={{ backgroundColor: (isSaving || !newName.trim()) ? primaryColor + "60" : primaryColor }}
             >
               {isSaving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Criar Categoria</Text>}
             </Pressable>
@@ -274,7 +284,8 @@ export default function CategoriesScreen() {
             <Pressable
               onPress={handleUpdate}
               disabled={isUpdating || !editName.trim()}
-              className={`h-14 rounded-2xl items-center justify-center mt-2 ${isUpdating || !editName.trim() ? "bg-purple-300" : "bg-purple-600"}`}
+              className="h-14 rounded-2xl items-center justify-center mt-2"
+              style={{ backgroundColor: (isUpdating || !editName.trim()) ? primaryColor + "60" : primaryColor }}
             >
               {isUpdating ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar Alterações</Text>}
             </Pressable>

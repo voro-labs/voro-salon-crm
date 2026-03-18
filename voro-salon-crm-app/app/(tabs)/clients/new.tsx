@@ -8,6 +8,7 @@ import { useClientForm } from "hooks/use-client-form.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { PhoneInput } from "components/PhoneInput"
 import { CountrySelector } from "components/CountrySelector"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ const inputClass = "bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text
 
 export default function NewClientScreen() {
   const { form, setForm, countryCode, setCountryCode, isCreating, createClient } = useClientForm()
+  const { primaryColor } = useTenantTheme()
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -86,7 +88,8 @@ export default function NewClientScreen() {
           <Pressable
             onPress={createClient}
             disabled={isCreating}
-            className={`h-14 rounded-2xl items-center justify-center mt-4 shadow-sm ${isCreating ? "bg-purple-400" : "bg-purple-600 shadow-purple-200"}`}
+            className="h-14 rounded-2xl items-center justify-center mt-4 shadow-sm"
+            style={{ backgroundColor: isCreating ? primaryColor + "99" : primaryColor }}
           >
             {isCreating
               ? <ActivityIndicator color="white" />

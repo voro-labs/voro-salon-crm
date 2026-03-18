@@ -6,10 +6,12 @@ import { useRouter } from "expo-router"
 import { useServiceDetail } from "hooks/use-service-detail.hook"
 import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function NewServiceScreen() {
   const router = useRouter()
   const { form, setForm, isSaving, createService } = useServiceDetail()
+  const { primaryColor } = useTenantTheme()
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
@@ -65,7 +67,8 @@ export default function NewServiceScreen() {
           <Pressable
             onPress={() => createService(form)}
             disabled={isSaving}
-            className={`h-14 rounded-2xl items-center justify-center ${isSaving ? "bg-purple-400" : "bg-purple-600"}`}
+            className="h-14 rounded-2xl items-center justify-center"
+            style={{ backgroundColor: isSaving ? primaryColor + "99" : primaryColor }}
           >
             {isSaving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar Serviço</Text>}
           </Pressable>

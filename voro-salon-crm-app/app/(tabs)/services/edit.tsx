@@ -6,16 +6,18 @@ import { useRouter, useLocalSearchParams } from "expo-router"
 import { useServiceDetail } from "hooks/use-service-detail.hook"
 import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function EditServiceScreen() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { form, setForm, isLoading, isSaving, updateService } = useServiceDetail(id)
+  const { primaryColor } = useTenantTheme()
 
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
-        <ActivityIndicator color="#7c3aed" size="large" />
+        <ActivityIndicator color={primaryColor} size="large" />
       </SafeAreaView>
     )
   }
@@ -88,7 +90,8 @@ export default function EditServiceScreen() {
           <Pressable
             onPress={() => updateService(form)}
             disabled={isSaving}
-            className={`h-14 rounded-2xl items-center justify-center ${isSaving ? "bg-purple-400" : "bg-purple-600"}`}
+            className="h-14 rounded-2xl items-center justify-center"
+            style={{ backgroundColor: isSaving ? primaryColor + "99" : primaryColor }}
           >
             {isSaving
               ? <ActivityIndicator color="white" />

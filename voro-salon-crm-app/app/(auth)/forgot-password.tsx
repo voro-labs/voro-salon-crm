@@ -4,9 +4,11 @@ import { useRouter } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { apiCall, API_CONFIG } from "lib/api"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function ForgotPasswordScreen() {
   const router = useRouter()
+  const { primaryColor } = useTenantTheme()
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,11 +39,11 @@ export default function ForgotPasswordScreen() {
               <Ionicons name="chevron-back" size={20} color="#18181b" />
             </Pressable>
             <View className="items-center mb-8">
-              <View className="h-20 w-20 bg-purple-600 rounded-3xl items-center justify-center shadow-lg shadow-purple-200">
+              <View className="h-20 w-20 rounded-3xl items-center justify-center shadow-lg" style={{ backgroundColor: primaryColor }}>
                 <Ionicons name="mail-unread-outline" size={40} color="white" />
               </View>
               <Text className="text-3xl font-black text-zinc-900 mt-6 tracking-tighter text-center">
-                Recuperar<Text className="text-purple-600"> Senha</Text>
+                Recuperar<Text style={{ color: primaryColor }}> Senha</Text>
               </Text>
               <Text className="text-zinc-500 font-medium mt-2 text-center">Informe seu e-mail para receber o código</Text>
             </View>
@@ -55,12 +57,19 @@ export default function ForgotPasswordScreen() {
             </View>
           </View>
           <View className="px-8 mt-10 pb-8">
-            <Pressable onPress={handleForgot} disabled={loading || success} className={`h-16 rounded-2xl items-center justify-center shadow-lg ${loading || success ? "bg-purple-400" : "bg-purple-600 shadow-purple-200"}`}>
+            <Pressable
+              onPress={handleForgot}
+              disabled={loading || success}
+              className="h-16 rounded-2xl items-center justify-center shadow-lg"
+              style={{ backgroundColor: loading || success ? primaryColor + "99" : primaryColor }}
+            >
               {loading ? <ActivityIndicator color="white" /> : <View className="flex-row items-center gap-2"><Text className="text-white text-lg font-black">Enviar Código</Text><Ionicons name="paper-plane" size={20} color="white" /></View>}
             </Pressable>
             <View className="flex-row justify-center mt-6">
               <Text className="text-zinc-500 font-bold">Lembrou a senha? </Text>
-              <Pressable onPress={() => router.replace("/(auth)/sign-in")}><Text className="text-purple-600 font-black">Voltar ao login</Text></Pressable>
+              <Pressable onPress={() => router.replace("/(auth)/sign-in")}>
+                <Text className="font-black" style={{ color: primaryColor }}>Voltar ao login</Text>
+              </Pressable>
             </View>
           </View>
         </ScrollView>
