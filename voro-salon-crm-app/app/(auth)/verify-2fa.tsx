@@ -220,10 +220,10 @@ export default function VerifyTwoFactorScreen() {
             <Pressable
               onPress={handleVerify}
               disabled={loading || success || digits.includes("")}
-              className="h-16 rounded-2xl items-center justify-center shadow-lg"
+              className="h-16 rounded-2xl items-center justify-center"
               style={{
-                backgroundColor:
-                  loading || success || digits.includes("") ? primaryColor + "66" : primaryColor,
+                backgroundColor: primaryColor,
+                opacity: loading || success || digits.includes("") ? 0.5 : 1,
               }}
             >
               {loading ? (

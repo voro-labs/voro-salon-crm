@@ -125,8 +125,8 @@ export default function SignInScreen() {
             <Pressable
               onPress={handleSignIn}
               disabled={loading}
-              className="h-16 rounded-2xl items-center justify-center shadow-lg"
-              style={{ backgroundColor: loading ? primaryColor + "99" : primaryColor }}
+              className="h-16 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: primaryColor, opacity: loading ? 0.6 : 1 }}
             >
               {loading ? (
                 <ActivityIndicator color="white" />
