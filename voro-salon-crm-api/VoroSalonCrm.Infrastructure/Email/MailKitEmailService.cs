@@ -49,7 +49,7 @@ namespace VoroSalonCrm.Infrastructure.Email
 
             using var smtp = new SmtpClient();
             await smtp.ConnectAsync(_mailUtil.SmtpServer, _mailUtil.SmtpPort, SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync(_mailUtil.From, _mailUtil.Password);
+            await smtp.AuthenticateAsync(_mailUtil.Username, _mailUtil.Password);
             await smtp.SendAsync(message);
             await smtp.DisconnectAsync(true);
         }

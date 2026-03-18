@@ -30,6 +30,7 @@ jobs:
             EMAILSETTINGS__IMAPSERVER="${{ secrets.EMAILSETTINGS__IMAPSERVER }}" \
             EMAILSETTINGS__IMAPPORT="${{ secrets.EMAILSETTINGS__IMAPPORT }}" \
             EMAILSETTINGS__FROM="${{ secrets.EMAILSETTINGS__FROM }}" \
+            EMAILSETTINGS__USERNAME="${{ secrets.EMAILSETTINGS__USERNAME }}" \
             EMAILSETTINGS__PASSWORD="${{ secrets.EMAILSETTINGS__PASSWORD }}" \
             BLOBSETTINGS__TOKEN="${{ secrets.BLOBSETTINGS__TOKEN }}" \
             BLOBSETTINGS__STOREID="${{ secrets.BLOBSETTINGS__STOREID }}" \
