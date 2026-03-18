@@ -285,7 +285,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
         {
             if (!context.Users.IgnoreQueryFilters().Any())
             {
-                var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Admin");
+                var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
                 var tenant = context.Tenants.FirstOrDefault(t => t.Slug == "vorolabs");
 
                 var admin = new User

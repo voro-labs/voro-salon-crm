@@ -22,7 +22,7 @@ export default function NovoServicoPage() {
   const { form, setForm, isSaving, createService } = useServiceDetail()
 
   return (
-    <AuthGuard requiredRoles={["User"]}>
+    <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>

@@ -39,7 +39,7 @@ namespace VoroSalonCrm.API.Controllers
                     return Unauthorized();
 
                 var roles = user.UserRoles?.Select(ur => ur.Role?.Name).ToList() ?? [];
-                var primaryRole = roles.FirstOrDefault() ?? "user";
+                var primaryRole = roles.FirstOrDefault() ?? "salonClient";
 
                 var sessionUser = new SessionUserDto(
                     user.Id,
@@ -107,12 +107,12 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost("sign-up")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Owner")]
         public async Task<IActionResult> SignUp([FromBody] SignUpDto signUpDto)
         {
             try
             {
-                var authDto = await authService.SignUpAsync(signUpDto, [RoleConstant.User]);
+                var authDto = await authService.SignUpAsync(signUpDto, [RoleConstant.SalonOwner]);
 
                 return ResponseViewModel<AuthDto>
                     .SuccessWithMessage("Sign-up successful.", authDto)

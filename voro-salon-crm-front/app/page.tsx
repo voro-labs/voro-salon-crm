@@ -189,7 +189,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <AuthGuard requiredRoles={["User"]}>
+    <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
       <div className="flex flex-col gap-6 p-6">
         <PageHeader 
           title="Painel" 

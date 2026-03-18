@@ -62,7 +62,7 @@ export default function AppointmentDetailPage() {
   }
 
   return (
-    <AuthGuard requiredRoles={["User"]}>
+    <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
       <div className="flex flex-col gap-6 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">

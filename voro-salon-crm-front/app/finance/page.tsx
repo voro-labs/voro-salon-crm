@@ -272,7 +272,7 @@ export default function FinancialPage() {
   const saldoPrevisto = totalReceitas - totalDespesas
 
   return (
-    <AuthGuard requiredRoles={["Admin", "User"]}>
+    <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <div className="flex flex-col gap-6 p-3 sm:p-6">
         <PageHeader
           title="Financeiro"
