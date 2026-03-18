@@ -42,13 +42,14 @@ namespace VoroSalonCrm.Application.Services
             await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
         }
 
-        public async Task SendResetLinkAsync(string email, string userName, string token, Tenant? tenant = null)
+        public async Task SendResetLinkAsync(string email, string userName, string token, Tenant? tenant = null, string? redirectUri = null)
         {
             var template = await _notificationRepository
                 .Query(n => n.Name == NotificationEnum.PasswordReset.AsText() && n.IsActive).FirstOrDefaultAsync()
                 ?? throw new InvalidOperationException("Template de e-mail de reset de senha não encontrado.");
 
-            var resetLink = $"{UrlBase}/admin/reset-password?email={Uri.EscapeDataString(email)}&token={token}";
+            var baseUrl = !string.IsNullOrWhiteSpace(redirectUri) ? redirectUri : $"{UrlBase}/admin/reset-password";
+            var resetLink = $"{baseUrl}?email={Uri.EscapeDataString(email)}&token={token}";
 
             var subject = template.Subject
                 .Replace("{UserName}", userName);

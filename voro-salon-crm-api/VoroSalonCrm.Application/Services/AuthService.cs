@@ -78,7 +78,7 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)), primaryTenant);
+            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)), primaryTenant, forgotPasswordDto.RedirectUri);
         }
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)

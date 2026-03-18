@@ -15,8 +15,8 @@ type FieldErrors = {
 export default function ResetPasswordScreen() {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
-  const { email } = useLocalSearchParams<{ email: string }>()
-  const [code, setCode] = useState("")
+  const { email, token } = useLocalSearchParams<{ email: string; token: string }>()
+  const [code, setCode] = useState(token ?? "")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showNew, setShowNew] = useState(false)
