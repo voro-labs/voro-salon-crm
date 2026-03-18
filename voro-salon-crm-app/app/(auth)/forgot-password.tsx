@@ -34,7 +34,7 @@ export default function ForgotPasswordScreen() {
     try {
       const res = await apiCall(API_CONFIG.ENDPOINTS.FORGOT_PASSWORD, {
         method: "POST",
-        body: JSON.stringify({ email: email.trim(), redirectUri: "vorosaloncrm://(auth)/reset-password" }),
+        body: JSON.stringify({ email: email.trim(), redirectUri: `${process.env.EXPO_PUBLIC_BASE_URL}/${process.env.EXPO_PUBLIC_API_URL}/auth/reset-password-redirect` }),
       })
       if (res.hasError) { setError(res.message ?? "Erro ao enviar e-mail"); return }
       setSuccess(true)
