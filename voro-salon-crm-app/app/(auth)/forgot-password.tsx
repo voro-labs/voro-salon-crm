@@ -13,19 +13,32 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string }>({})
+
+  function validate() {
+    const errors: { email?: string } = {}
+    if (!email.trim()) {
+      errors.email = "E-mail é obrigatório."
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = "Informe um e-mail válido."
+    }
+    return errors
+  }
 
   const handleForgot = async () => {
-    if (!email) return
+    const errors = validate()
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return }
+    setFieldErrors({})
     setLoading(true)
     setError(null)
     try {
       const res = await apiCall(API_CONFIG.ENDPOINTS.FORGOT_PASSWORD, {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       })
       if (res.hasError) { setError(res.message ?? "Erro ao enviar e-mail"); return }
       setSuccess(true)
-      setTimeout(() => router.push({ pathname: "/(auth)/reset-password", params: { email } }), 2000)
+      setTimeout(() => router.push({ pathname: "/(auth)/reset-password", params: { email: email.trim() } }), 2000)
     } catch { setError("Erro inesperado. Tente novamente.") }
     finally { setLoading(false) }
   }
@@ -47,15 +60,46 @@ export default function ForgotPasswordScreen() {
               </Text>
               <Text className="text-zinc-500 font-medium mt-2 text-center">Informe seu e-mail para receber o código</Text>
             </View>
+
             <View className="mt-2 gap-3">
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center">
-                <Ionicons name="mail-outline" size={20} color="#71717a" />
-                <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Seu e-mail" placeholderTextColor="#a1a1aa" value={email} onChangeText={(t) => { setEmail(t); setError(null) }} autoCapitalize="none" keyboardType="email-address" />
+              <View className="gap-1">
+                <View
+                  className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
+                  style={{ borderWidth: 1, borderColor: fieldErrors.email ? "#fca5a5" : "#f4f4f5" }}
+                >
+                  <Ionicons name="mail-outline" size={20} color={fieldErrors.email ? "#ef4444" : "#71717a"} />
+                  <TextInput
+                    className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
+                    placeholder="Seu e-mail"
+                    placeholderTextColor="#a1a1aa"
+                    value={email}
+                    onChangeText={(t) => { setEmail(t); setError(null); setFieldErrors({}) }}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    returnKeyType="done"
+                    onSubmitEditing={handleForgot}
+                  />
+                </View>
+                {fieldErrors.email && (
+                  <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.email}</Text>
+                )}
               </View>
-              {error && <View className="bg-red-50 p-4 rounded-2xl flex-row items-center border border-red-100"><Ionicons name="alert-circle" size={20} color="#ef4444" /><Text className="ml-3 text-red-600 text-sm font-bold flex-1">{error}</Text></View>}
-              {success && <View className="bg-green-50 p-4 rounded-2xl flex-row items-center border border-green-100"><Ionicons name="checkmark-circle" size={20} color="#10b981" /><Text className="ml-3 text-green-600 text-sm font-bold flex-1">Código enviado! Redirecionando...</Text></View>}
+
+              {error && (
+                <View className="bg-red-50 p-4 rounded-2xl flex-row items-center border border-red-100">
+                  <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                  <Text className="ml-3 text-red-600 text-sm font-bold flex-1">{error}</Text>
+                </View>
+              )}
+              {success && (
+                <View className="bg-green-50 p-4 rounded-2xl flex-row items-center border border-green-100">
+                  <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                  <Text className="ml-3 text-green-600 text-sm font-bold flex-1">Código enviado! Redirecionando...</Text>
+                </View>
+              )}
             </View>
           </View>
+
           <View className="px-8 mt-10 pb-8">
             <Pressable
               onPress={handleForgot}
@@ -63,7 +107,10 @@ export default function ForgotPasswordScreen() {
               className="h-16 rounded-2xl items-center justify-center shadow-lg"
               style={{ backgroundColor: loading || success ? primaryColor + "99" : primaryColor }}
             >
-              {loading ? <ActivityIndicator color="white" /> : <View className="flex-row items-center gap-2"><Text className="text-white text-lg font-black">Enviar Código</Text><Ionicons name="paper-plane" size={20} color="white" /></View>}
+              {loading
+                ? <ActivityIndicator color="white" />
+                : <View className="flex-row items-center gap-2"><Text className="text-white text-lg font-black">Enviar Código</Text><Ionicons name="paper-plane" size={20} color="white" /></View>
+              }
             </Pressable>
             <View className="flex-row justify-center mt-6">
               <Text className="text-zinc-500 font-bold">Lembrou a senha? </Text>

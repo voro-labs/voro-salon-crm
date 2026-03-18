@@ -6,6 +6,12 @@ import { Ionicons } from "@expo/vector-icons"
 import { apiCall, API_CONFIG } from "lib/api"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
+type FieldErrors = {
+  firstName?: string
+  email?: string
+  password?: string
+}
+
 export default function SignUpScreen() {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
@@ -17,20 +23,43 @@ export default function SignUpScreen() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+
+  function validate(): FieldErrors {
+    const errors: FieldErrors = {}
+    if (!firstName.trim()) {
+      errors.firstName = "Nome é obrigatório."
+    }
+    if (!email.trim()) {
+      errors.email = "E-mail é obrigatório."
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = "Informe um e-mail válido."
+    }
+    if (!password) {
+      errors.password = "Senha é obrigatória."
+    } else if (password.length < 6) {
+      errors.password = "A senha deve ter pelo menos 6 caracteres."
+    }
+    return errors
+  }
+
+  function clearField(field: keyof FieldErrors) {
+    setFieldErrors((p) => ({ ...p, [field]: undefined }))
+    setError(null)
+  }
 
   const handleSignUp = async () => {
-    if (!firstName || !email || !password) return
+    const errors = validate()
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return }
+    setFieldErrors({})
     setLoading(true)
     setError(null)
     try {
       const res = await apiCall(API_CONFIG.ENDPOINTS.SIGNIN.replace("sign-in", "sign-up"), {
         method: "POST",
-        body: JSON.stringify({ firstName, lastName, email, password }),
+        body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password }),
       })
-      if (res.hasError) {
-        setError(res.message ?? "Erro ao criar conta")
-        return
-      }
+      if (res.hasError) { setError(res.message ?? "Erro ao criar conta"); return }
       setSuccess(true)
       setTimeout(() => router.replace("/(auth)/sign-in"), 2000)
     } catch {
@@ -56,24 +85,92 @@ export default function SignUpScreen() {
             </View>
 
             <View className="mt-2 gap-3">
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
+              {/* Nome */}
+              <View className="gap-1">
+                <View
+                  className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
+                  style={{ borderWidth: 1, borderColor: fieldErrors.firstName ? "#fca5a5" : "#f4f4f5" }}
+                >
+                  <Ionicons name="person-outline" size={20} color={fieldErrors.firstName ? "#ef4444" : "#71717a"} />
+                  <TextInput
+                    className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
+                    placeholder="Nome *"
+                    placeholderTextColor="#a1a1aa"
+                    value={firstName}
+                    onChangeText={(t) => { setFirstName(t); clearField("firstName") }}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                  />
+                </View>
+                {fieldErrors.firstName && (
+                  <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.firstName}</Text>
+                )}
+              </View>
+
+              {/* Sobrenome (opcional) */}
+              <View
+                className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
+                style={{ borderWidth: 1, borderColor: "#f4f4f5" }}
+              >
                 <Ionicons name="person-outline" size={20} color="#71717a" />
-                <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Nome" placeholderTextColor="#a1a1aa" value={firstName} onChangeText={setFirstName} />
+                <TextInput
+                  className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
+                  placeholder="Sobrenome"
+                  placeholderTextColor="#a1a1aa"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                />
               </View>
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
-                <Ionicons name="person-outline" size={20} color="#71717a" />
-                <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Sobrenome" placeholderTextColor="#a1a1aa" value={lastName} onChangeText={setLastName} />
+
+              {/* E-mail */}
+              <View className="gap-1">
+                <View
+                  className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
+                  style={{ borderWidth: 1, borderColor: fieldErrors.email ? "#fca5a5" : "#f4f4f5" }}
+                >
+                  <Ionicons name="mail-outline" size={20} color={fieldErrors.email ? "#ef4444" : "#71717a"} />
+                  <TextInput
+                    className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
+                    placeholder="E-mail *"
+                    placeholderTextColor="#a1a1aa"
+                    value={email}
+                    onChangeText={(t) => { setEmail(t); clearField("email") }}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    returnKeyType="next"
+                  />
+                </View>
+                {fieldErrors.email && (
+                  <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.email}</Text>
+                )}
               </View>
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
-                <Ionicons name="mail-outline" size={20} color="#71717a" />
-                <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="E-mail" placeholderTextColor="#a1a1aa" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-              </View>
-              <View className="bg-zinc-50 border border-zinc-100 rounded-2xl mt-2 px-4 py-3 flex-row items-center">
-                <Ionicons name="lock-closed-outline" size={20} color="#71717a" />
-                <TextInput className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0" placeholder="Senha" placeholderTextColor="#a1a1aa" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
-                <Pressable onPress={() => setShowPassword(v => !v)} className="ml-2 p-1">
-                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#71717a" />
-                </Pressable>
+
+              {/* Senha */}
+              <View className="gap-1">
+                <View
+                  className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
+                  style={{ borderWidth: 1, borderColor: fieldErrors.password ? "#fca5a5" : "#f4f4f5" }}
+                >
+                  <Ionicons name="lock-closed-outline" size={20} color={fieldErrors.password ? "#ef4444" : "#71717a"} />
+                  <TextInput
+                    className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
+                    placeholder="Senha * (mín. 6 caracteres)"
+                    placeholderTextColor="#a1a1aa"
+                    value={password}
+                    onChangeText={(t) => { setPassword(t); clearField("password") }}
+                    secureTextEntry={!showPassword}
+                    returnKeyType="done"
+                    onSubmitEditing={handleSignUp}
+                  />
+                  <Pressable onPress={() => setShowPassword(v => !v)} className="ml-2 p-1">
+                    <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#71717a" />
+                  </Pressable>
+                </View>
+                {fieldErrors.password && (
+                  <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.password}</Text>
+                )}
               </View>
 
               {error && (
