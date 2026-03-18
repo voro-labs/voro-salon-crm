@@ -18,7 +18,7 @@ namespace VoroSalonCrm.Application.Services
             configuration
                 .GetSection("CorsSettings")
                 .GetSection("AllowedOrigins")
-                .Get<string[]>()?[4] ?? "{UrlBase}";
+                .Get<string[]>()?[0] ?? "{UrlBase}";
 
         public async Task<IEnumerable<SubscriptionPlanDto>> GetAllPlansAsync()
         {
