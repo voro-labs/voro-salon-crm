@@ -107,7 +107,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost("sign-up")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SignUp([FromBody] SignUpDto signUpDto)
         {
             try

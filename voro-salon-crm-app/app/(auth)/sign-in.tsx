@@ -100,12 +100,12 @@ export default function SignInScreen() {
               )}
             </Pressable>
 
-            <View className="flex-row justify-center mt-12">
+            {/* <View className="flex-row justify-center mt-12">
               <Text className="text-zinc-500 font-bold text-base">Não tem conta? </Text>
               <Pressable onPress={() => router.push("/(auth)/sign-up")}>
                 <Text className="text-base font-black" style={{ color: primaryColor }}>Cadastre-se</Text>
               </Pressable>
-            </View>
+            </View> */}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

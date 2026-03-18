@@ -19,15 +19,15 @@ namespace VoroSalonCrm.Application.Services
 {
     public class AuthService(IOptions<CookieUtil> cookieUtil, IConfiguration configuration,
         IMapper mapper, INotificationService notificationService, IUserService userService,
-        ICurrentUserService currentUserService, VoroSalonCrm.Domain.Interfaces.Repositories.IUserExtensionRepository userExtensionRepository,
-        VoroSalonCrm.Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork) : IAuthService
+        ICurrentUserService currentUserService, Domain.Interfaces.Repositories.IUserExtensionRepository userExtensionRepository,
+        Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork) : IAuthService
     {
         private readonly INotificationService _notificationService = notificationService;
         private readonly CookieUtil _cookieUtil = cookieUtil.Value;
         private readonly IUserService _userService = userService;
         private readonly ICurrentUserService _currentUser = currentUserService;
-        private readonly VoroSalonCrm.Domain.Interfaces.Repositories.IUserExtensionRepository _userExtensionRepository = userExtensionRepository;
-        private readonly VoroSalonCrm.Domain.Interfaces.UnitOfWork.IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly Domain.Interfaces.Repositories.IUserExtensionRepository _userExtensionRepository = userExtensionRepository;
+        private readonly Domain.Interfaces.UnitOfWork.IUnitOfWork _unitOfWork = unitOfWork;
 
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
@@ -43,8 +43,10 @@ namespace VoroSalonCrm.Application.Services
             var user = await _userService.CreateAsync(userDto, signUpDto.Password, roles);
 
             var userName = string.IsNullOrEmpty(user.UserName) ? $"{user.FirstName}.{user.LastName}".ToLower() : $"{user.UserName}";
+            var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
+                             ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendWelcomeAsync($"{user.Email}", userName);
+            await _notificationService.SendWelcomeAsync($"{user.Email}", userName, primaryTenant);
 
             return await GenerateAuthDtoAsync(user, roles);
         }
@@ -54,8 +56,10 @@ namespace VoroSalonCrm.Application.Services
             var (user, token) = await _userService.GenerateConfirmEmailAsync(email);
 
             var userName = string.IsNullOrEmpty(user.UserName) ? $"{user.FirstName}.{user.LastName}".ToLower() : $"{user.UserName}";
+            var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
+                             ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)));
+            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)), primaryTenant);
         }
 
         public async Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email)
@@ -71,7 +75,10 @@ namespace VoroSalonCrm.Application.Services
 
             var userName = !string.IsNullOrEmpty(user.FirstName) ? $"{user.FirstName} {user.LastName}" : $"{user.UserName}";
 
-            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)));
+            var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
+                             ?? user.UserTenants?.FirstOrDefault()?.Tenant;
+
+            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)), primaryTenant);
         }
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
@@ -142,7 +149,7 @@ namespace VoroSalonCrm.Application.Services
             return claims;
         }
 
-        public async Task<AuthDto> RefreshTokenAsync(VoroSalonCrm.Application.DTOs.Auth.RefreshTokenDto model)
+        public async Task<AuthDto> RefreshTokenAsync(DTOs.Auth.RefreshTokenDto model)
         {
             var principal = GetPrincipalFromExpiredToken(model.Token, configuration.Get<ConfigUtil>()?.JwtKey!);
             if (principal == null)

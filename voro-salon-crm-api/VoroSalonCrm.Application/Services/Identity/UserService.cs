@@ -15,15 +15,46 @@ namespace VoroSalonCrm.Application.Services.Identity
     {
         public async Task<(User user, IList<string>? rolesNames)> GetByEmailAndPassword(string email, string password)
         {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                throw new UnauthorizedAccessException("E-mail e senha são obrigatórios.");
+
             var user = await FindUserByEmailAsync(email);
 
             if (user == null)
-                throw new UnauthorizedAccessException("Usuário ou senha inválidos.");
+                throw new UnauthorizedAccessException("Nenhuma conta encontrada com este e-mail.");
 
-            var result = await signInManager.CheckPasswordSignInAsync(user, password, false);
+            if (!user.IsActive)
+                throw new UnauthorizedAccessException("Sua conta está desativada. Entre em contato com o suporte.");
+
+            if (await userManager.IsLockedOutAsync(user))
+            {
+                var lockoutEnd = await userManager.GetLockoutEndDateAsync(user);
+                var remaining = lockoutEnd.HasValue
+                    ? (int)Math.Ceiling((lockoutEnd.Value - DateTimeOffset.UtcNow).TotalMinutes)
+                    : 0;
+                var minuteText = remaining > 1 ? $"{remaining} minutos" : "1 minuto";
+                throw new UnauthorizedAccessException($"Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em {minuteText}.");
+            }
+
+            var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+
+            if (result.IsLockedOut)
+                throw new UnauthorizedAccessException("Conta bloqueada após muitas tentativas incorretas. Aguarde alguns minutos e tente novamente.");
+
+            if (result.IsNotAllowed)
+                throw new UnauthorizedAccessException("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.");
 
             if (!result.Succeeded)
-                throw new UnauthorizedAccessException("Usuário ou senha inválidos.");
+            {
+                var attemptsLeft = userManager.Options.Lockout.MaxFailedAccessAttempts
+                    - await userManager.GetAccessFailedCountAsync(user);
+
+                var hint = attemptsLeft > 0
+                    ? $" ({attemptsLeft} tentativa{(attemptsLeft == 1 ? "" : "s")} restante{(attemptsLeft == 1 ? "" : "s")} antes do bloqueio)"
+                    : "";
+
+                throw new UnauthorizedAccessException($"Senha incorreta.{hint}");
+            }
 
             var rolesNames = await userManager.GetRolesAsync(user);
 
@@ -140,14 +171,30 @@ namespace VoroSalonCrm.Application.Services.Identity
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
         {
             var user = await FindUserByEmailAsync(resetPasswordDto.Email)
-            ?? throw new KeyNotFoundException("Usuário não encontrado.");
+                ?? throw new KeyNotFoundException("Nenhuma conta encontrada com este e-mail.");
 
             var decodedTokenBytes = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(resetPasswordDto.Token);
             var decodedToken = System.Text.Encoding.UTF8.GetString(decodedTokenBytes);
 
             var result = await userManager.ResetPasswordAsync(user, decodedToken, resetPasswordDto.NewPassword);
 
-            return result.Succeeded;
+            if (!result.Succeeded)
+            {
+                var error = result.Errors.FirstOrDefault();
+                var message = error?.Code switch
+                {
+                    "InvalidToken" => "O link de redefinição é inválido ou já expirou. Solicite um novo.",
+                    "PasswordTooShort" => $"A senha deve ter pelo menos {userManager.Options.Password.RequiredLength} caracteres.",
+                    "PasswordRequiresNonAlphanumeric" => "A senha deve conter pelo menos um caractere especial.",
+                    "PasswordRequiresDigit" => "A senha deve conter pelo menos um número.",
+                    "PasswordRequiresUpper" => "A senha deve conter pelo menos uma letra maiúscula.",
+                    "PasswordRequiresLower" => "A senha deve conter pelo menos uma letra minúscula.",
+                    _ => error?.Description ?? "Não foi possível redefinir a senha."
+                };
+                throw new InvalidOperationException(message);
+            }
+
+            return true;
         }
 
         private async Task<User?> FindUserByEmailAsync(string email)

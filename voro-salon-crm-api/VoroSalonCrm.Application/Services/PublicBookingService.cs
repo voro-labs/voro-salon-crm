@@ -107,7 +107,7 @@ namespace VoroSalonCrm.Application.Services
             return new PublicBookingResponseDto(true, "Agendamento realizado com sucesso!", appointment.Id);
         }
 
-        public async Task<IEnumerable<VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto>> GetAvailableSlotsAsync(string tenantSlug, DateTime date, Guid? serviceId = null, Guid? employeeId = null)
+        public async Task<IEnumerable<DTOs.CRM.AvailabilitySlotDto>> GetAvailableSlotsAsync(string tenantSlug, DateTime date, Guid? serviceId = null, Guid? employeeId = null)
         {
             var tenant = await tenantRepository.GetBySlugAsync(tenantSlug);
             if (tenant == null) return [];
@@ -156,7 +156,7 @@ namespace VoroSalonCrm.Application.Services
                     .CountAsync();
             }
 
-            var slots = new List<VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto>();
+            var slots = new List<DTOs.CRM.AvailabilitySlotDto>();
             var current = startOfDay.ToUniversalTime();
 
             // Salon-only Mode: If no active employees exist, treat the salon as a single resource with capacity 1
@@ -192,7 +192,7 @@ namespace VoroSalonCrm.Application.Services
                     isBusy = overlappingCount >= activeEmployeesCount;
                 }
 
-                slots.Add(new VoroSalonCrm.Application.DTOs.CRM.AvailabilitySlotDto(current, next, !isBusy));
+                slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, !isBusy));
                 current = next;
             }
 
