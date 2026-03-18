@@ -21,7 +21,7 @@ export default function PagarSucessoPage() {
             <Link href="/admin/sign-in">Acessar minha conta</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/precos">Voltar aos planos</Link>
+            <Link href="/prices">Voltar aos planos</Link>
           </Button>
         </div>
         <div className="flex items-center justify-center gap-2 mt-10 text-xs text-muted-foreground">

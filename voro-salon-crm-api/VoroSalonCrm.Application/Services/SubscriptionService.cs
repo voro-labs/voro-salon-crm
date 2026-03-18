@@ -37,7 +37,7 @@ namespace VoroSalonCrm.Application.Services
             var plan = await planRepository.GetByIdAsync(dto.PlanId)
                 ?? throw new InvalidOperationException("Plano não encontrado.");
 
-            var backUrl = $"{UrlBase}/precos/sucesso";
+            var backUrl = $"{UrlBase}/prices/feedback";
 
             var externalRef = dto.TenantId.HasValue
                 ? dto.TenantId.Value.ToString()
