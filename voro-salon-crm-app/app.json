@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Voro Salon CRM",
-    "slug": "voro-salon-crm-app",
+    "slug": "voro-salon-crm",
     "version": "1.0.0",
     "scheme": "vorosaloncrm",
     "web": {
@@ -39,7 +39,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "1c48e812-db83-4c56-a7f9-4b11a95f96fd"
+        "projectId": "d424753f-823b-4e87-8021-4f3671af12be"
       }
     }
   }
