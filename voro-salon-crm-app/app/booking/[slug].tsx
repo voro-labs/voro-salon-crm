@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect } from "react"
 import {
   View, Text, Pressable, ScrollView, TextInput,
   ActivityIndicator, Image, KeyboardAvoidingView,
-  Platform, FlatList, Modal, Alert,
+  Platform, FlatList, Modal, Linking,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -32,6 +32,7 @@ interface Tenant {
   logoUrl?: string
   primaryColor?: string
   secondaryColor?: string
+  contactPhone?: string
 }
 
 interface Service {
@@ -100,17 +101,6 @@ function generateCalendarDates(count = 30): string[] {
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-
-function DateLabel({ iso }: { iso: string }) {
-  const d = new Date(iso + "T12:00:00")
-  return (
-    <View className="items-center">
-      <Text className="text-xs font-bold text-zinc-400 uppercase">{WEEKDAYS[d.getDay()]}</Text>
-      <Text className="text-lg font-black text-zinc-900">{d.getDate()}</Text>
-      <Text className="text-xs font-semibold text-zinc-400">{MONTHS[d.getMonth()]}</Text>
-    </View>
-  )
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -284,6 +274,13 @@ export default function BookingScreen() {
     }
   }
 
+  function openWhatsApp() {
+    const rawPhone = tenant?.contactPhone?.replace(/\D/g, "") ?? ""
+    if (!rawPhone) return
+    const message = `Olá, acabei de solicitar um agendamento para *${form.serviceName}* no dia *${formatDate(form.date)} às ${form.time}*. Meu nome é ${form.name}.`
+    Linking.openURL(`https://wa.me/${rawPhone}?text=${encodeURIComponent(message)}`)
+  }
+
   function goBack() {
     const prev: Record<Step, Step> = {
       LOADING: "LOADING",
@@ -327,16 +324,29 @@ export default function BookingScreen() {
                 <Ionicons name="chevron-back" size={20} color="#18181b" />
               </Pressable>
             )}
-            <View className="flex-1">
+            <View className="flex-1 flex-row items-center gap-2">
               {tenant?.logoUrl ? (
                 <Image
                   source={{ uri: tenant.logoUrl }}
-                  style={{ width: 28, height: 28, borderRadius: 8 }}
+                  style={{ width: 24, height: 24, borderRadius: 6 }}
                   resizeMode="contain"
                 />
               ) : null}
-              <Text className="text-base font-black text-zinc-900">{tenant?.name ?? "Agendamento"}</Text>
+              <Text className="text-base font-black text-zinc-900 flex-1" numberOfLines={1}>
+                {tenant?.name ?? "Agendamento"}
+              </Text>
             </View>
+            <Pressable
+              onPress={async () => {
+                await SecureStore.deleteItemAsync("voro_booking_slug")
+                await SecureStore.deleteItemAsync("voro_booking_tenant_name")
+                router.replace("/booking?change=1")
+              }}
+              className="flex-row items-center gap-1 px-3 py-1.5 rounded-xl border border-zinc-200"
+            >
+              <Ionicons name="swap-horizontal-outline" size={14} color="#71717a" />
+              <Text className="text-zinc-500 font-bold text-xs">Trocar salão</Text>
+            </Pressable>
           </View>
           {/* Progress bar */}
           <View className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
@@ -782,6 +792,17 @@ export default function BookingScreen() {
               <Text className="text-zinc-400 font-medium text-sm">com {form.employeeName}</Text>
             )}
           </View>
+
+          {tenant?.contactPhone ? (
+            <Pressable
+              onPress={openWhatsApp}
+              className="h-14 rounded-2xl items-center justify-center w-full flex-row gap-2 mb-3"
+              style={{ backgroundColor: "#25D366" }}
+            >
+              <Ionicons name="logo-whatsapp" size={22} color="white" />
+              <Text className="text-white font-black text-base">Enviar comprovante via WhatsApp</Text>
+            </Pressable>
+          ) : null}
 
           <Pressable
             onPress={() => router.replace("/booking")}
