@@ -64,6 +64,10 @@ export default function SettingsScreen() {
   const initials =
     `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "U"
 
+  const roleNames = user?.roles?.map((r) => r.name) ?? []
+  const isOwner = roleNames.includes("Owner")
+  const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
+
   const handleLogout = () => {
     Alert.alert("Sair", "Tem certeza que deseja sair?", [
       { text: "Cancelar", style: "cancel" },
@@ -96,41 +100,51 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Estabelecimento */}
-        <SectionLabel title="Estabelecimento" />
-        <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100">
-          <NavRow
-            icon="business-outline"
-            label="Dados do Salão"
-            subtitle="Nome, slug, logo, contato e cores"
-            onPress={() => router.push("/(tabs)/settings/salon" as any)}
-            iconColor={primaryColor}
-          />
-          <NavRow
-            icon="grid-outline"
-            label="Módulos"
-            subtitle="Ativar/desativar funcionalidades"
-            onPress={() => router.push("/(tabs)/settings/modules" as any)}
-            iconBg="#f0f9ff"
-            iconColor="#0284c7"
-          />
-          <NavRow
-            icon="download-outline"
-            label="Exportar Dados"
-            subtitle="Clientes e serviços em CSV"
-            onPress={() => router.push("/(tabs)/settings/export" as any)}
-            iconBg="#f0fdf4"
-            iconColor="#059669"
-          />
-          <NavRow
-            icon="clipboard-outline"
-            label="Anamnese"
-            subtitle="Configurar ficha de avaliação"
-            onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
-            iconBg="#fff7ed"
-            iconColor="#d97706"
-          />
-        </View>
+        {/* Estabelecimento — visível apenas para Owner e SalonOwner */}
+        {isSalonOwner && (
+          <>
+            <SectionLabel title="Estabelecimento" />
+            <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100">
+              {isOwner && (
+                <NavRow
+                  icon="business-outline"
+                  label="Dados do Salão"
+                  subtitle="Nome, slug, logo, contato e cores"
+                  onPress={() => router.push("/(tabs)/settings/salon" as any)}
+                  iconColor={primaryColor}
+                />
+              )}
+              {isOwner && (
+                <NavRow
+                  icon="grid-outline"
+                  label="Módulos"
+                  subtitle="Ativar/desativar funcionalidades"
+                  onPress={() => router.push("/(tabs)/settings/modules" as any)}
+                  iconBg="#f0f9ff"
+                  iconColor="#0284c7"
+                />
+              )}
+              <NavRow
+                icon="download-outline"
+                label="Exportar Dados"
+                subtitle="Clientes e serviços em CSV"
+                onPress={() => router.push("/(tabs)/settings/export" as any)}
+                iconBg="#f0fdf4"
+                iconColor="#059669"
+              />
+              {isOwner && (
+                <NavRow
+                  icon="clipboard-outline"
+                  label="Anamnese"
+                  subtitle="Configurar ficha de avaliação"
+                  onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
+                  iconBg="#fff7ed"
+                  iconColor="#d97706"
+                />
+              )}
+            </View>
+          </>
+        )}
 
         {/* Conta */}
         <SectionLabel title="Conta" />
