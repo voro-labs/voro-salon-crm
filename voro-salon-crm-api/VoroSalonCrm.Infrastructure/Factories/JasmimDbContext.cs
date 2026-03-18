@@ -44,6 +44,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<AnamnesisEvidence> AnamnesisEvidences { get; set; }
         public DbSet<AnamnesisSignature> AnamnesisSignatures { get; set; }
 
+        public DbSet<PasswordHistory> PasswordHistories { get; set; }
+
         public DbSet<EntityAuditLog> EntityAuditLogs { get; set; }
         public DbSet<RouteAuditLog> RouteAuditLogs { get; set; }
         public DbSet<IntegrationAuditLog> IntegrationAuditLogs { get; set; }
@@ -404,6 +406,24 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 .WithOne(u => u.UserExtension)
                 .HasForeignKey<UserExtension>(ue => ue.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // ---------------------------
+            // PASSWORD HISTORY
+            // ---------------------------
+            builder.Entity<PasswordHistory>(b =>
+            {
+                b.HasKey(ph => ph.Id);
+                b.Property(ph => ph.PasswordHash).IsRequired();
+                b.Property(ph => ph.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(ph => ph.UserId);
+                b.HasIndex(ph => new { ph.UserId, ph.CreatedAt }).IsDescending(false, true);
+
+                b.HasOne(ph => ph.User)
+                 .WithMany()
+                 .HasForeignKey(ph => ph.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // ---------------------------
             // IDENTITY CONFIG

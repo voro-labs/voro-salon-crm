@@ -85,6 +85,25 @@ namespace VoroSalonCrm.Application.Services
             await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
         }
 
+        public async Task SendTwoFactorCodeAsync(string email, string userName, string code, Tenant? tenant = null)
+        {
+            var template = await _notificationRepository
+                .Query(n => n.Name == NotificationEnum.TwoFactorCode.AsText() && n.IsActive).FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("Template de e-mail de autenticação de dois fatores não encontrado.");
+
+            var subject = template.Subject
+                .Replace("{UserName}", userName);
+
+            var body = template.Body
+                .Replace("{UserName}", userName)
+                .Replace("{TwoFactorCode}", code);
+
+            body = ApplyTenantPlaceholders(body, tenant);
+            subject = ApplyTenantPlaceholders(subject, tenant);
+
+            await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
+        }
+
         // ── Substitui todos os placeholders relacionados ao tenant ──────────────
 
         private static string ApplyTenantPlaceholders(string text, Tenant? tenant)

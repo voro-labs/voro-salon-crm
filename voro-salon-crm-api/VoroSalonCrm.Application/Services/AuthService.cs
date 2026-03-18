@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Identity;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -33,7 +34,30 @@ namespace VoroSalonCrm.Application.Services
         {
             var (user, rolesNames) = await _userService.GetByEmailAndPassword(signInDto.Email, signInDto.Password);
 
-            return await GenerateAuthDtoAsync(user, rolesNames);
+            // Gerar código 2FA e enviar por e-mail
+            var (code, pendingToken) = await _userService.GenerateTwoFactorCodeAsync(user.Id);
+
+            var userName = !string.IsNullOrEmpty(user.FirstName)
+                ? $"{user.FirstName} {user.LastName}".Trim()
+                : user.UserName ?? string.Empty;
+
+            var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
+                             ?? user.UserTenants?.FirstOrDefault()?.Tenant;
+
+            await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+
+            return new AuthDto
+            {
+                RequiresTwoFactor = true,
+                TwoFactorPendingToken = pendingToken
+            };
+        }
+
+        public async Task<AuthDto> VerifyTwoFactorAsync(VerifyTwoFactorDto dto)
+        {
+            var (user, roles) = await _userService.VerifyTwoFactorAsync(dto.PendingToken, dto.Code);
+
+            return await GenerateAuthDtoAsync(user, roles);
         }
 
         public async Task<AuthDto> SignUpAsync(SignUpDto signUpDto, List<string> roles)

@@ -126,6 +126,26 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpPost("verify-2fa")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyTwoFactor([FromBody] VerifyTwoFactorDto dto)
+        {
+            try
+            {
+                var authDto = await authService.VerifyTwoFactorAsync(dto);
+
+                return ResponseViewModel<AuthDto>
+                    .SuccessWithMessage("Two-factor authentication successful.", authDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<AuthDto>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)

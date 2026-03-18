@@ -140,6 +140,55 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     new()
                     {
                         Id = Guid.NewGuid(),
+                        Name = NotificationEnum.TwoFactorCode.AsText(),
+                        Subject = "Seu código de verificação — {TenantName}",
+                        Body = @"
+                        <div style='font-family: Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px;'>
+                        <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.07);'>
+
+                            <!-- Header -->
+                            <div style='background-color: {TenantPrimaryColor}; padding: 28px 32px; text-align: center;'>
+                            <img src='{TenantLogoUrl}' alt='{TenantName}' style='max-height: 56px; max-width: 200px; object-fit: contain;' onerror=""this.style.display='none'"" />
+                            <h1 style='color: #ffffff; margin: 12px 0 0; font-size: 22px; font-weight: 700;'>{TenantName}</h1>
+                            </div>
+
+                            <!-- Corpo -->
+                            <div style='padding: 32px; text-align: center;'>
+                            <h2 style='color: #18181b; font-size: 20px; margin-top: 0;'>Verificação em duas etapas</h2>
+                            <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                                Olá, <strong>{UserName}</strong>! Use o código abaixo para concluir seu acesso ao <strong>{TenantName}</strong>.
+                            </p>
+                            <div style='margin: 28px auto; display: inline-block; background-color: #f4f4f5; border: 2px dashed {TenantPrimaryColor}; border-radius: 12px; padding: 16px 40px;'>
+                                <span style='font-size: 36px; font-weight: 900; letter-spacing: 10px; color: {TenantPrimaryColor};'>{TwoFactorCode}</span>
+                            </div>
+                            <p style='color: #71717a; font-size: 13px; margin-top: 8px;'>
+                                Este código é válido por <strong>10 minutos</strong>. Não compartilhe com ninguém.
+                            </p>
+                            <p style='color: #a1a1aa; font-size: 13px; margin-top: 16px;'>
+                                Se você não tentou fazer login, ignore este e-mail. Sua senha permanecerá a mesma.
+                            </p>
+                            </div>
+
+                            <!-- Rodapé -->
+                            <div style='background-color: #f9f9f9; border-top: 1px solid #e4e4e7; padding: 20px 32px; text-align: center;'>
+                            <p style='color: #a1a1aa; font-size: 13px; margin: 0;'>
+                                <strong style='color: #52525b;'>{TenantName}</strong><br/>
+                                {TenantPhone} &nbsp;|&nbsp; {TenantEmail}
+                            </p>
+                            <p style='color: #d4d4d8; font-size: 12px; margin: 8px 0 0;'>
+                                Este e-mail foi enviado automaticamente, por favor não responda.
+                            </p>
+                            </div>
+
+                        </div>
+                        </div>",
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    },
+
+                    new()
+                    {
+                        Id = Guid.NewGuid(),
                         Name = NotificationEnum.ConfirmEmail.AsText(),
                         Subject = "Confirme seu e-mail — {TenantName}",
                         Body = @"
