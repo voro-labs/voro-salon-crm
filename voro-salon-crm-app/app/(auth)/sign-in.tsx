@@ -25,6 +25,13 @@ export default function SignInScreen() {
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
           <View className="bg-white px-8 pt-12 pb-10 rounded-b-[40px] shadow-sm shadow-zinc-200">
             <View className="items-center mb-10">
+              <Pressable
+                onPress={() => router.replace("/(auth)/welcome")}
+                className="self-start mb-4 flex-row items-center gap-1"
+              >
+                <Ionicons name="chevron-back" size={18} color="#71717a" />
+                <Text className="text-zinc-400 font-semibold text-sm">Voltar</Text>
+              </Pressable>
               <View className="h-20 w-20 rounded-3xl items-center justify-center shadow-lg" style={{ backgroundColor: primaryColor }}>
                 <Ionicons name="cut" size={40} color="white" />
               </View>

@@ -15,8 +15,9 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return
     const inAuthGroup = segments[0] === "(auth)"
-    if (!isAuthenticated && !inAuthGroup) {
-      router.replace("/(auth)/sign-in")
+    const inBookingGroup = segments[0] === "booking"
+    if (!isAuthenticated && !inAuthGroup && !inBookingGroup) {
+      router.replace("/(auth)/welcome")
     } else if (isAuthenticated && inAuthGroup) {
       router.replace("/(tabs)")
     }
@@ -34,6 +35,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="booking" />
     </Stack>
   )
 }

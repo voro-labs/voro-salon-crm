@@ -41,13 +41,3 @@ Converse diretamente com nossa equipe:
 ---
 
 ### Desenvolvido com 💻 por [VoroLabs](https://vorolabs.app)
-
-
-
-
-
-fazer tela de agendamento para os usuarios
-
-
-front/ erros:
-no dialog de excluir do cliente o botão vermelho o texto não aparece
