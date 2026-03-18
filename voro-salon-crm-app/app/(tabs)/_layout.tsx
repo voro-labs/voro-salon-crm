@@ -1,6 +1,9 @@
 import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import useSWR from "swr"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { API_CONFIG } from "lib/api"
+import { fetcher } from "lib/fetcher"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -13,8 +16,43 @@ const TAB_ICONS: Record<string, { active: IconName; inactive: IconName; label: s
   settings: { active: "settings", inactive: "settings-outline", label: "Config." },
 }
 
+// Mesmos moduleIds do sidebar do front
+const TAB_MODULE_IDS: Record<string, number> = {
+  clients: 1,
+  appointments: 2,
+  services: 3,
+  finance: 5,
+}
+
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
+  const { data: modules, isLoading: modulesLoading } = useSWR(
+    API_CONFIG.ENDPOINTS.TENANT_MODULES,
+    fetcher,
+    { shouldRetryOnError: false }
+  )
+
+  function isTabEnabled(name: string): boolean {
+    const moduleId = TAB_MODULE_IDS[name]
+    if (!moduleId) return true
+    if (modulesLoading || !modules) return false
+    const mod = (modules as any[]).find((m) => m.module === moduleId)
+    return mod ? mod.isEnabled : true
+  }
+
+  function getTabLabel(name: string): string {
+    const moduleId = TAB_MODULE_IDS[name]
+    const defaultLabel = TAB_ICONS[name]?.label ?? name
+    if (!moduleId || !modules) return defaultLabel
+    const mod = (modules as any[]).find((m) => m.module === moduleId)
+    if (mod?.configuration) {
+      try {
+        const config = JSON.parse(mod.configuration)
+        if (config.displayName) return config.displayName
+      } catch {}
+    }
+    return defaultLabel
+  }
 
   return (
     <Tabs
@@ -33,7 +71,7 @@ export default function TabsLayout() {
             height: 64,
           },
           tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-          tabBarLabel: icon.label,
+          tabBarLabel: getTabLabel(route.name),
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={size} color={color} />
           ),
@@ -41,10 +79,10 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="clients" />
-      <Tabs.Screen name="appointments" />
-      <Tabs.Screen name="services" />
-      <Tabs.Screen name="finance" />
+      <Tabs.Screen name="clients" options={{ href: isTabEnabled("clients") ? undefined : null }} />
+      <Tabs.Screen name="appointments" options={{ href: isTabEnabled("appointments") ? undefined : null }} />
+      <Tabs.Screen name="services" options={{ href: isTabEnabled("services") ? undefined : null }} />
+      <Tabs.Screen name="finance" options={{ href: isTabEnabled("finance") ? undefined : null }} />
       <Tabs.Screen name="settings" />
     </Tabs>
   )
