@@ -7,6 +7,7 @@ export const API_CONFIG = {
     SIGNIN: "/auth/sign-in",
     REFRESH_TOKEN: "/auth/refresh-token",
     VERIFY_CODE: "/auth/verify-code",
+    VERIFY_2FA: "/auth/verify-2fa",
     CONFIRM_EMAIL: "/auth/confirm-email",
     RESET_PASSWORD: "/auth/reset-password",
     FORGOT_PASSWORD: "/auth/forgot-password",

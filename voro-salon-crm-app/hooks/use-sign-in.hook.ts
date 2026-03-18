@@ -6,9 +6,15 @@ import { useTenantTheme } from "contexts/tenant-theme.context"
 import { AuthDto } from "types/DTOs/auth.interface"
 import { SignInDto } from "types/DTOs/sign-in.interface"
 import { useState } from "react"
+import { useRouter } from "expo-router"
+import * as SecureStore from "expo-secure-store"
+
+export const TWO_FACTOR_PENDING_KEY = "voro_2fa_pending_token"
+export const TWO_FACTOR_EMAIL_KEY = "voro_2fa_email"
 
 export function useSignIn() {
   const { login } = useAuth()
+  const router = useRouter()
   const { reload: reloadTheme } = useTenantTheme()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,19 +37,30 @@ export function useSignIn() {
         return { success: false, error: response.message ?? "Erro ao fazer login" }
       }
 
-      if (response.data) {
-        if (response.data?.token) {
-          await login(response.data.token, response.data.refreshToken, response.data.tenants)
-          // Atualiza o tema do tenant no contexto imediatamente após o login
-          reloadTheme()
-        }
-        return { success: true }
-      } else {
+      if (!response.data) {
         const errorMessage = "Dados de usuário não encontrados na resposta"
         setError(errorMessage)
         return { success: false, error: errorMessage }
       }
-    } catch (err) {
+
+      // Verificação em duas etapas: salva token temporário e redireciona
+      if (response.data.requiresTwoFactor && response.data.twoFactorPendingToken) {
+        await SecureStore.setItemAsync(TWO_FACTOR_PENDING_KEY, response.data.twoFactorPendingToken)
+        await SecureStore.setItemAsync(TWO_FACTOR_EMAIL_KEY, data.email)
+        router.push("/(auth)/verify-2fa")
+        return { success: false, requiresTwoFactor: true }
+      }
+
+      if (response.data.token) {
+        await login(response.data.token, response.data.refreshToken, response.data.tenants)
+        reloadTheme()
+        return { success: true }
+      }
+
+      const errorMessage = "Dados de usuário não encontrados na resposta"
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } catch {
       const errorMessage = "Erro inesperado ao fazer login"
       setError(errorMessage)
       return { success: false, error: errorMessage }

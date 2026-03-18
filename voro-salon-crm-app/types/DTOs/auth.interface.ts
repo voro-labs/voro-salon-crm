@@ -7,8 +7,10 @@ export interface AuthDto {
   userName?: string;
   email?: string;
   roles?: RoleDto[];
-  token: string;
+  token?: string;
   refreshToken?: string;
   tenants?: { id: string, name: string, slug: string, logoUrl?: string }[];
   currentTenantId?: string;
+  requiresTwoFactor?: boolean;
+  twoFactorPendingToken?: string;
 }
