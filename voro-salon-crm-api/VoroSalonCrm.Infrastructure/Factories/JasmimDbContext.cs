@@ -46,6 +46,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
         public DbSet<PasswordHistory> PasswordHistories { get; set; }
 
+        public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
+        public DbSet<TenantSubscription> TenantSubscriptions { get; set; }
+
         public DbSet<EntityAuditLog> EntityAuditLogs { get; set; }
         public DbSet<RouteAuditLog> RouteAuditLogs { get; set; }
         public DbSet<IntegrationAuditLog> IntegrationAuditLogs { get; set; }
@@ -457,6 +460,49 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasOne(ur => ur.Role)
                     .WithMany(r => r.UserRoles)
                     .HasForeignKey(ur => ur.RoleId);
+            });
+
+            // ---------------------------
+            // SUBSCRIPTION PLAN
+            // ---------------------------
+            builder.Entity<SubscriptionPlan>(b =>
+            {
+                b.HasKey(p => p.Id);
+                b.Property(p => p.Name).HasMaxLength(100).IsRequired();
+                b.Property(p => p.Description).HasMaxLength(500);
+                b.Property(p => p.MonthlyPrice).HasColumnType("NUMERIC(10,2)").IsRequired();
+                b.Property(p => p.IsActive).HasDefaultValue(true);
+                b.Property(p => p.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+            });
+
+            // ---------------------------
+            // TENANT SUBSCRIPTION
+            // ---------------------------
+            builder.Entity<TenantSubscription>(b =>
+            {
+                b.HasKey(s => s.Id);
+                b.Property(s => s.Status).HasConversion<int>().IsRequired();
+                b.Property(s => s.PaymentSource).HasConversion<int>().IsRequired();
+                b.Property(s => s.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.Property(s => s.ContactEmail).HasMaxLength(256);
+                b.Property(s => s.ContactName).HasMaxLength(200);
+                b.Property(s => s.SalonName).HasMaxLength(150);
+                b.Property(s => s.MercadoPagoSubscriptionId).HasMaxLength(100);
+                b.Property(s => s.MercadoPagoExternalReference).HasMaxLength(300);
+                b.Property(s => s.Notes).HasMaxLength(500);
+
+                b.HasIndex(s => s.TenantId);
+                b.HasIndex(s => s.MercadoPagoSubscriptionId);
+
+                b.HasOne(s => s.Tenant)
+                 .WithMany()
+                 .HasForeignKey(s => s.TenantId)
+                 .OnDelete(DeleteBehavior.SetNull);
+
+                b.HasOne(s => s.Plan)
+                 .WithMany()
+                 .HasForeignKey(s => s.PlanId)
+                 .OnDelete(DeleteBehavior.Restrict);
             });
 
             builder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims");

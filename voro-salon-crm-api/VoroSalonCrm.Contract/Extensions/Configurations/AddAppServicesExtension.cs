@@ -35,6 +35,11 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            services.AddHttpClient("mercadopago", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
@@ -69,6 +74,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ITransactionRepository, TransactionRepository>();
             services.AddScoped<IAnamnesisQuestionRepository, AnamnesisQuestionRepository>();
             services.AddScoped<IAnamnesisSheetRepository, AnamnesisSheetRepository>();
+            services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
+            services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
             #endregion
 
             #region Identity Services
@@ -90,6 +97,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ITransactionCategoryService, TransactionCategoryService>();
             services.AddScoped<ITransactionService, TransactionService>();
             services.AddScoped<IAnamnesisService, AnamnesisService>();
+            services.AddScoped<ISubscriptionService, SubscriptionService>();
+            services.AddScoped<IMercadoPagoService, MercadoPagoService>();
             #endregion
 
             return services;

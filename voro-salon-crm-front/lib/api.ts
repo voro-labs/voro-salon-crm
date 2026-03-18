@@ -35,6 +35,11 @@ export const API_CONFIG = {
     PUBLIC_EMPLOYEES: "/public/PublicBooking/employees",
     PUBLIC_BOOKING: "/public/PublicBooking/booking",
     PUBLIC_AVAILABILITY: "/public/PublicBooking/availability",
+    SUBSCRIPTION_PLANS: "/subscription/plans",
+    SUBSCRIPTION_ME: "/subscription/me",
+    SUBSCRIPTION_CHECKOUT: "/subscription/checkout",
+    ADMIN_SUBSCRIPTIONS: "/admin/subscription",
+    ADMIN_SUBSCRIPTION_GRANT: "/admin/subscription/grant",
   },
   HEADERS: {
     "Content-Type": "application/json",
