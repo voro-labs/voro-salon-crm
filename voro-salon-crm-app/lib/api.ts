@@ -120,7 +120,7 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
             const refreshResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ refreshToken }),
+              body: JSON.stringify({ token, refreshToken }),
             })
 
             const refreshData = await refreshResponse.json()

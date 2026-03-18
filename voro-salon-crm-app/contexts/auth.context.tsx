@@ -57,11 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const attemptSilentRefresh = useCallback(async (): Promise<boolean> => {
     const refreshToken = await getRefreshToken()
     if (!refreshToken) return false
+    const expiredToken = await getAuthToken()
     try {
       const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({ token: expiredToken ?? "", refreshToken }),
       })
       const data = await res.json()
       if (res.ok && !data.hasError && data.data?.token) {
