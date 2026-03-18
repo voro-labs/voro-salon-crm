@@ -12,10 +12,12 @@ function RootLayoutNav() {
   const segments = useSegments()
   const router = useRouter()
 
+  const inAuthGroup = segments[0] === "(auth)"
+  const inBookingGroup = segments[0] === "booking"
+  const pendingRedirect = !isAuthenticated && !inAuthGroup && !inBookingGroup
+
   useEffect(() => {
     if (isLoading) return
-    const inAuthGroup = segments[0] === "(auth)"
-    const inBookingGroup = segments[0] === "booking"
     if (!isAuthenticated && !inAuthGroup && !inBookingGroup) {
       router.replace("/(auth)/welcome")
     } else if (isAuthenticated && inAuthGroup) {
@@ -23,7 +25,7 @@ function RootLayoutNav() {
     }
   }, [isAuthenticated, isLoading, segments])
 
-  if (isLoading) {
+  if (isLoading || pendingRedirect) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color={primaryColor} />
