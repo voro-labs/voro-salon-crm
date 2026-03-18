@@ -198,7 +198,7 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <AuthGuard requiredRoles={["Admin"]}>
+    <AuthGuard requiredRoles={["Owner"]}>
       <div className="flex flex-col gap-6 p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Configurações</h1>

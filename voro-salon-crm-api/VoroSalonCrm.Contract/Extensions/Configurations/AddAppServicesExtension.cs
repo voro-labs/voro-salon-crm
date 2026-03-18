@@ -53,6 +53,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             #region Identity Repositories
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IUserExtensionRepository, UserExtensionRepository>();
+            services.AddScoped<IPasswordHistoryRepository, PasswordHistoryRepository>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<INotificationRepository, NotificationRepository>();

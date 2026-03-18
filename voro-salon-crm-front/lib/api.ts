@@ -7,6 +7,7 @@ export const API_CONFIG = {
     SIGNIN: "/auth/sign-in",
     REFRESH_TOKEN: "/auth/refresh-token",
     VERIFY_CODE: "/auth/verify-code",
+    VERIFY_2FA: "/auth/verify-2fa",
     CONFIRM_EMAIL: "/auth/confirm-email",
     RESET_PASSWORD: "/auth/reset-password",
     FORGOT_PASSWORD: "/auth/forgot-password",
@@ -110,23 +111,142 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
       ...options.headers,
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
-
+    const response = await fetch(url, { ...options, headers })
     const status = response.status
 
-    // 🔥 Se o backend retornar JSON SEMPRE,
-    // mesmo em erro, vamos tentar decodificar o body primeiro.
-    const responseText = await response.text()
+    // Trata 401 ANTES de tentar parsear o body — garante que refresh funciona
+    // mesmo quando o backend retorna 401 sem corpo JSON válido
+    if (status === 401) {
+      const refreshToken = getRefreshToken()
 
+      if (refreshToken) {
+        if (!isRefreshing) {
+          isRefreshing = true
+
+          try {
+            const refreshResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token, refreshToken }),
+            })
+
+            const refreshData = await refreshResponse.json()
+
+            if (refreshResponse.ok && !refreshData.hasError && refreshData.data?.token) {
+              const newToken = refreshData.data.token
+              const newRefreshToken = refreshData.data.refreshToken
+
+              setAuthToken(newToken)
+              if (newRefreshToken) setRefreshToken(newRefreshToken)
+
+              isRefreshing = false
+              onRefreshed(newToken)
+
+              // Refaz a requisição original com o novo token
+              const retryResponse = await fetch(url, {
+                ...options,
+                headers: { ...headers, Authorization: `Bearer ${newToken}` },
+              })
+              const retryText = await retryResponse.text()
+
+              try {
+                const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
+                return {
+                  status: retryResponse.status,
+                  data: retryJson.data ?? null,
+                  message: retryJson.message ?? null,
+                  hasError: !retryResponse.ok || retryJson.hasError,
+                }
+              } catch {
+                return {
+                  status: retryResponse.status,
+                  message: retryText || "Erro inesperado no servidor.",
+                  data: null,
+                  hasError: true,
+                }
+              }
+            } else {
+              // Refresh falhou — desloga e redireciona
+              isRefreshing = false
+              removeAuthToken()
+              removeRefreshToken()
+              if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
+              return {
+                status: 401,
+                message: "Sessão expirada. Faça login novamente.",
+                data: null,
+                hasError: true,
+              }
+            }
+          } catch {
+            isRefreshing = false
+            removeAuthToken()
+            removeRefreshToken()
+            if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
+            return {
+              status: 401,
+              message: "Sessão expirada. Faça login novamente.",
+              data: null,
+              hasError: true,
+            }
+          }
+        } else {
+          // Já está renovando — coloca na fila e aguarda
+          return new Promise((resolve) => {
+            subscribeTokenRefresh(async (newToken: string) => {
+              try {
+                const retryResponse = await fetch(url, {
+                  ...options,
+                  headers: { ...headers, Authorization: `Bearer ${newToken}` },
+                })
+                const retryText = await retryResponse.text()
+                try {
+                  const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
+                  resolve({
+                    status: retryResponse.status,
+                    data: retryJson.data ?? null,
+                    message: retryJson.message ?? null,
+                    hasError: !retryResponse.ok || retryJson.hasError,
+                  })
+                } catch {
+                  resolve({
+                    status: retryResponse.status,
+                    message: retryText || "Erro inesperado no servidor.",
+                    data: null,
+                    hasError: true,
+                  })
+                }
+              } catch {
+                resolve({
+                  status: 0,
+                  message: "Erro de conexão com o servidor ao repetir requisição.",
+                  data: null,
+                  hasError: true,
+                })
+              }
+            })
+          })
+        }
+      } else {
+        // 401 sem refresh token — redireciona para login
+        removeAuthToken()
+        if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
+        return {
+          status: 401,
+          message: "Sessão expirada. Faça login novamente.",
+          data: null,
+          hasError: true,
+        }
+      }
+    }
+
+    // Resposta normal (não-401)
+    const responseText = await response.text()
     let json: ResponseViewModel<T> | null = null
 
     try {
       json = JSON.parse(responseText)
     } catch {
-      // se não for JSON → erro do servidor
       return {
         status,
         message: responseText || "Erro inesperado no servidor.",
@@ -135,145 +255,15 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
       }
     }
 
-    // 🔥 Agora `json` com certeza está decodificado
-    // e se sua API retorna ResponseViewModel no erro,
-    // já temos uma estrutura pronta.
-
     if (!response.ok || json?.hasError) {
-      // caso sua API não mande mensagem
-      if (!json?.message) {
-        json!.message = `Erro ${status}: ${response.statusText}`
-      }
-
-      // 🔥 Se for 401, tenta o fluxo de Refresh Token
-      if (status === 401) {
-        const refreshToken = getRefreshToken()
-        if (refreshToken) {
-          if (!isRefreshing) {
-            isRefreshing = true
-
-            try {
-              const refreshResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ refreshToken }),
-              })
-
-              const refreshData = await refreshResponse.json()
-
-              if (refreshResponse.ok && !refreshData.hasError && refreshData.data?.token) {
-                const newToken = refreshData.data.token
-                const newRefreshToken = refreshData.data.refreshToken
-
-                setAuthToken(newToken)
-                if (newRefreshToken) {
-                  setRefreshToken(newRefreshToken)
-                }
-
-                isRefreshing = false
-                onRefreshed(newToken)
-
-                // Refaz a requisição original com o novo token
-                const retryHeaders = {
-                  ...headers,
-                  Authorization: `Bearer ${newToken}`,
-                }
-
-                const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
-                const retryText = await retryResponse.text()
-
-                try {
-                  const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
-                  return {
-                    status: retryResponse.status,
-                    data: retryJson.data ?? null,
-                    message: retryJson.message ?? null,
-                    hasError: !retryResponse.ok || retryJson.hasError,
-                  }
-                } catch {
-                   return {
-                     status: retryResponse.status,
-                     message: retryText || "Erro inesperado no servidor.",
-                     data: null,
-                     hasError: true,
-                   }
-                }
-
-              } else {
-                // Refresh falhou
-                isRefreshing = false
-                removeAuthToken()
-                removeRefreshToken()
-                if (typeof window !== "undefined") {
-                  window.location.href = "/admin/sign-in"
-                }
-              }
-            } catch (err) {
-              isRefreshing = false
-              removeAuthToken()
-              removeRefreshToken()
-              if (typeof window !== "undefined") {
-                window.location.href = "/admin/sign-in"
-              }
-            }
-          } else {
-            // Já está renovando o token. Coloca na fila e aguarda.
-            return new Promise((resolve) => {
-              subscribeTokenRefresh(async (newToken: string) => {
-                const retryHeaders = {
-                  ...headers,
-                  Authorization: `Bearer ${newToken}`,
-                }
-
-                try {
-                  const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
-                  const retryText = await retryResponse.text()
-                  
-                  try {
-                    const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
-                    resolve({
-                      status: retryResponse.status,
-                      data: retryJson.data ?? null,
-                      message: retryJson.message ?? null,
-                      hasError: !retryResponse.ok || retryJson.hasError,
-                    })
-                  } catch {
-                    resolve({
-                      status: retryResponse.status,
-                      message: retryText || "Erro inesperado no servidor.",
-                      data: null,
-                      hasError: true,
-                    })
-                  }
-                } catch {
-                  resolve({
-                    status: 0,
-                    message: "Erro de conexão com o servidor ao repetir requisição.",
-                    data: null,
-                    hasError: true,
-                  })
-                }
-              })
-            })
-          }
-        } else {
-           // 401 sem refresh token
-           removeAuthToken()
-           if (typeof window !== "undefined") {
-             window.location.href = "/admin/sign-in"
-           }
-        }
-      }
-
       return {
         status,
-        message: json?.message,
+        message: json?.message ?? `Erro ${status}: ${response.statusText}`,
         data: null,
         hasError: true,
       }
     }
 
-    // sucesso
     return {
       status,
       data: json?.data ?? null,

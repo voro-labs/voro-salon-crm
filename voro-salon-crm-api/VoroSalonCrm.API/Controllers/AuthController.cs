@@ -39,7 +39,7 @@ namespace VoroSalonCrm.API.Controllers
                     return Unauthorized();
 
                 var roles = user.UserRoles?.Select(ur => ur.Role?.Name).ToList() ?? [];
-                var primaryRole = roles.FirstOrDefault() ?? "user";
+                var primaryRole = roles.FirstOrDefault() ?? "salonClient";
 
                 var sessionUser = new SessionUserDto(
                     user.Id,
@@ -107,12 +107,12 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost("sign-up")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Owner")]
         public async Task<IActionResult> SignUp([FromBody] SignUpDto signUpDto)
         {
             try
             {
-                var authDto = await authService.SignUpAsync(signUpDto, [RoleConstant.User]);
+                var authDto = await authService.SignUpAsync(signUpDto, [RoleConstant.SalonOwner]);
 
                 return ResponseViewModel<AuthDto>
                     .SuccessWithMessage("Sign-up successful.", authDto)
@@ -121,6 +121,26 @@ namespace VoroSalonCrm.API.Controllers
             catch (Exception ex)
             {
                 return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        [HttpPost("verify-2fa")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyTwoFactor([FromBody] VerifyTwoFactorDto dto)
+        {
+            try
+            {
+                var authDto = await authService.VerifyTwoFactorAsync(dto);
+
+                return ResponseViewModel<AuthDto>
+                    .SuccessWithMessage("Two-factor authentication successful.", authDto)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<AuthDto>
                     .Fail(ex.Message)
                     .ToActionResult();
             }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using VoroSalonCrm.Application.Services.Base;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -22,7 +22,7 @@ namespace VoroSalonCrm.Application.Services
                 .GetSection("AllowedOrigins")
                 .Get<string[]>()?[0] ?? "{UrlBase}";
 
-        public async Task SendWelcomeAsync(string email, string userName)
+        public async Task SendWelcomeAsync(string email, string userName, Tenant? tenant = null)
         {
             var template = await _notificationRepository
                 .Query(n => n.Name == NotificationEnum.Welcome.AsText() && n.IsActive).FirstOrDefaultAsync();
@@ -30,29 +30,27 @@ namespace VoroSalonCrm.Application.Services
             if (template == null)
                 throw new InvalidOperationException("Template de e-mail de recepção não encontrado.");
 
-            // Substitui placeholders no corpo e no assunto
             var subject = template.Subject
                 .Replace("{UserName}", userName);
 
             var body = template.Body
                 .Replace("{UserName}", userName);
 
-            // Envia o e-mail usando o serviço de e-mail real
+            body = ApplyTenantPlaceholders(body, tenant);
+            subject = ApplyTenantPlaceholders(subject, tenant);
+
             await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
         }
 
-        public async Task SendResetLinkAsync(string email, string userName, string token)
+        public async Task SendResetLinkAsync(string email, string userName, string token, Tenant? tenant = null, string? redirectUri = null)
         {
             var template = await _notificationRepository
-                .Query(n => n.Name == NotificationEnum.PasswordReset.AsText() && n.IsActive).FirstOrDefaultAsync();
+                .Query(n => n.Name == NotificationEnum.PasswordReset.AsText() && n.IsActive).FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("Template de e-mail de reset de senha não encontrado.");
 
-            if (template == null)
-                throw new InvalidOperationException("Template de e-mail de reset de senha não encontrado.");
+            var baseUrl = !string.IsNullOrWhiteSpace(redirectUri) ? redirectUri : $"{UrlBase}/admin/reset-password";
+            var resetLink = $"{baseUrl}?email={Uri.EscapeDataString(email)}&token={token}";
 
-            // Gera o link de reset com codificação de URL (evita perder + ou =)
-            var resetLink = $"{UrlBase}/admin/reset-password?email={Uri.EscapeDataString(email)}&token={token}";
-
-            // Substitui placeholders no corpo e no assunto
             var subject = template.Subject
                 .Replace("{UserName}", userName);
 
@@ -60,22 +58,20 @@ namespace VoroSalonCrm.Application.Services
                 .Replace("{UserName}", userName)
                 .Replace("{ResetLink}", resetLink);
 
-            // Envia o e-mail usando o serviço de e-mail real
+            body = ApplyTenantPlaceholders(body, tenant);
+            subject = ApplyTenantPlaceholders(subject, tenant);
+
             await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
         }
 
-        public async Task SendConfirmEmailAsync(string email, string userName, string token)
+        public async Task SendConfirmEmailAsync(string email, string userName, string token, Tenant? tenant = null)
         {
             var template = await _notificationRepository
-                .Query(n => n.Name == NotificationEnum.ConfirmEmail.AsText() && n.IsActive).FirstOrDefaultAsync();
+                .Query(n => n.Name == NotificationEnum.ConfirmEmail.AsText() && n.IsActive).FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("Template de e-mail de confirmação de e-mail não encontrado.");
 
-            if (template == null)
-                throw new InvalidOperationException("Template de e-mail de confirmação de e-mail não encontrado.");
-
-            // Gera o link de confirmação com codificação de URL
             var confirmLink = $"{UrlBase}/admin/confirm-email?email={Uri.EscapeDataString(email)}&token={token}";
 
-            // Substitui placeholders no corpo e no assunto
             var subject = template.Subject
                 .Replace("{UserName}", userName);
 
@@ -83,8 +79,45 @@ namespace VoroSalonCrm.Application.Services
                 .Replace("{UserName}", userName)
                 .Replace("{ConfirmLink}", confirmLink);
 
-            // Envia o e-mail usando o serviço de e-mail real
+            body = ApplyTenantPlaceholders(body, tenant);
+            subject = ApplyTenantPlaceholders(subject, tenant);
+
             await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
+        }
+
+        public async Task SendTwoFactorCodeAsync(string email, string userName, string code, Tenant? tenant = null)
+        {
+            var template = await _notificationRepository
+                .Query(n => n.Name == NotificationEnum.TwoFactorCode.AsText() && n.IsActive).FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("Template de e-mail de autenticação de dois fatores não encontrado.");
+
+            var subject = template.Subject
+                .Replace("{UserName}", userName);
+
+            var body = template.Body
+                .Replace("{UserName}", userName)
+                .Replace("{TwoFactorCode}", code);
+
+            body = ApplyTenantPlaceholders(body, tenant);
+            subject = ApplyTenantPlaceholders(subject, tenant);
+
+            await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
+        }
+
+        // ── Substitui todos os placeholders relacionados ao tenant ──────────────
+
+        private static string ApplyTenantPlaceholders(string text, Tenant? tenant)
+        {
+            if (tenant == null) return text;
+
+            return text
+                .Replace("{TenantName}",         tenant.Name)
+                .Replace("{TenantSlug}",          tenant.Slug)
+                .Replace("{TenantEmail}",         tenant.ContactEmail ?? string.Empty)
+                .Replace("{TenantPhone}",         tenant.ContactPhone ?? string.Empty)
+                .Replace("{TenantLogoUrl}",       tenant.LogoUrl ?? string.Empty)
+                .Replace("{TenantPrimaryColor}",  tenant.PrimaryColor)
+                .Replace("{TenantSecondaryColor}", tenant.SecondaryColor);
         }
     }
 }

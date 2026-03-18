@@ -1,4 +1,5 @@
 using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Domain.Entities.Identity;
 
 namespace VoroSalonCrm.Application.Services.Interfaces
@@ -7,7 +8,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
     {
         // Autenticação
         Task<AuthDto> SignInAsync(SignInDto signInDto);
-        Task<AuthDto> RefreshTokenAsync(VoroSalonCrm.Application.DTOs.Auth.RefreshTokenDto model);
+        Task<AuthDto> RefreshTokenAsync(DTOs.Auth.RefreshTokenDto model);
 
         // Registro de usuário
         Task<AuthDto> SignUpAsync(SignUpDto signUpDto, List<string> roles);
@@ -19,6 +20,9 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         // Recuperação de senha
         Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
         Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
+
+        // Two-Factor Authentication
+        Task<AuthDto> VerifyTwoFactorAsync(VerifyTwoFactorDto dto);
 
         // Troca de Tenant
         Task<AuthDto> SwitchTenantAsync(Guid tenantId);

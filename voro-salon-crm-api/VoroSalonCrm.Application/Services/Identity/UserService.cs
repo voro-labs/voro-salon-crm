@@ -1,43 +1,179 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Identity;
 using VoroSalonCrm.Application.Services.Base;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
+using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
 namespace VoroSalonCrm.Application.Services.Identity
 {
-    public class UserService(IUserRepository userRepository, RoleManager<Role> roleManager,
-        SignInManager<User> signInManager, UserManager<User> userManager, IMapper mapper) : ServiceBase<User>(userRepository), IUserService
+    public class UserService(
+        IUserRepository userRepository,
+        RoleManager<Role> roleManager,
+        SignInManager<User> signInManager,
+        UserManager<User> userManager,
+        IUserExtensionRepository userExtensionRepository,
+        IPasswordHistoryRepository passwordHistoryRepository,
+        IUnitOfWork unitOfWork,
+        IConfiguration configuration,
+        IMapper mapper) : ServiceBase<User>(userRepository), IUserService
     {
+        private int PasswordExpirationDays =>
+            configuration.GetValue<int>("PasswordPolicy:ExpirationDays", 90);
+
+        private int PasswordHistoryCount =>
+            configuration.GetValue<int>("PasswordPolicy:HistoryCount", 5);
+
+        // ── Autenticação ─────────────────────────────────────────────────────
+
         public async Task<(User user, IList<string>? rolesNames)> GetByEmailAndPassword(string email, string password)
         {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                throw new UnauthorizedAccessException("E-mail e senha são obrigatórios.");
+
             var user = await FindUserByEmailAsync(email);
 
             if (user == null)
-                throw new UnauthorizedAccessException("Usuário ou senha inválidos.");
+                throw new UnauthorizedAccessException("Nenhuma conta encontrada com este e-mail.");
 
-            var result = await signInManager.CheckPasswordSignInAsync(user, password, false);
+            if (!user.IsActive)
+                throw new UnauthorizedAccessException("Sua conta está desativada. Entre em contato com o suporte.");
+
+            if (await userManager.IsLockedOutAsync(user))
+            {
+                var lockoutEnd = await userManager.GetLockoutEndDateAsync(user);
+                var remaining = lockoutEnd.HasValue
+                    ? (int)Math.Ceiling((lockoutEnd.Value - DateTimeOffset.UtcNow).TotalMinutes)
+                    : 0;
+                var minuteText = remaining > 1 ? $"{remaining} minutos" : "1 minuto";
+                throw new UnauthorizedAccessException($"Conta temporariamente bloqueada por excesso de tentativas. Tente novamente em {minuteText}.");
+            }
+
+            var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+
+            if (result.IsLockedOut)
+                throw new UnauthorizedAccessException("Conta bloqueada após muitas tentativas incorretas. Aguarde alguns minutos e tente novamente.");
+
+            if (result.IsNotAllowed)
+                throw new UnauthorizedAccessException("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.");
 
             if (!result.Succeeded)
-                throw new UnauthorizedAccessException("Usuário ou senha inválidos.");
+            {
+                var attemptsLeft = userManager.Options.Lockout.MaxFailedAccessAttempts
+                    - await userManager.GetAccessFailedCountAsync(user);
+
+                var hint = attemptsLeft > 0
+                    ? $" ({attemptsLeft} tentativa{(attemptsLeft == 1 ? "" : "s")} restante{(attemptsLeft == 1 ? "" : "s")} antes do bloqueio)"
+                    : "";
+
+                throw new UnauthorizedAccessException($"Senha incorreta.{hint}");
+            }
+
+            // Verificar expiração da senha
+            if (PasswordExpirationDays > 0)
+            {
+                var ext = await userExtensionRepository.GetByIdAsync(user.Id);
+                if (ext?.PasswordChangedAt != null)
+                {
+                    var expiredAt = ext.PasswordChangedAt.Value.AddDays(PasswordExpirationDays);
+                    if (DateTime.UtcNow > expiredAt)
+                        throw new UnauthorizedAccessException(
+                            "Sua senha expirou. Por favor, redefina sua senha para continuar acessando.");
+                }
+            }
 
             var rolesNames = await userManager.GetRolesAsync(user);
 
             return (user, rolesNames);
         }
 
+        // ── Two-Factor Authentication ─────────────────────────────────────────
+
+        public async Task<(string code, string pendingToken)> GenerateTwoFactorCodeAsync(Guid userId)
+        {
+            var code = Random.Shared.Next(100000, 999999).ToString();
+            var pendingToken = Guid.NewGuid().ToString("N");
+
+            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            if (ext == null)
+            {
+                ext = new UserExtension { UserId = userId };
+                await userExtensionRepository.AddAsync(ext);
+            }
+
+            ext.TwoFactorCode = code;
+            ext.TwoFactorCodeExpiry = DateTime.UtcNow.AddMinutes(10);
+            ext.TwoFactorPendingToken = pendingToken;
+            userExtensionRepository.Update(ext);
+
+            await unitOfWork.SaveChangesAsync();
+
+            return (code, pendingToken);
+        }
+
+        public async Task<(User user, IList<string> roles)> VerifyTwoFactorAsync(string pendingToken, string code)
+        {
+            if (string.IsNullOrWhiteSpace(pendingToken) || string.IsNullOrWhiteSpace(code))
+                throw new UnauthorizedAccessException("Token e código são obrigatórios.");
+
+            var ext = await userExtensionRepository
+                .Query(e => e.TwoFactorPendingToken == pendingToken)
+                .FirstOrDefaultAsync();
+
+            if (ext == null)
+                throw new UnauthorizedAccessException("Sessão de autenticação não encontrada ou expirada.");
+
+            if (ext.TwoFactorCodeExpiry == null || DateTime.UtcNow > ext.TwoFactorCodeExpiry)
+                throw new UnauthorizedAccessException("O código expirou. Faça login novamente para receber um novo código.");
+
+            if (ext.TwoFactorCode != code)
+                throw new UnauthorizedAccessException("Código inválido. Verifique o e-mail e tente novamente.");
+
+            // Invalidar o código após uso bem-sucedido
+            ext.TwoFactorCode = null;
+            ext.TwoFactorCodeExpiry = null;
+            ext.TwoFactorPendingToken = null;
+            userExtensionRepository.Update(ext);
+            await unitOfWork.SaveChangesAsync();
+
+            var user = await GetByIdAsync(ext.UserId)
+                ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
+
+            var roles = await userManager.GetRolesAsync(user);
+
+            return (user, roles);
+        }
+
+        // ── Criação de usuário ────────────────────────────────────────────────
+
         public async Task<User> CreateAsync(UserDto dto, string password, ICollection<string> roles)
         {
             var user = mapper.Map<User>(dto);
-
             user.CreatedAt = DateTimeOffset.UtcNow;
             user.IsActive = true;
 
-            return await AddAsync(user, password, roles);
+            var created = await AddAsync(user, password, roles);
+
+            // Registrar no histórico de senhas
+            await AddToPasswordHistoryAsync(created.Id, created.PasswordHash ?? string.Empty);
+
+            // Marcar data de criação de senha
+            var ext = await userExtensionRepository.GetByIdAsync(created.Id);
+            if (ext != null)
+            {
+                ext.PasswordChangedAt = DateTime.UtcNow;
+                userExtensionRepository.Update(ext);
+                await unitOfWork.SaveChangesAsync();
+            }
+
+            return created;
         }
 
         public async Task<User> UpdateAsync(Guid id, UserDto dto)
@@ -46,10 +182,170 @@ namespace VoroSalonCrm.Application.Services.Identity
                 ?? throw new KeyNotFoundException("User não encontrado");
 
             mapper.Map(dto, existingUser);
-
             await UpdateAsync(existingUser);
 
             return existingUser;
+        }
+
+        // ── Confirmação de e-mail ─────────────────────────────────────────────
+
+        public async Task<(User user, string token)> GenerateConfirmEmailAsync(string email)
+        {
+            var user = await FindUserByEmailAsync(email)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            if (user!.EmailConfirmed)
+                return (user, "");
+
+            var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+            await userManager.ConfirmEmailAsync(user, token);
+
+            return (user, token);
+        }
+
+        public async Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email)
+        {
+            var user = await FindUserByEmailAsync(email)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            var decodedTokenBytes = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(authViewModel.Token!);
+            var decodedToken = System.Text.Encoding.UTF8.GetString(decodedTokenBytes);
+
+            var result = await userManager.ConfirmEmailAsync(user, decodedToken);
+
+            return result.Succeeded;
+        }
+
+        // ── Recuperação de senha ──────────────────────────────────────────────
+
+        public async Task<(User user, string token)> GenerateForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
+        {
+            var user = await FindUserByEmailAsync(forgotPasswordDto.Email)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+
+            return (user, token);
+        }
+
+        public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
+        {
+            var user = await FindUserByEmailAsync(resetPasswordDto.Email)
+                ?? throw new KeyNotFoundException("Nenhuma conta encontrada com este e-mail.");
+
+            // Verificar histórico de senhas antes de alterar
+            await EnsurePasswordNotReusedAsync(user, resetPasswordDto.NewPassword);
+
+            var decodedTokenBytes = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(resetPasswordDto.Token);
+            var decodedToken = System.Text.Encoding.UTF8.GetString(decodedTokenBytes);
+
+            var result = await userManager.ResetPasswordAsync(user, decodedToken, resetPasswordDto.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                var error = result.Errors.FirstOrDefault();
+                var message = error?.Code switch
+                {
+                    "InvalidToken"                    => "O link de redefinição é inválido ou já expirou. Solicite um novo.",
+                    "PasswordTooShort"                => $"A senha deve ter pelo menos {userManager.Options.Password.RequiredLength} caracteres.",
+                    "PasswordRequiresNonAlphanumeric" => "A senha deve conter pelo menos um caractere especial.",
+                    "PasswordRequiresDigit"           => "A senha deve conter pelo menos um número.",
+                    "PasswordRequiresUpper"           => "A senha deve conter pelo menos uma letra maiúscula.",
+                    "PasswordRequiresLower"           => "A senha deve conter pelo menos uma letra minúscula.",
+                    _                                 => error?.Description ?? "Não foi possível redefinir a senha."
+                };
+                throw new InvalidOperationException(message);
+            }
+
+            // Recarregar para obter o novo hash gerado pelo Identity
+            var refreshed = await FindUserByEmailAsync(resetPasswordDto.Email) ?? user;
+            await AddToPasswordHistoryAsync(refreshed.Id, refreshed.PasswordHash ?? string.Empty);
+
+            // Atualizar data de alteração de senha e resetar expiração
+            var ext = await userExtensionRepository.GetByIdAsync(refreshed.Id);
+            if (ext != null)
+            {
+                ext.PasswordChangedAt = DateTime.UtcNow;
+                userExtensionRepository.Update(ext);
+                await unitOfWork.SaveChangesAsync();
+            }
+
+            return true;
+        }
+
+        // ── Roles ─────────────────────────────────────────────────────────────
+
+        public async Task<IList<string>> GetRolesAsync(User user)
+        {
+            return await userManager.GetRolesAsync(user);
+        }
+
+        public async Task<User?> GetByIdAsync(Guid id)
+        {
+            return await userRepository.Query()
+                .Include(u => u.UserRoles)
+                    .ThenInclude(ur => ur.Role)
+                .Include(u => u.UserTenants)
+                    .ThenInclude(ut => ut.Tenant)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        }
+
+        // ── Helpers privados ──────────────────────────────────────────────────
+
+        private async Task<User?> FindUserByEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return null;
+            var normalizedEmail = userManager.NormalizeEmail(email);
+            return await userManager.Users
+                .Include(u => u.UserTenants)
+                    .ThenInclude(ut => ut.Tenant)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail && !u.IsDeleted);
+        }
+
+        private async Task AddToPasswordHistoryAsync(Guid userId, string passwordHash)
+        {
+            if (string.IsNullOrWhiteSpace(passwordHash)) return;
+
+            await passwordHistoryRepository.AddAsync(new PasswordHistory
+            {
+                UserId = userId,
+                PasswordHash = passwordHash,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            // Manter apenas os últimos N registros
+            var history = await passwordHistoryRepository
+                .Query(h => h.UserId == userId)
+                .OrderByDescending(h => h.CreatedAt)
+                .ToListAsync();
+
+            if (history.Count > PasswordHistoryCount)
+            {
+                var toDelete = history.Skip(PasswordHistoryCount).ToList();
+                passwordHistoryRepository.DeleteRange(toDelete);
+            }
+
+            await unitOfWork.SaveChangesAsync();
+        }
+
+        private async Task EnsurePasswordNotReusedAsync(User user, string newPassword)
+        {
+            var history = await passwordHistoryRepository
+                .Query(h => h.UserId == user.Id)
+                .OrderByDescending(h => h.CreatedAt)
+                .Take(PasswordHistoryCount)
+                .ToListAsync();
+
+            var hasher = new PasswordHasher<User>();
+            foreach (var entry in history)
+            {
+                var verifyResult = hasher.VerifyHashedPassword(user, entry.PasswordHash, newPassword);
+                if (verifyResult != PasswordVerificationResult.Failed)
+                    throw new InvalidOperationException(
+                        $"Esta senha foi usada recentemente. Escolha uma senha diferente (últimas {PasswordHistoryCount} senhas não podem ser reutilizadas).");
+            }
         }
 
         private async Task<User> AddAsync(User user, string password, ICollection<string> roles)
@@ -70,14 +366,9 @@ namespace VoroSalonCrm.Application.Services.Identity
             foreach (var role in roles)
             {
                 var roleEntity = await roleManager.FindByIdAsync(role.ToString());
-
-                if (roleEntity == null)
-                    continue;
-
+                if (roleEntity == null) continue;
                 if (!await userManager.IsInRoleAsync(user, $"{roleEntity.Name}"))
-                {
                     await userManager.AddToRoleAsync(user, $"{roleEntity.Name}");
-                }
             }
 
             return user;
@@ -97,84 +388,6 @@ namespace VoroSalonCrm.Application.Services.Identity
             }
 
             return user;
-        }
-
-        public async Task<(User user, string token)> GenerateConfirmEmailAsync(string email)
-        {
-            var user = await FindUserByEmailAsync(email)
-                ?? throw new KeyNotFoundException("Usuário não encontrado.");
-
-            if (user!.EmailConfirmed)
-                return (user, "");
-
-            var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-
-            await userManager.ConfirmEmailAsync(user, token);
-
-            return (user, token);
-        }
-
-        public async Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email)
-        {
-            var user = await FindUserByEmailAsync(email)
-                ?? throw new KeyNotFoundException("Usuário não encontrado.");
-
-            var decodedTokenBytes = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(authViewModel.Token!);
-            var decodedToken = System.Text.Encoding.UTF8.GetString(decodedTokenBytes);
-
-            var result = await userManager.ConfirmEmailAsync(user, decodedToken);
-
-            return result.Succeeded;
-        }
-
-        public async Task<(User user, string token)> GenerateForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
-        {
-            var user = await FindUserByEmailAsync(forgotPasswordDto.Email)
-                ?? throw new KeyNotFoundException("Usuário não encontrado.");
-
-            var token = await userManager.GeneratePasswordResetTokenAsync(user);
-
-            return (user, token);
-        }
-
-        public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
-        {
-            var user = await FindUserByEmailAsync(resetPasswordDto.Email)
-            ?? throw new KeyNotFoundException("Usuário não encontrado.");
-
-            var decodedTokenBytes = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlDecode(resetPasswordDto.Token);
-            var decodedToken = System.Text.Encoding.UTF8.GetString(decodedTokenBytes);
-
-            var result = await userManager.ResetPasswordAsync(user, decodedToken, resetPasswordDto.NewPassword);
-
-            return result.Succeeded;
-        }
-
-        private async Task<User?> FindUserByEmailAsync(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email)) return null;
-            var normalizedEmail = userManager.NormalizeEmail(email);
-            return await userManager.Users
-                .Include(u => u.UserTenants)
-                    .ThenInclude(ut => ut.Tenant)
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail && !u.IsDeleted);
-        }
-
-        public async Task<User?> GetByIdAsync(Guid id)
-        {
-            return await userRepository.Query()
-                .Include(u => u.UserRoles)
-                    .ThenInclude(ur => ur.Role)
-                .Include(u => u.UserTenants)
-                    .ThenInclude(ut => ut.Tenant)
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
-        }
-
-        public async Task<IList<string>> GetRolesAsync(User user)
-        {
-            return await userManager.GetRolesAsync(user);
         }
     }
 }

@@ -47,25 +47,41 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     {
                         Id = Guid.NewGuid(),
                         Name = NotificationEnum.Welcome.AsText(),
-                        Subject = "Bem-vindo(a) ao sistema, {UserName}!",
+                        Subject = "Bem-vindo(a) ao {TenantName}, {UserName}!",
                         Body = @"
-                            <div style='font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 30px;'>
-                                <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>
-                                    <h2 style='color: #333333; text-align: center;'>Bem-vindo(a), {UserName}!</h2>
-                                    <p style='color: #555555; font-size: 16px;'>Olá <strong>{UserName}</strong>,</p>
-                                    <p style='color: #555555; font-size: 16px;'>
-                                        Sua conta foi criada com sucesso! Estamos muito felizes em tê-lo(a) conosco.
-                                    </p>
-                                    <p style='color: #555555; font-size: 16px;'>
-                                        Explore os recursos disponíveis e aproveite ao máximo sua experiência no sistema.
-                                    </p>
-                                    <br/>
-                                    <p style='font-size: 15px; color: #888888; text-align: center;'>
-                                        Atenciosamente,<br/>
-                                        <strong>Equipe Suporte</strong>
-                                    </p>
-                                </div>
-                            </div>",
+                        <div style='font-family: Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px;'>
+                        <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.07);'>
+
+                            <!-- Header com cor do tenant -->
+                            <div style='background-color: {TenantPrimaryColor}; padding: 28px 32px; text-align: center;'>
+                            <img src='{TenantLogoUrl}' alt='{TenantName}' style='max-height: 56px; max-width: 200px; object-fit: contain;' onerror=""this.style.display='none'"" />
+                            <h1 style='color: #ffffff; margin: 12px 0 0; font-size: 22px; font-weight: 700;'>{TenantName}</h1>
+                            </div>
+
+                            <!-- Corpo -->
+                            <div style='padding: 32px;'>
+                            <h2 style='color: #18181b; font-size: 20px; margin-top: 0;'>Olá, {UserName}! 👋</h2>
+                            <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                                Sua conta foi criada com sucesso no <strong>{TenantName}</strong>. Estamos felizes em tê-lo(a) com a gente!
+                            </p>
+                            <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                                Acesse o sistema e explore todos os recursos disponíveis para gerenciar seu salão com praticidade.
+                            </p>
+                            </div>
+
+                            <!-- Rodapé com contato do tenant -->
+                            <div style='background-color: #f9f9f9; border-top: 1px solid #e4e4e7; padding: 20px 32px; text-align: center;'>
+                            <p style='color: #a1a1aa; font-size: 13px; margin: 0;'>
+                                <strong style='color: #52525b;'>{TenantName}</strong><br/>
+                                {TenantPhone} &nbsp;|&nbsp; {TenantEmail}
+                            </p>
+                            <p style='color: #d4d4d8; font-size: 12px; margin: 8px 0 0;'>
+                                Este e-mail foi enviado automaticamente, por favor não responda.
+                            </p>
+                            </div>
+
+                        </div>
+                        </div>",
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     },
@@ -74,30 +90,98 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     {
                         Id = Guid.NewGuid(),
                         Name = NotificationEnum.PasswordReset.AsText(),
-                        Subject = "Redefinição de Senha - {UserName}",
+                        Subject = "Redefinição de senha — {TenantName}",
                         Body = @"
-                            <div style='font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 30px;'>
-                                <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>
-                                    <h2 style='color: #333333; text-align: center;'>Redefinição de Senha</h2>
-                                    <p style='color: #555555; font-size: 16px;'>Olá <strong>{UserName}</strong>,</p>
-                                    <p style='color: #555555; font-size: 16px;'>
-                                        Recebemos uma solicitação para redefinir sua senha. Para continuar, clique no botão abaixo:
-                                    </p>
-                                    <div style='text-align: center; margin: 25px 0;'>
-                                        <a href='{ResetLink}' style='background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;'>
-                                            Redefinir Senha
-                                        </a>
-                                    </div>
-                                    <p style='color: #777777; font-size: 14px;'>
-                                        Se você não solicitou essa alteração, basta ignorar este e-mail.
-                                    </p>
-                                    <br/>
-                                    <p style='font-size: 15px; color: #888888; text-align: center;'>
-                                        Atenciosamente,<br/>
-                                        <strong>Equipe Suporte</strong>
-                                    </p>
-                                </div>
-                            </div>",
+                        <div style='font-family: Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px;'>
+                        <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.07);'>
+
+                            <!-- Header -->
+                            <div style='background-color: {TenantPrimaryColor}; padding: 28px 32px; text-align: center;'>
+                            <img src='{TenantLogoUrl}' alt='{TenantName}' style='max-height: 56px; max-width: 200px; object-fit: contain;' onerror=""this.style.display='none'"" />
+                            <h1 style='color: #ffffff; margin: 12px 0 0; font-size: 22px; font-weight: 700;'>{TenantName}</h1>
+                            </div>
+
+                            <!-- Corpo -->
+                            <div style='padding: 32px;'>
+                            <h2 style='color: #18181b; font-size: 20px; margin-top: 0;'>Redefinição de senha</h2>
+                            <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                                Olá, <strong>{UserName}</strong>. Recebemos uma solicitação para redefinir a senha da sua conta em <strong>{TenantName}</strong>.
+                            </p>
+                            <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                                Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>24 horas</strong>.
+                            </p>
+                            <div style='text-align: center; margin: 28px 0;'>
+                                <a href='{ResetLink}' style='background-color: {TenantPrimaryColor}; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block;'>
+                                Redefinir Senha
+                                </a>
+                            </div>
+                            <p style='color: #a1a1aa; font-size: 13px;'>
+                                Se você não solicitou essa alteração, ignore este e-mail. Sua senha permanecerá a mesma.
+                            </p>
+                            </div>
+
+                            <!-- Rodapé -->
+                            <div style='background-color: #f9f9f9; border-top: 1px solid #e4e4e7; padding: 20px 32px; text-align: center;'>
+                            <p style='color: #a1a1aa; font-size: 13px; margin: 0;'>
+                                <strong style='color: #52525b;'>{TenantName}</strong><br/>
+                                {TenantPhone} &nbsp;|&nbsp; {TenantEmail}
+                            </p>
+                            <p style='color: #d4d4d8; font-size: 12px; margin: 8px 0 0;'>
+                                Este e-mail foi enviado automaticamente, por favor não responda.
+                            </p>
+                            </div>
+
+                        </div>
+                        </div>",
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    },
+
+                    new()
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = NotificationEnum.TwoFactorCode.AsText(),
+                        Subject = "Seu código de verificação — {TenantName}",
+                        Body = @"
+                        <div style='font-family: Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px;'>
+                        <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.07);'>
+
+                            <!-- Header -->
+                            <div style='background-color: {TenantPrimaryColor}; padding: 28px 32px; text-align: center;'>
+                            <img src='{TenantLogoUrl}' alt='{TenantName}' style='max-height: 56px; max-width: 200px; object-fit: contain;' onerror=""this.style.display='none'"" />
+                            <h1 style='color: #ffffff; margin: 12px 0 0; font-size: 22px; font-weight: 700;'>{TenantName}</h1>
+                            </div>
+
+                            <!-- Corpo -->
+                            <div style='padding: 32px; text-align: center;'>
+                            <h2 style='color: #18181b; font-size: 20px; margin-top: 0;'>Verificação em duas etapas</h2>
+                            <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                                Olá, <strong>{UserName}</strong>! Use o código abaixo para concluir seu acesso ao <strong>{TenantName}</strong>.
+                            </p>
+                            <div style='margin: 28px auto; display: inline-block; background-color: #f4f4f5; border: 2px dashed {TenantPrimaryColor}; border-radius: 12px; padding: 16px 40px;'>
+                                <span style='font-size: 36px; font-weight: 900; letter-spacing: 10px; color: {TenantPrimaryColor};'>{TwoFactorCode}</span>
+                            </div>
+                            <p style='color: #71717a; font-size: 13px; margin-top: 8px;'>
+                                Este código é válido por <strong>10 minutos</strong>. Não compartilhe com ninguém.
+                            </p>
+                            <p style='color: #a1a1aa; font-size: 13px; margin-top: 16px;'>
+                                Se você não tentou fazer login, ignore este e-mail. Sua senha permanecerá a mesma.
+                            </p>
+                            </div>
+
+                            <!-- Rodapé -->
+                            <div style='background-color: #f9f9f9; border-top: 1px solid #e4e4e7; padding: 20px 32px; text-align: center;'>
+                            <p style='color: #a1a1aa; font-size: 13px; margin: 0;'>
+                                <strong style='color: #52525b;'>{TenantName}</strong><br/>
+                                {TenantPhone} &nbsp;|&nbsp; {TenantEmail}
+                            </p>
+                            <p style='color: #d4d4d8; font-size: 12px; margin: 8px 0 0;'>
+                                Este e-mail foi enviado automaticamente, por favor não responda.
+                            </p>
+                            </div>
+
+                        </div>
+                        </div>",
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     },
@@ -106,30 +190,46 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     {
                         Id = Guid.NewGuid(),
                         Name = NotificationEnum.ConfirmEmail.AsText(),
-                        Subject = "Confirmação de E-mail - {UserName}",
+                        Subject = "Confirme seu e-mail — {TenantName}",
                         Body = @"
-                            <div style='font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 30px;'>
-                                <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);'>
-                                    <h2 style='color: #333333; text-align: center;'>Confirmação de E-mail</h2>
-                                    <p style='color: #555555; font-size: 16px;'>Olá <strong>{UserName}</strong>,</p>
-                                    <p style='color: #555555; font-size: 16px;'>
-                                        Recebemos uma solicitação para confirmar seu e-mail. Para continuar, clique no botão abaixo:
-                                    </p>
-                                    <div style='text-align: center; margin: 25px 0;'>
-                                        <a href='{ConfirmLink}' style='background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;'>
-                                            Confirmar E-mail
-                                        </a>
-                                    </div>
-                                    <p style='color: #777777; font-size: 14px;'>
-                                        Se você não solicitou essa alteração, basta ignorar este e-mail.
-                                    </p>
-                                    <br/>
-                                    <p style='font-size: 15px; color: #888888; text-align: center;'>
-                                        Atenciosamente,<br/>
-                                        <strong>Equipe Suporte</strong>
-                                    </p>
-                                </div>
-                            </div>",
+                        <div style='font-family: Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px;'>
+                        <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.07);'>
+
+                            <!-- Header -->
+                            <div style='background-color: {TenantPrimaryColor}; padding: 28px 32px; text-align: center;'>
+                            <img src='{TenantLogoUrl}' alt='{TenantName}' style='max-height: 56px; max-width: 200px; object-fit: contain;' onerror=""this.style.display='none'"" />
+                            <h1 style='color: #ffffff; margin: 12px 0 0; font-size: 22px; font-weight: 700;'>{TenantName}</h1>
+                            </div>
+
+                            <!-- Corpo -->
+                            <div style='padding: 32px;'>
+                            <h2 style='color: #18181b; font-size: 20px; margin-top: 0;'>Confirme seu e-mail ✉️</h2>
+                            <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                                Olá, <strong>{UserName}</strong>! Para ativar sua conta no <strong>{TenantName}</strong>, confirme seu endereço de e-mail clicando no botão abaixo.
+                            </p>
+                            <div style='text-align: center; margin: 28px 0;'>
+                                <a href='{ConfirmLink}' style='background-color: {TenantPrimaryColor}; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block;'>
+                                Confirmar E-mail
+                                </a>
+                            </div>
+                            <p style='color: #a1a1aa; font-size: 13px;'>
+                                Se você não criou uma conta em <strong>{TenantName}</strong>, basta ignorar este e-mail.
+                            </p>
+                            </div>
+
+                            <!-- Rodapé -->
+                            <div style='background-color: #f9f9f9; border-top: 1px solid #e4e4e7; padding: 20px 32px; text-align: center;'>
+                            <p style='color: #a1a1aa; font-size: 13px; margin: 0;'>
+                                <strong style='color: #52525b;'>{TenantName}</strong><br/>
+                                {TenantPhone} &nbsp;|&nbsp; {TenantEmail}
+                            </p>
+                            <p style='color: #d4d4d8; font-size: 12px; margin: 8px 0 0;'>
+                                Este e-mail foi enviado automaticamente, por favor não responda.
+                            </p>
+                            </div>
+
+                        </div>
+                        </div>",
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     }
@@ -185,7 +285,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
         {
             if (!context.Users.IgnoreQueryFilters().Any())
             {
-                var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Admin");
+                var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
                 var tenant = context.Tenants.FirstOrDefault(t => t.Slug == "vorolabs");
 
                 var admin = new User

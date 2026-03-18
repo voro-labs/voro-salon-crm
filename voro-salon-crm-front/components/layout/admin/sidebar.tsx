@@ -28,48 +28,48 @@ const navItems = [
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
-    roles: ["Admin", "User"]
+    roles: ["SalonOwner", "SalonEmployee", "Owner"]
   },
   {
     title: "Agendamentos",
     href: "/appointments",
     icon: Calendar,
-    roles: ["Admin", "User"],
+    roles: ["SalonOwner", "SalonEmployee", "Owner"],
     moduleId: 2 // Scheduling
   },
   {
     title: "Clientes",
     href: "/clients",
     icon: Users,
-    roles: ["Admin", "User"],
+    roles: ["SalonOwner", "SalonEmployee", "Owner"],
     moduleId: 1 // Clients
   },
   {
     title: "Serviços",
     href: "/services",
     icon: Scissors,
-    roles: ["Admin", "User"],
+    roles: ["SalonOwner", "Owner"],
     moduleId: 3 // Services
   },
   {
     title: "Funcionários",
     href: "/employees",
     icon: Users,
-    roles: ["Admin", "User"],
+    roles: ["SalonOwner", "Owner"],
     moduleId: 4 // Employees
   },
   {
     title: "Financeiro",
     href: "/finance",
     icon: Banknote,
-    roles: ["Admin", "User"],
+    roles: ["SalonOwner", "Owner"],
     moduleId: 5 // Finance
   },
   {
     title: "Configurações",
     href: "/settings",
     icon: Settings,
-    roles: ["Admin"]
+    roles: ["Owner"]
   }
 ]
 
@@ -92,10 +92,16 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
 
   const getRoleBadge = (roles: string[]) => {
     switch (roles[0]) {
-      case "Admin":
+      case "Owner":
         return { text: "Administrador", class: "bg-blue-100 text-blue-800" }
+      case "SalonOwner":
+        return { text: "Proprietário", class: "bg-blue-100 text-blue-800" }
+      case "SalonEmployee":
+        return { text: "Funcionário", class: "bg-green-100 text-green-800" }
+      case "SalonClient":
+        return { text: "Cliente", class: "bg-purple-100 text-purple-800" }
       default:
-        return { text: "Usuário", class: "bg-green-100 text-green-800" }
+        return { text: "Usuário Anônimo", class: "bg-green-100 text-green-800" }
     }
   }
 

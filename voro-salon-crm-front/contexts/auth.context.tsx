@@ -1,10 +1,9 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken } from "@/lib/api"
+import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG } from "@/lib/api"
 import { AuthDto } from "@/types/DTOs/auth.interface"
 import { jwtDecode } from "jwt-decode"
-
 
 // Tipo do payload esperado no token JWT
 interface JwtPayload {
@@ -33,43 +32,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const token = getAuthToken()
       const storedTenants = localStorage.getItem("user_tenants")
+      const parsedTenants = storedTenants ? JSON.parse(storedTenants) : []
+
+      // Aplica um JWT válido ao estado do usuário
+      const applyToken = (jwt: string, refresh?: string) => {
+        const decoded = jwtDecode<JwtPayload>(jwt)
+        setUser({
+          userId: decoded.userId,
+          firstName: decoded.firstName,
+          lastName: decoded.lastName,
+          userName: decoded.userName,
+          email: decoded.email,
+          roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
+          token: jwt,
+          refreshToken: refresh,
+          tenants: parsedTenants,
+        })
+      }
+
+      // Tenta renovar o token silenciosamente usando o refresh token
+      const attemptSilentRefresh = async (): Promise<boolean> => {
+        const refreshToken = getRefreshToken()
+        if (!refreshToken) return false
+        try {
+          const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken }),
+          })
+          const data = await res.json()
+          if (res.ok && !data.hasError && data.data?.token) {
+            const newToken = data.data.token
+            const newRefresh = data.data.refreshToken
+            setAuthToken(newToken)
+            if (newRefresh) setRefreshToken(newRefresh)
+            applyToken(newToken, newRefresh || refreshToken)
+            return true
+          }
+        } catch {}
+        return false
+      }
 
       if (!token) {
-        setUser(null)
+        // Sem access token — tenta refresh antes de deslogar
+        const refreshed = await attemptSilentRefresh()
+        if (!refreshed) setUser(null)
         setLoading(false)
         return
       }
 
       try {
         const decoded = jwtDecode<JwtPayload>(token)
+        const isExpired = decoded.exp * 1000 < Date.now()
 
-        // Nota: O checkAuth não irá mais remover o token se expirar.
-        // Iremos carregar o User na memória de qualquer maneira, e delegar 
-        // a responsabilidade do fluxo de 401 e recarga (refresh) ao apiCall 
-        // intercepetor. Só remove se não tiver payload para ler.
-        
-        const refreshToken = getRefreshToken() || undefined
-
-        const userData: AuthDto = {
-          userId: decoded.userId,
-          firstName: decoded.firstName,
-          lastName: decoded.lastName,
-          userName: decoded.userName,
-          email: decoded.email,
-          roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
-          token: token,
-          refreshToken: refreshToken,
-          tenants: storedTenants ? JSON.parse(storedTenants) : []
+        if (isExpired) {
+          // Token expirado — tenta refresh silencioso
+          const refreshed = await attemptSilentRefresh()
+          if (!refreshed) {
+            removeAuthToken()
+            removeRefreshToken()
+            setUser(null)
+          }
+        } else {
+          // Token ainda válido — usa normalmente
+          applyToken(token, getRefreshToken() || undefined)
         }
-        setUser(userData)
       } catch (err) {
+        // Token malformado — tenta refresh antes de deslogar
         console.error("Token inválido:", err)
-        removeAuthToken()
-        removeRefreshToken()
-        setUser(null)
+        const refreshed = await attemptSilentRefresh()
+        if (!refreshed) {
+          removeAuthToken()
+          removeRefreshToken()
+          setUser(null)
+        }
       } finally {
         setLoading(false)
       }
