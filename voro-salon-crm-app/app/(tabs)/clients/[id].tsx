@@ -5,7 +5,7 @@ import {
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
-import { useLocalSearchParams } from "expo-router"
+import { useLocalSearchParams, router } from "expo-router"
 import { useClientDetails } from "hooks/use-client-details.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { PhoneInput } from "components/PhoneInput"
@@ -35,11 +35,11 @@ type TabType = "services" | "anamnesis"
 export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const {
-    client, services, anamnesisHistory, catalogServices,
-    isLoading, isClientLoading, isSaving,
+    client, services, anamnesisHistory, anamnesisError, catalogServices,
+    isLoading, isClientLoading, isAnamnesisLoading, isSaving,
     isDeleting, isAddingService,
     updateClient, deleteClient, addService, deleteService,
-  } = useClientDetails(id)
+  } = useClientDetails(id, () => router.push("/(tabs)/clients" as any))
   const { primaryColor } = useTenantTheme()
 
   const [tab, setTab] = useState<TabType>("services")
@@ -119,7 +119,7 @@ export default function ClientDetailScreen() {
   if (isClientLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
-        <ScreenHeader title="Cliente" showBack />
+        <ScreenHeader title="Cliente" showBack onBack={() => router.back()} />
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={primaryColor} size="large" />
         </View>
@@ -130,7 +130,7 @@ export default function ClientDetailScreen() {
   if (!client) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
-        <ScreenHeader title="Cliente" showBack />
+        <ScreenHeader title="Cliente" showBack onBack={() => router.back()} />
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="person-outline" size={48} color="#d4d4d8" />
           <Text className="text-zinc-400 font-semibold mt-3">Cliente não encontrado</Text>
@@ -146,7 +146,7 @@ export default function ClientDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
-      <ScreenHeader title={fullName} showBack />
+      <ScreenHeader title={fullName} showBack onBack={() => router.back()} />
 
       <ScrollView
         className="flex-1"
@@ -155,12 +155,12 @@ export default function ClientDetailScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       >
         {/* Profile Card */}
-        <View className="bg-white rounded-3xl p-5 border border-zinc-100 mb-4">
+        <View className="bg-white rounded-3xl p-4 border border-zinc-100 mb-4">
           <View className="flex-row items-start gap-4">
-            <View className="h-16 w-16 rounded-2xl items-center justify-center shrink-0" style={{ backgroundColor: primaryColor + "25" }}>
+            <View className="w-16 mb-3 items-center justify-center rounded-2xl py-4 px-4 shrink-0" style={{ backgroundColor: primaryColor + "25" }}>
               <Text className="font-black text-xl" style={{ color: primaryColor }}>{initials}</Text>
             </View>
-            <View className="flex-1 min-w-0">
+            <View className="flex-1 p-4 min-w-0">
               <Text className="text-lg font-black text-zinc-900" numberOfLines={1}>{fullName}</Text>
               <View className="mt-1 gap-1">
                 {c.phone ? (
@@ -275,7 +275,7 @@ export default function ClientDetailScreen() {
                 {(services as any[]).map((svc) => (
                   <View
                     key={svc.id}
-                    className={`flex-row items-start gap-3 rounded-2xl border p-3.5 ${isRecent(svc.serviceDate) ? "border-zinc-100" : "border-zinc-100"}`}
+                    className={`flex-row items-start gap-3 rounded-2xl border p-4 ${isRecent(svc.serviceDate) ? "border-zinc-100" : "border-zinc-100"}`}
                     style={isRecent(svc.serviceDate) ? { borderColor: primaryColor + "25", backgroundColor: primaryColor + "08" } : undefined}
                   >
                     <View className="h-10 w-10 bg-zinc-100 rounded-xl items-center justify-center shrink-0">
@@ -287,7 +287,7 @@ export default function ClientDetailScreen() {
                           {svc.description ?? svc.serviceName ?? "Serviço"}
                         </Text>
                         {isRecent(svc.serviceDate) && (
-                          <View className="bg-white rounded-full px-2 py-0.5" style={{ borderWidth: 1, borderColor: primaryColor + "40" }}>
+                          <View className="bg-white rounded-2xl px-2 py-0.5 p-4" style={{ borderWidth: 1, borderColor: primaryColor + "40" }}>
                             <Text className="text-[10px] font-bold" style={{ color: primaryColor }}>Recente</Text>
                           </View>
                         )}
@@ -321,16 +321,24 @@ export default function ClientDetailScreen() {
               <Text className="text-xs text-zinc-400 mt-0.5">Avaliações capilares registradas</Text>
             </View>
 
-            {isLoading ? (
-              <View className="py-10 items-center"><ActivityIndicator color={primaryColor} /></View>
-            ) : !anamnesisHistory || (anamnesisHistory as any[]).length === 0 ? (
-              <View className="py-12 items-center px-6 border border-dashed border-zinc-200 rounded-2xl m-4">
+            {isAnamnesisLoading ? (
+              <View className="py-10 items-center">
+                <ActivityIndicator color={primaryColor} />
+              </View>
+            ) : anamnesisError ? (
+              <View className="py-12 items-center px-6">
+                <Ionicons name="cloud-offline-outline" size={40} color="#d4d4d8" />
+                <Text className="text-zinc-400 font-semibold mt-3 text-center">Não foi possível carregar as fichas</Text>
+                <Text className="text-zinc-400 text-xs mt-1 text-center">{anamnesisError?.message}</Text>
+              </View>
+            ) : anamnesisHistory.length === 0 ? (
+              <View className="py-12 items-center px-6">
                 <Ionicons name="clipboard-outline" size={40} color="#d4d4d8" />
                 <Text className="text-zinc-400 font-semibold mt-3 text-center">Nenhuma ficha de anamnese registrada</Text>
               </View>
             ) : (
               <View className="px-4 py-3 gap-2">
-                {(anamnesisHistory as any[]).map((sheet) => (
+                {anamnesisHistory.map((sheet: any) => (
                   <View key={sheet.id} className="flex-row items-center gap-3 p-4 rounded-2xl border border-zinc-100">
                     <View className="h-12 w-12 rounded-2xl items-center justify-center" style={{ backgroundColor: primaryColor + "15" }}>
                       <Ionicons name="time-outline" size={22} color={primaryColor} />
@@ -338,7 +346,7 @@ export default function ClientDetailScreen() {
                     <View className="flex-1">
                       <Text className="text-zinc-900 font-bold">{formatDate(sheet.date)}</Text>
                       <View className="flex-row items-center gap-1 mt-0.5">
-                        <View className="h-2 w-2 rounded-full bg-green-500" />
+                        <View className="h-2 w-2 rounded-2xl bg-green-500" />
                         <Text className="text-zinc-400 text-xs">{sheet.responses?.length ?? 0} respostas registradas</Text>
                       </View>
                     </View>
@@ -434,7 +442,7 @@ export default function ClientDetailScreen() {
       {/* Add Service Modal */}
       <Modal visible={svcOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSvcOpen(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
-          <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
+          <View className="flex-row items-center justify-between px-5 p-4 pt-6 pb-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Registrar Serviço</Text>
             <Pressable onPress={() => setSvcOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
               <Ionicons name="close" size={20} color="#71717a" />
@@ -443,29 +451,31 @@ export default function ClientDetailScreen() {
           <ScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false}>
             {/* Catalog picker */}
             {catalogServices && (catalogServices as any[]).length > 0 && (
-              <View className="mb-4">
+              <View className="gap-3 mb-4">
                 <Text className="text-zinc-700 font-bold text-sm mb-1.5">Serviço Predefinido</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
-                  {[{ id: "", name: "Personalizado" }, ...(catalogServices as any[])].map((s) => (
-                    <Pressable
-                      key={s.id}
-                      onPress={() => {
-                        if (s.id) {
-                          setSvcForm((p) => ({ ...p, serviceId: s.id, description: s.name, amount: s.price ?? 0 }))
-                        } else {
-                          setSvcForm((p) => ({ ...p, serviceId: "", description: "", amount: 0 }))
-                        }
-                      }}
-                      className="mx-1 px-3 py-2 rounded-xl border"
-                      style={svcForm.serviceId === s.id
-                        ? { backgroundColor: primaryColor, borderColor: primaryColor }
-                        : { backgroundColor: "#fafafa", borderColor: "#e4e4e7" }}
-                    >
-                      <Text className={`text-sm font-bold ${svcForm.serviceId === s.id ? "text-white" : "text-zinc-700"}`}>
-                        {s.name}
-                      </Text>
-                    </Pressable>
-                  ))}
+                  <View className="flex-row gap-3 px-1">
+                    {[{ id: "", name: "Personalizado" }, ...(catalogServices as any[])].map((s) => (
+                      <Pressable
+                        key={s.id}
+                        onPress={() => {
+                          if (s.id) {
+                            setSvcForm((p) => ({ ...p, serviceId: s.id, description: s.name, amount: s.price ?? 0 }))
+                          } else {
+                            setSvcForm((p) => ({ ...p, serviceId: "", description: "", amount: 0 }))
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl border"
+                        style={svcForm.serviceId === s.id
+                          ? { backgroundColor: primaryColor, borderColor: primaryColor }
+                          : { backgroundColor: "#fafafa", borderColor: "#e4e4e7" }}
+                      >
+                        <Text className={`text-sm font-bold ${svcForm.serviceId === s.id ? "text-white" : "text-zinc-700"}`}>
+                          {s.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
                 </ScrollView>
               </View>
             )}

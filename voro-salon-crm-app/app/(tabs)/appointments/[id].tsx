@@ -94,7 +94,7 @@ export default function AppointmentDetailScreen() {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
       {/* Header */}
-      <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+      <View className="bg-white px-5 pt-4 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
         <Pressable
           onPress={() => router.back()}
           className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100"
@@ -222,7 +222,7 @@ export default function AppointmentDetailScreen() {
                 onPress={() => { updateStatus(opt.value); setStatusModal(false) }}
                 className="flex-row items-center gap-3 px-5 py-4 active:bg-zinc-50"
               >
-                <View className="h-3 w-3 rounded-full" style={{ backgroundColor: opt.text }} />
+                <View className="h-3 w-3 rounded-2xl" style={{ backgroundColor: opt.text }} />
                 <Text className="flex-1 text-zinc-900 font-semibold">{opt.label}</Text>
                 {(appt.status ?? 0) === opt.value && (
                   <Ionicons name="checkmark" size={18} color={primaryColor} />

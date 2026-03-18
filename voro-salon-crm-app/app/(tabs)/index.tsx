@@ -153,7 +153,7 @@ function AppointmentCard({
           ) : null}
           <Pressable
             onPress={() => setModalOpen(true)}
-            className="rounded-full px-2.5 py-1 border"
+            className="rounded-2xl px-2.5 py-1 border"
             style={{ backgroundColor: status.bg, borderColor: status.border }}
           >
             <Text className="text-xs font-bold" style={{ color: status.text }}>{status.label}</Text>
@@ -180,7 +180,7 @@ function AppointmentCard({
                 }}
                 className="flex-row items-center gap-3 px-5 py-4 active:bg-zinc-50"
               >
-                <View className="h-3 w-3 rounded-full" style={{ backgroundColor: opt.text }} />
+                <View className="h-3 w-3 rounded-2xl" style={{ backgroundColor: opt.text }} />
                 <Text className="flex-1 text-zinc-900 font-semibold">{opt.label}</Text>
                 {(appointment.status ?? 0) === opt.value && (
                   <Ionicons name="checkmark" size={18} color={primaryColor} />
@@ -404,6 +404,11 @@ export default function DashboardScreen() {
             <View className="flex-1 min-w-0 mr-3">
               <Text className="text-zinc-400 text-sm font-semibold">Bem-vindo de volta,</Text>
               <Text className="text-2xl font-black text-zinc-900">{user?.firstName ?? "Usuário"} 👋</Text>
+            </View>
+            <View className="flex-row items-center gap-2">
+              {switchingTenant && (
+                <ActivityIndicator size="small" color={primaryColor} />
+              )}
               {tenants.length > 0 && (
                 <TenantSwitcher
                   tenants={tenants}
@@ -411,17 +416,6 @@ export default function DashboardScreen() {
                   onSwitch={handleSwitchTenant}
                 />
               )}
-            </View>
-            <View className="flex-row items-center gap-2">
-              {switchingTenant && (
-                <ActivityIndicator size="small" color={primaryColor} />
-              )}
-              <Pressable
-                onPress={logout}
-                className="h-10 w-10 bg-zinc-50 rounded-2xl items-center justify-center border border-zinc-100"
-              >
-                <Ionicons name="log-out-outline" size={20} color="#71717a" />
-              </Pressable>
             </View>
           </View>
         </View>
@@ -435,7 +429,7 @@ export default function DashboardScreen() {
           ) : (
             <>
               {/* ── 3 Summary Cards ── */}
-              <View className="flex-row gap-3">
+              <View className="flex-row mt-2 gap-3">
                 <SummaryCard
                   label="Receita do mês"
                   value={`R$ ${fmtCurrency(revenue)}`}
@@ -460,7 +454,7 @@ export default function DashboardScreen() {
 
               {/* ── Revenue Chart ── */}
               {revenueByMonth.length > 0 && (
-                <View className="bg-white rounded-3xl p-5 border border-zinc-100">
+                <View className="bg-white rounded-3xl p-4 mt-2 border border-zinc-100">
                   <Text className="text-base font-black text-zinc-900 mb-1">Receita dos últimos 6 meses</Text>
                   <Text className="text-xs text-zinc-400 font-semibold mb-4">em R$</Text>
                   <RevenueChart data={revenueByMonth} />
@@ -468,10 +462,10 @@ export default function DashboardScreen() {
               )}
 
               {/* ── Today's Appointments ── */}
-              <View className="bg-white rounded-3xl p-5 border border-zinc-100">
+              <View className="bg-white rounded-3xl p-4 mt-2 border border-zinc-100">
                 <View className="flex-row items-center justify-between mb-1">
                   <Text className="text-base font-black text-zinc-900">Agendamentos de hoje</Text>
-                  <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: primaryColor + "15" }}>
+                  <View className="rounded-2xl p-2" style={{ backgroundColor: primaryColor + "15" }}>
                     <Text className="text-xs font-black" style={{ color: primaryColor }}>{todayAppointments.length}</Text>
                   </View>
                 </View>
@@ -495,7 +489,7 @@ export default function DashboardScreen() {
 
               {/* ── Top Clients ── */}
               {topClients.length > 0 && (
-                <View className="bg-white rounded-3xl p-5 border border-zinc-100">
+                <View className="bg-white rounded-3xl p-4 mt-2 border border-zinc-100">
                   <Text className="text-base font-black text-zinc-900 mb-1">Melhores clientes do mês</Text>
                   <Text className="text-xs text-zinc-400 font-semibold mb-3">por valor gasto</Text>
                   {topClients.slice(0, 5).map((client, i) => (

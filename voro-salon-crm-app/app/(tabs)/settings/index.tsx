@@ -88,7 +88,7 @@ export default function SettingsScreen() {
           {(user?.tenants?.length ?? 0) > 0 && (
             <View className="mt-2 flex-row flex-wrap gap-3 justify-center">
               {user?.tenants?.map((t) => (
-                <View key={t.id} className="px-3 py-1 rounded-full" style={{ backgroundColor: primaryColor + "15" }}>
+                <View key={t.id} className="px-3 py-1 rounded-2xl" style={{ backgroundColor: primaryColor + "15" }}>
                   <Text className="text-xs font-bold" style={{ color: primaryColor }}>{t.name}</Text>
                 </View>
               ))}

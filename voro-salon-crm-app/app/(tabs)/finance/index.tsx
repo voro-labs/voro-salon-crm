@@ -163,7 +163,7 @@ export default function FinanceScreen() {
                   <Text className={`font-black text-sm ${income ? "text-green-600" : "text-red-600"}`}>
                     {income ? "+" : "-"}R$ {fmtCurrency(Math.abs(item.amount ?? 0))}
                   </Text>
-                  <View className="rounded-full px-2 py-0.5 border" style={{ backgroundColor: status.bg, borderColor: status.border }}>
+                  <View className="rounded-2xl px-2 py-0.5 border" style={{ backgroundColor: status.bg, borderColor: status.border }}>
                     <Text className="text-xs font-bold" style={{ color: status.text }}>{status.label}</Text>
                   </View>
                 </View>

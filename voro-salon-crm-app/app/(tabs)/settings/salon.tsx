@@ -116,8 +116,8 @@ function ColorPickerModal({ visible, value, title, onSelect, onClose }: ColorPic
             <Text className="text-zinc-400 text-xs font-semibold">Cor selecionada</Text>
             <Text className="text-zinc-900 font-black text-base mt-0.5 uppercase">{value}</Text>
           </View>
-          <View className="h-6 w-6 rounded-full items-center justify-center" style={{ borderWidth: 2, borderColor: "#7c3aed" }}>
-            <View className="h-3 w-3 rounded-full" style={{ backgroundColor: value }} />
+          <View className="h-6 w-6 rounded-2xl items-center justify-center" style={{ borderWidth: 2, borderColor: "#7c3aed" }}>
+            <View className="h-3 w-3 rounded-2xl" style={{ backgroundColor: value }} />
           </View>
         </View>
 

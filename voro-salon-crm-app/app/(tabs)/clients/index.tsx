@@ -49,7 +49,7 @@ function ClientCard({ client, onPress, primaryColor }: { client: Client; onPress
 
       <View className="flex-row items-center gap-2 shrink-0">
         {(client.serviceCount ?? 0) > 0 && (
-          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}>
+          <View className="rounded-2xl px-2.5 py-0.5" style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}>
             <Text className="text-xs font-bold" style={{ color: primaryColor }}>
               {client.serviceCount} {client.serviceCount === 1 ? "serviço" : "serviços"}
             </Text>

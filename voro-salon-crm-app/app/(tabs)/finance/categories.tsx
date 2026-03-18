@@ -150,7 +150,7 @@ export default function CategoriesScreen() {
                   </Text>
                 </View>
                 {!item.isActive && (
-                  <View className="bg-zinc-100 rounded-full px-2 py-0.5">
+                  <View className="bg-zinc-100 rounded-2xl px-2 py-0.5">
                     <Text className="text-zinc-400 text-xs font-semibold">Inativa</Text>
                   </View>
                 )}

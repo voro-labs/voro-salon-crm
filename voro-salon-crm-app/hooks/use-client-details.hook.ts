@@ -1,13 +1,11 @@
-import { useState, useEffect } from "react"
-import { useRouter } from "expo-router"
+import { useState } from "react"
 import useSWR from "swr"
 import { flags } from "../lib/flag-utils"
 import { Toast } from "toastify-react-native"
 import { API_CONFIG, secureApiCall } from "../lib/api"
 import { fetcher } from "../lib/fetcher"
 
-export function useClientDetails(clientId: string) {
-  const router = useRouter()
+export function useClientDetails(clientId: string, onDeleted?: () => void) {
 
   // SWR queries
   const { data: client, isLoading: isClientLoading, mutate: mutateClient } = useSWR(
@@ -18,13 +16,14 @@ export function useClientDetails(clientId: string) {
     `${API_CONFIG.ENDPOINTS.SERVICE_RECORDS}?clientId=${clientId}`,
     fetcher
   )
-  const { data: anamnesisHistory, isLoading: isAnamnesisLoading, mutate: mutateAnamnesis } = useSWR(
+  const { data: anamnesisHistory, isLoading: isAnamnesisLoading, error: anamnesisError, mutate: mutateAnamnesis } = useSWR(
     `${API_CONFIG.ENDPOINTS.ANAMNESIS}/client/${clientId}`,
-    fetcher
+    fetcher,
+    { shouldRetryOnError: false }
   )
   const { data: catalogServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
 
-  const isLoading = isClientLoading || isServicesLoading || isAnamnesisLoading
+  const isLoading = isClientLoading || isServicesLoading
 
   // Actions states
   const [isSaving, setIsSaving] = useState(false)
@@ -64,7 +63,7 @@ export function useClientDetails(clientId: string) {
         return false
       }
       Toast.success("Cliente excluído com sucesso!")
-      router.push("/clients")
+      onDeleted?.()
       return true
     } catch {
       Toast.error("Erro de conexão.")
@@ -134,10 +133,12 @@ export function useClientDetails(clientId: string) {
   return {
     client,
     services: services || [],
-    anamnesisHistory: anamnesisHistory || [],
+    anamnesisHistory: Array.isArray(anamnesisHistory) ? anamnesisHistory : [],
+    anamnesisError,
     catalogServices: catalogServices || [],
     isLoading,
     isClientLoading,
+    isAnamnesisLoading,
     isSaving,
     isDeleting,
     isAddingService,
