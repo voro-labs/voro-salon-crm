@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { useAuth } from "@/contexts/auth.context"
 import { useSettings } from "@/hooks/use-settings.hook"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
@@ -148,6 +149,12 @@ export default function ConfiguracoesPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
+  const { user } = useAuth()
+
+  const roleNames = user?.roles?.map((r) => r.name) ?? []
+  const isOwner = roleNames.includes("Owner")
+  const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
+  const defaultTab = isOwner ? "geral" : isSalonOwner ? "exportar" : "aparencia"
 
   const {
     modules,
@@ -198,39 +205,47 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <AuthGuard requiredRoles={["Owner"]}>
+    <AuthGuard requiredRoles={["Owner", "SalonOwner"]}>
       <div className="flex flex-col gap-6 p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Configurações</h1>
         </div>
 
-        <Tabs defaultValue="geral" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
           <div className="relative overflow-hidden">
             <TabsList className="w-full justify-start overflow-x-auto no-scrollbar flex-nowrap h-auto p-1 bg-muted/50">
-              <TabsTrigger value="geral" className="shrink-0 py-2">
-                <Building2 className="mr-2 h-4 w-4" />
-                Estabelecimento
-              </TabsTrigger>
+              {isOwner && (
+                <TabsTrigger value="geral" className="shrink-0 py-2">
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Estabelecimento
+                </TabsTrigger>
+              )}
               <TabsTrigger value="aparencia" className="shrink-0 py-2">
                 <Palette className="mr-2 h-4 w-4" />
                 Aparência
               </TabsTrigger>
-              <TabsTrigger value="modulos" className="shrink-0 py-2">
-                <LayoutGrid className="mr-2 h-4 w-4" />
-                Módulos
-              </TabsTrigger>
-              <TabsTrigger value="exportar" className="shrink-0 py-2">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </TabsTrigger>
-              <TabsTrigger value="anamnesis" className="shrink-0 py-2">
-                <ClipboardList className="mr-2 h-4 w-4" />
-                Anamnese
-              </TabsTrigger>
+              {isOwner && (
+                <TabsTrigger value="modulos" className="shrink-0 py-2">
+                  <LayoutGrid className="mr-2 h-4 w-4" />
+                  Módulos
+                </TabsTrigger>
+              )}
+              {isSalonOwner && (
+                <TabsTrigger value="exportar" className="shrink-0 py-2">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar
+                </TabsTrigger>
+              )}
+              {isOwner && (
+                <TabsTrigger value="anamnesis" className="shrink-0 py-2">
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Anamnese
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
-          <TabsContent value="geral">
+          {isOwner && <TabsContent value="geral">
             {/* ── Estabelecimento ── */}
             <Card>
               <CardHeader>
@@ -480,7 +495,7 @@ export default function ConfiguracoesPage() {
                 </form>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent>}
 
           <TabsContent value="aparencia">
             {/* ── Aparência ── */}
@@ -559,7 +574,7 @@ export default function ConfiguracoesPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="modulos">
+          {isOwner && <TabsContent value="modulos">
             {/* ── Módulos ── */}
             <Card>
               <CardHeader>
@@ -629,9 +644,9 @@ export default function ConfiguracoesPage() {
                 })}
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent>}
 
-          <TabsContent value="exportar">
+          {isSalonOwner && <TabsContent value="exportar">
             {/* ── Exportar ── */}
             <Card>
               <CardHeader>
@@ -654,9 +669,9 @@ export default function ConfiguracoesPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent>}
 
-          <TabsContent value="anamnesis">
+          {isOwner && <TabsContent value="anamnesis">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -680,7 +695,7 @@ export default function ConfiguracoesPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent>}
         </Tabs>
       </div>
     </AuthGuard>
