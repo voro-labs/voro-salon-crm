@@ -169,7 +169,7 @@ export default function CategoriesScreen() {
               <Text className="text-zinc-400 font-semibold mt-3 text-base">Nenhuma categoria</Text>
               <Pressable
                 onPress={() => { setNewName(""); setNewType(TransactionType.Income); setCreateOpen(true) }}
-                className="mt-4 h-11 p-4 rounded-2xl items-center justify-center"
+                className="mt-4 h-11 px-4 rounded-2xl items-center justify-center"
                 style={{ backgroundColor: primaryColor }}
               >
                 <Text className="text-white font-bold">Criar primeira categoria</Text>

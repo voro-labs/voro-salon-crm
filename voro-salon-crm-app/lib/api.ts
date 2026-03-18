@@ -168,8 +168,6 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
             } else {
               // Refresh falhou — desloga e encerra
               isRefreshing = false
-              await removeAuthToken()
-              await removeRefreshToken()
               DeviceEventEmitter.emit("auth:logout")
               return {
                 status: 401,
@@ -180,8 +178,6 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
             }
           } catch {
             isRefreshing = false
-            await removeAuthToken()
-            await removeRefreshToken()
             DeviceEventEmitter.emit("auth:logout")
             return {
               status: 401,
@@ -230,7 +226,6 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
         }
       } else {
         // 401 sem refresh token — desloga
-        await removeAuthToken()
         DeviceEventEmitter.emit("auth:logout")
         return {
           status: 401,

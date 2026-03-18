@@ -149,6 +149,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Deslogar quando apiCall emite auth:logout (refresh falhou mid-session)
     const logoutListener = DeviceEventEmitter.addListener("auth:logout", () => {
+      removeAuthToken()
+      removeRefreshToken()
+      SecureStore.deleteItemAsync("user_tenants")
       setUser(null)
     })
 
@@ -209,8 +212,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const switchTenant = async (tenantId: string) => {
     try {
-      const { secureApiCall, API_CONFIG } = await import("lib/api")
-      const result = await secureApiCall<AuthDto>(`${API_CONFIG.ENDPOINTS.SWITCH_TENANT}/${tenantId}`, {
+      const { apiCall, API_CONFIG, getAuthToken, setAuthToken } = await import("lib/api")
+
+      // Re-sync token to SecureStore if a concurrent 401 handler cleared it while user is still authenticated
+      const storedToken = await getAuthToken()
+      if (!storedToken && user?.token) {
+        await setAuthToken(user.token)
+      }
+
+      const result = await apiCall<AuthDto>(`${API_CONFIG.ENDPOINTS.SWITCH_TENANT}/${tenantId}`, {
         method: "POST"
       })
 
