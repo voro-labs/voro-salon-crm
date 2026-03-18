@@ -7,6 +7,7 @@ import { useDataList } from "hooks/use-data-list.hook"
 import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { useModuleGuard } from "hooks/use-module-guard.hook"
 
 interface Service {
   id: string
@@ -17,6 +18,7 @@ interface Service {
 }
 
 export default function ServicesScreen() {
+  useModuleGuard("services")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { filteredData, isLoading, search, setSearch } = useDataList<Service>(

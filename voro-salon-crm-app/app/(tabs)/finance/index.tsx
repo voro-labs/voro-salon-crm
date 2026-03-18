@@ -7,6 +7,7 @@ import { useTransactions } from "hooks/use-transactions.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { TransactionType, TransactionStatus } from "types/DTOs/financial.interface"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { useModuleGuard } from "hooks/use-module-guard.hook"
 
 type FilterType = "all" | "income" | "expense"
 
@@ -32,6 +33,7 @@ function fmtCurrency(v: number) {
 }
 
 export default function FinanceScreen() {
+  useModuleGuard("finance")
   const router = useRouter()
   const [filter, setFilter] = useState<FilterType>("all")
   const [search, setSearch] = useState("")

@@ -60,7 +60,7 @@ export function useAppointmentForm() {
   }
 
   async function createAppointment(f: NewAppointmentForm): Promise<boolean> {
-    if (!f.clientId) {
+    if (isModuleEnabled(1) && !f.clientId) {
       Toast.error("Por favor, selecione um cliente.")
       return false
     }

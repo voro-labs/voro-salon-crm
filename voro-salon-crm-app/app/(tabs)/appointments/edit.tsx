@@ -18,9 +18,13 @@ export default function EditAppointmentScreen() {
   const {
     clients, services, employees,
     form, setForm, isLoading, isSaving,
-    handleServiceChange, updateAppointment,
+    handleServiceChange, updateAppointment, isModuleEnabled,
   } = useAppointmentDetail(id)
   const { primaryColor } = useTenantTheme()
+
+  const showClients = isModuleEnabled(1)
+  const showServices = isModuleEnabled(3)
+  const showEmployees = isModuleEnabled(4)
 
   // Split scheduledDateTime into date and time for the pickers
   const [date, setDate] = useState("")
@@ -100,40 +104,46 @@ export default function EditAppointmentScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Cliente */}
-          <View className="mb-4">
-            <Text className="text-zinc-700 font-bold text-sm mb-1.5">Cliente *</Text>
-            <SelectPickerInput
-              value={form.clientId}
-              onChange={(id) => setForm((p) => ({ ...p, clientId: id }))}
-              options={clientOptions}
-              placeholder="Selecionar cliente"
-              searchPlaceholder="Buscar cliente..."
-            />
-          </View>
+          {showClients && (
+            <View className="mb-4">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Cliente *</Text>
+              <SelectPickerInput
+                value={form.clientId}
+                onChange={(id) => setForm((p) => ({ ...p, clientId: id }))}
+                options={clientOptions}
+                placeholder="Selecionar cliente"
+                searchPlaceholder="Buscar cliente..."
+              />
+            </View>
+          )}
 
           {/* Serviço */}
-          <View className="mb-4">
-            <Text className="text-zinc-700 font-bold text-sm mb-1.5">Serviço</Text>
-            <SelectPickerInput
-              value={form.serviceId}
-              onChange={handleServiceChange}
-              options={serviceOptions}
-              placeholder="Selecionar serviço"
-              searchPlaceholder="Buscar serviço..."
-            />
-          </View>
+          {showServices && (
+            <View className="mb-4">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Serviço</Text>
+              <SelectPickerInput
+                value={form.serviceId}
+                onChange={handleServiceChange}
+                options={serviceOptions}
+                placeholder="Selecionar serviço"
+                searchPlaceholder="Buscar serviço..."
+              />
+            </View>
+          )}
 
           {/* Profissional */}
-          <View className="mb-4">
-            <Text className="text-zinc-700 font-bold text-sm mb-1.5">Profissional</Text>
-            <SelectPickerInput
-              value={form.employeeId}
-              onChange={(id) => setForm((p) => ({ ...p, employeeId: id }))}
-              options={employeeOptions}
-              placeholder="Selecionar profissional"
-              searchPlaceholder="Buscar profissional..."
-            />
-          </View>
+          {showEmployees && (
+            <View className="mb-4">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Profissional</Text>
+              <SelectPickerInput
+                value={form.employeeId}
+                onChange={(id) => setForm((p) => ({ ...p, employeeId: id }))}
+                options={employeeOptions}
+                placeholder="Selecionar profissional"
+                searchPlaceholder="Buscar profissional..."
+              />
+            </View>
+          )}
 
           {/* Data + Horário */}
           <View className="flex-row gap-3 mb-4">

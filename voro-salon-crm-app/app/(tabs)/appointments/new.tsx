@@ -14,8 +14,12 @@ import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function NewAppointmentScreen() {
   const router = useRouter()
-  const { clients, services, employees, form, setForm, isLoading, isCreating, handleServiceChange, createAppointment } = useAppointmentForm()
+  const { clients, services, employees, form, setForm, isLoading, isCreating, handleServiceChange, createAppointment, isModuleEnabled } = useAppointmentForm()
   const { primaryColor } = useTenantTheme()
+
+  const showClients = isModuleEnabled(1)
+  const showServices = isModuleEnabled(3)
+  const showEmployees = isModuleEnabled(4)
 
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
@@ -73,38 +77,44 @@ export default function NewAppointmentScreen() {
         ) : (
           <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-            <View className="mb-4">
-              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Cliente *</Text>
-              <SelectPickerInput
-                value={form.clientId}
-                onChange={(id) => setForm((p) => ({ ...p, clientId: id }))}
-                options={clientOptions}
-                placeholder="Selecionar cliente"
-                searchPlaceholder="Buscar cliente..."
-              />
-            </View>
+            {showClients && (
+              <View className="mb-4">
+                <Text className="text-zinc-700 font-bold text-sm mb-1.5">Cliente *</Text>
+                <SelectPickerInput
+                  value={form.clientId}
+                  onChange={(id) => setForm((p) => ({ ...p, clientId: id }))}
+                  options={clientOptions}
+                  placeholder="Selecionar cliente"
+                  searchPlaceholder="Buscar cliente..."
+                />
+              </View>
+            )}
 
-            <View className="mb-4">
-              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Serviço</Text>
-              <SelectPickerInput
-                value={form.serviceId}
-                onChange={handleServiceChange}
-                options={serviceOptions}
-                placeholder="Selecionar serviço"
-                searchPlaceholder="Buscar serviço..."
-              />
-            </View>
+            {showServices && (
+              <View className="mb-4">
+                <Text className="text-zinc-700 font-bold text-sm mb-1.5">Serviço</Text>
+                <SelectPickerInput
+                  value={form.serviceId}
+                  onChange={handleServiceChange}
+                  options={serviceOptions}
+                  placeholder="Selecionar serviço"
+                  searchPlaceholder="Buscar serviço..."
+                />
+              </View>
+            )}
 
-            <View className="mb-4">
-              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Profissional</Text>
-              <SelectPickerInput
-                value={form.employeeId}
-                onChange={(id) => setForm((p) => ({ ...p, employeeId: id }))}
-                options={employeeOptions}
-                placeholder="Selecionar profissional"
-                searchPlaceholder="Buscar profissional..."
-              />
-            </View>
+            {showEmployees && (
+              <View className="mb-4">
+                <Text className="text-zinc-700 font-bold text-sm mb-1.5">Profissional</Text>
+                <SelectPickerInput
+                  value={form.employeeId}
+                  onChange={(id) => setForm((p) => ({ ...p, employeeId: id }))}
+                  options={employeeOptions}
+                  placeholder="Selecionar profissional"
+                  searchPlaceholder="Buscar profissional..."
+                />
+              </View>
+            )}
 
             <View className="flex-row gap-3 mb-4">
               <View className="flex-1">

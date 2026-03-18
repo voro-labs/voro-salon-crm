@@ -8,6 +8,7 @@ import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { useModuleGuard } from "hooks/use-module-guard.hook"
 
 interface Client {
   id: string
@@ -62,6 +63,7 @@ function ClientCard({ client, onPress, primaryColor }: { client: Client; onPress
 }
 
 export default function ClientsScreen() {
+  useModuleGuard("clients")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { filteredData, isLoading, search, setSearch } = useDataList<Client>(

@@ -7,6 +7,7 @@ import { useDataList } from "hooks/use-data-list.hook"
 import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { useModuleGuard } from "hooks/use-module-guard.hook"
 
 interface Appointment {
   id: string
@@ -135,6 +136,7 @@ function AppointmentCard({ item, onPress, primaryColor }: { item: Appointment; o
 }
 
 export default function AppointmentsScreen() {
+  useModuleGuard("appointments")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { filteredData, isLoading, search, setSearch } = useDataList<Appointment>(

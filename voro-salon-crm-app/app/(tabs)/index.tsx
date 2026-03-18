@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "contexts/auth.context"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useDashboard } from "hooks/use-dashboard.hook"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 import { fetcher } from "lib/fetcher"
 import { API_CONFIG, secureApiCall } from "lib/api"
 import type { TopClientItem, RevenueByMonthItem } from "types/DTOs/dashboard-data.interface"
@@ -318,6 +318,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets()
   const { user, logout, switchTenant } = useAuth()
   const { dashboardData, loading, refetch } = useDashboard()
+  const { mutate: mutateAll } = useSWRConfig()
 
   const { primaryColor, reload: reloadTheme } = useTenantTheme()
 
@@ -340,6 +341,8 @@ export default function DashboardScreen() {
       await switchTenant(tenantId)
       setCurrentTenantId(tenantId)
       await reloadTheme()
+      // Invalida todos os caches do SWR para forçar refetch em todas as abas
+      await mutateAll(() => true, undefined, { revalidate: true })
       refetch()
     } catch {
       Alert.alert("Erro", "Não foi possível trocar de salão. Tente novamente.")

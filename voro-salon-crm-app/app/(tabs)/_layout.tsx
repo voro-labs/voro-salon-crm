@@ -1,6 +1,8 @@
+import { useEffect } from "react"
+import { AppState } from "react-native"
 import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { API_CONFIG } from "lib/api"
 import { fetcher } from "lib/fetcher"
@@ -26,11 +28,22 @@ const TAB_MODULE_IDS: Record<string, number> = {
 
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
+  const { mutate } = useSWRConfig()
   const { data: modules, isLoading: modulesLoading } = useSWR(
     API_CONFIG.ENDPOINTS.TENANT_MODULES,
     fetcher,
-    { shouldRetryOnError: false }
+    { shouldRetryOnError: false, refreshInterval: 30000 }
   )
+
+  // Revalida módulos ao voltar ao foreground (reflete mudanças feitas pelo app web)
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        mutate(API_CONFIG.ENDPOINTS.TENANT_MODULES)
+      }
+    })
+    return () => subscription.remove()
+  }, [mutate])
 
   function isTabEnabled(name: string): boolean {
     const moduleId = TAB_MODULE_IDS[name]
