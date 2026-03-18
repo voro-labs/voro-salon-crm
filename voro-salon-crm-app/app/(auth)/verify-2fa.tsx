@@ -130,7 +130,7 @@ export default function VerifyTwoFactorScreen() {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView className="flex-1 bg-zinc-50" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
 
           {/* Header card */}
           <View className="bg-white px-8 pt-12 pb-10 rounded-b-[40px] shadow-sm shadow-zinc-200">
@@ -220,10 +220,10 @@ export default function VerifyTwoFactorScreen() {
             <Pressable
               onPress={handleVerify}
               disabled={loading || success || digits.includes("")}
-              className="h-16 rounded-2xl items-center justify-center shadow-lg"
+              className="h-16 rounded-2xl items-center justify-center"
               style={{
-                backgroundColor:
-                  loading || success || digits.includes("") ? primaryColor + "66" : primaryColor,
+                backgroundColor: primaryColor,
+                opacity: loading || success || digits.includes("") ? 0.5 : 1,
               }}
             >
               {loading ? (

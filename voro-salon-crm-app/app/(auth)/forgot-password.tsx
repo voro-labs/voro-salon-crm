@@ -34,7 +34,7 @@ export default function ForgotPasswordScreen() {
     try {
       const res = await apiCall(API_CONFIG.ENDPOINTS.FORGOT_PASSWORD, {
         method: "POST",
-        body: JSON.stringify({ email: email.trim(), redirectUri: "vorosaloncrm://(auth)/reset-password" }),
+        body: JSON.stringify({ email: email.trim(), redirectUri: `${process.env.EXPO_PUBLIC_BASE_URL}/${process.env.EXPO_PUBLIC_API_URL}/auth/reset-password-redirect` }),
       })
       if (res.hasError) { setError(res.message ?? "Erro ao enviar e-mail"); return }
       setSuccess(true)
@@ -46,7 +46,7 @@ export default function ForgotPasswordScreen() {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView className="flex-1 bg-zinc-50" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
           <View className="bg-white px-8 pt-8 pb-10 rounded-b-[40px] shadow-sm shadow-zinc-200">
             <Pressable onPress={() => router.back()} className="h-10 w-10 bg-zinc-50 border border-zinc-100 rounded-xl items-center justify-center mb-6">
               <Ionicons name="chevron-back" size={20} color="#18181b" />
@@ -104,8 +104,8 @@ export default function ForgotPasswordScreen() {
             <Pressable
               onPress={handleForgot}
               disabled={loading || success}
-              className="h-16 rounded-2xl items-center justify-center shadow-lg"
-              style={{ backgroundColor: loading || success ? primaryColor + "99" : primaryColor }}
+              className="h-16 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: primaryColor, opacity: loading || success ? 0.6 : 1 }}
             >
               {loading
                 ? <ActivityIndicator color="white" />

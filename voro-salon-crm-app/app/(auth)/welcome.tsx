@@ -3,11 +3,11 @@ import { View, Text, Pressable, StatusBar } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
-
-const PRIMARY = "#8B4513"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 
 export default function WelcomeScreen() {
   const router = useRouter()
+  const { primaryColor: PRIMARY } = useTenantTheme()
 
   return (
     <SafeAreaView className="flex-1 bg-white">

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using AutoMapper;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -102,7 +103,7 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)), primaryTenant, forgotPasswordDto.RedirectUri);
+            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token)), primaryTenant, forgotPasswordDto.RedirectUri);
         }
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)

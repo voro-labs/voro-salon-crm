@@ -146,6 +146,87 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpGet("reset-password-redirect")]
+        [AllowAnonymous]
+        public IActionResult ResetPasswordRedirect([FromQuery] string email, [FromQuery] string token)
+        {
+            var encodedEmail = Uri.EscapeDataString(email ?? string.Empty);
+            var encodedToken = Uri.EscapeDataString(token ?? string.Empty);
+            var deepLink = $"vorosaloncrm://(auth)/reset-password?email={encodedEmail}&token={encodedToken}";
+
+            var html = @$"""
+                <!DOCTYPE html>
+                <html lang='pt-BR'>
+                <head>
+                  <meta charset='UTF-8' />
+                  <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+                  <title>Redefinir Senha — Voro Salon</title>
+                  <style>
+                    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+                    body {{
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                      background: #fafafa;
+                      min-height: 100vh;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      padding: 24px;
+                    }}
+                    .card {{
+                      background: white;
+                      border-radius: 24px;
+                      padding: 40px 32px;
+                      max-width: 400px;
+                      width: 100%;
+                      text-align: center;
+                      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+                    }}
+                    .icon {{
+                      width: 72px;
+                      height: 72px;
+                      border-radius: 20px;
+                      background: #8B4513;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      margin: 0 auto 20px;
+                    }}
+                    h1 {{ font-size: 22px; font-weight: 900; color: #18181b; margin-bottom: 8px; }}
+                    p {{ font-size: 14px; color: #71717a; line-height: 1.6; margin-bottom: 28px; }}
+                    .btn {{
+                      display: inline-block;
+                      background: #8B4513;
+                      color: white;
+                      font-size: 16px;
+                      font-weight: 800;
+                      padding: 16px 32px;
+                      border-radius: 14px;
+                      text-decoration: none;
+                      width: 100%;
+                    }}
+                    .note {{ font-size: 12px; color: #a1a1aa; margin-top: 20px; }}
+                  </style>
+                </head>
+                <body>
+                  <div class='card'>
+                    <div class='icon'>
+                      <svg width='36' height='36' fill='none' viewBox='0 0 24 24'>
+                        <path d='M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 11a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm0-9a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3z' fill='white'/>
+                      </svg>
+                    </div>
+                    <h1>Redefinir Senha</h1>
+                    <p>Clique no botão abaixo para abrir o app Voro Salon e redefinir sua senha.</p>
+                    <a class='btn' href='{deepLink}'>Abrir no App</a>
+                    <p class='note'>Este link expira em 10 minutos. Certifique-se de que o app está instalado.</p>
+                  </div>
+                  <script>window.location.href = '{deepLink}';</script>
+                </body>
+                </html>
+                """;
+
+            return Content(html, "text/html; charset=utf-8");
+        }
+
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)

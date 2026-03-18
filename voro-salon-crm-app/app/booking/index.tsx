@@ -8,8 +8,10 @@ import { Ionicons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import * as SecureStore from "expo-secure-store"
 import { API_CONFIG } from "lib/api"
+import { useTenantTheme } from "@/contexts/tenant-theme.context"
 
-const PRIMARY = "#8B4513"
+const { primaryColor: PRIMARY } = useTenantTheme()
+
 const KEY_SLUG = "voro_booking_slug"
 const KEY_TENANT_NAME = "voro_booking_tenant_name"
 
@@ -144,7 +146,7 @@ export default function BookingEntryScreen() {
               if (changing) { setChanging(false); setError("") }
               else router.back()
             }}
-            className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100"
+            className="h-9 w-9 rounded-xl items-center justify-center border border-zinc-100"
           >
             <Ionicons name="chevron-back" size={20} color="#18181b" />
           </Pressable>
@@ -168,7 +170,7 @@ export default function BookingEntryScreen() {
               </Text>
 
               {/* Saved salon card */}
-              <View className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 flex-row items-center gap-3 mb-4">
+              <View className="border border-zinc-200 rounded-2xl px-4 py-4 flex-row items-center gap-3 mb-4">
                 <View
                   className="h-10 w-10 rounded-xl items-center justify-center"
                   style={{ backgroundColor: PRIMARY + "18" }}
@@ -221,7 +223,7 @@ export default function BookingEntryScreen() {
                 }
               </Text>
 
-              <View className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 flex-row items-center gap-3 mb-3">
+              <View className="border border-zinc-200 rounded-2xl px-4 py-3 flex-row items-center gap-3 mb-3">
                 <Ionicons name="search-outline" size={20} color="#a1a1aa" />
                 <TextInput
                   className="flex-1 text-zinc-900 font-semibold text-base py-0"
