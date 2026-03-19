@@ -2,7 +2,7 @@ import type { ResponseViewModel } from "types/response.interface"
 import * as SecureStore from "expo-secure-store"
 import { DeviceEventEmitter } from "react-native"
 export const API_CONFIG = {
-  BASE_URL: `${process.env.EXPO_PUBLIC_BASE_URL}/${process.env.EXPO_PUBLIC_API_URL}`,
+  BASE_API_URL: `${process.env.EXPO_PUBLIC_BASE_API_URL}/${process.env.EXPO_PUBLIC_VERSION_API}`,
   ENDPOINTS: {
     SIGNIN: "/auth/sign-in",
     REFRESH_TOKEN: "/auth/refresh-token",
@@ -91,7 +91,7 @@ function onRefreshed(token: string) {
 // Função helper para fazer chamadas à API com ResponseViewModel
 export async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<ResponseViewModel<T>> {
   try {
-    const url = `${API_CONFIG.BASE_URL}${endpoint}`
+    const url = `${API_CONFIG.BASE_API_URL}${endpoint}`
     const token = await getAuthToken()
     const isFormData = options.body instanceof FormData
 
@@ -118,7 +118,7 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
           isRefreshing = true
 
           try {
-            const refreshResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+            const refreshResponse = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ token, refreshToken }),

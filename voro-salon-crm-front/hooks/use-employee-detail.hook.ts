@@ -62,7 +62,7 @@ export function useEmployeeDetail(employeeId?: string) {
     formData.append("file", file)
     try {
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.EMPLOYEES}/${targetId}/photo`,
+        `${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.EMPLOYEES}/${targetId}/photo`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${getAuthToken()}` },

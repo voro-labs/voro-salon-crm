@@ -13,7 +13,7 @@ export function LoadingSimple() {
     >
       <div className="text-center">
         <motion.img
-          src="/icon.png"
+          src="/icon-clean.png"
           alt="Logo"
           className="w-24 h-24 mx-auto object-contain"
           animate={{

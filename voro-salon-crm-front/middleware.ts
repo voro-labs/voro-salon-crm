@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { verifyToken, getTokenFromCookieHeader } from "@/lib/auth"
+
+const TOKEN_COOKIE = "vorolabs_salon_token"
+
+function getTokenFromCookies(cookieHeader: string | null): string | null {
+  if (!cookieHeader) return null
+  const match = cookieHeader.split(";").find((c) => c.trim().startsWith(`${TOKEN_COOKIE}=`))
+  if (!match) return null
+  return match.split("=").slice(1).join("=").trim()
+}
+
+function decodeToken(token: string): { exp?: number; roles?: string } | null {
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"))
+    return payload
+  } catch {
+    return null
+  }
+}
 
 // Rotas que não precisam de autenticação
 const PUBLIC_PATHS = [
@@ -54,7 +73,7 @@ export async function middleware(request: NextRequest) {
 
   if (isProtected) {
     const cookieHeader = request.headers.get("cookie")
-    const token = getTokenFromCookieHeader(cookieHeader)
+    const token = getTokenFromCookies(cookieHeader)
 
     if (!token) {
       if (pathname.startsWith("/api")) {
@@ -63,8 +82,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin/sign-in", request.url))
     }
 
-    const session = await verifyToken(token)
-    if (!session) {
+    const payload = decodeToken(token)
+    if (!payload || (payload.exp && payload.exp * 1000 < Date.now())) {
       if (pathname.startsWith("/api")) {
         return NextResponse.json({ error: "Sessao expirada" }, { status: 401 })
       }
@@ -72,9 +91,7 @@ export async function middleware(request: NextRequest) {
     }
 
     const requestHeaders = new Headers(request.headers)
-    requestHeaders.set("x-user-id", session.userId)
-    requestHeaders.set("x-tenant-id", session.tenantId)
-    requestHeaders.set("x-user-role", session.role)
+    requestHeaders.set("x-user-role", payload.roles ?? "")
 
     return NextResponse.next({ request: { headers: requestHeaders } })
   }

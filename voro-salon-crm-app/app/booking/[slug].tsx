@@ -69,7 +69,7 @@ interface FormState {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function publicFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_CONFIG.BASE_URL}${url}`, {
+  const res = await fetch(`${API_CONFIG.BASE_API_URL}${url}`, {
     ...options,
     headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
   })

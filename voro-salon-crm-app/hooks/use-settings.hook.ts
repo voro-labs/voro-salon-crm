@@ -103,7 +103,7 @@ export function useSettings() {
     try {
       const formData = new FormData()
       formData.append("file", file)
-      const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.TENANT_ME}/logo`, {
+      const response = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.TENANT_ME}/logo`, {
         method: "POST",
         headers: { Authorization: `Bearer ${getAuthToken()}` },
         body: formData,
@@ -151,7 +151,7 @@ export function useSettings() {
       const endpoint =
         type === "clients" ? API_CONFIG.ENDPOINTS.EXPORT_CLIENTS : API_CONFIG.ENDPOINTS.EXPORT_SERVICES
       const token = await getAuthToken()
-      const res = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      const res = await fetch(`${API_CONFIG.BASE_API_URL}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) {
