@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle2, Scissors, Loader2, XCircle } from "lucide-react"
+import { CheckCircle2, Scissors, Loader2, XCircle, SearchX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { API_CONFIG, apiCall } from "@/lib/api"
 
-type Status = "loading" | "success" | "error"
+type Status = "loading" | "success" | "error" | "not_found"
 
 export default function PagarSucessoPage() {
   const searchParams = useSearchParams()
   const preapprovalId = searchParams.get("preapproval_id")
-  const [status, setStatus] = useState<Status>(preapprovalId ? "loading" : "success")
+  const [status, setStatus] = useState<Status>(preapprovalId ? "loading" : "not_found")
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,6 +29,33 @@ export default function PagarSucessoPage() {
       }
     })
   }, [preapprovalId])
+
+  if (status === "not_found") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="h-20 w-20 rounded-3xl bg-muted flex items-center justify-center mx-auto mb-6">
+            <SearchX className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight mb-3">Assinatura não encontrada</h1>
+          <p className="text-muted-foreground text-sm mb-8">
+            Não identificamos uma assinatura associada a este link. Se você acabou de assinar, aguarde alguns instantes e recarregue a página, ou entre em contato conosco:{" "}
+            <a href="mailto:contato@vorolabs.app" className="text-primary hover:underline">
+              contato@vorolabs.app
+            </a>
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild>
+              <Link href="/prices">Ver planos</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/admin/sign-in">Já tenho conta</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (status === "loading") {
     return (
@@ -62,7 +89,10 @@ export default function PagarSucessoPage() {
           )}
           <p className="text-muted-foreground text-sm mb-8">
             Não se preocupe — se o pagamento foi aprovado, nossa equipe ativará sua conta em até 24 horas. Entre em
-            contato se precisar de ajuda: <a href="mailto:contato@vorolabs.app" className="text-primary hover:underline">contato@vorolabs.app</a>
+            contato se precisar de ajuda:{" "}
+            <a href="mailto:contato@vorolabs.app" className="text-primary hover:underline">
+              contato@vorolabs.app
+            </a>
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button variant="outline" asChild>

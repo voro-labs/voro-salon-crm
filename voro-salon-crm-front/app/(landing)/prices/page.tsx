@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   CheckCircle2, Scissors, BarChart3, Users, Calendar, ClipboardList,
@@ -15,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { API_CONFIG, apiCall } from "@/lib/api"
+import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
 import type { SubscriptionPlanDto, CheckoutResultDto } from "@/types/subscription.interface"
 
 // ── Static data ──────────────────────────────────────────────────────────────
@@ -321,6 +322,7 @@ function PlanCard({ plan, popular, onSelect }: PlanCardProps) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PrecosPage() {
+  const router = useRouter()
   const [plans, setPlans] = useState<SubscriptionPlanDto[]>([])
   const [loadingPlans, setLoadingPlans] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanDto | null>(null)
@@ -331,6 +333,10 @@ export default function PrecosPage() {
   const [showTerms, setShowTerms] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [screenshotIdx, setScreenshotIdx] = useState(0)
+
+  useEffect(() => {
+    if (getAuthToken()) router.replace("/dashboard")
+  }, [router])
 
   useState(() => {
     apiCall<SubscriptionPlanDto[]>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_PLANS)

@@ -6,6 +6,7 @@ using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 using Microsoft.Extensions.Logging;
 
 namespace VoroSalonCrm.Application.Services
@@ -16,6 +17,7 @@ namespace VoroSalonCrm.Application.Services
         IMercadoPagoService mercadoPagoService,
         IConfiguration configuration, IHostEnvironment env,
         IAuthService authService,
+        IUnitOfWork unitOfWork,
         ILogger<SubscriptionService> logger) : ISubscriptionService
     {
         private string UrlBase => env.IsDevelopment() ? 
@@ -169,6 +171,8 @@ namespace VoroSalonCrm.Application.Services
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "Falha ao provisionar conta para {Email} após pagamento.", sub.ContactEmail);
+                    // Limpa entidades sujas do tracker para não contaminar saves subsequentes (ex: AuditMiddleware)
+                    unitOfWork.ClearTracker();
                 }
             }
         }

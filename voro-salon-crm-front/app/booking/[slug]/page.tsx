@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar, Smartphone, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { API_CONFIG, apiCall } from "@/lib/api"
+import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
 import { format } from "date-fns"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
@@ -26,6 +26,7 @@ interface ChatMessage {
 
 export default function PublicBookingPage() {
   const { slug } = useParams()
+  const router = useRouter()
   const [step, setStep] = useState<Step>('SERVICE')
   const [tenant, setTenant] = useState<any>(null)
   const [services, setServices] = useState<any[]>([])
@@ -48,6 +49,10 @@ export default function PublicBookingPage() {
   const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [countryCode, setCountryCode] = useState("BR")
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (getAuthToken()) router.replace("/dashboard")
+  }, [router])
 
   // App banner
   const [showAppBanner, setShowAppBanner] = useState(false)
