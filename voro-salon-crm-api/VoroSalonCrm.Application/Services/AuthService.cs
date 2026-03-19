@@ -35,7 +35,7 @@ namespace VoroSalonCrm.Application.Services
         {
             var (user, rolesNames) = await _userService.GetByEmailAndPassword(signInDto.Email, signInDto.Password);
 
-            // Gerar código 2FA e enviar por e-mail
+            // Gerar código 2FA
             var (code, pendingToken) = await _userService.GenerateTwoFactorCodeAsync(user.Id);
 
             var userName = !string.IsNullOrEmpty(user.FirstName)
@@ -45,17 +45,16 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            if (user.TwoFactorEnabled)
+            // Enviar apenas para método de comunicação confirmado
+            if (user.EmailConfirmed)
             {
-                if (user.EmailConfirmed)
-                {
-                    await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
-                }
-                else
-                {
-                    await ConfirmEmailAsync(user.Email!);
-                    throw new UnauthorizedAccessException("E-mail não confirmado. Por favor, confirme seu e-mail antes de fazer login.");
-                }
+                await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+            }
+            // Futuramente: else if (user.PhoneNumberConfirmed) → enviar via SMS
+            else
+            {
+                throw new UnauthorizedAccessException(
+                    "É necessário confirmar seu e-mail para fazer login. Verifique sua caixa de entrada.");
             }
 
             return new AuthDto

@@ -10,7 +10,7 @@ namespace VoroSalonCrm.API.Controllers
     [Route("api/v{version:version}/[controller]")]
     [Tags("Transactions")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Owner,SalonOwner")]
     public class TransactionCategoriesController(ITransactionCategoryService service) : ControllerBase
     {
         private readonly ITransactionCategoryService _service = service;
