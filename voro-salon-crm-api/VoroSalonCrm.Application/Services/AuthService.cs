@@ -199,13 +199,21 @@ namespace VoroSalonCrm.Application.Services
                 var ext = await _userExtensionRepository.GetByIdAsync(user.Id);
                 if (ext == null)
                 {
-                    ext = new UserExtension { UserId = user.Id };
-                    await _userExtensionRepository.AddAsync(ext);
+                    await _userExtensionRepository.AddAsync(new UserExtension
+                    {
+                        UserId = user.Id,
+                        MustChangePassword = true,
+                        IsAutoProvisioned = true,
+                        PasswordChangedAt = DateTime.UtcNow,
+                    });
                 }
-                ext.MustChangePassword = true;
-                ext.IsAutoProvisioned = true;
-                ext.PasswordChangedAt = DateTime.UtcNow;
-                _userExtensionRepository.Update(ext);
+                else
+                {
+                    ext.MustChangePassword = true;
+                    ext.IsAutoProvisioned = true;
+                    ext.PasswordChangedAt = DateTime.UtcNow;
+                    _userExtensionRepository.Update(ext);
+                }
             }
             else
             {
