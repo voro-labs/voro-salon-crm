@@ -19,5 +19,9 @@ namespace VoroSalonCrm.Domain.Entities
 
         // Password policy
         public DateTime? PasswordChangedAt { get; set; }
+        public bool MustChangePassword { get; set; } = false;
+
+        // Terms of service
+        public DateTime? TermsAcceptedAt { get; set; }
     }
 }

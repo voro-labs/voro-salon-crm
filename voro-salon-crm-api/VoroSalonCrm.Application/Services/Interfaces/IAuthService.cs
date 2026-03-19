@@ -26,5 +26,9 @@ namespace VoroSalonCrm.Application.Services.Interfaces
 
         // Troca de Tenant
         Task<AuthDto> SwitchTenantAsync(Guid tenantId);
+
+        // Pós-login obrigatórios
+        Task ChangePasswordAsync(Guid userId, string newPassword);
+        Task AcceptTermsAsync(Guid userId);
     }
 }

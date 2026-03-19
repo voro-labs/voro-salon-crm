@@ -18,5 +18,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces.Identity
         Task<User?> GetByIdAsync(Guid id);
         Task<(string code, string pendingToken)> GenerateTwoFactorCodeAsync(Guid userId);
         Task<(User user, IList<string> roles)> VerifyTwoFactorAsync(string pendingToken, string code);
+        Task ChangePasswordAsync(Guid userId, string newPassword);
+        Task AcceptTermsAsync(Guid userId);
     }
 }

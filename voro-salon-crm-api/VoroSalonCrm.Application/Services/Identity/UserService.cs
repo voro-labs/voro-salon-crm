@@ -76,19 +76,6 @@ namespace VoroSalonCrm.Application.Services.Identity
                 throw new UnauthorizedAccessException($"Senha incorreta.{hint}");
             }
 
-            // Verificar expiração da senha
-            if (PasswordExpirationDays > 0)
-            {
-                var ext = await userExtensionRepository.GetByIdAsync(user.Id);
-                if (ext?.PasswordChangedAt != null)
-                {
-                    var expiredAt = ext.PasswordChangedAt.Value.AddDays(PasswordExpirationDays);
-                    if (DateTime.UtcNow > expiredAt)
-                        throw new UnauthorizedAccessException(
-                            "Sua senha expirou. Por favor, redefina sua senha para continuar acessando.");
-                }
-            }
-
             var rolesNames = await userManager.GetRolesAsync(user);
 
             return (user, rolesNames);
@@ -289,6 +276,54 @@ namespace VoroSalonCrm.Application.Services.Identity
                     .ThenInclude(ut => ut.Tenant)
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+        }
+
+        // ── Troca de senha autenticada ────────────────────────────────────────
+
+        public async Task ChangePasswordAsync(Guid userId, string newPassword)
+        {
+            var user = await GetByIdAsync(userId)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            await EnsurePasswordNotReusedAsync(user, newPassword);
+
+            var token = await userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await userManager.ResetPasswordAsync(user, token, newPassword);
+
+            if (!result.Succeeded)
+            {
+                var error = result.Errors.FirstOrDefault();
+                throw new InvalidOperationException(error?.Description ?? "Não foi possível alterar a senha.");
+            }
+
+            // Recarregar para obter o novo hash
+            var refreshed = await GetByIdAsync(userId) ?? user;
+            await AddToPasswordHistoryAsync(refreshed.Id, refreshed.PasswordHash ?? string.Empty);
+
+            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            if (ext != null)
+            {
+                ext.PasswordChangedAt = DateTime.UtcNow;
+                ext.MustChangePassword = false;
+                userExtensionRepository.Update(ext);
+                await unitOfWork.SaveChangesAsync();
+            }
+        }
+
+        // ── Aceite de termos ──────────────────────────────────────────────────
+
+        public async Task AcceptTermsAsync(Guid userId)
+        {
+            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            if (ext == null)
+            {
+                ext = new UserExtension { UserId = userId };
+                await userExtensionRepository.AddAsync(ext);
+            }
+
+            ext.TermsAcceptedAt = DateTime.UtcNow;
+            userExtensionRepository.Update(ext);
+            await unitOfWork.SaveChangesAsync();
         }
 
         // ── Helpers privados ──────────────────────────────────────────────────

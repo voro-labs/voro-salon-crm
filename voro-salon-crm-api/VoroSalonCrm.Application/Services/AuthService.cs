@@ -124,6 +124,12 @@ namespace VoroSalonCrm.Application.Services
             return reseted;
         }
 
+        public async Task ChangePasswordAsync(Guid userId, string newPassword)
+            => await _userService.ChangePasswordAsync(userId, newPassword);
+
+        public async Task AcceptTermsAsync(Guid userId)
+            => await _userService.AcceptTermsAsync(userId);
+
         public async Task<AuthDto> SwitchTenantAsync(Guid tenantId)
         {
             var userId = _currentUser.UserId;
@@ -237,6 +243,29 @@ namespace VoroSalonCrm.Application.Services
                                 ?? user.UserTenants?.FirstOrDefault()?.TenantId
                                 ?? Guid.Empty;
 
+            // Verificar flags pós-login (senha expirada, troca obrigatória, termos)
+            var userExt = await _userExtensionRepository.GetByIdAsync(user.Id);
+            var requiresPasswordChange = false;
+            var requiresTermsAcceptance = false;
+
+            if (userExt != null)
+            {
+                requiresPasswordChange = userExt.MustChangePassword;
+
+                if (!requiresPasswordChange)
+                {
+                    var expirationDays = configuration.GetValue<int>("PasswordPolicy:ExpirationDays", 90);
+                    if (expirationDays > 0 && userExt.PasswordChangedAt.HasValue)
+                    {
+                        var expiredAt = userExt.PasswordChangedAt.Value.AddDays(expirationDays);
+                        if (DateTime.UtcNow > expiredAt)
+                            requiresPasswordChange = true;
+                    }
+                }
+
+                requiresTermsAcceptance = !userExt.TermsAcceptedAt.HasValue;
+            }
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.Get<ConfigUtil>()?.JwtKey!));
 
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -293,7 +322,9 @@ namespace VoroSalonCrm.Application.Services
                 FirstName = $"{user.FirstName}".ToLower(),
                 LastName = $"{user.LastName}".ToLower(),
                 Token = jwt,
-                RefreshToken = refreshToken
+                RefreshToken = refreshToken,
+                RequiresPasswordChange = requiresPasswordChange,
+                RequiresTermsAcceptance = requiresTermsAcceptance
             };
         }
     }

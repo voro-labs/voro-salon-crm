@@ -125,7 +125,14 @@ export default function VerifyTwoFactorPage() {
         }
       }).catch(() => { })
 
-      router.replace("/")
+      // Verificar requisitos pós-login
+      if (response.data.requiresPasswordChange) {
+        router.replace("/admin/change-password")
+      } else if (response.data.requiresTermsAcceptance) {
+        router.replace("/admin/terms")
+      } else {
+        router.replace("/")
+      }
     } catch {
       setError("Erro inesperado. Tente novamente.")
     } finally {

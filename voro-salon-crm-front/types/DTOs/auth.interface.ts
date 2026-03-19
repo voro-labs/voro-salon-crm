@@ -12,4 +12,6 @@ export interface AuthDto {
   tenants?: { id: string, name: string, slug: string, logoUrl?: string }[];
   requiresTwoFactor?: boolean;
   twoFactorPendingToken?: string;
+  requiresPasswordChange?: boolean;
+  requiresTermsAcceptance?: boolean;
 }

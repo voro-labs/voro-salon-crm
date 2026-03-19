@@ -19,6 +19,10 @@ namespace VoroSalonCrm.Application.DTOs
         public bool RequiresTwoFactor { get; set; }
         public string? TwoFactorPendingToken { get; set; }
 
+        // Post-login requirements
+        public bool RequiresPasswordChange { get; set; }
+        public bool RequiresTermsAcceptance { get; set; }
+
         public AuthDto() { }
 
         public AuthDto(string email, string token)
