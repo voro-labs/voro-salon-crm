@@ -35,11 +35,6 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
-            services.AddHttpClient("mercadopago", client =>
-            {
-                client.Timeout = TimeSpan.FromSeconds(30);
-            });
-
             services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
