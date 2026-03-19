@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import {
   View, Text, ScrollView, RefreshControl, Pressable,
-  ActivityIndicator, Modal, Alert,
+  ActivityIndicator, Modal, Alert, Share,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -356,6 +356,31 @@ export default function DashboardScreen() {
     fetcher
   )
 
+  const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
+  const { data: modules } = useSWR<any[]>(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
+
+  const isSchedulingEnabled = !modules || modules.find((m: any) => m.module === 2)?.isEnabled !== false
+  const bookingUrl = tenant?.slug
+    ? `${process.env.EXPO_PUBLIC_WEB_URL}/booking/${tenant.slug}`
+    : null
+
+  const [sharingLink, setSharingLink] = useState(false)
+
+  async function handleShareBookingLink() {
+    if (!bookingUrl) return
+    setSharingLink(true)
+    try {
+      await Share.share({
+        message: bookingUrl,
+        title: "Link de Agendamento",
+      })
+    } catch {
+      // user cancelled share
+    } finally {
+      setSharingLink(false)
+    }
+  }
+
   const todayAppointments = (appointments ?? [])
     .filter((a: any) => isToday(a.scheduledDateTime ?? a.date))
     .sort((a: any, b: any) => {
@@ -489,6 +514,39 @@ export default function DashboardScreen() {
                   ))
                 )}
               </View>
+
+              {/* ── Booking Link ── */}
+              {isSchedulingEnabled && bookingUrl && (
+                <View className="bg-white rounded-3xl p-4 mt-2 border border-zinc-100">
+                  <View className="flex-row items-center gap-3 mb-3">
+                    <View className="h-9 w-9 rounded-xl items-center justify-center" style={{ backgroundColor: primaryColor + "18" }}>
+                      <Ionicons name="link-outline" size={18} color={primaryColor} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-black text-zinc-900">Link de Agendamento</Text>
+                      <Text className="text-xs text-zinc-400 font-semibold">Compartilhe com seus clientes</Text>
+                    </View>
+                  </View>
+
+                  <View className="bg-zinc-50 rounded-2xl px-3 py-2.5 mb-3">
+                    <Text className="text-xs text-zinc-500 font-mono" numberOfLines={1} ellipsizeMode="tail">
+                      {bookingUrl}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    onPress={handleShareBookingLink}
+                    disabled={sharingLink}
+                    className="flex-row items-center justify-center gap-2 rounded-2xl py-3 border"
+                    style={{ backgroundColor: primaryColor + "12", borderColor: primaryColor + "30" }}
+                  >
+                    <Ionicons name="share-social-outline" size={18} color={primaryColor} />
+                    <Text className="text-sm font-bold" style={{ color: primaryColor }}>
+                      {sharingLink ? "Compartilhando..." : "Compartilhar Link"}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
 
               {/* ── Top Clients ── */}
               {topClients.length > 0 && (

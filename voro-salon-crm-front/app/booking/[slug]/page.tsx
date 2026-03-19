@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar } from "lucide-react"
+import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar, Smartphone, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -48,6 +48,28 @@ export default function PublicBookingPage() {
   const [loadingAvailability, setLoadingAvailability] = useState(false)
   const [countryCode, setCountryCode] = useState("BR")
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // App banner
+  const [showAppBanner, setShowAppBanner] = useState(false)
+  const [showStoreLinks, setShowStoreLinks] = useState(false)
+  const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent)
+  const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    const dismissed = sessionStorage.getItem("voro_app_banner_dismissed")
+    if (isMobile && !dismissed) setShowAppBanner(true)
+  }, [])
+
+  function handleDismissBanner() {
+    setShowAppBanner(false)
+    sessionStorage.setItem("voro_app_banner_dismissed", "1")
+  }
+
+  function handleOpenApp() {
+    window.location.href = `vorosaloncrm://booking/${slug}`
+    setTimeout(() => setShowStoreLinks(true), 1500)
+  }
 
   useEffect(() => {
     async function init() {
@@ -300,8 +322,69 @@ export default function PublicBookingPage() {
     )
   }
 
+  const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.vorolabs.vorosaloncrm"
+  const APP_STORE_URL = "https://apps.apple.com/app/voro-salon-crm/id6738218040"
+
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">
+      {/* Mobile App Banner */}
+      {showAppBanner && (
+        <div className="bg-background border-b border-border/60 shadow-sm">
+          <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Smartphone className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground leading-tight">Voro Salon CRM</p>
+              <p className="text-xs text-muted-foreground">Agende mais rápido pelo app</p>
+            </div>
+            {!showStoreLinks ? (
+              <button
+                onClick={handleOpenApp}
+                className="shrink-0 bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-lg"
+              >
+                Abrir no app
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 shrink-0">
+                {isAndroid && (
+                  <a
+                    href={PLAY_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-primary underline underline-offset-2"
+                  >
+                    Play Store
+                  </a>
+                )}
+                {isIOS && (
+                  <a
+                    href={APP_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-primary underline underline-offset-2"
+                  >
+                    App Store
+                  </a>
+                )}
+                {!isAndroid && !isIOS && (
+                  <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary underline underline-offset-2">
+                    Download
+                  </a>
+                )}
+              </div>
+            )}
+            <button
+              onClick={handleDismissBanner}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors ml-1"
+              aria-label="Fechar banner"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-4 bg-background px-6 py-4 shadow-sm border-b">
         {tenant.logoUrl ? (
