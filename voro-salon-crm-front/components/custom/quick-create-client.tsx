@@ -122,8 +122,8 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="quick-client-phone">Telefone *</Label>
-                <div className="flex flex-col xs:flex-row gap-2">
-                  <div className="w-full xs:w-[120px] shrink-0">
+                <div className="flex flex-row gap-2">
+                  <div className="shrink-0">
                     <CountrySelector
                       value={countryCode}
                       onChange={setCountryCode}
@@ -182,7 +182,7 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
           </div>
 
           <div className="p-6 pt-4 border-t bg-muted/5 mt-auto">
-            <div className="flex flex-col-reverse xs:flex-row justify-end gap-2">
+            <div className="flex flex-row justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-10 px-6">
                 Cancelar
               </Button>

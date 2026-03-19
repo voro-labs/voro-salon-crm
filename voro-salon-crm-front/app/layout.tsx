@@ -11,7 +11,7 @@ import { TenantThemeProvider } from "@/contexts/tenant-theme.context"
 const _geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Salon CRM - Gerenciamento de Clientes',
+  title: 'Voro Salon CRM - Gerenciamento de Clientes',
   description: 'Sistema de gerenciamento de clientes e servicos para saloes de beleza',
   keywords: [
     "sistema para salão de beleza",

@@ -45,7 +45,7 @@ export function Loading({ isLoading, onLoadingComplete }: LoadingProps) {
               transition={{ duration: 0.5 }}
             >
               <motion.img
-                src="/icon.png"
+                src="/icon-clean.png"
                 alt="Logo"
                 className="w-24 h-24 mx-auto object-contain"
                 animate={{

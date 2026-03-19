@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!refreshToken) return false
     const expiredToken = await getAuthToken()
     try {
-      const res = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+      const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: expiredToken ?? "", refreshToken }),

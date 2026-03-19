@@ -9,7 +9,7 @@ namespace VoroSalonCrm.API.Controllers
     [Route("api/v{version:version}/[controller]")]
     [Tags("Transactions")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Owner,SalonOwner")]
     public class TransactionsController(ITransactionService service) : ControllerBase
     {
         private readonly ITransactionService _service = service;

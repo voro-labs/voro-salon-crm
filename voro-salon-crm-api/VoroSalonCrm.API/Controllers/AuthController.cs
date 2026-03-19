@@ -274,6 +274,71 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword(
+            [FromBody] ChangePasswordDto dto,
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.ChangePasswordAsync(currentUserService.UserId, dto.NewPassword);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Senha alterada com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        [HttpPost("accept-terms")]
+        [Authorize]
+        public async Task<IActionResult> AcceptTerms(
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.AcceptTermsAsync(currentUserService.UserId);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Termos aceitos com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        [HttpPost("complete-profile")]
+        [Authorize]
+        public async Task<IActionResult> CompleteProfile(
+            [FromBody] CompleteProfileDto dto,
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.CompleteProfileAsync(currentUserService.UserId, dto);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Perfil completado com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
         [HttpPost("switch-tenant/{tenantId:guid}")]
         [Authorize]
         public async Task<IActionResult> SwitchTenant(Guid tenantId)

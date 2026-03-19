@@ -46,6 +46,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPatch("me")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> UpdateCurrentTenant([FromBody] UpdateTenantDto dto)
         {
             try
@@ -69,6 +70,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost("me/logo")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> UpdateMyLogo([FromForm] IFormFile file)
         {
             try
@@ -107,6 +109,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPatch("me/modules/{module}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> UpdateModule(AppModule module, [FromBody] UpdateTenantModuleDto dto)
         {
             try
@@ -121,6 +124,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Owner")]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -140,6 +144,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet("{id:guid}")]
+        [Authorize(Roles = "Owner")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             try
@@ -161,6 +166,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Owner")]
         public async Task<IActionResult> Create([FromBody] CreateTenantDto dto)
         {
             try
@@ -180,6 +186,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [Authorize(Roles = "Owner")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateTenantDto dto)
         {
             try
@@ -199,6 +206,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "Owner")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             try

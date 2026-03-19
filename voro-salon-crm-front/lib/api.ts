@@ -2,7 +2,7 @@ import type { ResponseViewModel } from "@/types/response.interface"
 
 // Configurações centralizadas da API
 export const API_CONFIG = {
-  BASE_URL: `${process.env.NEXT_PUBLIC_BASE_URL}/${process.env.NEXT_PUBLIC_API_URL}`,
+  BASE_API_URL: `${process.env.NEXT_PUBLIC_BASE_API_URL}/${process.env.NEXT_PUBLIC_VERSION_API}`,
   ENDPOINTS: {
     SIGNIN: "/auth/sign-in",
     REFRESH_TOKEN: "/auth/refresh-token",
@@ -12,6 +12,9 @@ export const API_CONFIG = {
     RESET_PASSWORD: "/auth/reset-password",
     FORGOT_PASSWORD: "/auth/forgot-password",
     SWITCH_TENANT: "/auth/switch-tenant",
+    CHANGE_PASSWORD: "/auth/change-password",
+    ACCEPT_TERMS: "/auth/accept-terms",
+    COMPLETE_PROFILE: "/auth/complete-profile",
     DASHBOARD: "/dashboard/metrics",
     ME: "/auth/me",
     TENANT: "/tenant",
@@ -60,6 +63,8 @@ export function getAuthToken(): string | null {
 export function removeAuthToken(): void {
   if (typeof window !== "undefined") {
     localStorage.removeItem("vorolabs_salon_token")
+    // Remove também o cookie usado pelo middleware
+    document.cookie = "vorolabs_salon_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax"
   }
 }
 
@@ -67,6 +72,15 @@ export function removeAuthToken(): void {
 export function setAuthToken(token: string): void {
   if (typeof window !== "undefined") {
     localStorage.setItem("vorolabs_salon_token", token)
+    // Seta também como cookie para o middleware conseguir verificar
+    try {
+      const parts = token.split(".")
+      const payload = JSON.parse(atob(parts[1]))
+      const expires = payload.exp ? new Date(payload.exp * 1000).toUTCString() : ""
+      document.cookie = `vorolabs_salon_token=${token}; path=/; expires=${expires}; SameSite=Lax`
+    } catch {
+      document.cookie = `vorolabs_salon_token=${token}; path=/; SameSite=Lax`
+    }
   }
 }
 
@@ -106,7 +120,7 @@ function onRefreshed(token: string) {
 // Função helper para fazer chamadas à API com ResponseViewModel
 export async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<ResponseViewModel<T>> {
   try {
-    const url = `${API_CONFIG.BASE_URL}${endpoint}`
+    const url = `${API_CONFIG.BASE_API_URL}${endpoint}`
     const token = getAuthToken()
     const isFormData = options.body instanceof FormData
 
@@ -129,7 +143,7 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
           isRefreshing = true
 
           try {
-            const refreshResponse = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+            const refreshResponse = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ token, refreshToken }),

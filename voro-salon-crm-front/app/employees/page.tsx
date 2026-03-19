@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
 import { Plus, Search, UserCircle, Phone, Calendar, Star, Loader2 } from "lucide-react"
@@ -12,6 +13,8 @@ import { Badge } from "@/components/ui/badge"
 import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { fetcher } from "@/lib/fetcher"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
+import { PlanLimitModal } from "@/components/ui/custom/plan-limit-modal"
 
 function AuthenticatedImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -78,9 +81,12 @@ function AuthenticatedImage({ src, alt, className }: { src: string, alt: string,
 }
 
 export default function EmployeesPage() {
+  const router = useRouter()
   const [search, setSearch] = useState("")
+  const [showLimitModal, setShowLimitModal] = useState(false)
   const { data: employees, isLoading } = useSWR(API_CONFIG.ENDPOINTS.EMPLOYEES, fetcher)
   const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { maxEmployees } = usePlanLimits()
 
   const filtered = useCallback(() => {
     if (!employees) return []
@@ -96,18 +102,41 @@ export default function EmployeesPage() {
     return services?.find((s: any) => s.id === id)?.name || "Serviço"
   }
 
+  const currentCount = employees?.length ?? 0
+  const isAtLimit = maxEmployees !== -1 && currentCount >= maxEmployees
+
+  const handleNewEmployee = () => {
+    if (isAtLimit) {
+      setShowLimitModal(true)
+    } else {
+      router.push("/employees/new")
+    }
+  }
+
   return (
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
+      {showLimitModal && (
+        <PlanLimitModal
+          type="funcionários"
+          limit={maxEmployees}
+          onClose={() => setShowLimitModal(false)}
+        />
+      )}
       <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Funcionários</h1>
-          <Button asChild size="sm">
-            <Link href="/employees/new">
+          <div className="flex items-center gap-2">
+            {maxEmployees !== -1 && (
+              <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
+                {currentCount}/{maxEmployees}
+              </span>
+            )}
+            <Button size="sm" onClick={handleNewEmployee}>
               <Plus className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">Novo Funcionário</span>
               <span className="sm:hidden">Novo</span>
-            </Link>
-          </Button>
+            </Button>
+          </div>
         </div>
 
         <div className="relative">

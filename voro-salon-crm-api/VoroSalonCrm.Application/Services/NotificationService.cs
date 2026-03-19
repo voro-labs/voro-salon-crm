@@ -104,20 +104,47 @@ namespace VoroSalonCrm.Application.Services
             await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
         }
 
+        public async Task SendAccountCreatedAsync(string email, string userName, string tempPassword, string loginUrl, Tenant? tenant = null)
+        {
+            var template = await _notificationRepository
+                .Query(n => n.Name == NotificationEnum.AccountCreated.AsText() && n.IsActive).FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("Template de e-mail de conta criada não encontrado.");
+
+            var subject = template.Subject
+                .Replace("{UserName}", userName);
+
+            var body = template.Body
+                .Replace("{UserName}", userName)
+                .Replace("{TemporaryPassword}", tempPassword)
+                .Replace("{LoginUrl}", loginUrl);
+
+            body = ApplyTenantPlaceholders(body, tenant);
+            subject = ApplyTenantPlaceholders(subject, tenant);
+
+            await _emailService.SendAsync(email, subject, body, template.Cc, template.Bcc);
+        }
+
         // ── Substitui todos os placeholders relacionados ao tenant ──────────────
 
         private static string ApplyTenantPlaceholders(string text, Tenant? tenant)
         {
             if (tenant == null) return text;
 
-            return text
-                .Replace("{TenantName}",         tenant.Name)
-                .Replace("{TenantSlug}",          tenant.Slug)
-                .Replace("{TenantEmail}",         tenant.ContactEmail ?? string.Empty)
-                .Replace("{TenantPhone}",         tenant.ContactPhone ?? string.Empty)
-                .Replace("{TenantLogoUrl}",       tenant.LogoUrl ?? string.Empty)
-                .Replace("{TenantPrimaryColor}",  tenant.PrimaryColor)
+            var result = text
+                .Replace("{TenantName}",          tenant.Name)
+                .Replace("{TenantSlug}",           tenant.Slug)
+                .Replace("{TenantEmail}",          tenant.ContactEmail ?? string.Empty)
+                .Replace("{TenantPhone}",          tenant.ContactPhone ?? string.Empty)
+                .Replace("{TenantLogoUrl}",        tenant.LogoUrl ?? string.Empty)
+                .Replace("{TenantPrimaryColor}",   tenant.PrimaryColor)
                 .Replace("{TenantSecondaryColor}", tenant.SecondaryColor);
+
+            // Remove tags <img> com src vazio quando o tenant não tem logo configurada
+            if (string.IsNullOrEmpty(tenant.LogoUrl))
+                result = System.Text.RegularExpressions.Regex.Replace(
+                    result, @"<img\b[^>]*\bsrc=''[^>]*/?>", string.Empty);
+
+            return result;
         }
     }
 }

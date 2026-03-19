@@ -1300,13 +1300,25 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsAutoProvisioned")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("PasswordChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ProfileCompletedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RefreshToken")
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("RefreshTokenExpiryTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("TermsAcceptedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("TwoFactorCode")

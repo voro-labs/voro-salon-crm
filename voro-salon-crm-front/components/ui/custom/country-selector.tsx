@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { ChevronDown } from "lucide-react"
 import { CountryDto } from "@/types/DTOs/country.interface"
 import { flags } from "@/lib/flag-utils"
 
@@ -10,15 +11,14 @@ interface CountrySelectorProps {
 }
 
 export function CountrySelector({ value, onChange }: CountrySelectorProps) {
-  
-const [countries, setCountries] = useState<CountryDto[]>(
-  Object.entries(flags).map(([code, { name, flagUrl, dialCode }]) => ({
+  const [countries] = useState<CountryDto[]>(
+    Object.entries(flags).map(([code, { name, flagUrl, dialCode }]) => ({
       code,
       name,
       flagUrl,
       dialCode,
     }))
-  );
+  )
 
   const [selectedCountry, setSelectedCountry] = useState<CountryDto | null>(null)
 
@@ -40,20 +40,28 @@ const [countries, setCountries] = useState<CountryDto[]>(
       <select
         value={value}
         onChange={(e) => handleCountryChange(e.target.value)}
-        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+        aria-label="Selecionar país"
       >
         {countries.map((country) => (
           <option key={country.code} value={country.code}>
-            {country.name}
+            {country.name} ({country.dialCode})
           </option>
         ))}
       </select>
 
-      <div className="flex items-center gap-2 px-3 py-2 shadow-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring">
-        {selectedCountry && (
-          <img src={selectedCountry.flagUrl || "/placeholder.svg"} alt="Bandeira" className="w-6 h-4 object-cover" />
+      <div className="flex items-center gap-1.5 px-3 py-2 h-10 shadow-sm border border-input rounded-lg bg-background min-w-[90px]">
+        {selectedCountry?.flagUrl && (
+          <img
+            src={selectedCountry.flagUrl}
+            alt={selectedCountry.name}
+            className="w-5 h-3.5 object-cover shrink-0 rounded-sm"
+          />
         )}
-        <span className="text-sm">{selectedCountry ? selectedCountry.name : "Selecione um país"}</span>
+        <span className="text-sm font-medium text-foreground">
+          {selectedCountry?.dialCode ?? "+?"}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-auto" />
       </div>
     </div>
   )

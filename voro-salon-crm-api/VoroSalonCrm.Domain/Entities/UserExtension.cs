@@ -19,5 +19,13 @@ namespace VoroSalonCrm.Domain.Entities
 
         // Password policy
         public DateTime? PasswordChangedAt { get; set; }
+        public bool MustChangePassword { get; set; } = false;
+
+        // Terms of service
+        public DateTime? TermsAcceptedAt { get; set; }
+
+        // Onboarding: conta criada automaticamente via pagamento
+        public bool IsAutoProvisioned { get; set; } = false;
+        public DateTime? ProfileCompletedAt { get; set; }
     }
 }

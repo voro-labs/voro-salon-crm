@@ -6,6 +6,7 @@ using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace VoroSalonCrm.Application.Services
 {
@@ -13,7 +14,9 @@ namespace VoroSalonCrm.Application.Services
         ISubscriptionPlanRepository planRepository,
         ITenantSubscriptionRepository subscriptionRepository,
         IMercadoPagoService mercadoPagoService,
-        IConfiguration configuration, IHostEnvironment env) : ISubscriptionService
+        IConfiguration configuration, IHostEnvironment env,
+        IAuthService authService,
+        ILogger<SubscriptionService> logger) : ISubscriptionService
     {
         private string UrlBase => env.IsDevelopment() ? 
             $"{configuration
@@ -147,6 +150,27 @@ namespace VoroSalonCrm.Application.Services
 
             subscriptionRepository.Update(sub);
             await subscriptionRepository.SaveChangesAsync();
+
+            // Provisionar conta automaticamente no primeiro pagamento confirmado
+            if (details.Status == "authorized" && sub.TenantId == null && !string.IsNullOrWhiteSpace(sub.ContactEmail))
+            {
+                try
+                {
+                    var tenantId = await authService.ProvisionAccountFromSubscriptionAsync(
+                        sub.ContactEmail,
+                        sub.ContactName ?? sub.ContactEmail,
+                        sub.SalonName ?? sub.ContactEmail);
+
+                    sub.TenantId = tenantId;
+                    sub.UpdatedAt = DateTimeOffset.UtcNow;
+                    subscriptionRepository.Update(sub);
+                    await subscriptionRepository.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Falha ao provisionar conta para {Email} após pagamento.", sub.ContactEmail);
+                }
+            }
         }
 
         // ── Mappers ────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ namespace VoroSalonCrm.API.Controllers
     [Route("api/v{version:version}/[controller]")]
     [Tags("CRM")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Owner,SalonOwner")]
     public class EmployeeController(IEmployeeService service) : ControllerBase
     {
         private readonly IEmployeeService _service = service;

@@ -58,7 +58,7 @@ export default function BookingEntryScreen() {
     setError("")
     try {
       const res = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`
+        `${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`
       )
       if (!res.ok) {
         setError("Salão não encontrado. Verifique o código informado.")
@@ -99,7 +99,7 @@ export default function BookingEntryScreen() {
     setError("")
     try {
       const res = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`
+        `${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`
       )
       if (!res.ok) {
         setError("Salão não encontrado. Verifique o código informado.")

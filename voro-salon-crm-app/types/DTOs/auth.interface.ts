@@ -13,4 +13,7 @@ export interface AuthDto {
   currentTenantId?: string;
   requiresTwoFactor?: boolean;
   twoFactorPendingToken?: string;
+  requiresPasswordChange?: boolean;
+  requiresTermsAcceptance?: boolean;
+  requiresProfileCompletion?: boolean;
 }

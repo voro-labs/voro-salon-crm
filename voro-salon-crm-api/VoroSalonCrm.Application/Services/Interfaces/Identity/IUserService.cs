@@ -1,4 +1,5 @@
 ﻿using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Application.DTOs.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Base;
 using VoroSalonCrm.Domain.Entities.Identity;
@@ -18,5 +19,9 @@ namespace VoroSalonCrm.Application.Services.Interfaces.Identity
         Task<User?> GetByIdAsync(Guid id);
         Task<(string code, string pendingToken)> GenerateTwoFactorCodeAsync(Guid userId);
         Task<(User user, IList<string> roles)> VerifyTwoFactorAsync(string pendingToken, string code);
+        Task ChangePasswordAsync(Guid userId, string newPassword);
+        Task AcceptTermsAsync(Guid userId);
+        Task<User?> FindByEmailAsync(string email);
+        Task CompleteProfileAsync(Guid userId, CompleteProfileDto dto);
     }
 }

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { API_CONFIG, apiCall } from "@/lib/api"
@@ -326,6 +327,8 @@ export default function PrecosPage() {
   const [form, setForm] = useState({ name: "", email: "", salonName: "" })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [screenshotIdx, setScreenshotIdx] = useState(0)
 
@@ -339,6 +342,10 @@ export default function PrecosPage() {
     if (!selectedPlan) return
     if (!form.name || !form.email || !form.salonName) {
       setError("Preencha todos os campos.")
+      return
+    }
+    if (!termsAccepted) {
+      setError("Você precisa aceitar os termos de uso para continuar.")
       return
     }
     setSubmitting(true)
@@ -610,12 +617,12 @@ export default function PrecosPage() {
         </div>
         <div className="flex gap-4">
           <Link href="/admin/sign-in" className="hover:text-foreground transition-colors">Entrar</Link>
-          <a href="mailto:voro@vorolabs.app" className="hover:text-foreground transition-colors">Contato</a>
+          <a href="mailto:contato@vorolabs.app" className="hover:text-foreground transition-colors">Contato</a>
         </div>
       </footer>
 
       {/* ── Checkout Dialog ── */}
-      <Dialog open={!!selectedPlan} onOpenChange={(o) => { if (!o) setSelectedPlan(null) }}>
+      <Dialog open={!!selectedPlan} onOpenChange={(o) => { if (!o) { setSelectedPlan(null); setTermsAccepted(false); setError(null) } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Assinar plano {selectedPlan?.name}</DialogTitle>
@@ -651,12 +658,108 @@ export default function PrecosPage() {
               />
             </div>
 
+            <div className="flex items-start gap-2.5 pt-1">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={(v) => setTermsAccepted(!!v)}
+              />
+              <label htmlFor="terms" className="text-sm text-muted-foreground leading-snug cursor-pointer select-none">
+                Li e aceito os{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="text-primary font-medium hover:underline"
+                >
+                  termos de uso
+                </button>
+              </label>
+            </div>
+
             {error && <p className="text-sm text-destructive font-medium">{error}</p>}
 
-            <Button onClick={handleCheckout} disabled={submitting} className="w-full mt-1">
+            <Button onClick={handleCheckout} disabled={submitting || !termsAccepted} className="w-full mt-1">
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Ir para pagamento
               <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Terms Dialog ── */}
+      <Dialog open={showTerms} onOpenChange={setShowTerms}>
+        <DialogContent className="max-w-2xl flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Termos de Uso — Voro Salon CRM</DialogTitle>
+            <DialogDescription>Última atualização: março de 2025</DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto max-h-[55vh] pr-2 mt-2">
+            <div className="text-sm text-muted-foreground space-y-5 leading-relaxed">
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">1. Aceitação dos Termos</h3>
+                <p>Ao assinar um plano e utilizar o Voro Salon CRM, você concorda com estes Termos de Uso. Caso não concorde com qualquer disposição, não utilize o serviço.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">2. Descrição do Serviço</h3>
+                <p>O Voro Salon CRM é uma plataforma SaaS de gestão para salões de beleza, oferecendo funcionalidades de agendamento, cadastro de clientes, controle de serviços, gestão financeira e relatórios, conforme o plano contratado.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">3. Cadastro e Conta</h3>
+                <p>Você é responsável por manter a confidencialidade de suas credenciais de acesso. Compromete-se a fornecer informações verdadeiras, precisas e atualizadas no momento do cadastro. A Vorolabs reserva-se o direito de suspender contas com informações falsas.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">4. Pagamento e Assinatura</h3>
+                <p>O pagamento é realizado mensalmente de forma recorrente via MercadoPago. Os valores podem ser atualizados mediante aviso prévio de 30 dias. O não pagamento pode resultar na suspensão do acesso à plataforma.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">5. Cancelamento</h3>
+                <p>Você pode cancelar sua assinatura a qualquer momento sem multa. O acesso permanece ativo até o fim do período já pago. Não há reembolso proporcional de períodos não utilizados.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">6. Propriedade dos Dados</h3>
+                <p>Todos os dados inseridos na plataforma (clientes, agendamentos, financeiro) pertencem a você. A Vorolabs não compartilha nem comercializa seus dados com terceiros. Em caso de cancelamento, você pode solicitar a exportação dos seus dados em até 30 dias após o encerramento.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">7. Privacidade</h3>
+                <p>O tratamento de dados pessoais segue a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018). Ao utilizar o serviço, você consente com a coleta e uso dos dados necessários para a prestação do serviço conforme nossa Política de Privacidade.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">8. Uso Permitido</h3>
+                <p>O serviço deve ser utilizado exclusivamente para fins legais e relacionados à gestão do seu negócio. É proibido utilizar a plataforma para atividades ilícitas, spam, engenharia reversa ou qualquer ação que prejudique outros usuários ou a infraestrutura do serviço.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">9. Disponibilidade</h3>
+                <p>A Vorolabs envidará melhores esforços para manter o serviço disponível 24/7, mas não garante disponibilidade ininterrupta. Manutenções programadas serão comunicadas com antecedência sempre que possível.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">10. Limitação de Responsabilidade</h3>
+                <p>A Vorolabs não se responsabiliza por perdas indiretas, lucros cessantes ou danos decorrentes do uso ou impossibilidade de uso do serviço. Nossa responsabilidade total está limitada ao valor pago nos últimos 3 meses de assinatura.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">11. Alterações nos Termos</h3>
+                <p>Estes termos podem ser atualizados a qualquer momento. Você será notificado por e-mail com 15 dias de antecedência. O uso continuado após a vigência das alterações implica aceitação.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-foreground mb-1">12. Contato</h3>
+                <p>Dúvidas sobre estes termos podem ser enviadas para <a href="mailto:contato@vorolabs.app" className="text-primary hover:underline">contato@vorolabs.app</a>.</p>
+              </section>
+            </div>
+          </div>
+          <div className="pt-4 border-t border-border mt-2">
+            <Button className="w-full" onClick={() => { setShowTerms(false); setTermsAccepted(true) }}>
+              Li e aceito os termos
             </Button>
           </div>
         </DialogContent>

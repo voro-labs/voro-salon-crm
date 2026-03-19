@@ -1,11 +1,12 @@
 import React, { useState } from "react"
 import {
   View, Text, ScrollView, Pressable, ActivityIndicator,
-  RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
+  RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, TouchableOpacity,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useLocalSearchParams, router } from "expo-router"
+import useSWR from "swr"
 import { useClientDetails } from "hooks/use-client-details.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { PhoneInput } from "components/PhoneInput"
@@ -15,6 +16,24 @@ import { DatePickerInput } from "components/DatePickerInput"
 import { flags, getCountryFromPhone } from "lib/flag-utils"
 import { formatPhone } from "lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { fetcher } from "lib/fetcher"
+import { API_CONFIG } from "lib/api"
+
+// ── Anamnesis types ──────────────────────────────────────────────────────────
+enum AnamnesisFieldType { ShortText = 1, LongText = 2, Number = 3, SingleSelection = 4, MultipleSelection = 5, Boolean = 6 }
+enum AnamnesisSection { ClientData = 1, MainComplaint = 2, HairHistory = 3, HairRoutine = 4, GeneralHealth = 5, MedicationUse = 6, Lifestyle = 7, FamilyHistory = 8, ScalpEvaluation = 9, CapillaryDiagnosis = 10, TreatmentProtocol = 11 }
+const SECTION_LABELS: Record<number, string> = {
+  1: "Dados do Cliente", 2: "Queixa Principal", 3: "Histórico Capilar",
+  4: "Rotina Capilar", 5: "Saúde Geral", 6: "Uso de Medicamentos",
+  7: "Estilo de Vida", 8: "Histórico Familiar", 9: "Avaliação do Couro Cabeludo",
+  10: "Diagnóstico Capilar", 11: "Protocolo de Tratamento",
+}
+interface AnamnesisQuestion { id: string; label: string; placeholder?: string; fieldType: AnamnesisFieldType; options?: string; section: AnamnesisSection; order: number; isRequired: boolean }
+
+function parseOptions(opts?: string): string[] {
+  if (!opts) return []
+  try { const p = JSON.parse(opts); return Array.isArray(p) ? p : [opts] } catch { return opts.split(",").map(s => s.trim()).filter(Boolean) }
+}
 
 function formatCurrency(val: number) {
   return `R$ ${val.toFixed(2).replace(".", ",")}`
@@ -37,8 +56,8 @@ export default function ClientDetailScreen() {
   const {
     client, services, anamnesisHistory, anamnesisError, catalogServices,
     isLoading, isClientLoading, isAnamnesisLoading, isSaving,
-    isDeleting, isAddingService,
-    updateClient, deleteClient, addService, deleteService,
+    isDeleting, isAddingAnamnesis, isAddingService,
+    updateClient, deleteClient, addAnamnesis, addService, deleteService,
   } = useClientDetails(id, () => router.push("/(tabs)/clients" as any))
   const { primaryColor } = useTenantTheme()
 
@@ -47,6 +66,37 @@ export default function ClientDetailScreen() {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", notes: "" })
   const [editCountryCode, setEditCountryCode] = useState("BR")
+
+  // Anamnesis modal
+  const [anamnesisOpen, setAnamnesisOpen] = useState(false)
+  const [anamnesisResponses, setAnamnesisResponses] = useState<Record<string, string>>({})
+  const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({ [AnamnesisSection.ClientData]: true })
+  const { data: anamnesisQuestions, isLoading: isQuestionsLoading } = useSWR<AnamnesisQuestion[]>(
+    anamnesisOpen ? `${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions` : null,
+    fetcher
+  )
+
+  function toggleSection(section: number) {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  function handleAnamnesisResponse(questionId: string, value: string) {
+    setAnamnesisResponses(prev => ({ ...prev, [questionId]: value }))
+  }
+
+  async function handleAnamnesisSubmit() {
+    const responses = Object.entries(anamnesisResponses).map(([questionId, value]) => ({ questionId, value }))
+    if (responses.length === 0) {
+      Alert.alert("Atenção", "Preencha pelo menos uma resposta antes de salvar.")
+      return
+    }
+    const success = await addAnamnesis({ date: new Date().toISOString(), responses, signatures: [], evidences: [] })
+    if (success) {
+      setAnamnesisOpen(false)
+      setAnamnesisResponses({})
+      setExpandedSections({ [AnamnesisSection.ClientData]: true })
+    }
+  }
 
   const [svcOpen, setSvcOpen] = useState(false)
   const [svcForm, setSvcForm] = useState({
@@ -226,27 +276,42 @@ export default function ClientDetailScreen() {
         </View>
 
         {/* Tabs */}
-        <View className="flex-row bg-zinc-100 rounded-2xl p-1 mb-4">
+        <View style={{ flexDirection: "row", backgroundColor: "#f4f4f5", borderRadius: 16, padding: 4, marginBottom: 16 }}>
           {(["services", "anamnesis"] as TabType[]).map((t) => (
-            <Pressable
+            <TouchableOpacity
               key={t}
+              activeOpacity={0.7}
               onPress={() => setTab(t)}
-              className={`flex-1 flex-row items-center justify-center gap-2 h-10 rounded-xl ${tab === t ? "bg-white shadow-sm" : ""}`}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: tab === t ? "#ffffff" : "transparent",
+                shadowColor: tab === t ? "#000" : "transparent",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: tab === t ? 0.06 : 0,
+                shadowRadius: 2,
+                elevation: tab === t ? 1 : 0,
+              }}
             >
               <Ionicons
                 name={t === "services" ? "calendar-outline" : "clipboard-outline"}
                 size={15}
                 color={tab === t ? primaryColor : "#71717a"}
               />
-              <Text className={`text-sm font-bold ${tab === t ? "" : "text-zinc-500"}`} style={tab === t ? { color: primaryColor } : undefined}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: tab === t ? primaryColor : "#71717a" }}>
                 {t === "services" ? "Serviços" : "Anamnese"}
               </Text>
-            </Pressable>
+            </TouchableOpacity>
           ))}
         </View>
 
         {/* Services Tab */}
-        {tab === "services" && (
+        <View style={{ display: tab === "services" ? "flex" : "none" }}>
           <View className="bg-white rounded-3xl border border-zinc-100">
             <View className="flex-row items-center justify-between px-5 py-4 border-b border-zinc-100">
               <View>
@@ -311,14 +376,24 @@ export default function ClientDetailScreen() {
               </View>
             )}
           </View>
-        )}
+        </View>
 
         {/* Anamnesis Tab */}
-        {tab === "anamnesis" && (
+        <View style={{ display: tab === "anamnesis" ? "flex" : "none" }}>
           <View className="bg-white rounded-3xl border border-zinc-100">
-            <View className="px-5 py-4 border-b border-zinc-100">
-              <Text className="text-base font-black text-zinc-900">Histórico de Anamnese</Text>
-              <Text className="text-xs text-zinc-400 mt-0.5">Avaliações capilares registradas</Text>
+            <View className="flex-row items-center justify-between px-5 py-4 border-b border-zinc-100">
+              <View>
+                <Text className="text-base font-black text-zinc-900">Histórico de Anamnese</Text>
+                <Text className="text-xs text-zinc-400 mt-0.5">Avaliações capilares registradas</Text>
+              </View>
+              <Pressable
+                onPress={() => setAnamnesisOpen(true)}
+                className="flex-row items-center gap-1 px-3 h-9 rounded-xl"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Ionicons name="add" size={16} color="white" />
+                <Text className="text-white font-bold text-sm">Nova Avaliação</Text>
+              </Pressable>
             </View>
 
             {isAnamnesisLoading ? (
@@ -355,7 +430,7 @@ export default function ClientDetailScreen() {
               </View>
             )}
           </View>
-        )}
+        </View>
       </ScrollView>
 
       {/* Edit Modal */}
@@ -531,6 +606,216 @@ export default function ClientDetailScreen() {
               {isAddingService
                 ? <ActivityIndicator color="white" />
                 : <Text className="text-white font-black text-base">Salvar Serviço</Text>
+              }
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Anamnesis Modal */}
+      <Modal visible={anamnesisOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAnamnesisOpen(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+          <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
+            <View>
+              <Text className="text-lg font-black text-zinc-900">Nova Ficha de Anamnese</Text>
+              <Text className="text-xs text-zinc-400 mt-0.5">Avaliação capilar do cliente</Text>
+            </View>
+            <Pressable onPress={() => setAnamnesisOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
+              <Ionicons name="close" size={20} color="#71717a" />
+            </Pressable>
+          </View>
+
+          <ScrollView className="flex-1 px-5 m-2" showsVerticalScrollIndicator={false}>
+            {isQuestionsLoading ? (
+              <View className="py-12 items-center">
+                <ActivityIndicator color={primaryColor} />
+                <Text className="text-zinc-400 text-sm mt-3">Carregando perguntas...</Text>
+              </View>
+            ) : !anamnesisQuestions || anamnesisQuestions.length === 0 ? (
+              <View className="py-12 items-center px-4 border border-dashed border-zinc-200 rounded-2xl">
+                <Ionicons name="clipboard-outline" size={40} color="#d4d4d8" />
+                <Text className="text-zinc-400 font-semibold mt-3 text-center">Nenhuma pergunta configurada para este estabelecimento.</Text>
+              </View>
+            ) : (
+              (() => {
+                const sections = Array.from(new Set(anamnesisQuestions.map(q => q.section))).sort((a, b) => a - b)
+                return (
+                  <View className="gap-3">
+                    {sections.map(section => {
+                      const sectionQs = anamnesisQuestions.filter(q => q.section === section).sort((a, b) => a.order - b.order)
+                      const isExpanded = !!expandedSections[section]
+                      return (
+                        <View key={section} className="bg-zinc-50 rounded-2xl overflow-hidden">
+                          {/* Section header */}
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => toggleSection(section)}
+                            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: "700", color: "#71717a", textTransform: "uppercase", letterSpacing: 1 }}>
+                              {SECTION_LABELS[section]}
+                            </Text>
+                            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color="#a1a1aa" />
+                          </TouchableOpacity>
+
+                          {/* Section questions */}
+                          {isExpanded && (
+                            <View className="px-3 pb-4 gap-4">
+                              {sectionQs.map(question => {
+                                const value = anamnesisResponses[question.id] ?? ""
+                                const options = parseOptions(question.options)
+                                return (
+                                  <View key={question.id} className="gap-1.5">
+                                    <Text className="text-zinc-700 font-bold text-sm">
+                                      {question.label}{question.isRequired ? " *" : ""}
+                                    </Text>
+
+                                    {/* ShortText */}
+                                    {question.fieldType === AnamnesisFieldType.ShortText && (
+                                      <TextInput
+                                        className="bg-white border border-zinc-200 rounded-xl px-4 py-3 text-zinc-900 font-semibold text-sm"
+                                        placeholder={question.placeholder ?? "Sua resposta..."}
+                                        placeholderTextColor="#a1a1aa"
+                                        value={value}
+                                        onChangeText={v => handleAnamnesisResponse(question.id, v)}
+                                      />
+                                    )}
+
+                                    {/* LongText */}
+                                    {question.fieldType === AnamnesisFieldType.LongText && (
+                                      <TextInput
+                                        className="bg-white border border-zinc-200 rounded-xl px-4 py-3 text-zinc-900 font-semibold text-sm h-20"
+                                        placeholder={question.placeholder ?? "Detalhes..."}
+                                        placeholderTextColor="#a1a1aa"
+                                        value={value}
+                                        onChangeText={v => handleAnamnesisResponse(question.id, v)}
+                                        multiline
+                                        textAlignVertical="top"
+                                      />
+                                    )}
+
+                                    {/* Number */}
+                                    {question.fieldType === AnamnesisFieldType.Number && (
+                                      <TextInput
+                                        className="bg-white border border-zinc-200 rounded-xl px-4 py-3 text-zinc-900 font-semibold text-sm"
+                                        placeholder="0"
+                                        placeholderTextColor="#a1a1aa"
+                                        value={value}
+                                        onChangeText={v => handleAnamnesisResponse(question.id, v)}
+                                        keyboardType="numeric"
+                                      />
+                                    )}
+
+                                    {/* Boolean */}
+                                    {question.fieldType === AnamnesisFieldType.Boolean && (
+                                      <View style={{ flexDirection: "row", gap: 8 }}>
+                                        {["true", "false"].map(opt => (
+                                          <TouchableOpacity
+                                            key={opt}
+                                            activeOpacity={0.7}
+                                            onPress={() => handleAnamnesisResponse(question.id, opt)}
+                                            style={{
+                                              flex: 1, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center",
+                                              backgroundColor: value === opt ? primaryColor : "#ffffff",
+                                              borderWidth: 1, borderColor: value === opt ? primaryColor : "#e4e4e7",
+                                            }}
+                                          >
+                                            <Text style={{ fontSize: 14, fontWeight: "700", color: value === opt ? "#fff" : "#71717a" }}>
+                                              {opt === "true" ? "Sim" : "Não"}
+                                            </Text>
+                                          </TouchableOpacity>
+                                        ))}
+                                      </View>
+                                    )}
+
+                                    {/* SingleSelection */}
+                                    {question.fieldType === AnamnesisFieldType.SingleSelection && (
+                                      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
+                                        <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 4 }}>
+                                          {options.map(opt => (
+                                            <TouchableOpacity
+                                              key={opt}
+                                              activeOpacity={0.7}
+                                              onPress={() => handleAnamnesisResponse(question.id, opt)}
+                                              style={{
+                                                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1,
+                                                backgroundColor: value === opt ? primaryColor : "#ffffff",
+                                                borderColor: value === opt ? primaryColor : "#e4e4e7",
+                                              }}
+                                            >
+                                              <Text style={{ fontSize: 13, fontWeight: "700", color: value === opt ? "#fff" : "#52525b" }}>
+                                                {opt}
+                                              </Text>
+                                            </TouchableOpacity>
+                                          ))}
+                                        </View>
+                                      </ScrollView>
+                                    )}
+
+                                    {/* MultipleSelection */}
+                                    {question.fieldType === AnamnesisFieldType.MultipleSelection && (() => {
+                                      let selected: string[] = []
+                                      try { selected = value ? JSON.parse(value) : [] } catch {}
+                                      return (
+                                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                                          {options.map(opt => {
+                                            const isSelected = selected.includes(opt)
+                                            return (
+                                              <TouchableOpacity
+                                                key={opt}
+                                                activeOpacity={0.7}
+                                                onPress={() => {
+                                                  const next = isSelected ? selected.filter(o => o !== opt) : [...selected, opt]
+                                                  handleAnamnesisResponse(question.id, JSON.stringify(next))
+                                                }}
+                                                style={{
+                                                  flexDirection: "row", alignItems: "center", gap: 6,
+                                                  paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 1,
+                                                  backgroundColor: isSelected ? primaryColor + "15" : "#ffffff",
+                                                  borderColor: isSelected ? primaryColor : "#e4e4e7",
+                                                }}
+                                              >
+                                                <View style={{
+                                                  width: 16, height: 16, borderRadius: 4, borderWidth: 1.5,
+                                                  borderColor: isSelected ? primaryColor : "#a1a1aa",
+                                                  backgroundColor: isSelected ? primaryColor : "transparent",
+                                                  alignItems: "center", justifyContent: "center",
+                                                }}>
+                                                  {isSelected && <Ionicons name="checkmark" size={10} color="white" />}
+                                                </View>
+                                                <Text style={{ fontSize: 13, fontWeight: "600", color: isSelected ? primaryColor : "#52525b" }}>
+                                                  {opt}
+                                                </Text>
+                                              </TouchableOpacity>
+                                            )
+                                          })}
+                                        </View>
+                                      )
+                                    })()}
+                                  </View>
+                                )
+                              })}
+                            </View>
+                          )}
+                        </View>
+                      )
+                    })}
+                  </View>
+                )
+              })()
+            )}
+          </ScrollView>
+
+          <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
+            <Pressable
+              onPress={handleAnamnesisSubmit}
+              disabled={isAddingAnamnesis}
+              className="h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: isAddingAnamnesis ? primaryColor + "99" : primaryColor }}
+            >
+              {isAddingAnamnesis
+                ? <ActivityIndicator color="white" />
+                : <Text className="text-white font-black text-base">Salvar Avaliação</Text>
               }
             </Pressable>
           </View>

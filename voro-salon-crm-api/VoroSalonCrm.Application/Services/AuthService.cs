@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using AutoMapper;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -14,6 +16,8 @@ using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Shared.Constants;
 using VoroSalonCrm.Shared.Structs;
 using VoroSalonCrm.Shared.Utils;
 
@@ -22,7 +26,9 @@ namespace VoroSalonCrm.Application.Services
     public class AuthService(IOptions<CookieUtil> cookieUtil, IConfiguration configuration,
         IMapper mapper, INotificationService notificationService, IUserService userService,
         ICurrentUserService currentUserService, Domain.Interfaces.Repositories.IUserExtensionRepository userExtensionRepository,
-        Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork) : IAuthService
+        Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork,
+        ITenantRepository tenantRepository, IUserTenantRepository userTenantRepository,
+        UserManager<User> userManager) : IAuthService
     {
         private readonly INotificationService _notificationService = notificationService;
         private readonly CookieUtil _cookieUtil = cookieUtil.Value;
@@ -30,12 +36,15 @@ namespace VoroSalonCrm.Application.Services
         private readonly ICurrentUserService _currentUser = currentUserService;
         private readonly Domain.Interfaces.Repositories.IUserExtensionRepository _userExtensionRepository = userExtensionRepository;
         private readonly Domain.Interfaces.UnitOfWork.IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly ITenantRepository _tenantRepository = tenantRepository;
+        private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
+        private readonly UserManager<User> _userManager = userManager;
 
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
             var (user, rolesNames) = await _userService.GetByEmailAndPassword(signInDto.Email, signInDto.Password);
 
-            // Gerar código 2FA e enviar por e-mail
+            // Gerar código 2FA
             var (code, pendingToken) = await _userService.GenerateTwoFactorCodeAsync(user.Id);
 
             var userName = !string.IsNullOrEmpty(user.FirstName)
@@ -45,7 +54,17 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+            // Enviar apenas para método de comunicação confirmado
+            if (user.EmailConfirmed)
+            {
+                await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+            }
+            // Futuramente: else if (user.PhoneNumberConfirmed) → enviar via SMS
+            else
+            {
+                throw new UnauthorizedAccessException(
+                    "É necessário confirmar seu e-mail para fazer login. Verifique sua caixa de entrada.");
+            }
 
             return new AuthDto
             {
@@ -84,7 +103,7 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)), primaryTenant);
+            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token)), primaryTenant);
         }
 
         public async Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email)
@@ -111,6 +130,137 @@ namespace VoroSalonCrm.Application.Services
             var reseted = await _userService.ResetPasswordAsync(resetPasswordDto);
 
             return reseted;
+        }
+
+        public async Task ChangePasswordAsync(Guid userId, string newPassword)
+            => await _userService.ChangePasswordAsync(userId, newPassword);
+
+        public async Task AcceptTermsAsync(Guid userId)
+            => await _userService.AcceptTermsAsync(userId);
+
+        public async Task CompleteProfileAsync(Guid userId, CompleteProfileDto dto)
+            => await _userService.CompleteProfileAsync(userId, dto);
+
+        public async Task<Guid> ProvisionAccountFromSubscriptionAsync(string email, string contactName, string salonName)
+        {
+            // Separar nome
+            var nameParts = (contactName ?? email).Trim().Split(' ', 2);
+            var firstName = nameParts[0];
+            var lastName = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+
+            // Gerar slug único para o tenant
+            var slug = await GenerateUniqueSlugAsync(salonName ?? firstName);
+
+            // Criar Tenant
+            var tenant = new Tenant
+            {
+                Id = Guid.NewGuid(),
+                Name = salonName ?? $"Salão de {firstName}",
+                Slug = slug,
+                ContactEmail = email,
+                IsActive = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            await _tenantRepository.AddAsync(tenant);
+
+            // Gerar senha temporária
+            var tempPassword = GenerateTempPassword();
+
+            // Verificar se usuário já existe
+            var existingUser = await _userService.FindByEmailAsync(email);
+
+            if (existingUser == null)
+            {
+                var userDto = new UserDto
+                {
+                    Email = email,
+                    UserName = slug,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    IsActive = true
+                };
+
+                var user = await _userService.CreateAsync(userDto, tempPassword, [RoleConstant.SalonOwner]);
+
+                // Confirmar e-mail automaticamente
+                var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                await _userManager.ConfirmEmailAsync(user, confirmToken);
+
+                // Vincular usuário ao tenant
+                await _userTenantRepository.AddAsync(new UserTenant
+                {
+                    UserId = user.Id,
+                    TenantId = tenant.Id,
+                    IsDefault = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+
+                // Configurar extensão: MustChangePassword + IsAutoProvisioned
+                var ext = await _userExtensionRepository.GetByIdAsync(user.Id);
+                if (ext == null)
+                {
+                    ext = new UserExtension { UserId = user.Id };
+                    await _userExtensionRepository.AddAsync(ext);
+                }
+                ext.MustChangePassword = true;
+                ext.IsAutoProvisioned = true;
+                ext.PasswordChangedAt = DateTime.UtcNow;
+                _userExtensionRepository.Update(ext);
+            }
+            else
+            {
+                // Usuário existe: vincular ao novo tenant se ainda não estiver
+                var alreadyLinked = existingUser.UserTenants?.Any(ut => ut.TenantId == tenant.Id) == true;
+                if (!alreadyLinked)
+                {
+                    await _userTenantRepository.AddAsync(new UserTenant
+                    {
+                        UserId = existingUser.Id,
+                        TenantId = tenant.Id,
+                        IsDefault = false,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    });
+                }
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+
+            // Enviar e-mail com a senha temporária
+            var loginUrl = $"{configuration.GetSection("CorsSettings").GetSection("AllowedOrigins").Get<string[]>()?[0]}/sign-in";
+            try
+            {
+                await _notificationService.SendAccountCreatedAsync(email, firstName, tempPassword, loginUrl, tenant);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Falha ao enviar e-mail de conta criada para {email}: {ex.Message}");
+            }
+
+            return tenant.Id;
+        }
+
+        // ── Helpers de provisionamento ────────────────────────────────────────
+
+        private static string GenerateTempPassword()
+        {
+            const string chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
+            var rng = new Random();
+            return new string(Enumerable.Range(0, 10).Select(_ => chars[rng.Next(chars.Length)]).ToArray());
+        }
+
+        private async Task<string> GenerateUniqueSlugAsync(string name)
+        {
+            var baseSlug = Regex.Replace(name.ToLowerInvariant().Trim(), @"[^a-z0-9]+", "-").Trim('-');
+            baseSlug = string.IsNullOrEmpty(baseSlug) ? "salon" : baseSlug;
+
+            var slug = baseSlug;
+            var counter = 1;
+            while (await _tenantRepository.GetBySlugAsync(slug) != null)
+            {
+                slug = $"{baseSlug}-{counter++}";
+            }
+
+            return slug;
         }
 
         public async Task<AuthDto> SwitchTenantAsync(Guid tenantId)
@@ -226,6 +376,31 @@ namespace VoroSalonCrm.Application.Services
                                 ?? user.UserTenants?.FirstOrDefault()?.TenantId
                                 ?? Guid.Empty;
 
+            // Verificar flags pós-login (senha expirada, troca obrigatória, termos)
+            var userExt = await _userExtensionRepository.GetByIdAsync(user.Id);
+            var requiresPasswordChange = false;
+            var requiresTermsAcceptance = false;
+            var requiresProfileCompletion = false;
+
+            if (userExt != null)
+            {
+                requiresPasswordChange = userExt.MustChangePassword;
+
+                if (!requiresPasswordChange)
+                {
+                    var expirationDays = configuration.GetValue<int>("PasswordPolicy:ExpirationDays", 90);
+                    if (expirationDays > 0 && userExt.PasswordChangedAt.HasValue)
+                    {
+                        var expiredAt = userExt.PasswordChangedAt.Value.AddDays(expirationDays);
+                        if (DateTime.UtcNow > expiredAt)
+                            requiresPasswordChange = true;
+                    }
+                }
+
+                requiresTermsAcceptance = !userExt.TermsAcceptedAt.HasValue;
+                requiresProfileCompletion = userExt.IsAutoProvisioned && !userExt.ProfileCompletedAt.HasValue;
+            }
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration.Get<ConfigUtil>()?.JwtKey!));
 
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -282,7 +457,10 @@ namespace VoroSalonCrm.Application.Services
                 FirstName = $"{user.FirstName}".ToLower(),
                 LastName = $"{user.LastName}".ToLower(),
                 Token = jwt,
-                RefreshToken = refreshToken
+                RefreshToken = refreshToken,
+                RequiresPasswordChange = requiresPasswordChange,
+                RequiresTermsAcceptance = requiresTermsAcceptance,
+                RequiresProfileCompletion = requiresProfileCompletion
             };
         }
     }
