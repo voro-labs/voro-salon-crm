@@ -57,8 +57,8 @@ export function Main({ children }: MainProps) {
     const isPublicRoute = routesAllowed.some(item => pathname.startsWith(item))
 
     if (!isPublicRoute) {
-      // Rota protegida sem usuário: redireciona silenciosamente
-      router.replace("/admin/sign-in")
+      // Rota protegida sem usuário: redireciona para preços
+      router.replace("/prices")
     }
 
     // Layout público (sign-in, forgot-password, etc.) — nunca mostra loading aqui

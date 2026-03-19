@@ -80,7 +80,7 @@ export default function SignInPage() {
             <Scissors className="h-7 w-7" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground">Salon CRM</h1>
+            <h1 className="text-2xl font-bold text-foreground">Voro Salon CRM</h1>
             <p className="mt-1 text-sm text-muted-foreground">Gerenciamento de clientes e serviços</p>
           </div>
         </div>
@@ -153,6 +153,13 @@ export default function SignInPage() {
             {loading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
+
+        <div className="mt-6 text-center text-sm text-muted-foreground">
+          Não tem uma conta?{" "}
+          <a href="/prices" className="font-semibold text-primary hover:underline">
+            Criar conta
+          </a>
+        </div>
       </div>
     </div>
   )

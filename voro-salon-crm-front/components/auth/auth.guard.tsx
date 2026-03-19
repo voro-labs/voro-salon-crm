@@ -22,9 +22,9 @@ export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
     if (!loading) {
       const token = getAuthToken()
 
-      // Se não há token ou usuário, redirecionar para login
+      // Se não há token ou usuário, redirecionar para preços
       if (!token) {
-        router.push("/admin/sign-in")
+        router.push("/prices")
         return
       }
 
