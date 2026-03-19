@@ -66,5 +66,22 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpPost("confirm/{preapprovalId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmSubscription(string preapprovalId)
+        {
+            try
+            {
+                await subscriptionService.ProcessWebhookAsync("subscription_preapproval", preapprovalId);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Subscription processed.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

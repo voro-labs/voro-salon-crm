@@ -1,8 +1,79 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle2, Scissors } from "lucide-react"
+import { CheckCircle2, Scissors, Loader2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { API_CONFIG, apiCall } from "@/lib/api"
+
+type Status = "loading" | "success" | "error"
 
 export default function PagarSucessoPage() {
+  const searchParams = useSearchParams()
+  const preapprovalId = searchParams.get("preapproval_id")
+  const [status, setStatus] = useState<Status>(preapprovalId ? "loading" : "success")
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!preapprovalId) return
+
+    apiCall<null>(`${API_CONFIG.ENDPOINTS.SUBSCRIPTION_CONFIRM}/${preapprovalId}`, {
+      method: "POST",
+    }).then((res) => {
+      if (res.hasError) {
+        setErrorMsg(res.message ?? "Erro ao confirmar assinatura.")
+        setStatus("error")
+      } else {
+        setStatus("success")
+      }
+    })
+  }, [preapprovalId])
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight mb-3">Confirmando sua assinatura...</h1>
+          <p className="text-muted-foreground text-sm">Aguarde um instante enquanto ativamos sua conta.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "error") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="h-20 w-20 rounded-3xl bg-destructive/10 flex items-center justify-center mx-auto mb-6">
+            <XCircle className="h-10 w-10 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight mb-3">Algo deu errado</h1>
+          <p className="text-muted-foreground text-sm mb-2">
+            Não conseguimos confirmar sua assinatura automaticamente.
+          </p>
+          {errorMsg && (
+            <p className="text-xs text-destructive/80 bg-destructive/5 rounded-lg px-4 py-2 mb-6 font-mono break-all">
+              {errorMsg}
+            </p>
+          )}
+          <p className="text-muted-foreground text-sm mb-8">
+            Não se preocupe — se o pagamento foi aprovado, nossa equipe ativará sua conta em até 24 horas. Entre em
+            contato se precisar de ajuda: <a href="mailto:contato@vorolabs.app" className="text-primary hover:underline">contato@vorolabs.app</a>
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button variant="outline" asChild>
+              <Link href="/prices">Voltar aos planos</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
@@ -14,7 +85,7 @@ export default function PagarSucessoPage() {
           Obrigado por assinar o <strong>Voro Salon CRM</strong>.
         </p>
         <p className="text-muted-foreground text-sm mb-8">
-          Em breve você receberá um e-mail com as instruções de acesso. Nossa equipe ativará sua conta em até 24 horas úteis.
+          Você receberá um e-mail com suas credenciais de acesso em breve.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button asChild>

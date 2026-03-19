@@ -41,6 +41,7 @@ export const API_CONFIG = {
     SUBSCRIPTION_PLANS: "/subscription/plans",
     SUBSCRIPTION_ME: "/subscription/me",
     SUBSCRIPTION_CHECKOUT: "/subscription/checkout",
+    SUBSCRIPTION_CONFIRM: "/subscription/confirm",
     ADMIN_SUBSCRIPTIONS: "/admin/subscription",
     ADMIN_SUBSCRIPTION_GRANT: "/admin/subscription/grant",
   },
