@@ -243,9 +243,37 @@ namespace VoroSalonCrm.Application.Services
 
         private static string GenerateTempPassword()
         {
-            const string chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
-            var rng = new Random();
-            return new string(Enumerable.Range(0, 10).Select(_ => chars[rng.Next(chars.Length)]).ToArray());
+            const string upper   = "ABCDEFGHJKMNPQRSTUVWXYZ";
+            const string lower   = "abcdefghjkmnpqrstuvwxyz";
+            const string digits  = "23456789";
+            const string special = "!@#$";
+            const string all     = upper + lower + digits + special;
+
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            char Pick(string src)
+            {
+                var buf = new byte[4];
+                rng.GetBytes(buf);
+                return src[(int)(BitConverter.ToUInt32(buf, 0) % (uint)src.Length)];
+            }
+
+            // Garante pelo menos um de cada categoria exigida pelo Identity
+            var password = new[]
+            {
+                Pick(upper), Pick(lower), Pick(digits), Pick(special),
+                Pick(all), Pick(all), Pick(all), Pick(all), Pick(all), Pick(all), Pick(all), Pick(all),
+            };
+
+            // Fisher-Yates shuffle
+            for (int i = password.Length - 1; i > 0; i--)
+            {
+                var buf = new byte[4];
+                rng.GetBytes(buf);
+                int j = (int)(BitConverter.ToUInt32(buf, 0) % (uint)(i + 1));
+                (password[i], password[j]) = (password[j], password[i]);
+            }
+
+            return new string(password);
         }
 
         private async Task<string> GenerateUniqueSlugAsync(string name)
