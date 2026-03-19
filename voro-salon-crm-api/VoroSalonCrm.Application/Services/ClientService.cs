@@ -7,17 +7,30 @@ using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
 namespace VoroSalonCrm.Application.Services
 {
-    public class ClientService(IClientRepository clientRepository, IUnitOfWork unitOfWork, ICurrentUserService currentUserService) : IClientService
+    public class ClientService(
+        IClientRepository clientRepository,
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUserService,
+        ITenantSubscriptionRepository subscriptionRepository) : IClientService
     {
         private readonly IClientRepository _clientRepository = clientRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly ITenantSubscriptionRepository _subscriptionRepository = subscriptionRepository;
 
         public async Task<ClientDto> CreateAsync(CreateClientDto dto)
         {
             var tenantId = _currentUserService.TenantId;
             if (tenantId == Guid.Empty)
                 throw new UnauthorizedAccessException("Tenant invalid or not found in context.");
+
+            var subscription = await _subscriptionRepository.GetByTenantIdWithPlanAsync(tenantId);
+            if (subscription?.Plan != null && subscription.Plan.MaxClients != -1)
+            {
+                var currentCount = await _clientRepository.Query().CountAsync();
+                if (currentCount >= subscription.Plan.MaxClients)
+                    throw new InvalidOperationException($"Limite de {subscription.Plan.MaxClients} clientes atingido para o seu plano atual.");
+            }
 
             var client = new Client
             {

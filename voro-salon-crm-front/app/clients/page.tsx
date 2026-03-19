@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Plus, Search, Phone, Mail, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,33 +14,61 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 import { formatPhone } from "@/lib/mask-utils"
 
 import { useDataList } from "@/hooks/use-data-list.hook"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { EmptyState } from "@/components/ui/custom/empty-state"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
+import { PlanLimitModal } from "@/components/ui/custom/plan-limit-modal"
 
 export default function ClientesPage() {
-  const { filteredData: filtered, isLoading, search, setSearch } = useDataList(
+  const router = useRouter()
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const { filteredData: filtered, data, isLoading, search, setSearch } = useDataList(
     API_CONFIG.ENDPOINTS.CLIENTS,
     (c: any, q: string) =>
       c.name.toLowerCase().includes(q) ||
       c.phone.includes(q) ||
       (c.email && c.email.toLowerCase().includes(q))
   )
+  const { maxClients } = usePlanLimits()
+
+  const currentCount = data.length
+  const isAtLimit = maxClients !== -1 && currentCount >= maxClients
+
+  const handleNewClient = () => {
+    if (isAtLimit) {
+      setShowLimitModal(true)
+    } else {
+      router.push("/clients/new")
+    }
+  }
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
+      {showLimitModal && (
+        <PlanLimitModal
+          type="clientes"
+          limit={maxClients}
+          onClose={() => setShowLimitModal(false)}
+        />
+      )}
       <div className="flex flex-col gap-6 p-6">
-        <PageHeader 
-          title="Clientes" 
+        <PageHeader
+          title="Clientes"
           action={
-            <Button asChild size="sm">
-              <Link href="/clients/new">
+            <div className="flex items-center gap-2">
+              {maxClients !== -1 && (
+                <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
+                  {currentCount}/{maxClients}
+                </span>
+              )}
+              <Button size="sm" onClick={handleNewClient}>
                 <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Novo Cliente</span>
                 <span className="sm:hidden">Novo</span>
-              </Link>
-            </Button>
-          } 
+              </Button>
+            </div>
+          }
         />
 
         <div className="relative">
@@ -59,11 +89,9 @@ export default function ClientesPage() {
             title={search ? "Nenhum resultado encontrado" : "Nenhum cliente cadastrado"}
             description={search ? "Tente buscar por outro termo." : "Comece adicionando seu primeiro cliente."}
             action={!search ? (
-              <Button asChild size="sm">
-                <Link href="/clients/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Adicionar Cliente
-                </Link>
+              <Button size="sm" onClick={handleNewClient}>
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Cliente
               </Button>
             ) : undefined}
           />

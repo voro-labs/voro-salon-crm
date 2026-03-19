@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.Employee;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Blob;
@@ -11,12 +12,14 @@ namespace VoroSalonCrm.Application.Services
         IEmployeeRepository repository,
         ICurrentUserService currentUser,
         IUnitOfWork unitOfWork,
-        IBlobService blobService) : IEmployeeService
+        IBlobService blobService,
+        ITenantSubscriptionRepository subscriptionRepository) : IEmployeeService
     {
         private readonly IEmployeeRepository _repository = repository;
         private readonly ICurrentUserService _currentUser = currentUser;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IBlobService _blobService = blobService;
+        private readonly ITenantSubscriptionRepository _subscriptionRepository = subscriptionRepository;
 
         public async Task<IEnumerable<EmployeeDto>> GetAllAsync()
         {
@@ -32,6 +35,14 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<EmployeeDto> CreateAsync(CreateEmployeeDto dto)
         {
+            var subscription = await _subscriptionRepository.GetByTenantIdWithPlanAsync(_currentUser.TenantId);
+            if (subscription?.Plan != null && subscription.Plan.MaxEmployees != -1)
+            {
+                var currentCount = await _repository.Query().CountAsync();
+                if (currentCount >= subscription.Plan.MaxEmployees)
+                    throw new InvalidOperationException($"Limite de {subscription.Plan.MaxEmployees} funcionários atingido para o seu plano atual.");
+            }
+
             var employee = new Employee
             {
                 TenantId = _currentUser.TenantId,
