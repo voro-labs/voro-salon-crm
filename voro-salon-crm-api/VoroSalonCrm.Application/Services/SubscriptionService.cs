@@ -37,19 +37,22 @@ namespace VoroSalonCrm.Application.Services
             var plan = await planRepository.GetByIdAsync(dto.PlanId)
                 ?? throw new InvalidOperationException("Plano não encontrado.");
 
-            var backUrl = $"{UrlBase}/prices/feedback";
+            var feedbackUrl = $"{UrlBase}/prices/feedback";
+            var notificationUrl = configuration["MercadoPagoSettings:NotificationUrl"] ?? string.Empty;
 
             var externalRef = dto.TenantId.HasValue
                 ? dto.TenantId.Value.ToString()
                 : dto.Email;
 
-            var result = await mercadoPagoService.CreatePreapprovalAsync(new MpCreatePreapprovalDto(
+            var result = await mercadoPagoService.CreatePreferenceAsync(new MpCreatePreferenceDto(
                 PayerEmail: dto.Email,
-                PayerName: dto.Name,
                 Reason: $"Voro Salon CRM — Plano {plan.Name}",
                 TransactionAmount: plan.MonthlyPrice,
                 ExternalReference: externalRef,
-                BackUrl: backUrl
+                BackUrlSuccess: feedbackUrl,
+                BackUrlFailure: feedbackUrl,
+                BackUrlPending: feedbackUrl,
+                NotificationUrl: notificationUrl
             ));
 
             var subscription = new TenantSubscription
@@ -117,26 +120,27 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task ProcessWebhookAsync(string eventType, string resourceId)
         {
-            if (eventType != "subscription_preapproval") return;
+            if (eventType != "payment") return;
 
-            var details = await mercadoPagoService.GetPreapprovalAsync(resourceId);
-            if (details is null) return;
+            if (!long.TryParse(resourceId, out var paymentId)) return;
 
-            var sub = await subscriptionRepository.GetByMercadoPagoIdAsync(resourceId);
+            var details = await mercadoPagoService.GetPaymentAsync(paymentId);
+            if (details is null || string.IsNullOrEmpty(details.ExternalReference)) return;
+
+            var sub = await subscriptionRepository.GetByExternalReferenceAsync(details.ExternalReference);
             if (sub is null) return;
 
             sub.Status = details.Status switch
             {
-                "authorized" => SubscriptionStatus.Active,
-                "paused"     => SubscriptionStatus.Inactive,
-                "cancelled"  => SubscriptionStatus.Cancelled,
-                _            => sub.Status
+                "approved"    => SubscriptionStatus.Active,
+                "rejected"    => SubscriptionStatus.Inactive,
+                "cancelled"   => SubscriptionStatus.Cancelled,
+                _             => sub.Status
             };
 
             sub.MercadoPagoPayerId = details.PayerId;
-            sub.NextPaymentAt = details.NextPaymentDate;
 
-            if (details.Status == "authorized")
+            if (details.Status == "approved")
                 sub.LastPaymentAt = DateTimeOffset.UtcNow;
 
             sub.UpdatedAt = DateTimeOffset.UtcNow;

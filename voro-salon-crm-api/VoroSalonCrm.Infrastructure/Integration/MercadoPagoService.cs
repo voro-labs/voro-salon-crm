@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
+using MercadoPago.Client;
+using MercadoPago.Client.Preference;
 using Microsoft.Extensions.Configuration;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 
@@ -11,77 +12,76 @@ namespace VoroSalonCrm.Infrastructure.Integration
     {
         private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-        private HttpClient CreateClient()
-        {
-            var client = httpClientFactory.CreateClient("mercadopago");
-            var token = configuration["MercadoPagoSettings:AccessToken"] ?? string.Empty;
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            return client;
-        }
+        private string AccessToken => configuration["MercadoPagoSettings:AccessToken"] ?? string.Empty;
 
-        public async Task<MpPreapprovalResult> CreatePreapprovalAsync(MpCreatePreapprovalDto dto)
-        {
-            var client = CreateClient();
+        private RequestOptions GetRequestOptions() => new() { AccessToken = AccessToken };
 
-            var payload = new
+        public async Task<MpPreferenceResult> CreatePreferenceAsync(MpCreatePreferenceDto dto)
+        {
+            var client = new PreferenceClient();
+
+            var request = new PreferenceRequest
             {
-                reason = dto.Reason,
-                external_reference = dto.ExternalReference,
-                payer_email = dto.PayerEmail,
-                auto_recurring = new
+                Items =
+                [
+                    new PreferenceItemRequest
+                    {
+                        Title = dto.Reason,
+                        Quantity = 1,
+                        UnitPrice = dto.TransactionAmount,
+                        CurrencyId = "BRL"
+                    }
+                ],
+                Payer = new PreferencePayerRequest
                 {
-                    frequency = 1,
-                    frequency_type = "months",
-                    transaction_amount = dto.TransactionAmount,
-                    currency_id = "BRL"
+                    Email = dto.PayerEmail
                 },
-                back_url = dto.BackUrl,
-                status = "pending"
+                BackUrls = new PreferenceBackUrlsRequest
+                {
+                    Success = dto.BackUrlSuccess,
+                    Failure = dto.BackUrlFailure,
+                    Pending = dto.BackUrlPending
+                },
+                AutoReturn = "approved",
+                ExternalReference = dto.ExternalReference,
+                NotificationUrl = dto.NotificationUrl
             };
 
-            var json = JsonSerializer.Serialize(payload, JsonOpts);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var preference = await client.CreateAsync(request, GetRequestOptions());
 
-            var response = await client.PostAsync("https://api.mercadopago.com/preapproval", content);
-            var body = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                throw new InvalidOperationException($"MercadoPago error: {body}");
-
-            using var doc = JsonDocument.Parse(body);
-            var root = doc.RootElement;
-
-            return new MpPreapprovalResult(
-                Id: root.GetProperty("id").GetString() ?? string.Empty,
-                InitPoint: root.GetProperty("init_point").GetString() ?? string.Empty,
-                Status: root.GetProperty("status").GetString() ?? string.Empty
+            return new MpPreferenceResult(
+                Id: preference.Id,
+                InitPoint: preference.InitPoint
             );
         }
 
-        public async Task<MpPreapprovalDetails?> GetPreapprovalAsync(string preapprovalId)
+        public async Task<MpPaymentDetails?> GetPaymentAsync(long paymentId)
         {
-            var client = CreateClient();
-            var response = await client.GetAsync($"https://api.mercadopago.com/preapproval/{preapprovalId}");
+            var httpClient = httpClientFactory.CreateClient("mercadopago");
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", AccessToken);
 
+            var response = await httpClient.GetAsync($"https://api.mercadopago.com/v1/payments/{paymentId}");
             if (!response.IsSuccessStatusCode) return null;
 
             var body = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
 
-            DateTimeOffset? nextPayment = null;
-            if (root.TryGetProperty("next_payment_date", out var npd) && npd.ValueKind != JsonValueKind.Null)
-                nextPayment = npd.GetDateTimeOffset();
+            string? externalRef = null;
+            if (root.TryGetProperty("external_reference", out var extRef) && extRef.ValueKind != JsonValueKind.Null)
+                externalRef = extRef.GetString();
 
             string? payerId = null;
-            if (root.TryGetProperty("payer_id", out var pid))
+            if (root.TryGetProperty("payer", out var payer) && payer.TryGetProperty("id", out var pid))
                 payerId = pid.GetRawText().Trim('"');
 
-            return new MpPreapprovalDetails(
-                Id: root.GetProperty("id").GetString() ?? string.Empty,
-                Status: root.GetProperty("status").GetString() ?? string.Empty,
-                PayerId: payerId,
-                NextPaymentDate: nextPayment
+            var status = root.TryGetProperty("status", out var st) ? st.GetString() ?? string.Empty : string.Empty;
+
+            return new MpPaymentDetails(
+                Id: paymentId.ToString(),
+                Status: status,
+                ExternalReference: externalRef,
+                PayerId: payerId
             );
         }
     }

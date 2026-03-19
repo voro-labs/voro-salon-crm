@@ -29,6 +29,16 @@ namespace VoroSalonCrm.Infrastructure.Repositories
                 .FirstOrDefaultAsync(s => s.MercadoPagoSubscriptionId == mercadoPagoSubscriptionId);
         }
 
+        public async Task<TenantSubscription?> GetByExternalReferenceAsync(string externalReference)
+        {
+            return await _context.TenantSubscriptions
+                .Include(s => s.Plan)
+                .Where(s => s.MercadoPagoExternalReference == externalReference
+                            && s.Status != SubscriptionStatus.Cancelled)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<IEnumerable<TenantSubscription>> GetAllWithPlanAsync(int page, int pageSize)
         {
             return await _context.TenantSubscriptions

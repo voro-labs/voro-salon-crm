@@ -1,21 +1,23 @@
 namespace VoroSalonCrm.Application.Services.Interfaces.Integration
 {
-    public record MpCreatePreapprovalDto(
+    public record MpCreatePreferenceDto(
         string PayerEmail,
-        string PayerName,
         string Reason,
         decimal TransactionAmount,
         string ExternalReference,
-        string BackUrl
+        string BackUrlSuccess,
+        string BackUrlFailure,
+        string BackUrlPending,
+        string NotificationUrl
     );
 
-    public record MpPreapprovalResult(string Id, string InitPoint, string Status);
+    public record MpPreferenceResult(string Id, string InitPoint);
 
-    public record MpPreapprovalDetails(string Id, string Status, string? PayerId, DateTimeOffset? NextPaymentDate);
+    public record MpPaymentDetails(string Id, string Status, string? ExternalReference, string? PayerId);
 
     public interface IMercadoPagoService
     {
-        Task<MpPreapprovalResult> CreatePreapprovalAsync(MpCreatePreapprovalDto dto);
-        Task<MpPreapprovalDetails?> GetPreapprovalAsync(string preapprovalId);
+        Task<MpPreferenceResult> CreatePreferenceAsync(MpCreatePreferenceDto dto);
+        Task<MpPaymentDetails?> GetPaymentAsync(long paymentId);
     }
 }
