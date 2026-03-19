@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using VoroSalonCrm.Application.DTOs.Subscription;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
@@ -12,13 +13,17 @@ namespace VoroSalonCrm.Application.Services
         ISubscriptionPlanRepository planRepository,
         ITenantSubscriptionRepository subscriptionRepository,
         IMercadoPagoService mercadoPagoService,
-        IConfiguration configuration) : ISubscriptionService
+        IConfiguration configuration, IHostEnvironment env) : ISubscriptionService
     {
-        private string UrlBase =>
-            configuration
+        private string UrlBase => env.IsDevelopment() ? 
+            $"{configuration
                 .GetSection("CorsSettings")
                 .GetSection("AllowedOrigins")
-                .Get<string[]>()?[0] ?? "{UrlBase}";
+                .Get<string[]>()?[4]}" :
+            $"{configuration
+                .GetSection("CorsSettings")
+                .GetSection("AllowedOrigins")
+                .Get<string[]>()?[0]}";
 
         public async Task<IEnumerable<SubscriptionPlanDto>> GetAllPlansAsync()
         {
