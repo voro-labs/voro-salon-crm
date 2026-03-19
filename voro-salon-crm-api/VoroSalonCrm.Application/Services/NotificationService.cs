@@ -110,14 +110,21 @@ namespace VoroSalonCrm.Application.Services
         {
             if (tenant == null) return text;
 
-            return text
-                .Replace("{TenantName}",         tenant.Name)
-                .Replace("{TenantSlug}",          tenant.Slug)
-                .Replace("{TenantEmail}",         tenant.ContactEmail ?? string.Empty)
-                .Replace("{TenantPhone}",         tenant.ContactPhone ?? string.Empty)
-                .Replace("{TenantLogoUrl}",       tenant.LogoUrl ?? string.Empty)
-                .Replace("{TenantPrimaryColor}",  tenant.PrimaryColor)
+            var result = text
+                .Replace("{TenantName}",          tenant.Name)
+                .Replace("{TenantSlug}",           tenant.Slug)
+                .Replace("{TenantEmail}",          tenant.ContactEmail ?? string.Empty)
+                .Replace("{TenantPhone}",          tenant.ContactPhone ?? string.Empty)
+                .Replace("{TenantLogoUrl}",        tenant.LogoUrl ?? string.Empty)
+                .Replace("{TenantPrimaryColor}",   tenant.PrimaryColor)
                 .Replace("{TenantSecondaryColor}", tenant.SecondaryColor);
+
+            // Remove tags <img> com src vazio quando o tenant não tem logo configurada
+            if (string.IsNullOrEmpty(tenant.LogoUrl))
+                result = System.Text.RegularExpressions.Regex.Replace(
+                    result, @"<img\b[^>]*\bsrc=''[^>]*/?>", string.Empty);
+
+            return result;
         }
     }
 }

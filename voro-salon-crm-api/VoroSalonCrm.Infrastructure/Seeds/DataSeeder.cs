@@ -163,9 +163,13 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                             <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
                                 Olá, <strong>{UserName}</strong>! Use o código abaixo para concluir seu acesso ao <strong>{TenantName}</strong>.
                             </p>
-                            <div style='margin: 28px auto; display: inline-block; background-color: #f4f4f5; border: 2px dashed {TenantPrimaryColor}; border-radius: 12px; padding: 16px 40px;'>
-                                <span style='font-size: 36px; font-weight: 900; letter-spacing: 10px; color: {TenantPrimaryColor};'>{TwoFactorCode}</span>
-                            </div>
+                            <table role='presentation' cellpadding='0' cellspacing='0' style='border-collapse: collapse; margin: 28px auto;'>
+                                <tr>
+                                <td style='background-color: #f4f4f5; border: 2px dashed {TenantPrimaryColor}; border-radius: 12px; padding: 16px 32px; text-align: center;'>
+                                    <span style='font-size: 32px; font-weight: 900; letter-spacing: 8px; color: {TenantPrimaryColor}; white-space: nowrap;'>{TwoFactorCode}</span>
+                                </td>
+                                </tr>
+                            </table>
                             <p style='color: #71717a; font-size: 13px; margin-top: 8px;'>
                                 Este código é válido por <strong>10 minutos</strong>. Não compartilhe com ninguém.
                             </p>

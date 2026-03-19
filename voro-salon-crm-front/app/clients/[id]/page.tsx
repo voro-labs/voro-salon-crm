@@ -321,7 +321,7 @@ export default function ClienteDetailPage() {
             </div>
 
             {/* Summary stats */}
-            <div className="mt-4 grid grid-cols-2 xs:grid-cols-3 gap-3 border-t border-border pt-4">
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 border-t border-border pt-4">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-medium">Serviços</span>
                 <span className="text-base sm:text-lg font-bold text-foreground">{services.length}</span>
@@ -332,7 +332,7 @@ export default function ClienteDetailPage() {
                   {formatCurrency(totalSpent)}
                 </span>
               </div>
-              <div className="flex flex-col gap-0.5 xs:col-span-1 col-span-2">
+              <div className="flex flex-col gap-0.5 sm:col-span-1 col-span-2">
                 <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider font-medium text-balance">Cliente desde</span>
                 <span className="text-base sm:text-lg font-bold text-foreground">
                   {formatDate(client.createdAt)}

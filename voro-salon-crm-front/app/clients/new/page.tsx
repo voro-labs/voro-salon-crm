@@ -58,8 +58,8 @@ export default function NovoClientePage() {
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="phone">Telefone *</Label>
-                <div className="flex flex-col xs:flex-row gap-2">
-                  <div className="w-full xs:w-[120px] shrink-0">
+                <div className="flex flex-row gap-2">
+                  <div className="shrink-0">
                     <CountrySelector value={countryCode} onChange={setCountryCode} />
                   </div>
                   <div className="flex-1">
