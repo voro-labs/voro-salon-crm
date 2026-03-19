@@ -45,7 +45,18 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+            if (user.TwoFactorEnabled)
+            {
+                if (user.EmailConfirmed)
+                {
+                    await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+                }
+                else
+                {
+                    await ConfirmEmailAsync(user.Email!);
+                    throw new UnauthorizedAccessException("E-mail não confirmado. Por favor, confirme seu e-mail antes de fazer login.");
+                }
+            }
 
             return new AuthDto
             {
@@ -84,7 +95,7 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token)), primaryTenant);
+            await _notificationService.SendConfirmEmailAsync($"{user.Email}", userName, WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token)), primaryTenant);
         }
 
         public async Task<bool> ConfirmEmailAsync(AuthDto authViewModel, string email)
