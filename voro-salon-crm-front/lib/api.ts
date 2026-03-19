@@ -14,6 +14,7 @@ export const API_CONFIG = {
     SWITCH_TENANT: "/auth/switch-tenant",
     CHANGE_PASSWORD: "/auth/change-password",
     ACCEPT_TERMS: "/auth/accept-terms",
+    COMPLETE_PROFILE: "/auth/complete-profile",
     DASHBOARD: "/dashboard/metrics",
     ME: "/auth/me",
     TENANT: "/tenant",

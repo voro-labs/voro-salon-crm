@@ -50,6 +50,7 @@ const PROTECTED_PATHS = [
   "/settings",
   "/admin/change-password",
   "/admin/terms",
+  "/admin/complete-profile",
   "/dashboard",
   "/api",
 ]

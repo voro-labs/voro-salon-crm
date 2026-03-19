@@ -125,11 +125,20 @@ export default function VerifyTwoFactorPage() {
         }
       }).catch(() => { })
 
+      // Armazenar flags pós-login para encadeamento entre páginas
+      sessionStorage.setItem("post_login_flags", JSON.stringify({
+        requiresPasswordChange: !!response.data.requiresPasswordChange,
+        requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
+        requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+      }))
+
       // Verificar requisitos pós-login
       if (response.data.requiresPasswordChange) {
         router.replace("/admin/change-password")
       } else if (response.data.requiresTermsAcceptance) {
         router.replace("/admin/terms")
+      } else if (response.data.requiresProfileCompletion) {
+        router.replace("/admin/complete-profile")
       } else {
         router.replace("/")
       }

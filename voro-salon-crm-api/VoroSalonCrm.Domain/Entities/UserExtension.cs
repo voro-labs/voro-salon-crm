@@ -23,5 +23,9 @@ namespace VoroSalonCrm.Domain.Entities
 
         // Terms of service
         public DateTime? TermsAcceptedAt { get; set; }
+
+        // Onboarding: conta criada automaticamente via pagamento
+        public bool IsAutoProvisioned { get; set; } = false;
+        public DateTime? ProfileCompletedAt { get; set; }
     }
 }

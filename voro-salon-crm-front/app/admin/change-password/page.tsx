@@ -47,7 +47,19 @@ export default function ChangePasswordPage() {
       }
 
       setSuccess(true)
-      setTimeout(() => router.replace("/"), 1500)
+
+      // Avançar para o próximo passo do onboarding, se houver
+      const flagsRaw = sessionStorage.getItem("post_login_flags")
+      const flags = flagsRaw ? JSON.parse(flagsRaw) : {}
+      flags.requiresPasswordChange = false
+      sessionStorage.setItem("post_login_flags", JSON.stringify(flags))
+
+      const next = flags.requiresTermsAcceptance
+        ? "/admin/terms"
+        : flags.requiresProfileCompletion
+          ? "/admin/complete-profile"
+          : "/"
+      setTimeout(() => router.replace(next), 1500)
     } catch {
       setError("Erro inesperado. Tente novamente.")
     } finally {

@@ -317,6 +317,28 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpPost("complete-profile")]
+        [Authorize]
+        public async Task<IActionResult> CompleteProfile(
+            [FromBody] CompleteProfileDto dto,
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.CompleteProfileAsync(currentUserService.UserId, dto);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Perfil completado com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
         [HttpPost("switch-tenant/{tenantId:guid}")]
         [Authorize]
         public async Task<IActionResult> SwitchTenant(Guid tenantId)

@@ -110,8 +110,31 @@ export default function VerifyTwoFactorScreen() {
       await SecureStore.deleteItemAsync(TWO_FACTOR_PENDING_KEY)
       await SecureStore.deleteItemAsync(TWO_FACTOR_EMAIL_KEY)
 
+      // Armazenar flags pós-login antes de chamar login (evita race condition)
+      const hasPostLoginSteps =
+        response.data.requiresPasswordChange ||
+        response.data.requiresTermsAcceptance ||
+        response.data.requiresProfileCompletion
+
+      if (hasPostLoginSteps) {
+        await SecureStore.setItemAsync("post_login_flags", JSON.stringify({
+          requiresPasswordChange: !!response.data.requiresPasswordChange,
+          requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
+          requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+        }))
+      }
+
       await login(response.data.token, response.data.refreshToken, response.data.tenants)
       reloadTheme()
+
+      // Navegar para a tela de onboarding correta (fora do grupo /(auth))
+      if (response.data.requiresPasswordChange) {
+        router.replace("/(onboarding)/change-password")
+      } else if (response.data.requiresTermsAcceptance) {
+        router.replace("/(onboarding)/terms")
+      } else if (response.data.requiresProfileCompletion) {
+        router.replace("/(onboarding)/complete-profile")
+      }
     } catch {
       setError("Erro inesperado. Tente novamente.")
     } finally {

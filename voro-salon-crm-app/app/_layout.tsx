@@ -14,15 +14,17 @@ function RootLayoutNav() {
 
   const inAuthGroup = segments[0] === "(auth)"
   const inBookingGroup = segments[0] === "booking"
-  const pendingRedirect = !isAuthenticated && !inAuthGroup && !inBookingGroup
+  const inOnboardingGroup = segments[0] === "(onboarding)"
+  const pendingRedirect = !isAuthenticated && !inAuthGroup && !inBookingGroup && !inOnboardingGroup
 
   useEffect(() => {
     if (isLoading) return
-    if (!isAuthenticated && !inAuthGroup && !inBookingGroup) {
+    if (!isAuthenticated && !inAuthGroup && !inBookingGroup && !inOnboardingGroup) {
       router.replace("/(auth)/welcome")
     } else if (isAuthenticated && inAuthGroup) {
       router.replace("/(tabs)")
     }
+    // Se está em /(onboarding), não redireciona — usuário está completando o cadastro
   }, [isAuthenticated, isLoading, segments])
 
   if (isLoading || pendingRedirect) {
@@ -37,6 +39,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="booking" />
     </Stack>
   )

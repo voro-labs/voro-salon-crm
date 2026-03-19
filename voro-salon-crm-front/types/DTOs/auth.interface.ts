@@ -14,4 +14,5 @@ export interface AuthDto {
   twoFactorPendingToken?: string;
   requiresPasswordChange?: boolean;
   requiresTermsAcceptance?: boolean;
+  requiresProfileCompletion?: boolean;
 }

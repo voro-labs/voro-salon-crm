@@ -7,6 +7,7 @@
         PasswordReset = 200,
         PaymentReceived = 300,
         ConfirmEmail = 400,
-        TwoFactorCode = 500
+        TwoFactorCode = 500,
+        AccountCreated = 600
     }
 }

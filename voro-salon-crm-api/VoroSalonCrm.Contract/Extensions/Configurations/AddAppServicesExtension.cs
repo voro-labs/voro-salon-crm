@@ -58,6 +58,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IUserRoleRepository, UserRoleRepository>();
             services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<ITenantRepository, TenantRepository>();
+            services.AddScoped<IUserTenantRepository, UserTenantRepository>();
             services.AddScoped<IIntegrationAuditRepository, IntegrationAuditRepository>();
             services.AddScoped<IClientRepository, ClientRepository>();
             services.AddScoped<IServiceRepository, ServiceRepository>();

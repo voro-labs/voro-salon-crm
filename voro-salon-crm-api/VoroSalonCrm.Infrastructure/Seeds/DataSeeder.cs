@@ -44,6 +44,75 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedNotifications(JasmimDbContext context)
         {
+            // Adicionar template de conta criada automaticamente se ainda não existir
+            var accountCreatedName = NotificationEnum.AccountCreated.AsText();
+            if (!context.Notifications.IgnoreQueryFilters().Any(n => n.Name == accountCreatedName))
+            {
+                context.Notifications.Add(new Notification
+                {
+                    Id = Guid.NewGuid(),
+                    Name = accountCreatedName,
+                    Subject = "Sua conta no Voro Salon foi criada! — {TenantName}",
+                    Body = @"
+                    <div style='font-family: Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px;'>
+                    <div style='max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.07);'>
+
+                        <!-- Header com cor do tenant -->
+                        <div style='background-color: {TenantPrimaryColor}; padding: 28px 32px; text-align: center;'>
+                        <img src='{TenantLogoUrl}' alt='{TenantName}' style='max-height: 56px; max-width: 200px; object-fit: contain;' onerror=""this.style.display='none'"" />
+                        <h1 style='color: #ffffff; margin: 12px 0 0; font-size: 22px; font-weight: 700;'>{TenantName}</h1>
+                        </div>
+
+                        <!-- Corpo -->
+                        <div style='padding: 32px;'>
+                        <h2 style='color: #18181b; font-size: 20px; margin-top: 0;'>Bem-vindo(a), {UserName}! 🎉</h2>
+                        <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                            Seu pagamento foi confirmado e sua conta no <strong>Voro Salon CRM</strong> foi criada com sucesso.
+                        </p>
+                        <p style='color: #52525b; font-size: 15px; line-height: 1.6;'>
+                            Use as credenciais abaixo para acessar o sistema pela primeira vez:
+                        </p>
+                        <table role='presentation' cellpadding='0' cellspacing='0' style='border-collapse: collapse; margin: 20px 0; width: 100%;'>
+                            <tr>
+                            <td style='background-color: #f4f4f5; border-radius: 8px; padding: 16px 20px;'>
+                                <p style='margin: 0 0 8px; font-size: 13px; color: #71717a;'>E-mail de acesso</p>
+                                <p style='margin: 0; font-size: 15px; font-weight: 700; color: #18181b;'>{UserName}</p>
+                                <p style='margin: 12px 0 4px; font-size: 13px; color: #71717a;'>Senha temporária</p>
+                                <p style='margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 2px; color: {TenantPrimaryColor};'>{TemporaryPassword}</p>
+                            </td>
+                            </tr>
+                        </table>
+                        <p style='color: #52525b; font-size: 14px; line-height: 1.6;'>
+                            Ao fazer login, você precisará: aceitar os <strong>termos de uso</strong>, criar uma <strong>nova senha</strong> e completar o seu <strong>perfil</strong>.
+                        </p>
+                        <div style='text-align: center; margin: 28px 0;'>
+                            <a href='{LoginUrl}' style='background-color: {TenantPrimaryColor}; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block;'>
+                            Acessar o Sistema
+                            </a>
+                        </div>
+                        <p style='color: #a1a1aa; font-size: 13px;'>
+                            Por segurança, altere sua senha assim que fizer o primeiro acesso. Não compartilhe estas credenciais com ninguém.
+                        </p>
+                        </div>
+
+                        <!-- Rodapé -->
+                        <div style='background-color: #f9f9f9; border-top: 1px solid #e4e4e7; padding: 20px 32px; text-align: center;'>
+                        <p style='color: #a1a1aa; font-size: 13px; margin: 0;'>
+                            <strong style='color: #52525b;'>{TenantName}</strong><br/>
+                            {TenantPhone} &nbsp;|&nbsp; {TenantEmail}
+                        </p>
+                        <p style='color: #d4d4d8; font-size: 12px; margin: 8px 0 0;'>
+                            Este e-mail foi enviado automaticamente, por favor não responda.
+                        </p>
+                        </div>
+
+                    </div>
+                    </div>",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                });
+            }
+
             if (!context.Notifications.IgnoreQueryFilters().Any())
             {
                 var notifications = new List<Notification>

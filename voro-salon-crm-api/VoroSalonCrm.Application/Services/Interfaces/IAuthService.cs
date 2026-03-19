@@ -1,5 +1,6 @@
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Auth;
+using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
 
 namespace VoroSalonCrm.Application.Services.Interfaces
@@ -30,5 +31,9 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         // Pós-login obrigatórios
         Task ChangePasswordAsync(Guid userId, string newPassword);
         Task AcceptTermsAsync(Guid userId);
+        Task CompleteProfileAsync(Guid userId, CompleteProfileDto dto);
+
+        // Provisionamento automático via pagamento
+        Task<Guid> ProvisionAccountFromSubscriptionAsync(string email, string contactName, string salonName);
     }
 }

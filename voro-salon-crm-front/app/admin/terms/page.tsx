@@ -32,7 +32,14 @@ export default function TermsPage() {
       }
 
       setSuccess(true)
-      setTimeout(() => router.replace("/"), 1000)
+
+      const flagsRaw = sessionStorage.getItem("post_login_flags")
+      const flags = flagsRaw ? JSON.parse(flagsRaw) : {}
+      flags.requiresTermsAcceptance = false
+      sessionStorage.setItem("post_login_flags", JSON.stringify(flags))
+
+      const next = flags.requiresProfileCompletion ? "/admin/complete-profile" : "/"
+      setTimeout(() => router.replace(next), 1000)
     } catch {
       setError("Erro inesperado. Tente novamente.")
     } finally {

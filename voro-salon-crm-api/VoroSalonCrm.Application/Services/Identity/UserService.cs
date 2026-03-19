@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Application.DTOs.Identity;
 using VoroSalonCrm.Application.Services.Base;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
@@ -322,6 +323,39 @@ namespace VoroSalonCrm.Application.Services.Identity
             }
 
             ext.TermsAcceptedAt = DateTime.UtcNow;
+            userExtensionRepository.Update(ext);
+            await unitOfWork.SaveChangesAsync();
+        }
+
+        // ── Completar perfil ──────────────────────────────────────────────────
+
+        public async Task<User?> FindByEmailAsync(string email)
+            => await FindUserByEmailAsync(email);
+
+        public async Task CompleteProfileAsync(Guid userId, CompleteProfileDto dto)
+        {
+            var user = await GetByIdAsync(userId)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
+                user.PhoneNumber = dto.PhoneNumber;
+
+            if (!string.IsNullOrWhiteSpace(dto.CountryCode))
+                user.CountryCode = dto.CountryCode;
+
+            if (dto.BirthDate.HasValue)
+                user.BirthDate = dto.BirthDate;
+
+            await userManager.UpdateAsync(user);
+
+            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            if (ext == null)
+            {
+                ext = new UserExtension { UserId = userId };
+                await userExtensionRepository.AddAsync(ext);
+            }
+
+            ext.ProfileCompletedAt = DateTime.UtcNow;
             userExtensionRepository.Update(ext);
             await unitOfWork.SaveChangesAsync();
         }

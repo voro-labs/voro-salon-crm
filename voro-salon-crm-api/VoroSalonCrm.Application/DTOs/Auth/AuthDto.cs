@@ -22,6 +22,7 @@ namespace VoroSalonCrm.Application.DTOs
         // Post-login requirements
         public bool RequiresPasswordChange { get; set; }
         public bool RequiresTermsAcceptance { get; set; }
+        public bool RequiresProfileCompletion { get; set; }
 
         public AuthDto() { }
 
