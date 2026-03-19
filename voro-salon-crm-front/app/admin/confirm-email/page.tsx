@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { CheckCircle, AlertCircle, MailCheck, ArrowLeft, Loader2 } from "lucide-react"
+import { CheckCircle, AlertCircle, MailCheck, ArrowLeft, Loader2, Smartphone, ExternalLink } from "lucide-react"
 import { API_CONFIG, apiCall } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+
+type State = "detecting" | "mobile-choice" | "confirming" | "success" | "error"
 
 export default function ConfirmEmailPage() {
   const router = useRouter()
@@ -12,53 +14,93 @@ export default function ConfirmEmailPage() {
   const token = searchParams.get("token")
   const email = searchParams.get("email")
 
-  const [loading, setLoading] = useState(true)
-  const [success, setSuccess] = useState<boolean | null>(null)
+  const [state, setState] = useState<State>("detecting")
   const [error, setError] = useState("")
 
   useEffect(() => {
     if (!token || !email) {
       setError("Token ou e-mail inválido na URL.")
-      setSuccess(false)
-      setLoading(false)
+      setState("error")
       return
     }
 
-    const confirmEmail = async () => {
-      try {
-        const response = await apiCall(API_CONFIG.ENDPOINTS.CONFIRM_EMAIL, {
-          method: "POST",
-          body: JSON.stringify({ token, email }),
-        })
-        if (response.status === 200) {
-          setSuccess(true)
-        } else {
-          setSuccess(false)
-          setError(response.message || "Erro ao confirmar o e-mail.")
-        }
-      } catch {
-        setSuccess(false)
-        setError("Erro de conexão. Tente novamente.")
-      } finally {
-        setLoading(false)
-      }
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile) {
+      setState("mobile-choice")
+    } else {
+      confirmInWeb()
     }
+  }, [])
 
-    confirmEmail()
-  }, [token, email])
+  async function confirmInWeb() {
+    setState("confirming")
+    try {
+      const response = await apiCall(API_CONFIG.ENDPOINTS.CONFIRM_EMAIL, {
+        method: "POST",
+        body: JSON.stringify({ token, email }),
+      })
+      if (response.status === 200) {
+        setState("success")
+      } else {
+        setError(response.message || "Erro ao confirmar o e-mail.")
+        setState("error")
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.")
+      setState("error")
+    }
+  }
 
-  if (loading) {
+  function handleOpenApp() {
+    const encodedEmail = encodeURIComponent(email ?? "")
+    const encodedToken = encodeURIComponent(token ?? "")
+    window.location.href = `vorosaloncrm://(auth)/confirm-email?email=${encodedEmail}&token=${encodedToken}`
+  }
+
+  // ── Loading / detecting ──────────────────────────────────────────────────────
+  if (state === "detecting" || state === "confirming") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm">Confirmando e-mail...</p>
+          <p className="text-sm">{state === "confirming" ? "Confirmando e-mail..." : "Carregando..."}</p>
         </div>
       </div>
     )
   }
 
-  if (success === false) {
+  // ── Mobile choice ────────────────────────────────────────────────────────────
+  if (state === "mobile-choice") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <MailCheck className="h-7 w-7" />
+          </div>
+          <h2 className="mb-2 text-2xl font-bold text-foreground">Confirmar E-mail</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Escolha como deseja confirmar seu endereço de e-mail.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button onClick={handleOpenApp} className="w-full gap-2">
+              <Smartphone className="h-4 w-4" />
+              Abrir no App
+            </Button>
+            <Button variant="outline" onClick={confirmInWeb} className="w-full gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Confirmar pelo navegador
+            </Button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Se o app não abrir automaticamente, use a opção pelo navegador.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Error ────────────────────────────────────────────────────────────────────
+  if (state === "error") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg text-center">
@@ -75,6 +117,7 @@ export default function ConfirmEmailPage() {
     )
   }
 
+  // ── Success ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg text-center">
