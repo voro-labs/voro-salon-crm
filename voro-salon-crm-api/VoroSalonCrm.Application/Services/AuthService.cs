@@ -568,6 +568,7 @@ namespace VoroSalonCrm.Application.Services
                 LastName = $"{user.LastName}".ToLower(),
                 Token = jwt,
                 RefreshToken = refreshToken,
+                TwoFactorEnabled = user.TwoFactorEnabled,
                 RequiresPasswordChange = requiresPasswordChange,
                 RequiresTermsAcceptance = requiresTermsAcceptance,
                 RequiresProfileCompletion = requiresProfileCompletion
