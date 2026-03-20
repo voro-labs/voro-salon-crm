@@ -45,33 +45,39 @@ namespace VoroSalonCrm.Application.Services
         {
             var (user, rolesNames) = await _userService.GetByEmailAndPassword(signInDto.Email, signInDto.Password);
 
-            // Gerar código 2FA
-            var (code, pendingToken) = await _userService.GenerateTwoFactorCodeAsync(user.Id);
-
-            var userName = !string.IsNullOrEmpty(user.FirstName)
-                ? $"{user.FirstName} {user.LastName}".Trim()
-                : user.UserName ?? string.Empty;
-
-            var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
-                             ?? user.UserTenants?.FirstOrDefault()?.Tenant;
-
-            // Enviar apenas para método de comunicação confirmado
-            if (user.EmailConfirmed)
+            if (user.TwoFactorEnabled)
             {
-                await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+                // Gerar código 2FA
+                var (code, pendingToken) = await _userService.GenerateTwoFactorCodeAsync(user.Id);
+
+                var userName = !string.IsNullOrEmpty(user.FirstName)
+                    ? $"{user.FirstName} {user.LastName}".Trim()
+                    : user.UserName ?? string.Empty;
+
+                var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
+                                 ?? user.UserTenants?.FirstOrDefault()?.Tenant;
+
+                // Enviar apenas para método de comunicação confirmado
+                if (user.EmailConfirmed)
+                {
+                    await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+                }
+                // Futuramente: else if (user.PhoneNumberConfirmed) → enviar via SMS
+                else
+                {
+                    throw new UnauthorizedAccessException(
+                        "É necessário confirmar seu e-mail para fazer login. Verifique sua caixa de entrada.");
+                }
+
+                return new AuthDto
+                {
+                    RequiresTwoFactor = true,
+                    TwoFactorPendingToken = pendingToken
+                };
             }
-            // Futuramente: else if (user.PhoneNumberConfirmed) → enviar via SMS
-            else
-            {
-                throw new UnauthorizedAccessException(
-                    "É necessário confirmar seu e-mail para fazer login. Verifique sua caixa de entrada.");
-            }
 
-            return new AuthDto
-            {
-                RequiresTwoFactor = true,
-                TwoFactorPendingToken = pendingToken
-            };
+            // 2FA desabilitado: login direto
+            return await GenerateAuthDtoAsync(user, rolesNames);
         }
 
         public async Task<AuthDto> VerifyTwoFactorAsync(VerifyTwoFactorDto dto)
@@ -312,6 +318,36 @@ namespace VoroSalonCrm.Application.Services
             return slug;
         }
 
+        public async Task RequestEnable2FAAsync(Guid userId)
+        {
+            var user = await _userService.GetByIdAsync(userId)
+                ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
+
+            if (!user.EmailConfirmed)
+                throw new InvalidOperationException("É necessário confirmar seu e-mail para ativar o 2FA.");
+
+            var code = await _userService.GenerateEnable2FACodeAsync(userId);
+
+            var userName = !string.IsNullOrEmpty(user.FirstName)
+                ? $"{user.FirstName} {user.LastName}".Trim()
+                : user.UserName ?? string.Empty;
+
+            var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
+                             ?? user.UserTenants?.FirstOrDefault()?.Tenant;
+
+            await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+        }
+
+        public async Task ConfirmEnable2FAAsync(Guid userId, string code)
+        {
+            await _userService.EnableTwoFactorAsync(userId, code);
+        }
+
+        public async Task Disable2FAAsync(Guid userId)
+        {
+            await _userService.DisableTwoFactorAsync(userId);
+        }
+
         public async Task<AuthDto> SwitchTenantAsync(Guid tenantId)
         {
             var userId = _currentUser.UserId;
@@ -360,6 +396,7 @@ namespace VoroSalonCrm.Application.Services
                 new Claim(JwtRegisteredClaimNames.Name, $"{user.FirstName!} {user.LastName!}"),
                 new Claim(JwtRegisteredClaimNames.EmailVerified, $"{user.EmailConfirmed}"),
                 new Claim("TenantId", $"{primaryTenantId}"),
+                new Claim(CustomClaimTypes.TwoFactorEnabled, $"{user.TwoFactorEnabled}"),
             ];
 
             if (rolesNames != null && rolesNames!.Any())

@@ -112,7 +112,7 @@ export default function TransactionDetailScreen() {
       const dto: PayTransactionDto = {
         id: id!,
         paidAmount: payForm.amount,
-        paymentDate: payForm.date,
+        paymentDate: new Date(payForm.date).toISOString(),
         paymentMethod: parseInt(payForm.method) as PaymentMethod,
         notes: payForm.notes || undefined,
       }

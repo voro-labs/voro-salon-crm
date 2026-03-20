@@ -10,6 +10,7 @@ export interface AuthDto {
   token?: string;
   refreshToken?: string;
   tenants?: { id: string, name: string, slug: string, logoUrl?: string }[];
+  twoFactorEnabled?: boolean;
   requiresTwoFactor?: boolean;
   twoFactorPendingToken?: string;
   requiresPasswordChange?: boolean;

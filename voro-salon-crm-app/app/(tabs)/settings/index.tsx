@@ -146,6 +146,19 @@ export default function SettingsScreen() {
           </>
         )}
 
+        {/* Segurança */}
+        <SectionLabel title="Segurança" />
+        <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100">
+          <NavRow
+            icon={user?.twoFactorEnabled ? "shield-checkmark-outline" : "shield-outline"}
+            label="Autenticação de dois fatores"
+            subtitle={user?.twoFactorEnabled ? "Ativado" : "Desativado"}
+            onPress={() => router.push("/(tabs)/settings/two-factor" as any)}
+            iconBg={user?.twoFactorEnabled ? "#f0fdf4" : "#f4f4f5"}
+            iconColor={user?.twoFactorEnabled ? "#16a34a" : "#71717a"}
+          />
+        </View>
+
         {/* Conta */}
         <SectionLabel title="Conta" />
         <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100">

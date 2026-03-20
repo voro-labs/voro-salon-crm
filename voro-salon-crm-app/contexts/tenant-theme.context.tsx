@@ -20,8 +20,16 @@ const TenantThemeContext = createContext<TenantTheme>({
 
 const STORE_KEY = "voro:tenantTheme"
 
+// Setter global — permite que refreshTenantTheme atualize o contexto de fora do React
+let _setColors: ((c: typeof DEFAULT_COLORS) => void) | null = null
+
 export function TenantThemeProvider({ children }: { children: ReactNode }) {
   const [colors, setColors] = useState(DEFAULT_COLORS)
+
+  useEffect(() => {
+    _setColors = setColors
+    return () => { _setColors = null }
+  }, [setColors])
 
   const loadTheme = async () => {
     try {
@@ -65,7 +73,13 @@ export function useTenantTheme() {
 }
 
 export async function refreshTenantTheme(primaryColor: string | null, secondaryColor: string | null) {
+  const newColors = {
+    primaryColor: primaryColor ?? DEFAULT_COLORS.primaryColor,
+    secondaryColor: secondaryColor ?? DEFAULT_COLORS.secondaryColor,
+  }
+  // Atualiza o contexto React imediatamente (reflete em todo o app)
+  _setColors?.(newColors)
   try {
-    await SecureStore.setItemAsync(STORE_KEY, JSON.stringify({ primaryColor, secondaryColor }))
+    await SecureStore.setItemAsync(STORE_KEY, JSON.stringify(newColors))
   } catch {}
 }

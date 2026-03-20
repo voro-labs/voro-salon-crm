@@ -31,7 +31,7 @@ const TAB_MODULE_IDS: Record<string, number> = {
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
-  const { data: modules, isLoading: modulesLoading } = useSWR(
+  const { data: modules } = useSWR(
     API_CONFIG.ENDPOINTS.TENANT_MODULES,
     fetcher,
     { shouldRetryOnError: false, refreshInterval: 30000 }
@@ -50,7 +50,9 @@ export default function TabsLayout() {
   function isTabEnabled(name: string): boolean {
     const moduleId = TAB_MODULE_IDS[name]
     if (!moduleId) return true
-    if (modulesLoading || !modules) return false
+    // Enquanto não há dados ainda (carga inicial), mantém todas as tabs visíveis
+    // para não redirecionar indevidamente durante revalidações do SWR
+    if (!modules) return true
     const mod = (modules as any[]).find((m) => m.module === moduleId)
     return mod ? mod.isEnabled : true
   }
@@ -94,11 +96,41 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="clients" options={{ href: isTabEnabled("clients") ? undefined : null }} />
-      <Tabs.Screen name="appointments" options={{ href: isTabEnabled("appointments") ? undefined : null }} />
-      <Tabs.Screen name="services" options={{ href: isTabEnabled("services") ? undefined : null }} />
-      <Tabs.Screen name="employees" options={{ href: isTabEnabled("employees") ? undefined : null }} />
-      <Tabs.Screen name="finance" options={{ href: isTabEnabled("finance") ? undefined : null }} />
+      <Tabs.Screen
+        name="clients"
+        options={{ href: isTabEnabled("clients") ? undefined : null }}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate("clients", { screen: "index" }),
+        })}
+      />
+      <Tabs.Screen
+        name="appointments"
+        options={{ href: isTabEnabled("appointments") ? undefined : null }}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate("appointments", { screen: "index" }),
+        })}
+      />
+      <Tabs.Screen
+        name="services"
+        options={{ href: isTabEnabled("services") ? undefined : null }}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate("services", { screen: "index" }),
+        })}
+      />
+      <Tabs.Screen
+        name="employees"
+        options={{ href: isTabEnabled("employees") ? undefined : null }}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate("employees", { screen: "index" }),
+        })}
+      />
+      <Tabs.Screen
+        name="finance"
+        options={{ href: isTabEnabled("finance") ? undefined : null }}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate("finance", { screen: "index" }),
+        })}
+      />
       <Tabs.Screen name="settings" />
     </Tabs>
   )

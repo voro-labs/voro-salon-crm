@@ -339,6 +339,70 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpPost("2fa/enable/request")]
+        [Authorize]
+        public async Task<IActionResult> RequestEnable2FA(
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.RequestEnable2FAAsync(currentUserService.UserId);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Código enviado para o seu e-mail.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        [HttpPost("2fa/enable/confirm")]
+        [Authorize]
+        public async Task<IActionResult> ConfirmEnable2FA(
+            [FromBody] ConfirmEnable2FADto dto,
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.ConfirmEnable2FAAsync(currentUserService.UserId, dto.Code);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Autenticação de dois fatores ativada com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
+        [HttpPost("2fa/disable")]
+        [Authorize]
+        public async Task<IActionResult> Disable2FA(
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.Disable2FAAsync(currentUserService.UserId);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Autenticação de dois fatores desativada.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
         [HttpPost("switch-tenant/{tenantId:guid}")]
         [Authorize]
         public async Task<IActionResult> SwitchTenant(Guid tenantId)

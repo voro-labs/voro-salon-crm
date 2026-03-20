@@ -31,7 +31,7 @@ export default function NewTransactionScreen() {
     description: "",
     amount: 0,
     dueDate: new Date().toISOString().split("T")[0],
-    type: TransactionType.Income,
+    type: TransactionType.Expense,
     paymentMethod: PaymentMethod.Pix,
     categoryId: undefined,
     notes: "",
@@ -52,7 +52,16 @@ export default function NewTransactionScreen() {
     setError(null)
     setIsSaving(true)
     try {
-      const res = await createTransaction(form)
+      const res = await createTransaction({
+        description: form.description,
+        amount: form.amount,
+        type: form.type,
+        categoryId: form.categoryId === "none" ? undefined : form.categoryId,
+        dueDate: new Date(form.dueDate).toISOString(),
+        paymentMethod: form.paymentMethod,
+        notes: form.notes
+      })
+
       if (res.hasError) { setError(res.message || "Erro ao criar transação."); return }
       router.back()
     } finally {

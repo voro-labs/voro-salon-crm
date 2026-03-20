@@ -21,7 +21,12 @@ import {
   LayoutGrid,
   ClipboardList,
   ChevronRight,
+  Shield,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -151,6 +156,17 @@ export default function ConfiguracoesPage() {
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
   const { user } = useAuth()
 
+  // 2FA state
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.twoFactorEnabled ?? false)
+  const [tfa2Dialog, set2FADialog] = useState<"idle" | "request" | "confirm" | "disable">("idle")
+  const [tfaCode, setTfaCode] = useState("")
+  const [tfaLoading, setTfaLoading] = useState(false)
+  const [tfaError, setTfaError] = useState("")
+
+  useEffect(() => {
+    setTwoFactorEnabled(user?.twoFactorEnabled ?? false)
+  }, [user?.twoFactorEnabled])
+
   const roleNames = user?.roles?.map((r) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
@@ -186,6 +202,52 @@ export default function ConfiguracoesPage() {
     applyRadius(value)
   }, [])
 
+
+  const handleRequest2FA = async () => {
+    setTfaLoading(true)
+    setTfaError("")
+    try {
+      const { apiCall, API_CONFIG } = await import("@/lib/api")
+      const res = await apiCall<null>(API_CONFIG.ENDPOINTS.ENABLE_2FA_REQUEST, { method: "POST" })
+      if (res.hasError) { setTfaError(res.message ?? "Erro ao enviar código."); return }
+      set2FADialog("confirm")
+    } finally {
+      setTfaLoading(false)
+    }
+  }
+
+  const handleConfirm2FA = async () => {
+    if (tfaCode.length !== 6) return
+    setTfaLoading(true)
+    setTfaError("")
+    try {
+      const { apiCall, API_CONFIG } = await import("@/lib/api")
+      const res = await apiCall<null>(API_CONFIG.ENDPOINTS.ENABLE_2FA_CONFIRM, {
+        method: "POST",
+        body: JSON.stringify({ code: tfaCode }),
+      })
+      if (res.hasError) { setTfaError(res.message ?? "Código inválido."); return }
+      setTwoFactorEnabled(true)
+      set2FADialog("idle")
+      setTfaCode("")
+    } finally {
+      setTfaLoading(false)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    setTfaLoading(true)
+    setTfaError("")
+    try {
+      const { apiCall, API_CONFIG } = await import("@/lib/api")
+      const res = await apiCall<null>(API_CONFIG.ENDPOINTS.DISABLE_2FA, { method: "POST" })
+      if (res.hasError) { setTfaError(res.message ?? "Erro ao desativar 2FA."); return }
+      setTwoFactorEnabled(false)
+      set2FADialog("idle")
+    } finally {
+      setTfaLoading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -242,6 +304,10 @@ export default function ConfiguracoesPage() {
                   Anamnese
                 </TabsTrigger>
               )}
+              <TabsTrigger value="seguranca" className="shrink-0 py-2">
+                <Shield className="mr-2 h-4 w-4" />
+                Segurança
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -696,6 +762,124 @@ export default function ConfiguracoesPage() {
               </CardContent>
             </Card>
           </TabsContent>}
+          <TabsContent value="seguranca">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  <CardTitle>Segurança</CardTitle>
+                </div>
+                <CardDescription>Gerencie a autenticação de dois fatores da sua conta</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20">
+                  <div className="flex items-center gap-3">
+                    {twoFactorEnabled
+                      ? <ShieldCheck className="h-5 w-5 text-green-500 shrink-0" />
+                      : <ShieldOff className="h-5 w-5 text-muted-foreground shrink-0" />
+                    }
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">Autenticação de dois fatores</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {twoFactorEnabled
+                          ? "Ativado — um código será enviado por e-mail a cada login."
+                          : "Desativado — ative para aumentar a segurança da sua conta."}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={twoFactorEnabled}
+                    onCheckedChange={(checked) => {
+                      setTfaError("")
+                      setTfaCode("")
+                      set2FADialog(checked ? "request" : "disable")
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dialog: solicitar código */}
+            <Dialog open={tfa2Dialog === "request"} onOpenChange={(o) => !o && set2FADialog("idle")}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-primary" />
+                    Ativar autenticação de dois fatores
+                  </DialogTitle>
+                  <DialogDescription>
+                    Vamos enviar um código de verificação para <strong>{user?.email}</strong>. Confirme para continuar.
+                  </DialogDescription>
+                </DialogHeader>
+                {tfaError && <p className="text-sm text-destructive">{tfaError}</p>}
+                <DialogFooter className="flex-col gap-2 sm:flex-row">
+                  <Button variant="outline" onClick={() => set2FADialog("idle")} disabled={tfaLoading}>Cancelar</Button>
+                  <Button onClick={handleRequest2FA} disabled={tfaLoading}>
+                    {tfaLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Enviar código
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Dialog: confirmar código */}
+            <Dialog open={tfa2Dialog === "confirm"} onOpenChange={(o) => !o && set2FADialog("idle")}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    Digite o código de verificação
+                  </DialogTitle>
+                  <DialogDescription>
+                    Insira o código de 6 dígitos enviado para <strong>{user?.email}</strong>. Válido por 10 minutos.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center py-2">
+                  <InputOTP maxLength={6} value={tfaCode} onChange={setTfaCode}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                {tfaError && <p className="text-sm text-destructive text-center">{tfaError}</p>}
+                <DialogFooter className="flex-col gap-2 sm:flex-row">
+                  <Button variant="outline" onClick={() => set2FADialog("idle")} disabled={tfaLoading}>Cancelar</Button>
+                  <Button onClick={handleConfirm2FA} disabled={tfaLoading || tfaCode.length !== 6}>
+                    {tfaLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Confirmar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Dialog: desativar 2FA */}
+            <Dialog open={tfa2Dialog === "disable"} onOpenChange={(o) => !o && set2FADialog("idle")}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <ShieldOff className="h-5 w-5 text-destructive" />
+                    Desativar autenticação de dois fatores
+                  </DialogTitle>
+                  <DialogDescription>
+                    Sua conta ficará protegida apenas por senha. Tem certeza que deseja desativar o 2FA?
+                  </DialogDescription>
+                </DialogHeader>
+                {tfaError && <p className="text-sm text-destructive">{tfaError}</p>}
+                <DialogFooter className="flex-col gap-2 sm:flex-row">
+                  <Button variant="outline" onClick={() => set2FADialog("idle")} disabled={tfaLoading}>Cancelar</Button>
+                  <Button variant="destructive" onClick={handleDisable2FA} disabled={tfaLoading}>
+                    {tfaLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Desativar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
         </Tabs>
       </div>
     </AuthGuard>

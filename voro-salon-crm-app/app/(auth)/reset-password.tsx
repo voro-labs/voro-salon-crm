@@ -53,7 +53,7 @@ export default function ResetPasswordScreen() {
     try {
       const res = await apiCall(API_CONFIG.ENDPOINTS.RESET_PASSWORD, {
         method: "POST",
-        body: JSON.stringify({ email, code, newPassword }),
+        body: JSON.stringify({ email, token: code, newPassword }),
       })
       if (res.hasError) { setError(res.message ?? "Erro ao redefinir senha"); return }
       setSuccess(true)

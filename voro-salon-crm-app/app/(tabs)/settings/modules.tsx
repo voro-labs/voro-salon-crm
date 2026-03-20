@@ -14,6 +14,7 @@ import { useRouter } from "expo-router"
 import { useSettings } from "hooks/use-settings.hook"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
+
 const MODULE_NAMES: Record<number, string> = {
   1: "Clientes",
   2: "Agendamentos",

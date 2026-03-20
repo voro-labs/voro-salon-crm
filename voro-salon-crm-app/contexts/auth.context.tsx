@@ -4,6 +4,7 @@ import { AuthDto } from "types/DTOs/auth.interface"
 import { jwtDecode } from "jwt-decode"
 import * as SecureStore from "expo-secure-store"
 import { AppState, type AppStateStatus, DeviceEventEmitter } from "react-native"
+import { router } from "expo-router"
 
 // Tipo do payload esperado no token JWT
 interface JwtPayload {
@@ -14,6 +15,7 @@ interface JwtPayload {
   email: string
   roles?: string
   TenantId?: string
+  twoFactorEnabled?: string
   exp: number
 }
 
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userName: decoded.userName,
       email: decoded.email,
       roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
+      twoFactorEnabled: decoded.twoFactorEnabled === "True",
       token: jwt,
       refreshToken: refresh,
       tenants: storedTenants,
@@ -228,6 +231,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (result.data?.token) {
         await login(result.data.token, result.data.refreshToken, result.data.tenants)
+        // Reseta a pilha de navegação para evitar que rotas do salão anterior sejam restauradas
+        router.replace("/(tabs)/")
       }
     } catch (err) {
       console.error("Erro ao trocar de salão:", err)

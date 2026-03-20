@@ -44,7 +44,7 @@ export default function EditTransactionScreen() {
     description: "",
     amount: 0,
     dueDate: "",
-    type: TransactionType.Income,
+    type: TransactionType.Expense,
     paymentMethod: PaymentMethod.Pix,
     categoryId: undefined,
     notes: "",
@@ -83,7 +83,16 @@ export default function EditTransactionScreen() {
     setError(null)
     setIsSaving(true)
     try {
-      const res = await updateTransaction(id!, form)
+      const res = await updateTransaction(id!, {
+        id: form.id,
+        description: form.description,
+        amount: form.amount,
+        dueDate: new Date(form.dueDate).toISOString(),
+        type: form.type,
+        paymentMethod: form.paymentMethod,
+        categoryId: form.categoryId,
+        notes: form.notes ?? "",
+      })
       if (res.hasError) { setError(res.message || "Erro ao atualizar transação."); return }
       router.back()
     } finally {

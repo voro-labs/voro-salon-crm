@@ -124,7 +124,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
             builder.Entity<UserExtension>().HasQueryFilter(ue => !ue.User.IsDeleted);
 
             builder.Entity<Notification>().HasQueryFilter(n =>
-                !n.IsDeleted && n.TenantId == _currentUser.TenantId);
+                !n.IsDeleted && (n.TenantId == _currentUser.TenantId || n.TenantId == Guid.Empty));
 
             builder.Entity<Client>().HasQueryFilter(c =>
                 !c.IsDeleted && c.TenantId == _currentUser.TenantId);
