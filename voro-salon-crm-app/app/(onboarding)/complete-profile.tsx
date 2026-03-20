@@ -16,6 +16,8 @@ import * as SecureStore from "expo-secure-store"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { API_CONFIG, apiCall } from "lib/api"
 import { flags } from "@/lib/flag-utils"
+import { CountrySelector } from "@/components/CountrySelector"
+import { PhoneInput } from "@/components/PhoneInput"
 
 export default function OnboardingCompleteProfileScreen() {
   const router = useRouter()
@@ -100,33 +102,15 @@ export default function OnboardingCompleteProfileScreen() {
               </View>
             )}
 
-            <View className="flex-row gap-3 mb-4">
-              <View className="w-24">
-                <Text className="text-zinc-500 text-sm font-semibold mb-1">País</Text>
-                <View className="bg-white border border-zinc-200 rounded-2xl px-4 h-14 justify-center">
-                  <TextInput
-                    className="text-zinc-900 text-base"
-                    placeholder="+55"
-                    placeholderTextColor="#a1a1aa"
-                    value={countryCode}
-                    onChangeText={setCountryCode}
-                    editable={!loading && !success}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-              </View>
-              <View className="flex-1">
-                <Text className="text-zinc-500 text-sm font-semibold mb-1">Telefone *</Text>
-                <View className="bg-white border border-zinc-200 rounded-2xl px-4 h-14 justify-center">
-                  <TextInput
-                    className="text-zinc-900 text-base"
-                    placeholder="(11) 99999-0000"
-                    placeholderTextColor="#a1a1aa"
+            <View className="mb-4">
+              <Text className="text-zinc-500 text-sm font-semibold mb-2">Telefone *</Text>
+              <View className="flex-row gap-2 items-center">
+                <CountrySelector value={countryCode} onChange={setCountryCode} />
+                <View className="flex-1">
+                  <PhoneInput
                     value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    editable={!loading && !success}
-                    keyboardType="phone-pad"
-                    autoComplete="tel"
+                    countryCode={countryCode}
+                    onChange={setPhoneNumber}
                   />
                 </View>
               </View>

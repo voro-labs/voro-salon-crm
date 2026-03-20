@@ -4,6 +4,7 @@ import { View, ActivityIndicator } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider, useAuth } from "contexts/auth.context"
 import { TenantThemeProvider, useTenantTheme } from "contexts/tenant-theme.context"
+import * as SecureStore from "expo-secure-store"
 import "../global.css"
 
 function RootLayoutNav() {
@@ -22,7 +23,19 @@ function RootLayoutNav() {
     if (!isAuthenticated && !inAuthGroup && !inBookingGroup && !inOnboardingGroup) {
       router.replace("/(auth)/welcome")
     } else if (isAuthenticated && inAuthGroup) {
-      router.replace("/(tabs)")
+      // Verifica flags de onboarding antes de redirecionar
+      SecureStore.getItemAsync("post_login_flags").then((raw) => {
+        const flags = raw ? JSON.parse(raw) : null
+        if (flags?.requiresPasswordChange) {
+          router.replace("/(onboarding)/change-password")
+        } else if (flags?.requiresTermsAcceptance) {
+          router.replace("/(onboarding)/terms")
+        } else if (flags?.requiresProfileCompletion) {
+          router.replace("/(onboarding)/complete-profile")
+        } else {
+          router.replace("/(tabs)")
+        }
+      })
     }
     // Se está em /(onboarding), não redireciona — usuário está completando o cadastro
   }, [isAuthenticated, isLoading, segments])

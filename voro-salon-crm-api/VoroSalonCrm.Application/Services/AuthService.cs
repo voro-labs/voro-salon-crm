@@ -180,7 +180,7 @@ namespace VoroSalonCrm.Application.Services
                     LastName = lastName,
                     IsActive = true
                 };
-
+                
                 var user = await _userService.CreateAsync(userDto, tempPassword, [RoleConstant.SalonOwner]);
 
                 // Confirmar e-mail automaticamente
@@ -285,9 +285,21 @@ namespace VoroSalonCrm.Application.Services
             return new string(password);
         }
 
+        private static string RemoveDiacritics(string text)
+        {
+            var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder();
+            foreach (var c in normalized)
+            {
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+                    sb.Append(c);
+            }
+            return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+        }
+
         private async Task<string> GenerateUniqueSlugAsync(string name)
         {
-            var baseSlug = Regex.Replace(name.ToLowerInvariant().Trim(), @"[^a-z0-9]+", "-").Trim('-');
+            var baseSlug = Regex.Replace(RemoveDiacritics(name).ToLowerInvariant().Trim(), @"[^a-z0-9]+", "-").Trim('-');
             baseSlug = string.IsNullOrEmpty(baseSlug) ? "salon" : baseSlug;
 
             var slug = baseSlug;

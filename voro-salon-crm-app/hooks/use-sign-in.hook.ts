@@ -52,8 +52,32 @@ export function useSignIn() {
       }
 
       if (response.data.token) {
+        // Armazenar flags pós-login antes de chamar login (evita race condition)
+        const hasPostLoginSteps =
+          response.data.requiresPasswordChange ||
+          response.data.requiresTermsAcceptance ||
+          response.data.requiresProfileCompletion
+
+        if (hasPostLoginSteps) {
+          await SecureStore.setItemAsync("post_login_flags", JSON.stringify({
+            requiresPasswordChange: !!response.data.requiresPasswordChange,
+            requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
+            requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+          }))
+        }
+
         await login(response.data.token, response.data.refreshToken, response.data.tenants)
         reloadTheme()
+
+        // Navegar para a tela de onboarding correta
+        if (response.data.requiresPasswordChange) {
+          router.replace("/(onboarding)/change-password")
+        } else if (response.data.requiresTermsAcceptance) {
+          router.replace("/(onboarding)/terms")
+        } else if (response.data.requiresProfileCompletion) {
+          router.replace("/(onboarding)/complete-profile")
+        }
+
         return { success: true }
       }
 
