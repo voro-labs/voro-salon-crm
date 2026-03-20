@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import {
   View,
   Text,
@@ -9,12 +9,13 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  Alert,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
-import { useRouter } from "expo-router"
+import { useRouter, useNavigation } from "expo-router"
 import { useSettings } from "hooks/use-settings.hook"
-import { refreshTenantTheme, useTenantTheme } from "contexts/tenant-theme.context"
+import { useTenantTheme } from "contexts/tenant-theme.context"
 import { PhoneInput } from "components/PhoneInput"
 import { CountrySelector } from "components/CountrySelector"
 
@@ -185,6 +186,7 @@ function ColorPickerModal({ visible, value, title, onSelect, onClose }: ColorPic
 // ── Salon Settings Screen ──────────────────────────────────────────────────────
 export default function SalonSettingsScreen() {
   const router = useRouter()
+  const navigation = useNavigation()
   const {
     formData,
     setForm,
@@ -198,6 +200,50 @@ export default function SalonSettingsScreen() {
 
   const [primaryPickerOpen, setPrimaryPickerOpen] = useState(false)
   const [secondaryPickerOpen, setSecondaryPickerOpen] = useState(false)
+
+  // Detecção de alterações não salvas
+  const originalFormRef = useRef<typeof formData | null>(null)
+  useEffect(() => {
+    if (!originalFormRef.current && formData.name) {
+      originalFormRef.current = { ...formData }
+    }
+  }, [formData])
+
+  const isDirty = !!(originalFormRef.current && (
+    formData.name !== originalFormRef.current.name ||
+    formData.slug !== originalFormRef.current.slug ||
+    formData.logoUrl !== originalFormRef.current.logoUrl ||
+    formData.primaryColor !== originalFormRef.current.primaryColor ||
+    formData.secondaryColor !== originalFormRef.current.secondaryColor ||
+    formData.contactPhone !== originalFormRef.current.contactPhone ||
+    formData.contactEmail !== originalFormRef.current.contactEmail
+  ))
+
+  // Intercepta navegação de saída quando há alterações não salvas
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      if (!isDirty) return
+      e.preventDefault()
+      Alert.alert(
+        "Alterações não salvas",
+        "Você tem alterações não salvas. Deseja sair e perder as modificações?",
+        [
+          { text: "Continuar editando", style: "cancel" },
+          {
+            text: "Sair sem salvar",
+            style: "destructive",
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      )
+    })
+    return unsubscribe
+  }, [navigation, isDirty])
+
+  async function handleSave() {
+    const ok = await saveTenant(formData)
+    if (ok) originalFormRef.current = { ...formData }
+  }
 
   if (isLoading) {
     return (
@@ -403,7 +449,7 @@ export default function SalonSettingsScreen() {
 
           {/* Save Button */}
           <Pressable
-            onPress={() => saveTenant(formData)}
+            onPress={handleSave}
             disabled={isSaving}
             className="h-14 rounded-3xl items-center justify-center flex-row gap-2"
             style={{ backgroundColor: isSaving ? primaryColor + "60" : primaryColor }}
@@ -427,7 +473,6 @@ export default function SalonSettingsScreen() {
         title="Cor Primária"
         onSelect={(hex) => {
           setForm((p) => (p ? { ...p, primaryColor: hex } : null))
-          refreshTenantTheme(hex, formData.secondaryColor)
           setPrimaryPickerOpen(false)
         }}
         onClose={() => setPrimaryPickerOpen(false)}
@@ -440,7 +485,6 @@ export default function SalonSettingsScreen() {
         title="Cor de Destaque"
         onSelect={(hex) => {
           setForm((p) => (p ? { ...p, secondaryColor: hex } : null))
-          refreshTenantTheme(formData.primaryColor, hex)
           setSecondaryPickerOpen(false)
         }}
         onClose={() => setSecondaryPickerOpen(false)}
