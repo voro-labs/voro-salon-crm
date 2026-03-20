@@ -114,6 +114,7 @@ namespace VoroSalonCrm.Application.Services
                 .Replace("{UserName}", userName);
 
             var body = template.Body
+                .Replace("{Email}", email)
                 .Replace("{UserName}", userName)
                 .Replace("{TemporaryPassword}", tempPassword)
                 .Replace("{LoginUrl}", loginUrl);

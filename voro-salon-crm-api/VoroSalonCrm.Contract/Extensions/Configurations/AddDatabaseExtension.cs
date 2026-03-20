@@ -30,7 +30,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             // connectionString = string.Format(baseConnectionString, config?.ConnectionString?.Development?.Server, config?.ConnectionString?.Development?.Port, config?.ConnectionString?.Development?.Database, config?.ConnectionString?.Development?.UserId, config?.ConnectionString?.Development?.Password);
 
             // FORCE PROD
-            // connectionString = string.Format(baseConnectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
+            connectionString = string.Format(baseConnectionString, config?.ConnectionString?.Production?.Server, config?.ConnectionString?.Production?.Port, config?.ConnectionString?.Production?.Database, config?.ConnectionString?.Production?.UserId, config?.ConnectionString?.Production?.Password);
 
             services.AddDbContext<JasmimDbContext>(options =>
                 options.UseNpgsql(connectionString));

@@ -61,6 +61,21 @@ export function useSignIn() {
             refreshTenantTheme(res.data.primaryColor, res.data.secondaryColor)
           }
         }).catch(() => { })
+
+        sessionStorage.setItem("post_login_flags", JSON.stringify({
+          requiresPasswordChange: !!response.data.requiresPasswordChange,
+          requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
+          requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+        }))
+
+        const dest = response.data.requiresPasswordChange
+          ? "/admin/change-password"
+          : response.data.requiresTermsAcceptance
+            ? "/admin/terms"
+            : response.data.requiresProfileCompletion
+              ? "/admin/complete-profile"
+              : "/"
+        window.location.replace(dest)
       }
 
       return { success: true }

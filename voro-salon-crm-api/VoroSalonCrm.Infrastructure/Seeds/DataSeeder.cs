@@ -76,7 +76,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                             <tr>
                             <td style='background-color: #f4f4f5; border-radius: 8px; padding: 16px 20px;'>
                                 <p style='margin: 0 0 8px; font-size: 13px; color: #71717a;'>E-mail de acesso</p>
-                                <p style='margin: 0; font-size: 15px; font-weight: 700; color: #18181b;'>{UserName}</p>
+                                <p style='margin: 0; font-size: 15px; font-weight: 700; color: #18181b;'>{Email}</p>
                                 <p style='margin: 12px 0 4px; font-size: 13px; color: #71717a;'>Senha temporária</p>
                                 <p style='margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 2px; color: {TenantPrimaryColor};'>{TemporaryPassword}</p>
                             </td>

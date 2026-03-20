@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -362,23 +363,46 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<AuthDto> RefreshTokenAsync(DTOs.Auth.RefreshTokenDto model)
         {
-            var principal = GetPrincipalFromExpiredToken(model.Token, configuration.Get<ConfigUtil>()?.JwtKey!);
-            if (principal == null)
-                throw new UnauthorizedAccessException("Invalid access token or refresh token");
+            User? user;
 
-            var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == CustomClaimTypes.UserId) 
-                ?? principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-                
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
-                throw new UnauthorizedAccessException("Invalid token claims.");
+            if (!string.IsNullOrWhiteSpace(model.Token))
+            {
+                // Caminho normal: extrai userId do JWT expirado
+                var principal = GetPrincipalFromExpiredToken(model.Token, configuration.Get<ConfigUtil>()?.JwtKey!);
+                if (principal == null)
+                    throw new UnauthorizedAccessException("Invalid access token or refresh token");
 
-            var user = await _userService.GetByIdAsync(userId);
-            if (user == null)
-                throw new UnauthorizedAccessException("User not found.");
+                var userIdClaim = principal.Claims.FirstOrDefault(c => c.Type == CustomClaimTypes.UserId)
+                    ?? principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
 
-            var userExtension = await _userExtensionRepository.GetByIdAsync(userId);
-            if (userExtension == null || userExtension.RefreshToken != model.RefreshToken || userExtension.RefreshTokenExpiryTime <= DateTime.UtcNow)
-                throw new UnauthorizedAccessException("Invalid refresh token.");
+                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
+                    throw new UnauthorizedAccessException("Invalid token claims.");
+
+                var userExtension = await _userExtensionRepository.GetByIdAsync(userId);
+                if (userExtension == null || userExtension.RefreshToken != model.RefreshToken || userExtension.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                    throw new UnauthorizedAccessException("Invalid refresh token.");
+
+                user = await _userService.GetByIdAsync(userId);
+                if (user == null)
+                    throw new UnauthorizedAccessException("User not found.");
+            }
+            else
+            {
+                // Caminho alternativo: sem JWT, busca usuário pelo próprio refresh token
+                if (string.IsNullOrWhiteSpace(model.RefreshToken))
+                    throw new UnauthorizedAccessException("Refresh token é obrigatório.");
+
+                var userExtension = await _userExtensionRepository
+                    .Query(e => e.RefreshToken == model.RefreshToken)
+                    .FirstOrDefaultAsync();
+
+                if (userExtension == null || userExtension.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                    throw new UnauthorizedAccessException("Invalid refresh token.");
+
+                user = await _userService.GetByIdAsync(userExtension.UserId);
+                if (user == null)
+                    throw new UnauthorizedAccessException("User not found.");
+            }
 
             var roles = await _userService.GetRolesAsync(user);
             return await GenerateAuthDtoAsync(user, roles);

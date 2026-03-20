@@ -21,7 +21,7 @@ export default function OnboardingCompleteProfileScreen() {
   const { primaryColor } = useTenantTheme()
 
   const [phoneNumber, setPhoneNumber] = useState("")
-  const [countryCode, setCountryCode] = useState("+55")
+  const [countryCode, setCountryCode] = useState("BR")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)

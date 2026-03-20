@@ -443,11 +443,9 @@ export default function PrecosPage() {
           ))}
         </div>
 
-        {/* Browser frame mockup */}
-        <div className="relative max-w-3xl mx-auto">
-          {/* Glow */}
+        {/* ── Desktop: browser frame ── */}
+        <div className="hidden md:block relative max-w-3xl mx-auto">
           <div className="absolute inset-0 -z-10 rounded-2xl bg-primary/10 blur-3xl scale-95" />
-
           <div className="rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
             {/* Browser chrome */}
             <div className="flex items-center gap-2 px-4 py-3 bg-muted/60 border-b border-border">
@@ -467,16 +465,14 @@ export default function PrecosPage() {
                 <div className="h-4 w-4 rounded bg-muted" />
               </div>
             </div>
-
             {/* App sidebar + content */}
             <div className="flex" style={{ height: 340 }}>
-              {/* Sidebar */}
-              <div className="w-14 sm:w-44 bg-sidebar border-r border-border/60 flex flex-col gap-1 p-2 shrink-0">
+              <div className="w-44 bg-sidebar border-r border-border/60 flex flex-col gap-1 p-2 shrink-0">
                 <div className="flex items-center gap-2 px-2 py-2 mb-2">
                   <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center shrink-0">
                     <Scissors className="h-3 w-3 text-primary-foreground" />
                   </div>
-                  <span className="hidden sm:block text-xs font-black text-sidebar-foreground truncate">Voro Salon</span>
+                  <span className="text-xs font-black text-sidebar-foreground truncate">Voro Salon</span>
                 </div>
                 {[
                   { icon: BarChart3, label: "Dashboard", active: screenshotIdx === 0 },
@@ -495,53 +491,125 @@ export default function PrecosPage() {
                     }`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
-                    <span className="hidden sm:block text-xs font-medium truncate">{label}</span>
+                    <span className="text-xs font-medium truncate">{label}</span>
                   </div>
                 ))}
               </div>
-
-              {/* Main content — animated */}
               <div className="flex-1 bg-background overflow-hidden relative">
-                <div
-                  key={screenshotIdx}
-                  className="absolute inset-0 animate-in fade-in slide-in-from-right-4 duration-300"
-                >
+                <div key={screenshotIdx} className="absolute inset-0 animate-in fade-in slide-in-from-right-4 duration-300">
                   {SCREENSHOTS[screenshotIdx].content}
                 </div>
               </div>
             </div>
           </div>
-
           {/* Caption + arrows */}
           <div className="flex items-center justify-between mt-4 px-1">
-            <button
-              onClick={prevScreen}
-              className="h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center hover:bg-muted transition-colors"
-            >
+            <button onClick={prevScreen} className="h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center hover:bg-muted transition-colors">
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="text-center">
               <p className="text-sm font-semibold text-foreground">{SCREENSHOTS[screenshotIdx].label}</p>
               <p className="text-xs text-muted-foreground">{SCREENSHOTS[screenshotIdx].description}</p>
             </div>
-            <button
-              onClick={nextScreen}
-              className="h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center hover:bg-muted transition-colors"
-            >
+            <button onClick={nextScreen} className="h-8 w-8 rounded-full border border-border bg-background flex items-center justify-center hover:bg-muted transition-colors">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-
-          {/* Dot indicators */}
           <div className="flex justify-center gap-1.5 mt-3">
             {SCREENSHOTS.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setScreenshotIdx(i)}
-                className={`rounded-full transition-all ${
-                  i === screenshotIdx ? "w-5 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30"
-                }`}
-              />
+              <button key={i} onClick={() => setScreenshotIdx(i)} className={`rounded-full transition-all ${i === screenshotIdx ? "w-5 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30"}`} />
+            ))}
+          </div>
+        </div>
+
+        {/* ── Mobile: phone frame ── */}
+        <div className="flex md:hidden flex-col items-center gap-6">
+          {/* Phone frame */}
+          <div className="relative">
+            {/* Glow */}
+            <div className="absolute inset-0 -z-10 bg-primary/15 blur-2xl scale-90 rounded-[3rem]" />
+
+            {/* Outer shell */}
+            <div className="relative w-[230px] rounded-[2.5rem] border-[6px] border-foreground/10 bg-foreground/10 shadow-2xl overflow-hidden">
+              {/* Dynamic island */}
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 h-5 w-20 rounded-full bg-black/80" />
+
+              {/* Screen */}
+              <div className="rounded-[2rem] overflow-hidden bg-background">
+                {/* Status bar */}
+                <div className="flex items-center justify-between px-4 pt-7 pb-1 bg-background">
+                  <span className="text-[9px] font-bold text-foreground/70">9:41</span>
+                  <div className="flex items-center gap-1">
+                    <div className="flex gap-0.5 items-end">
+                      {[3, 5, 7, 9].map((h) => (
+                        <div key={h} className="w-0.5 rounded-sm bg-foreground/70" style={{ height: h }} />
+                      ))}
+                    </div>
+                    <div className="w-3.5 h-2 rounded-sm border border-foreground/70 relative">
+                      <div className="absolute inset-[1.5px] rounded-[1px] bg-foreground/70 w-2/3" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top bar with logo */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-5 w-5 rounded-md bg-primary flex items-center justify-center">
+                      <Scissors className="h-2.5 w-2.5 text-primary-foreground" />
+                    </div>
+                    <span className="text-[10px] font-black text-foreground">Voro Salon</span>
+                  </div>
+                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-[8px] font-bold text-primary">JS</span>
+                  </div>
+                </div>
+
+                {/* Content area */}
+                <div className="overflow-hidden relative" style={{ height: 340 }}>
+                  <div key={screenshotIdx} className="absolute inset-0 animate-in fade-in duration-300">
+                    {SCREENSHOTS[screenshotIdx].content}
+                  </div>
+                </div>
+
+                {/* Bottom navigation */}
+                <div className="flex items-center justify-around px-2 py-2 border-t border-border/60 bg-background">
+                  {[
+                    { icon: BarChart3, label: "Início", active: screenshotIdx === 0 },
+                    { icon: Calendar, label: "Agenda", active: screenshotIdx === 1 },
+                    { icon: Users, label: "Clientes", active: screenshotIdx === 2 },
+                    { icon: Wallet, label: "Financeiro", active: screenshotIdx === 3 },
+                  ].map(({ icon: Icon, label, active }, i) => (
+                    <button
+                      key={label}
+                      onClick={() => setScreenshotIdx(i)}
+                      className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${
+                        active ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-[8px] font-semibold">{label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Home indicator */}
+                <div className="flex justify-center pb-2 pt-1 bg-background">
+                  <div className="w-16 h-1 rounded-full bg-foreground/20" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Caption */}
+          <div className="text-center">
+            <p className="text-sm font-semibold text-foreground">{SCREENSHOTS[screenshotIdx].label}</p>
+            <p className="text-xs text-muted-foreground">{SCREENSHOTS[screenshotIdx].description}</p>
+          </div>
+
+          {/* Dot indicators */}
+          <div className="flex justify-center gap-1.5">
+            {SCREENSHOTS.map((_, i) => (
+              <button key={i} onClick={() => setScreenshotIdx(i)} className={`rounded-full transition-all ${i === screenshotIdx ? "w-5 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-muted-foreground/30"}`} />
             ))}
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AlertCircle, Eye, EyeOff, KeyRound, Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,17 @@ import { useAuth } from "@/contexts/auth.context"
 export default function ChangePasswordPage() {
   const router = useRouter()
   const { user } = useAuth()
+
+  useEffect(() => {
+    const flagsRaw = sessionStorage.getItem("post_login_flags")
+    if (!flagsRaw) { router.replace("/"); return }
+    try {
+      const flags = JSON.parse(flagsRaw)
+      if (!flags.requiresPasswordChange) router.replace("/")
+    } catch {
+      router.replace("/")
+    }
+  }, [router])
 
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")

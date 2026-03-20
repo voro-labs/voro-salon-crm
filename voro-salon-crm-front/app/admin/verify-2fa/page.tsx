@@ -132,16 +132,16 @@ export default function VerifyTwoFactorPage() {
         requiresProfileCompletion: !!response.data.requiresProfileCompletion,
       }))
 
-      // Verificar requisitos pós-login
-      if (response.data.requiresPasswordChange) {
-        router.replace("/admin/change-password")
-      } else if (response.data.requiresTermsAcceptance) {
-        router.replace("/admin/terms")
-      } else if (response.data.requiresProfileCompletion) {
-        router.replace("/admin/complete-profile")
-      } else {
-        router.replace("/")
-      }
+      // Usar window.location para garantir navegação completa (evita race condition
+      // entre setUser do AuthContext e router.replace do Next.js)
+      const dest = response.data.requiresPasswordChange
+        ? "/admin/change-password"
+        : response.data.requiresTermsAcceptance
+          ? "/admin/terms"
+          : response.data.requiresProfileCompletion
+            ? "/admin/complete-profile"
+            : "/"
+      window.location.replace(dest)
     } catch {
       setError("Erro inesperado. Tente novamente.")
     } finally {

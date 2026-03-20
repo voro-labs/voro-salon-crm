@@ -13,6 +13,13 @@ import { API_CONFIG, secureApiCall } from "@/lib/api"
 
 import { ThemeToggle } from "../../theme-toggle"
 
+// Páginas de onboarding obrigatório — o guard não redireciona quando já está nelas
+const ONBOARDING_PATHS = [
+  "/admin/change-password",
+  "/admin/terms",
+  "/admin/complete-profile",
+]
+
 interface MainProps {
   children: React.ReactNode
 }
@@ -31,6 +38,31 @@ export function Main({ children }: MainProps) {
       return res.data
     }
   )
+
+  // Guard de onboarding obrigatório: redireciona para a primeira etapa pendente
+  // enquanto o usuário estiver autenticado e não tiver cumprido as flags pós-login
+  useEffect(() => {
+    if (!user?.token) return
+    if (ONBOARDING_PATHS.some((p) => pathname.startsWith(p))) return
+
+    const flagsRaw = sessionStorage.getItem("post_login_flags")
+    if (!flagsRaw) return
+
+    try {
+      const flags = JSON.parse(flagsRaw)
+      if (flags.requiresPasswordChange) {
+        router.replace("/admin/change-password")
+      } else if (flags.requiresTermsAcceptance) {
+        router.replace("/admin/terms")
+      } else if (flags.requiresProfileCompletion) {
+        router.replace("/admin/complete-profile")
+      } else {
+        sessionStorage.removeItem("post_login_flags")
+      }
+    } catch {
+      sessionStorage.removeItem("post_login_flags")
+    }
+  }, [user, pathname, router])
 
   useEffect(() => {
     if (tenant) {
@@ -62,6 +94,18 @@ export function Main({ children }: MainProps) {
     }
 
     // Layout público (sign-in, forgot-password, etc.) — nunca mostra loading aqui
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
+        <main className="flex-1">{children}</main>
+      </div>
+    )
+  }
+
+  // Páginas de onboarding obrigatório renderizam sem sidebar/navbar
+  if (ONBOARDING_PATHS.some((p) => pathname.startsWith(p))) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <div className="fixed top-4 right-4 z-50">

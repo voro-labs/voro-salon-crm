@@ -245,12 +245,10 @@ namespace VoroSalonCrm.Application.Services.Identity
                 throw new InvalidOperationException(message);
             }
 
-            // Recarregar para obter o novo hash gerado pelo Identity
-            var refreshed = await FindUserByEmailAsync(resetPasswordDto.Email) ?? user;
-            await AddToPasswordHistoryAsync(refreshed.Id, refreshed.PasswordHash ?? string.Empty);
+            // user.PasswordHash já foi atualizado pelo ResetPasswordAsync em memória
+            await AddToPasswordHistoryAsync(user.Id, user.PasswordHash ?? string.Empty);
 
-            // Atualizar data de alteração de senha e resetar expiração
-            var ext = await userExtensionRepository.GetByIdAsync(refreshed.Id);
+            var ext = await userExtensionRepository.GetByIdAsync(user.Id);
             if (ext != null)
             {
                 ext.PasswordChangedAt = DateTime.UtcNow;
@@ -283,7 +281,10 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task ChangePasswordAsync(Guid userId, string newPassword)
         {
-            var user = await GetByIdAsync(userId)
+            var userById = await GetByIdAsync(userId)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            var user = await userManager.FindByEmailAsync($"{userById.Email}")
                 ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
             await EnsurePasswordNotReusedAsync(user, newPassword);
@@ -297,9 +298,8 @@ namespace VoroSalonCrm.Application.Services.Identity
                 throw new InvalidOperationException(error?.Description ?? "Não foi possível alterar a senha.");
             }
 
-            // Recarregar para obter o novo hash
-            var refreshed = await GetByIdAsync(userId) ?? user;
-            await AddToPasswordHistoryAsync(refreshed.Id, refreshed.PasswordHash ?? string.Empty);
+            // ResetPasswordAsync atualiza user.PasswordHash no objeto em memória
+            await AddToPasswordHistoryAsync(user.Id, user.PasswordHash ?? string.Empty);
 
             var ext = await userExtensionRepository.GetByIdAsync(userId);
             if (ext != null)
@@ -334,7 +334,10 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task CompleteProfileAsync(Guid userId, CompleteProfileDto dto)
         {
-            var user = await GetByIdAsync(userId)
+            var userById = await GetByIdAsync(userId)
+                ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            var user = await userManager.FindByEmailAsync($"{userById.Email}")
                 ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
             if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
@@ -344,7 +347,7 @@ namespace VoroSalonCrm.Application.Services.Identity
                 user.CountryCode = dto.CountryCode;
 
             if (dto.BirthDate.HasValue)
-                user.BirthDate = dto.BirthDate;
+                user.BirthDate = dto.BirthDate.Value.ToUniversalTime();
 
             await userManager.UpdateAsync(user);
 

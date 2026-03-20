@@ -1,11 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
-import { AlertCircle, CheckCircle2, Loader2, UserCircle } from "lucide-react"
+import { AlertCircle, Calendar as CalendarIcon, CheckCircle2, Loader2, UserCircle } from "lucide-react"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { PhoneInput } from "@/components/ui/custom/phone-input"
+import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { secureApiCall, API_CONFIG } from "@/lib/api"
 import { useAuth } from "@/contexts/auth.context"
 
@@ -13,14 +19,25 @@ export default function CompleteProfilePage() {
   const router = useRouter()
   const { user } = useAuth()
 
+  useEffect(() => {
+    const flagsRaw = sessionStorage.getItem("post_login_flags")
+    if (!flagsRaw) { router.replace("/"); return }
+    try {
+      const flags = JSON.parse(flagsRaw)
+      if (!flags.requiresProfileCompletion) router.replace("/")
+    } catch {
+      router.replace("/")
+    }
+  }, [router])
+
+  const [countryCode, setCountryCode] = useState("BR")
   const [phoneNumber, setPhoneNumber] = useState("")
-  const [countryCode, setCountryCode] = useState("+55")
-  const [birthDate, setBirthDate] = useState("")
+  const [birthDate, setBirthDate] = useState<Date | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
 
@@ -36,7 +53,7 @@ export default function CompleteProfilePage() {
         body: JSON.stringify({
           phoneNumber: phoneNumber.trim(),
           countryCode: countryCode.trim(),
-          birthDate: birthDate || null,
+          birthDate: birthDate ? format(birthDate, "yyyy-MM-dd") : null,
         }),
       })
 
@@ -87,41 +104,58 @@ export default function CompleteProfilePage() {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex gap-2">
-            <div className="flex flex-col gap-1.5 w-24">
-              <Label htmlFor="country-code">DDD/País</Label>
-              <Input
-                id="country-code"
-                type="text"
-                value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-                placeholder="+55"
-                disabled={loading || success}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 flex-1">
-              <Label htmlFor="phone">Telefone *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="(11) 99999-0000"
-                autoComplete="tel"
-                disabled={loading || success}
-              />
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="phone">Telefone *</Label>
+            <div className="flex flex-row gap-2">
+              <div className="shrink-0">
+                <CountrySelector value={countryCode} onChange={setCountryCode} />
+              </div>
+              <div className="flex-1">
+                <PhoneInput
+                  id="phone"
+                  value={phoneNumber}
+                  autoComplete="tel"
+                  onChange={setPhoneNumber}
+                  countryCode={countryCode}
+                  disabled={loading || success}
+                  required
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="birth-date">Data de nascimento</Label>
-            <Input
-              id="birth-date"
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              disabled={loading || success}
-            />
+          <div className="flex flex-col gap-2">
+            <Label>Data de nascimento</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading || success}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !birthDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {birthDate
+                    ? format(birthDate, "PPP", { locale: ptBR })
+                    : <span>Selecione uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={birthDate}
+                  onSelect={setBirthDate}
+                  captionLayout="dropdown"
+                  fromYear={1920}
+                  toYear={new Date().getFullYear()}
+                  disabled={(date) => date > new Date()}
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <p className="text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AlertCircle, CheckCircle2, FileText, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,17 @@ import { useAuth } from "@/contexts/auth.context"
 export default function TermsPage() {
   const router = useRouter()
   const { user } = useAuth()
+
+  useEffect(() => {
+    const flagsRaw = sessionStorage.getItem("post_login_flags")
+    if (!flagsRaw) { router.replace("/"); return }
+    try {
+      const flags = JSON.parse(flagsRaw)
+      if (!flags.requiresTermsAcceptance) router.replace("/")
+    } catch {
+      router.replace("/")
+    }
+  }, [router])
 
   const [accepted, setAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
