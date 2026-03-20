@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import useSWR, { mutate } from "swr"
 import { useRouter } from "expo-router"
+import { Alert } from "react-native"
 import { Toast } from "toastify-react-native"
 import { API_CONFIG, secureApiCall } from "../lib/api"
 import { useWhatsApp } from "./use-whatsapp.hook"
@@ -131,8 +132,15 @@ export function useAppointmentDetail(appointmentId: string) {
       }
       Toast.success(`Status atualizado para ${statusLabels[newStatus] ?? newStatus}`)
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
-      if (appointment) {
-        sendWhatsAppMessage(appointment, newStatus, !!tenant?.useWhatsappBooking)
+      if (appointment && !tenant?.useWhatsappBooking) {
+        Alert.alert(
+          "Enviar via WhatsApp?",
+          "Deseja notificar o cliente sobre a mudança de status pelo WhatsApp?",
+          [
+            { text: "Não", style: "cancel" },
+            { text: "Enviar", onPress: () => sendWhatsAppMessage(appointment, newStatus, false) },
+          ]
+        )
       }
       return true
     } catch {

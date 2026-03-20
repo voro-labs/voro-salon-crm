@@ -42,6 +42,7 @@ import { ptBR } from "date-fns/locale"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useWhatsApp } from "@/hooks/use-whatsapp.hook"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { StatusBadge, appointmentStatusConfig } from "@/components/ui/custom/status-badge"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
@@ -85,6 +86,7 @@ export default function DashboardPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const { sendWhatsAppMessage } = useWhatsApp()
+  const { maxClients } = usePlanLimits()
 
   const isSchedulingEnabled = !modules || modules.find((m: any) => m.module === 2)?.isEnabled !== false
 
@@ -230,7 +232,7 @@ export default function DashboardPage() {
           )}
           <MetricCard
             title="Total de Clientes"
-            value={String(data?.totalClients || 0)}
+            value={maxClients > 0 ? `${data?.totalClients || 0}/${maxClients}` : String(data?.totalClients || 0)}
             description="Clientes cadastrados"
             icon={Users}
           />

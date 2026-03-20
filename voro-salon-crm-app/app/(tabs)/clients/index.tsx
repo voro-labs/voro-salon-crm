@@ -1,5 +1,5 @@
 import React from "react"
-import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from "react-native"
+import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -9,6 +9,7 @@ import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 interface Client {
   id: string
@@ -66,10 +67,24 @@ export default function ClientsScreen() {
   useModuleGuard("clients")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
+  const { maxClients } = usePlanLimits()
   const { filteredData, isLoading, search, setSearch } = useDataList<Client>(
     API_CONFIG.ENDPOINTS.CLIENTS,
     (c, q) => `${c.name} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q)
   )
+
+  function handleAddClient() {
+    const totalClients = (filteredData ?? []).length
+    if (maxClients > 0 && totalClients >= maxClients) {
+      Alert.alert(
+        "Limite atingido",
+        `Seu plano permite até ${maxClients} cliente${maxClients === 1 ? "" : "s"}. Faça upgrade para adicionar mais.`,
+        [{ text: "OK" }]
+      )
+      return
+    }
+    router.push("/(tabs)/clients/new" as any)
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -92,7 +107,7 @@ export default function ClientsScreen() {
           )}
         </View>
         <Pressable
-          onPress={() => router.push("/(tabs)/clients/new" as any)}
+          onPress={handleAddClient}
           className="h-11 w-11 rounded-2xl items-center justify-center"
           style={{ backgroundColor: primaryColor }}
         >

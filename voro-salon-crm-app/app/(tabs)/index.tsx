@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "contexts/auth.context"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useDashboard } from "hooks/use-dashboard.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 import useSWR, { useSWRConfig } from "swr"
 import { fetcher } from "lib/fetcher"
 import { API_CONFIG, secureApiCall } from "lib/api"
@@ -318,6 +319,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets()
   const { user, logout, switchTenant } = useAuth()
   const { dashboardData, loading, refetch } = useDashboard()
+  const { maxClients } = usePlanLimits()
   const { mutate: mutateAll } = useSWRConfig()
 
   const { primaryColor, reload: reloadTheme } = useTenantTheme()
@@ -473,7 +475,7 @@ export default function DashboardScreen() {
                 />
                 <SummaryCard
                   label="Clientes"
-                  value={totalClients}
+                  value={maxClients > 0 ? `${totalClients}/${maxClients}` : totalClients}
                   icon="people-outline"
                   color="#d97706"
                   sub="cadastrados"

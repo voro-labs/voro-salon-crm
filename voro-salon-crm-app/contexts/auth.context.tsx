@@ -191,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userName: decoded.userName,
         email: decoded.email,
         roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
+        twoFactorEnabled: decoded.twoFactorEnabled === "True",
         token: token,
         refreshToken: refreshToken,
         tenants: tenants || [],

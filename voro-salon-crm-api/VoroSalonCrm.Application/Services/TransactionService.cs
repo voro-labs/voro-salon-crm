@@ -118,7 +118,7 @@ namespace VoroSalonCrm.Application.Services
 
             if (transaction == null) throw new KeyNotFoundException("Transaction not found");
 
-            transaction.PaidAmount = dto.PaidAmount;
+            transaction.PaidAmount += dto.PaidAmount;
             transaction.PaymentDate = dto.PaymentDate;
             transaction.PaymentMethod = dto.PaymentMethod; 
             

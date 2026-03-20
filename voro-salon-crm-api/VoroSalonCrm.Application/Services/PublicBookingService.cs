@@ -112,9 +112,20 @@ namespace VoroSalonCrm.Application.Services
             var tenant = await tenantRepository.GetBySlugAsync(tenantSlug);
             if (tenant == null) return [];
 
+            var nowBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3));
             var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 8, 0, 0, TimeSpan.FromHours(-3));
             var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 18, 0, 0, TimeSpan.FromHours(-3));
 
+            // Início dos slots gerados: para o dia atual filtra horários já passados
+            var slotStart = startOfDay;
+            if (date.Date == nowBrasilia.Date && nowBrasilia > startOfDay)
+            {
+                var minutesCeil = (int)Math.Ceiling(nowBrasilia.Minute / 30.0) * 30;
+                slotStart = new DateTimeOffset(date.Year, date.Month, date.Day, nowBrasilia.Hour, 0, 0, TimeSpan.FromHours(-3))
+                    .AddMinutes(minutesCeil);
+            }
+
+            // A query ao banco sempre busca desde o início do dia para detectar conflitos de duração
             var startUtc = startOfDay.ToUniversalTime();
             var endUtc = endOfDay.ToUniversalTime();
 
@@ -157,7 +168,7 @@ namespace VoroSalonCrm.Application.Services
             }
 
             var slots = new List<DTOs.CRM.AvailabilitySlotDto>();
-            var current = startOfDay.ToUniversalTime();
+            var current = slotStart.ToUniversalTime();
 
             // Salon-only Mode: If no active employees exist, treat the salon as a single resource with capacity 1
             if (activeEmployeesCount <= 0 && (!employeeId.HasValue || employeeId.Value == Guid.Empty))
