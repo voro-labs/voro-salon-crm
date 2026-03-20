@@ -139,6 +139,55 @@ namespace VoroSalonCrm.Application.Services.Identity
             return (user, roles);
         }
 
+        public async Task<string> GenerateEnable2FACodeAsync(Guid userId)
+        {
+            var code = Random.Shared.Next(100000, 999999).ToString();
+
+            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            if (ext == null)
+            {
+                ext = new UserExtension { UserId = userId };
+                await userExtensionRepository.AddAsync(ext);
+            }
+
+            ext.TwoFactorCode = code;
+            ext.TwoFactorCodeExpiry = DateTime.UtcNow.AddMinutes(10);
+            userExtensionRepository.Update(ext);
+            await unitOfWork.SaveChangesAsync();
+
+            return code;
+        }
+
+        public async Task EnableTwoFactorAsync(Guid userId, string code)
+        {
+            var ext = await userExtensionRepository.GetByIdAsync(userId)
+                ?? throw new UnauthorizedAccessException("Sessão não encontrada.");
+
+            if (ext.TwoFactorCodeExpiry == null || DateTime.UtcNow > ext.TwoFactorCodeExpiry)
+                throw new UnauthorizedAccessException("O código expirou. Solicite um novo código.");
+
+            if (ext.TwoFactorCode != code)
+                throw new UnauthorizedAccessException("Código inválido. Verifique o e-mail e tente novamente.");
+
+            var user = await userManager.FindByIdAsync(userId.ToString())
+                ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
+
+            await userManager.SetTwoFactorEnabledAsync(user, true);
+
+            ext.TwoFactorCode = null;
+            ext.TwoFactorCodeExpiry = null;
+            userExtensionRepository.Update(ext);
+            await unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task DisableTwoFactorAsync(Guid userId)
+        {
+            var user = await userManager.FindByIdAsync(userId.ToString())
+                ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
+
+            await userManager.SetTwoFactorEnabledAsync(user, false);
+        }
+
         // ── Criação de usuário ────────────────────────────────────────────────
 
         public async Task<User> CreateAsync(UserDto dto, string password, ICollection<string> roles)

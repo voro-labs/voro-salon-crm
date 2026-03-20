@@ -7,5 +7,6 @@
         public const string LastName = "lastName";
         public const string UserName = "userName";
         public const string Roles = "roles";
+        public const string TwoFactorEnabled = "twoFactorEnabled";
     }
 }

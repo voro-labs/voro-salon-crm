@@ -14,6 +14,7 @@ interface JwtPayload {
   email: string
   roles?: string
   TenantId?: string
+  twoFactorEnabled?: string
   exp: number
 }
 
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userName: decoded.userName,
       email: decoded.email,
       roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
+      twoFactorEnabled: decoded.twoFactorEnabled === "True",
       token: jwt,
       refreshToken: refresh,
       tenants: storedTenants,

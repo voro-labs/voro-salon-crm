@@ -24,6 +24,9 @@ namespace VoroSalonCrm.Application.Services.Interfaces
 
         // Two-Factor Authentication
         Task<AuthDto> VerifyTwoFactorAsync(VerifyTwoFactorDto dto);
+        Task RequestEnable2FAAsync(Guid userId);
+        Task ConfirmEnable2FAAsync(Guid userId, string code);
+        Task Disable2FAAsync(Guid userId);
 
         // Troca de Tenant
         Task<AuthDto> SwitchTenantAsync(Guid tenantId);
