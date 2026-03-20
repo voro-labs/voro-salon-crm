@@ -1,5 +1,5 @@
 import React from "react"
-import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from "react-native"
+import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -9,6 +9,7 @@ import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 import { fetcher } from "lib/fetcher"
 
 interface Employee {
@@ -98,11 +99,25 @@ export default function EmployeesScreen() {
   useModuleGuard("employees")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
+  const { maxEmployees } = usePlanLimits()
   const { data: services = [] } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
   const { filteredData, isLoading, search, setSearch } = useDataList<Employee>(
     API_CONFIG.ENDPOINTS.EMPLOYEES,
     (e, q) => e.name.toLowerCase().includes(q)
   )
+
+  function handleAddEmployee() {
+    const totalEmployees = (filteredData ?? []).length
+    if (maxEmployees > 0 && totalEmployees >= maxEmployees) {
+      Alert.alert(
+        "Limite atingido",
+        `Seu plano permite até ${maxEmployees} funcionário${maxEmployees === 1 ? "" : "s"}. Faça upgrade para adicionar mais.`,
+        [{ text: "OK" }]
+      )
+      return
+    }
+    router.push("/(tabs)/employees/new" as any)
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -125,7 +140,7 @@ export default function EmployeesScreen() {
           )}
         </View>
         <Pressable
-          onPress={() => router.push("/(tabs)/employees/new" as any)}
+          onPress={handleAddEmployee}
           className="h-11 w-11 rounded-2xl items-center justify-center"
           style={{ backgroundColor: primaryColor }}
         >
