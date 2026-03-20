@@ -58,9 +58,21 @@ export default function VerifyTwoFactorScreen() {
   const code = digits.join("")
 
   function handleChange(index: number, value: string) {
-    const digit = value.replace(/\D/g, "").slice(-1)
+    const cleaned = value.replace(/\D/g, "")
     setError(null)
 
+    // Paste: valor com mais de 1 dígito → distribui pelos inputs
+    if (cleaned.length > 1) {
+      const pasted = cleaned.slice(0, CODE_LENGTH).split("")
+      const next = Array(CODE_LENGTH).fill("")
+      pasted.forEach((d, i) => { next[i] = d })
+      setDigits(next)
+      const lastIndex = Math.min(pasted.length - 1, CODE_LENGTH - 1)
+      setTimeout(() => inputRefs.current[lastIndex]?.focus(), 10)
+      return
+    }
+
+    const digit = cleaned.slice(-1)
     const next = [...digits]
     next[index] = digit
     setDigits(next)
@@ -202,7 +214,7 @@ export default function VerifyTwoFactorScreen() {
                   onChangeText={(v) => handleChange(i, v)}
                   onKeyPress={(e) => handleKeyPress(i, e)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={i === 0 ? CODE_LENGTH : 1}
                   editable={!loading && !success}
                   selectTextOnFocus
                   className="text-center text-2xl font-black text-zinc-900"
