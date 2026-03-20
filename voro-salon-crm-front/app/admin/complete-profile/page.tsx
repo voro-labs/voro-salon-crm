@@ -14,6 +14,7 @@ import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { secureApiCall, API_CONFIG } from "@/lib/api"
 import { useAuth } from "@/contexts/auth.context"
+import { flags } from "@/lib/flag-utils"
 
 export default function CompleteProfilePage() {
   const router = useRouter()
@@ -48,11 +49,13 @@ export default function CompleteProfilePage() {
 
     setLoading(true)
     try {
+      const dialCode = flags[countryCode]?.dialCode;
+
       const res = await secureApiCall<null>(API_CONFIG.ENDPOINTS.COMPLETE_PROFILE, {
         method: "POST",
         body: JSON.stringify({
           phoneNumber: phoneNumber.trim(),
-          countryCode: countryCode.trim(),
+          countryCode: dialCode,
           birthDate: birthDate ? format(birthDate, "yyyy-MM-dd") : null,
         }),
       })

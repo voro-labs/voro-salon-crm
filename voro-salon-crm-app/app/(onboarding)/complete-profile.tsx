@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons"
 import * as SecureStore from "expo-secure-store"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { API_CONFIG, apiCall } from "lib/api"
+import { flags } from "@/lib/flag-utils"
 
 export default function OnboardingCompleteProfileScreen() {
   const router = useRouter()
@@ -36,11 +37,13 @@ export default function OnboardingCompleteProfileScreen() {
 
     setLoading(true)
     try {
+      const dialCode = flags[countryCode]?.dialCode;
+
       const res = await apiCall<null>(API_CONFIG.ENDPOINTS.COMPLETE_PROFILE, {
         method: "POST",
         body: JSON.stringify({
           phoneNumber: phoneNumber.trim(),
-          countryCode: countryCode.trim(),
+          countryCode: dialCode,
         }),
       })
 
