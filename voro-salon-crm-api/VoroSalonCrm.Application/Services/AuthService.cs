@@ -71,6 +71,7 @@ namespace VoroSalonCrm.Application.Services
 
                 return new AuthDto
                 {
+                    TwoFactorEnabled = true,
                     RequiresTwoFactor = true,
                     TwoFactorPendingToken = pendingToken
                 };
