@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { Platform } from "react-native"
 import * as Notifications from "expo-notifications"
 import * as SecureStore from "expo-secure-store"
+import * as Device from "expo-device"
 import Constants from "expo-constants"
 import { useRouter } from "expo-router"
 import { API_CONFIG, secureApiCall } from "lib/api"
@@ -13,6 +14,9 @@ export function usePushNotifications() {
 
   const registerPushToken = useCallback(async () => {
     try {
+      // Push tokens só funcionam em dispositivos físicos
+      if (!Device.isDevice) return
+
       // Verifica se já há um token salvo para evitar re-registro
       const existingToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY)
       if (existingToken) return
