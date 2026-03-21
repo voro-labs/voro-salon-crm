@@ -58,4 +58,4 @@ yarn-error.log*
 next-env.d.ts
 
 # misc
-*.orig.*
+*.orig.*google-services.json
