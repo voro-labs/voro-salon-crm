@@ -10,11 +10,9 @@ namespace VoroSalonCrm.Infrastructure.Repositories
     public class ClientRepository(JasmimDbContext context, IUnitOfWork unitOfWork)
         : RepositoryBase<Client>(context, unitOfWork), IClientRepository
     {
-        private readonly JasmimDbContext _context = context;
-
         public async Task<Client?> GetByPhoneAsync(Guid tenantId, string phone)
         {
-            return await _context.Clients
+            return await context.Clients
                 .AsQueryable()
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Phone == phone && !c.IsDeleted);

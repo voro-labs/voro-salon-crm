@@ -35,7 +35,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<Tenant?> GetByIdAsync(Guid id)
         {
-            return await _tenantRepository.GetByIdAsync(id);
+            return await _tenantRepository.GetByIdAsync(false, id);
         }
 
         public async Task<Tenant?> GetBySlugAsync(string slug)
@@ -50,7 +50,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<Tenant> UpdateAsync(Guid id, UpdateTenantDto dto)
         {
-            var tenant = await _tenantRepository.GetByIdAsync(id)
+            var tenant = await _tenantRepository.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException($"Tenant '{id}' not found.");
 
             if (dto.Name is not null) tenant.Name = dto.Name;
@@ -73,7 +73,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<Tenant> UpdateLogoAsync(Guid id, string logoUrl)
         {
-            var tenant = await _tenantRepository.GetByIdAsync(id)
+            var tenant = await _tenantRepository.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException($"Tenant '{id}' not found.");
 
             tenant.LogoUrl = logoUrl;
@@ -87,7 +87,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            var tenant = await _tenantRepository.GetByIdAsync(id);
+            var tenant = await _tenantRepository.GetByIdAsync(false, id);
             if (tenant is null) return false;
 
             tenant.IsDeleted = true;

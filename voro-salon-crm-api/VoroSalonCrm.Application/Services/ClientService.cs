@@ -50,7 +50,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<ClientDto?> GetByIdAsync(Guid id)
         {
-            var client = await _clientRepository.GetByIdAsync(id);
+            var client = await _clientRepository.GetByIdAsync(false, id);
             if (client is null) return null;
 
             return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt);
@@ -64,7 +64,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<ClientDto> UpdateAsync(Guid id, UpdateClientDto dto)
         {
-            var client = await _clientRepository.GetByIdAsync(id)
+            var client = await _clientRepository.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException($"Client '{id}' not found.");
 
             if (dto.Name is not null) client.Name = dto.Name;
@@ -82,7 +82,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            var client = await _clientRepository.GetByIdAsync(id);
+            var client = await _clientRepository.GetByIdAsync(false, id);
             if (client is null) return false;
 
             client.IsDeleted = true;

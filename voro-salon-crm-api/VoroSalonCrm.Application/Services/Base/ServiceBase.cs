@@ -14,11 +14,11 @@ namespace VoroSalonCrm.Application.Services.Base
         public Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>> predicate, bool asNoTracking = true, params Func<IQueryable<T>, IQueryable<T>>[] includes)
             => _repository.GetAllAsync(predicate, asNoTracking, includes);
 
-        public Task<T?> GetByIdAsync(params object[] keyValues)
-            => _repository.GetByIdAsync(keyValues);
+        public Task<T?> GetByIdAsync(bool asNoTracking = true, params object[] keyValues)
+            => _repository.GetByIdAsync(asNoTracking, keyValues);
 
-        public Task<T?> GetByIdAsync(Expression<Func<T, bool>> predicate, params Func<IQueryable<T>, IQueryable<T>>[] includes)
-            => _repository.GetByIdAsync(predicate, includes);
+        public Task<T?> GetByIdAsync(Expression<Func<T, bool>> predicate, bool asNoTracking = true, params Func<IQueryable<T>, IQueryable<T>>[] includes)
+            => _repository.GetByIdAsync(predicate, asNoTracking, includes);
 
         public IQueryable<T> Query(Expression<Func<T, bool>>? predicate = null, bool asNoTracking = true)
             => _repository.Query(predicate, asNoTracking);

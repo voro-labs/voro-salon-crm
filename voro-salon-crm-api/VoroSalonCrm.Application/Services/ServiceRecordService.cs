@@ -26,7 +26,7 @@ namespace VoroSalonCrm.Application.Services
                 throw new UnauthorizedAccessException("Tenant invalid or not found in context.");
 
             // Validar se o cliente existe
-            _ = await _clientRepository.GetByIdAsync(dto.ClientId)
+            _ = await _clientRepository.GetByIdAsync(false, dto.ClientId)
                 ?? throw new KeyNotFoundException($"Client '{dto.ClientId}' not found.");
 
             var record = new ServiceRecord
@@ -51,7 +51,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<ServiceRecordDto?> GetByIdAsync(Guid id)
         {
-            var record = await _serviceRepository.GetByIdAsync(r => r.Id == id, r => r.Include(x => x.Service!));
+            var record = await _serviceRepository.GetByIdAsync(r => r.Id == id, false, r => r.Include(x => x.Service!));
             if (record is null) return null;
 
             return MapToDto(record);
@@ -71,7 +71,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<ServiceRecordDto> UpdateAsync(Guid id, UpdateServiceRecordDto dto)
         {
-            var record = await _serviceRepository.GetByIdAsync(r => r.Id == id, r => r.Include(x => x.Service!))
+            var record = await _serviceRepository.GetByIdAsync(r => r.Id == id, false, r => r.Include(x => x.Service!))
                 ?? throw new KeyNotFoundException($"ServiceRecord '{id}' not found.");
 
             if (dto.ServiceId.HasValue) record.ServiceId = dto.ServiceId;
@@ -95,7 +95,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            var record = await _serviceRepository.GetByIdAsync(id);
+            var record = await _serviceRepository.GetByIdAsync(false, id);
             if (record is null) return false;
 
             record.IsDeleted = true;
@@ -109,7 +109,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteByAppointmentIdAsync(Guid appointmentId)
         {
-            var records = await _serviceRepository.GetAllAsync(r => r.AppointmentId == appointmentId && !r.IsDeleted);
+            var records = await _serviceRepository.GetAllAsync(r => r.AppointmentId == appointmentId && !r.IsDeleted, false);
             foreach (var record in records)
             {
                 record.IsDeleted = true;

@@ -201,7 +201,7 @@ namespace VoroSalonCrm.Application.Services
             await _sheetRepository.AddAsync(sheet);
             await _unitOfWork.SaveChangesAsync();
 
-            return await MapToDto(sheet);
+            return MapToDto(sheet);
         }
 
         public async Task<AnamnesisSheetDto> CreateClientWithAnamnesisAsync(CreateClientWithAnamnesisDto dto)
@@ -252,7 +252,7 @@ namespace VoroSalonCrm.Application.Services
             var dtos = new List<AnamnesisSheetDto>();
             foreach (var s in sheets.OrderByDescending(s => s.Date))
             {
-                dtos.Add(await MapToDto(s));
+                dtos.Add(MapToDto(s));
             }
             return dtos;
         }
@@ -261,16 +261,17 @@ namespace VoroSalonCrm.Application.Services
         {
             var sheet = await _sheetRepository.GetByIdAsync(
                 s => s.Id == id && !s.IsDeleted,
+                false,
                 query => query.Include(s => s.Responses)
                               .Include(s => s.Evidences)
                               .Include(s => s.Signatures));
 
             if (sheet == null) return null;
 
-            return await MapToDto(sheet);
+            return MapToDto(sheet);
         }
 
-        private async Task<AnamnesisSheetDto> MapToDto(AnamnesisSheet s)
+        private static AnamnesisSheetDto MapToDto(AnamnesisSheet s)
         {
             return new AnamnesisSheetDto(
                 s.Id,

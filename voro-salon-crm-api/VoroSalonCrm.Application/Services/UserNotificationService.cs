@@ -40,7 +40,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task MarkAsReadAsync(Guid notificationId)
         {
             var userId = _currentUserService.UserId;
-            var notification = await _userNotificationRepository.GetByIdAsync(notificationId);
+            var notification = await _userNotificationRepository.GetByIdAsync(false, notificationId);
 
             if (notification == null || notification.UserId != userId)
                 throw new KeyNotFoundException("Notification not found.");

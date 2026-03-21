@@ -40,7 +40,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<ServiceDto?> GetByIdAsync(Guid id)
         {
-            var service = await _serviceRepository.GetByIdAsync(id);
+            var service = await _serviceRepository.GetByIdAsync(false, id);
             if (service == null) return null;
 
             return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt);
@@ -54,7 +54,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<ServiceDto> UpdateAsync(Guid id, UpdateServiceDto dto)
         {
-            var service = await _serviceRepository.GetByIdAsync(id)
+            var service = await _serviceRepository.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException($"Service '{id}' not found.");
 
             if (dto.Name != null) service.Name = dto.Name;
@@ -72,7 +72,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            var service = await _serviceRepository.GetByIdAsync(id);
+            var service = await _serviceRepository.GetByIdAsync(false, id);
             if (service == null) return false;
 
             service.IsDeleted = true;

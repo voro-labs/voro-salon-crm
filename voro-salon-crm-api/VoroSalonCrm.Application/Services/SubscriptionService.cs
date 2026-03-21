@@ -44,7 +44,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<CheckoutResultDto> CreateCheckoutAsync(CreateCheckoutDto dto)
         {
-            var plan = await planRepository.GetByIdAsync(dto.PlanId)
+            var plan = await planRepository.GetByIdAsync(false, dto.PlanId)
                 ?? throw new InvalidOperationException("Plano não encontrado.");
 
             var backUrl = $"{UrlBase}/prices/feedback";
@@ -85,7 +85,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task GrantManualAsync(GrantManualSubscriptionDto dto, Guid grantedByUserId)
         {
-            _ = await planRepository.GetByIdAsync(dto.PlanId)
+            _ = await planRepository.GetByIdAsync(false, dto.PlanId)
                 ?? throw new InvalidOperationException("Plano não encontrado.");
 
             var subscription = new TenantSubscription
@@ -108,7 +108,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task CancelAsync(Guid subscriptionId)
         {
-            var sub = await subscriptionRepository.GetByIdAsync(subscriptionId)
+            var sub = await subscriptionRepository.GetByIdAsync(false, subscriptionId)
                 ?? throw new InvalidOperationException("Assinatura não encontrada.");
 
             sub.Status = SubscriptionStatus.Cancelled;

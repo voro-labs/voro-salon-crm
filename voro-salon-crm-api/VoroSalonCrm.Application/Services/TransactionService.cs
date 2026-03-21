@@ -35,6 +35,7 @@ namespace VoroSalonCrm.Application.Services
         {
             var transaction = await _repository.GetByIdAsync(
                 t => t.Id == id && t.TenantId == _currentUser.TenantId && !t.IsDeleted,
+                false,
                 q => q.Include(t => t.Category)
             );
 
@@ -80,6 +81,7 @@ namespace VoroSalonCrm.Application.Services
         {
             var transaction = await _repository.GetByIdAsync(
                 t => t.Id == dto.Id && t.TenantId == _currentUser.TenantId && !t.IsDeleted,
+                false,
                 q => q.Include(t => t.Category)
             );
 
@@ -113,6 +115,7 @@ namespace VoroSalonCrm.Application.Services
         {
             var transaction = await _repository.GetByIdAsync(
                 t => t.Id == dto.Id && t.TenantId == _currentUser.TenantId && !t.IsDeleted,
+                false,
                 q => q.Include(t => t.Category)
             );
 
@@ -138,6 +141,7 @@ namespace VoroSalonCrm.Application.Services
         {
             var transaction = await _repository.GetByIdAsync(
                 t => t.Id == id && t.TenantId == _currentUser.TenantId && !t.IsDeleted,
+                false,
                 q => q.Include(t => t.Category)
             );
 

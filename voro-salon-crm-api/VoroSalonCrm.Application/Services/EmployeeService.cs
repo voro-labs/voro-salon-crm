@@ -66,7 +66,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task UpdateAsync(Guid id, UpdateEmployeeDto dto)
         {
-            var employee = await _repository.GetByIdAsync(id);
+            var employee = await _repository.GetByIdAsync(false, id);
             if (employee == null) return;
 
             employee.Name = dto.Name;
@@ -84,7 +84,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task DeleteAsync(Guid id)
         {
-            var employee = await _repository.GetByIdAsync(id);
+            var employee = await _repository.GetByIdAsync(false, id);
             if (employee == null) return;
 
             _repository.Delete(employee);
@@ -99,7 +99,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<string> UploadPhotoAsync(Guid id, Microsoft.AspNetCore.Http.IFormFile file)
         {
-            var employee = await _repository.GetByIdAsync(id)
+            var employee = await _repository.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException($"Employee '{id}' not found.");
 
             var photoUrl = await _blobService.UploadAsync($"{Guid.NewGuid()}_{file.FileName}", file.OpenReadStream(), file.ContentType);

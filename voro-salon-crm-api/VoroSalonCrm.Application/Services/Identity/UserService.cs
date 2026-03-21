@@ -89,7 +89,7 @@ namespace VoroSalonCrm.Application.Services.Identity
         {
             var pendingToken = Guid.NewGuid().ToString("N");
 
-            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            var ext = await userExtensionRepository.GetByIdAsync(false, userId);
             if (ext == null)
             {
                 ext = new UserExtension { UserId = userId };
@@ -117,7 +117,7 @@ namespace VoroSalonCrm.Application.Services.Identity
                 throw new UnauthorizedAccessException("Token e código são obrigatórios.");
 
             var ext = await userExtensionRepository
-                .Query(e => e.TwoFactorPendingToken == pendingToken)
+                .Query(e => e.TwoFactorPendingToken == pendingToken, asNoTracking: false)
                 .FirstOrDefaultAsync();
 
             if (ext == null)
@@ -162,7 +162,7 @@ namespace VoroSalonCrm.Application.Services.Identity
             
             var code = isReviewer ? ReviewerConstants.TwoFactorCode : Random.Shared.Next(100000, 999999).ToString();
 
-            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            var ext = await userExtensionRepository.GetByIdAsync(false, userId);
             if (ext == null)
             {
                 ext = new UserExtension { UserId = userId };
@@ -179,7 +179,7 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task EnableTwoFactorAsync(Guid userId, string code)
         {
-            var ext = await userExtensionRepository.GetByIdAsync(userId)
+            var ext = await userExtensionRepository.GetByIdAsync(false, userId)
                 ?? throw new UnauthorizedAccessException("Sessão não encontrada.");
 
             if (ext.TwoFactorCodeExpiry == null || DateTime.UtcNow > ext.TwoFactorCodeExpiry)
@@ -221,7 +221,7 @@ namespace VoroSalonCrm.Application.Services.Identity
             await AddToPasswordHistoryAsync(created.Id, created.PasswordHash ?? string.Empty);
 
             // Marcar data de criação de senha
-            var ext = await userExtensionRepository.GetByIdAsync(created.Id);
+            var ext = await userExtensionRepository.GetByIdAsync(false, created.Id);
             if (ext != null)
             {
                 ext.PasswordChangedAt = DateTime.UtcNow;
@@ -234,7 +234,7 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task<User> UpdateAsync(Guid id, UserDto dto)
         {
-            var existingUser = await base.GetByIdAsync(id)
+            var existingUser = await base.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException("User não encontrado");
 
             mapper.Map(dto, existingUser);
@@ -319,7 +319,7 @@ namespace VoroSalonCrm.Application.Services.Identity
             // user.PasswordHash já foi atualizado pelo ResetPasswordAsync em memória
             await AddToPasswordHistoryAsync(user.Id, user.PasswordHash ?? string.Empty);
 
-            var ext = await userExtensionRepository.GetByIdAsync(user.Id);
+            var ext = await userExtensionRepository.GetByIdAsync(false, user.Id);
             if (ext != null)
             {
                 ext.PasswordChangedAt = DateTime.UtcNow;
@@ -375,7 +375,7 @@ namespace VoroSalonCrm.Application.Services.Identity
             // ResetPasswordAsync atualiza user.PasswordHash no objeto em memória
             await AddToPasswordHistoryAsync(user.Id, user.PasswordHash ?? string.Empty);
 
-            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            var ext = await userExtensionRepository.GetByIdAsync(false, userId);
             if (ext != null)
             {
                 ext.PasswordChangedAt = DateTime.UtcNow;
@@ -389,7 +389,7 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task AcceptTermsAsync(Guid userId)
         {
-            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            var ext = await userExtensionRepository.GetByIdAsync(false, userId);
             if (ext == null)
             {
                 ext = new UserExtension { UserId = userId };
@@ -425,7 +425,7 @@ namespace VoroSalonCrm.Application.Services.Identity
 
             await userManager.UpdateAsync(user);
 
-            var ext = await userExtensionRepository.GetByIdAsync(userId);
+            var ext = await userExtensionRepository.GetByIdAsync(false, userId);
             if (ext == null)
             {
                 ext = new UserExtension { UserId = userId };

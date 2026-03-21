@@ -16,7 +16,6 @@ using VoroSalonCrm.Infrastructure.Integration;
 using VoroSalonCrm.Infrastructure.Repositories;
 using VoroSalonCrm.Infrastructure.Repositories.Identity;
 using VoroSalonCrm.Infrastructure.Seeds;
-using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Infrastructure.UnitOfWork;
 using VoroSalonCrm.Shared.Utils;
 

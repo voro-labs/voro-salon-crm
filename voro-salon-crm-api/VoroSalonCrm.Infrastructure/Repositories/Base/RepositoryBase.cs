@@ -8,6 +8,7 @@ namespace VoroSalonCrm.Infrastructure.Repositories.Base
     public class RepositoryBase<T>(DbContext context, IUnitOfWork unitOfWork) : IRepositoryBase<T> where T : class
     {
         protected readonly IUnitOfWork _unitOfWork = unitOfWork;
+        protected readonly DbContext _context = context;
         protected readonly DbSet<T> _dbSet = context.Set<T>();
 
         public async Task AddAsync(T entity)
@@ -57,16 +58,23 @@ namespace VoroSalonCrm.Infrastructure.Repositories.Base
             return await query.Where(predicate).ToListAsync();
         }
 
-        public async Task<T?> GetByIdAsync(params object[] keyValues)
+        public async Task<T?> GetByIdAsync(bool asNoTracking = true, params object[] keyValues)
         {
-            return await _dbSet.FindAsync(keyValues);
+            var entity = await _dbSet.FindAsync(keyValues);
+            if (entity != null && asNoTracking)
+                _context.Entry(entity).State = EntityState.Detached;
+            return entity;
         }
 
         public async Task<T?> GetByIdAsync(
             Expression<Func<T, bool>> predicate,
+            bool asNoTracking = true,
             params Func<IQueryable<T>, IQueryable<T>>[] includes)
         {
             IQueryable<T> query = _dbSet;
+
+            if (asNoTracking)
+                query = query.AsNoTracking();
 
             foreach (var include in includes)
                 query = include(query);

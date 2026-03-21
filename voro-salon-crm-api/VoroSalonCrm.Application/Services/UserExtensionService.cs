@@ -47,7 +47,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<UserExtensionDto> UpdateAsync(Guid id, UserExtensionDto dto)
         {
-            var existingUserExtension = await base.GetByIdAsync(id)
+            var existingUserExtension = await base.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException("UserExtension não encontrado");
 
             mapper.Map(dto, existingUserExtension);

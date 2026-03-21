@@ -233,7 +233,7 @@ namespace VoroSalonCrm.Application.Services
                 });
 
                 // Configurar extensão: MustChangePassword + IsAutoProvisioned
-                var ext = await _userExtensionRepository.GetByIdAsync(user.Id);
+                var ext = await _userExtensionRepository.GetByIdAsync(false, user.Id);
                 if (ext == null)
                 {
                     await _userExtensionRepository.AddAsync(new UserExtension
@@ -460,7 +460,7 @@ namespace VoroSalonCrm.Application.Services
                 if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid userId))
                     throw new UnauthorizedAccessException("Invalid token claims.");
 
-                var userExtension = await _userExtensionRepository.GetByIdAsync(userId);
+                var userExtension = await _userExtensionRepository.GetByIdAsync(false, userId);
                 if (userExtension == null || userExtension.RefreshToken != model.RefreshToken || userExtension.RefreshTokenExpiryTime <= DateTime.UtcNow)
                     throw new UnauthorizedAccessException("Invalid refresh token.");
 
@@ -519,7 +519,7 @@ namespace VoroSalonCrm.Application.Services
                                 ?? Guid.Empty;
 
             // Verificar flags pós-login (senha expirada, troca obrigatória, termos)
-            var userExt = await _userExtensionRepository.GetByIdAsync(user.Id);
+            var userExt = await _userExtensionRepository.GetByIdAsync(false, user.Id);
             var requiresPasswordChange = false;
             var requiresTermsAcceptance = false;
             var requiresProfileCompletion = false;
@@ -561,7 +561,7 @@ namespace VoroSalonCrm.Application.Services
 
             var refreshToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64));
 
-            var userExtension = await _userExtensionRepository.GetByIdAsync(user.Id);
+            var userExtension = await _userExtensionRepository.GetByIdAsync(false, user.Id);
             if (userExtension == null)
             {
                 userExtension = new UserExtension

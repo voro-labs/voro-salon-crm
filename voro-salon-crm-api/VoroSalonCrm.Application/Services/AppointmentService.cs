@@ -116,7 +116,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<AppointmentDto> UpdateAsync(Guid id, UpdateAppointmentDto dto)
         {
-            var appointment = await _appointmentRepository.GetByIdAsync(id)
+            var appointment = await _appointmentRepository.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException($"Appointment '{id}' not found.");
 
             var oldStatus = appointment.Status;
@@ -148,7 +148,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            var appointment = await _appointmentRepository.GetByIdAsync(id);
+            var appointment = await _appointmentRepository.GetByIdAsync(false, id);
             if (appointment == null) return false;
 
             appointment.IsDeleted = true;
@@ -244,7 +244,7 @@ namespace VoroSalonCrm.Application.Services
             // Send WhatsApp notifications
             if (oldStatus != status && appointment.Client != null && !string.IsNullOrWhiteSpace(appointment.Client.Phone))
             {
-                var tenant = await _tenantRepository.GetByIdAsync(appointment.TenantId);
+                var tenant = await _tenantRepository.GetByIdAsync(false, appointment.TenantId);
                 if (tenant == null || !tenant.UseWhatsappBooking) return true;
 
                 var tenantName = tenant.Name;

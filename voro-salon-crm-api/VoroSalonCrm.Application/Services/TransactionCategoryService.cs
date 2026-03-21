@@ -75,7 +75,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task<TransactionCategoryDto> UpdateAsync(UpdateTransactionCategoryDto dto, CancellationToken ct = default)
         {
             var category = await _repository.GetByIdAsync(
-                tc => tc.Id == dto.Id && tc.TenantId == _currentUser.TenantId && !tc.IsDeleted
+                tc => tc.Id == dto.Id && tc.TenantId == _currentUser.TenantId && !tc.IsDeleted, false
             );
 
             if (category == null) throw new KeyNotFoundException("Category not found");
@@ -101,7 +101,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task DeleteAsync(Guid id, CancellationToken ct = default)
         {
             var category = await _repository.GetByIdAsync(
-                tc => tc.Id == id && tc.TenantId == _currentUser.TenantId && !tc.IsDeleted
+                tc => tc.Id == id && tc.TenantId == _currentUser.TenantId && !tc.IsDeleted, false
             );
 
             if (category == null) return;
