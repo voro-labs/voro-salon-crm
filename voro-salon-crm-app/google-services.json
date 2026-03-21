@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1091115579493",
+    "project_id": "voro-salon-crm-d9a2e",
+    "storage_bucket": "voro-salon-crm-d9a2e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1091115579493:android:4201f2b5fcd37800ffee8c",
+        "android_client_info": {
+          "package_name": "com.vorolabs.vorosaloncrm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4tZ5BNVDTt0jn4Wi_4MCR_Bb2x_DAC7k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
