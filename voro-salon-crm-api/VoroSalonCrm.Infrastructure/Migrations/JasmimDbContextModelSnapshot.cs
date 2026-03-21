@@ -749,8 +749,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId");
-
                     b.ToTable("Notifications");
                 });
 
@@ -1650,15 +1648,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.PasswordHistory", b =>

@@ -12,8 +12,8 @@ using VoroSalonCrm.Infrastructure.Factories;
 namespace VoroSalonCrm.Infrastructure.Migrations
 {
     [DbContext(typeof(JasmimDbContext))]
-    [Migration("20260321164956_AddCascadeDeleteRules")]
-    partial class AddCascadeDeleteRules
+    [Migration("20260321165856_FixCascadeDeleteRules")]
+    partial class FixCascadeDeleteRules
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -751,8 +751,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
 
                     b.ToTable("Notifications");
                 });
@@ -1653,15 +1651,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.PasswordHistory", b =>

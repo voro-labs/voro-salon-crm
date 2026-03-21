@@ -192,17 +192,6 @@ namespace VoroSalonCrm.Infrastructure.Factories
             });
 
             // ---------------------------
-            // NOTIFICATION
-            // ---------------------------
-            builder.Entity<Notification>(b =>
-            {
-                b.HasOne<Tenant>()
-                 .WithMany()
-                 .HasForeignKey(n => n.TenantId)
-                 .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            // ---------------------------
             // USER TENANT (Join Table)
             // ---------------------------
             builder.Entity<UserTenant>(b =>
