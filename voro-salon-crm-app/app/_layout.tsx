@@ -1,6 +1,6 @@
 import { Stack, useRouter, useSegments } from "expo-router"
 import { useEffect, useRef } from "react"
-import { View, ActivityIndicator } from "react-native"
+import { View, ActivityIndicator, Platform } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider, useAuth } from "contexts/auth.context"
 import { TenantThemeProvider, useTenantTheme } from "contexts/tenant-theme.context"
@@ -17,6 +17,16 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 })
+
+// Canal Android precisa existir antes de qualquer notificação chegar
+if (Platform.OS === "android") {
+  Notifications.setNotificationChannelAsync("default", {
+    name: "default",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: "#FF231F7C",
+  })
+}
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth()

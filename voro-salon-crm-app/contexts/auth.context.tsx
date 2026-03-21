@@ -208,11 +208,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const appStateSub = AppState.addEventListener("change", handleAppStateChange)
 
     // Deslogar quando apiCall emite auth:logout (refresh falhou mid-session)
-    const logoutListener = DeviceEventEmitter.addListener("auth:logout", () => {
-      unregisterPushTokenInternal()
-      removeAuthToken()
-      removeRefreshToken()
-      SecureStore.deleteItemAsync("user_tenants")
+    const logoutListener = DeviceEventEmitter.addListener("auth:logout", async () => {
+      await unregisterPushTokenInternal()
+      await removeAuthToken()
+      await removeRefreshToken()
+      await SecureStore.deleteItemAsync("user_tenants")
       setUser(null)
     })
 

@@ -101,9 +101,9 @@ export default function NotificationsScreen() {
     useUserNotifications()
 
   const handleItemPress = useCallback(
-    async (item: UserNotification) => {
+    (item: UserNotification) => {
       if (!item.isRead) {
-        await markAsRead(item.id)
+        markAsRead(item.id)
       }
       if (item.relatedEntityId && item.type?.toLowerCase() === "appointment") {
         router.push(`/(tabs)/appointments/${item.relatedEntityId}` as any)

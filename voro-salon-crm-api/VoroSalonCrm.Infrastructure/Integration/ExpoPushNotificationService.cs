@@ -67,7 +67,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 {
                     var json = JsonSerializer.Serialize(messages);
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    var response = await _http.PostAsync("/--/push/v2/send", content);
+                    var response = await _http.PostAsync("/--/api/v2/push/send", content);
                     var responseBody = await response.Content.ReadAsStringAsync();
 
                     if (!response.IsSuccessStatusCode)
