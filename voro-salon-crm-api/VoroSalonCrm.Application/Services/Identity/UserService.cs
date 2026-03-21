@@ -84,9 +84,11 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         // ── Two-Factor Authentication ─────────────────────────────────────────
 
+        private const string ReviewerEmail = "reviewer@vorolabs.app";
+        private const string ReviewerTwoFactorCode = "123456";
+
         public async Task<(string code, string pendingToken)> GenerateTwoFactorCodeAsync(Guid userId)
         {
-            var code = Random.Shared.Next(100000, 999999).ToString();
             var pendingToken = Guid.NewGuid().ToString("N");
 
             var ext = await userExtensionRepository.GetByIdAsync(userId);
@@ -96,8 +98,13 @@ namespace VoroSalonCrm.Application.Services.Identity
                 await userExtensionRepository.AddAsync(ext);
             }
 
+            var user = await userManager.FindByIdAsync(userId.ToString());
+            var isReviewer = string.Equals(user?.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase);
+
+            var code = isReviewer ? ReviewerTwoFactorCode : Random.Shared.Next(100000, 999999).ToString();
+
             ext.TwoFactorCode = code;
-            ext.TwoFactorCodeExpiry = DateTime.UtcNow.AddMinutes(10);
+            ext.TwoFactorCodeExpiry = isReviewer ? DateTime.UtcNow.AddYears(10) : DateTime.UtcNow.AddMinutes(10);
             ext.TwoFactorPendingToken = pendingToken;
             userExtensionRepository.Update(ext);
 
@@ -124,15 +131,26 @@ namespace VoroSalonCrm.Application.Services.Identity
             if (ext.TwoFactorCode != code)
                 throw new UnauthorizedAccessException("Código inválido. Verifique o e-mail e tente novamente.");
 
-            // Invalidar o código após uso bem-sucedido
-            ext.TwoFactorCode = null;
-            ext.TwoFactorCodeExpiry = null;
-            ext.TwoFactorPendingToken = null;
-            userExtensionRepository.Update(ext);
-            await unitOfWork.SaveChangesAsync();
-
             var user = await GetByIdAsync(ext.UserId)
                 ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
+
+            var isReviewer = string.Equals(user.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase);
+
+            if (isReviewer)
+            {
+                // Conta de revisão: preserva o código fixo, apenas limpa o pending token
+                ext.TwoFactorPendingToken = null;
+            }
+            else
+            {
+                // Invalidar o código após uso bem-sucedido
+                ext.TwoFactorCode = null;
+                ext.TwoFactorCodeExpiry = null;
+                ext.TwoFactorPendingToken = null;
+            }
+
+            userExtensionRepository.Update(ext);
+            await unitOfWork.SaveChangesAsync();
 
             var roles = await userManager.GetRolesAsync(user);
 
@@ -270,6 +288,9 @@ namespace VoroSalonCrm.Application.Services.Identity
             var user = await FindUserByEmailAsync(resetPasswordDto.Email)
                 ?? throw new KeyNotFoundException("Nenhuma conta encontrada com este e-mail.");
 
+            if (string.Equals(user.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase))
+                return true;
+
             // Verificar histórico de senhas antes de alterar
             await EnsurePasswordNotReusedAsync(user, resetPasswordDto.NewPassword);
 
@@ -332,6 +353,9 @@ namespace VoroSalonCrm.Application.Services.Identity
         {
             var userById = await GetByIdAsync(userId)
                 ?? throw new KeyNotFoundException("Usuário não encontrado.");
+
+            if (string.Equals(userById.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase))
+                return;
 
             var user = await userManager.FindByEmailAsync($"{userById.Email}")
                 ?? throw new KeyNotFoundException("Usuário não encontrado.");

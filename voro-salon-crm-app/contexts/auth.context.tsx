@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
-import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG } from "lib/api"
+import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG, secureApiCall } from "lib/api"
 import { AuthDto } from "types/DTOs/auth.interface"
 import { jwtDecode } from "jwt-decode"
 import * as SecureStore from "expo-secure-store"
-import { AppState, type AppStateStatus, DeviceEventEmitter } from "react-native"
+import { Platform, AppState, type AppStateStatus, DeviceEventEmitter } from "react-native"
 import { router } from "expo-router"
+import * as Notifications from "expo-notifications"
+import Constants from "expo-constants"
 
 // Tipo do payload esperado no token JWT
 interface JwtPayload {
@@ -31,6 +33,61 @@ export interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+const PUSH_TOKEN_KEY = "push_token"
+
+const isExpoGo = Constants.appOwnership === "expo"
+
+async function registerPushTokenInternal() {
+  try {
+    if (isExpoGo) return
+
+    const existingToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY)
+    if (existingToken) return
+
+    const { status } = await Notifications.requestPermissionsAsync()
+    if (status !== "granted") return
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#FF231F7C",
+      })
+    }
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId })
+    const token = tokenData.data
+
+    const result = await secureApiCall(API_CONFIG.ENDPOINTS.PUSH_TOKENS, {
+      method: "POST",
+      body: JSON.stringify({ token, platform: Platform.OS }),
+    })
+
+    if (!result.hasError) {
+      await SecureStore.setItemAsync(PUSH_TOKEN_KEY, token)
+    }
+  } catch (err) {
+    console.error("Erro ao registrar push token:", err)
+  }
+}
+
+async function unregisterPushTokenInternal() {
+  try {
+    const token = await SecureStore.getItemAsync(PUSH_TOKEN_KEY)
+    if (!token) return
+
+    await secureApiCall(`${API_CONFIG.ENDPOINTS.PUSH_TOKENS}/${encodeURIComponent(token)}`, {
+      method: "DELETE",
+    })
+
+    await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY)
+  } catch (err) {
+    console.error("Erro ao remover push token:", err)
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthDto | null>(null)
@@ -152,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Deslogar quando apiCall emite auth:logout (refresh falhou mid-session)
     const logoutListener = DeviceEventEmitter.addListener("auth:logout", () => {
+      unregisterPushTokenInternal()
       removeAuthToken()
       removeRefreshToken()
       SecureStore.deleteItemAsync("user_tenants")
@@ -169,6 +227,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokenRefreshedListener.remove()
     }
   }, [applyToken, attemptSilentRefresh])
+
+  // Registra push token automaticamente ao autenticar
+  useEffect(() => {
+    if (user) {
+      registerPushTokenInternal()
+    }
+  }, [user?.userId])
 
   const login = async (token: string, refreshToken?: string, tenants?: any[]) => {
     await setAuthToken(token)
@@ -208,6 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    await unregisterPushTokenInternal()
     setUser(null)
     await removeAuthToken()
     await removeRefreshToken()

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
@@ -14,8 +15,13 @@ namespace VoroSalonCrm.Application.Services
         IServiceRepository serviceRepository,
         IEmployeeRepository employeeRepository,
         IAppointmentRepository appointmentRepository,
-        IUnitOfWork unitOfWork) : IPublicBookingService
+        IUnitOfWork unitOfWork,
+        IUserTenantRepository userTenantRepository,
+        IExpoPushNotificationService expoPushNotificationService) : IPublicBookingService
     {
+        private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
+        private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
+
         public async Task<PublicTenantDto?> GetTenantBySlugAsync(string slug)
         {
             var tenant = await tenantRepository.GetBySlugAsync(slug);
@@ -103,6 +109,35 @@ namespace VoroSalonCrm.Application.Services
 
             await appointmentRepository.AddAsync(appointment);
             await unitOfWork.CommitAsync();
+
+            // Notify tenant owners about the new booking
+            try
+            {
+                var ownerTenants = await _userTenantRepository.GetAllAsync(
+                    ut => ut.TenantId == tenant.Id);
+
+                var ownerIds = ownerTenants.Select(ut => ut.UserId).ToList();
+
+                if (ownerIds.Count > 0)
+                {
+                    var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
+                    var dateStr = localTime.ToString("dd/MM/yyyy");
+                    var timeStr = localTime.ToString("HH:mm");
+
+                    await _expoPushNotificationService.SendToUsersAsync(
+                        ownerIds,
+                        "Novo Agendamento!",
+                        $"{client.Name} agendou {service.Name} para {dateStr} às {timeStr}",
+                        new { appointmentId = appointment.Id },
+                        tenant.Id,
+                        "new_appointment",
+                        appointment.Id);
+                }
+            }
+            catch (Exception)
+            {
+                // Do not fail the booking if push notifications fail
+            }
 
             return new PublicBookingResponseDto(true, "Agendamento realizado com sucesso!", appointment.Id);
         }

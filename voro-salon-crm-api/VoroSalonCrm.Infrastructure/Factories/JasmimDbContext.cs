@@ -49,6 +49,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
         public DbSet<TenantSubscription> TenantSubscriptions { get; set; }
 
+        public DbSet<PushToken> PushTokens { get; set; }
+        public DbSet<UserNotification> UserNotifications { get; set; }
+
         public DbSet<EntityAuditLog> EntityAuditLogs { get; set; }
         public DbSet<RouteAuditLog> RouteAuditLogs { get; set; }
         public DbSet<IntegrationAuditLog> IntegrationAuditLogs { get; set; }
@@ -601,6 +604,34 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .OnDelete(DeleteBehavior.Cascade);
 
                 b.HasIndex(asign => asign.SheetId);
+            });
+
+            // ---------------------------
+            // PUSH TOKEN
+            // ---------------------------
+            builder.Entity<PushToken>(b =>
+            {
+                b.HasKey(pt => pt.Id);
+                b.Property(pt => pt.Token).HasMaxLength(500).IsRequired();
+                b.Property(pt => pt.Platform).HasMaxLength(20).IsRequired();
+                b.Property(pt => pt.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.HasIndex(pt => pt.UserId);
+                b.HasIndex(pt => pt.Token).IsUnique();
+            });
+
+            // ---------------------------
+            // USER NOTIFICATION
+            // ---------------------------
+            builder.Entity<UserNotification>(b =>
+            {
+                b.HasKey(n => n.Id);
+                b.Property(n => n.Title).HasMaxLength(200).IsRequired();
+                b.Property(n => n.Body).HasMaxLength(500).IsRequired();
+                b.Property(n => n.Type).HasMaxLength(100).IsRequired();
+                b.Property(n => n.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.HasIndex(n => n.UserId);
+                b.HasIndex(n => new { n.UserId, n.IsRead });
+                b.HasIndex(n => new { n.UserId, n.CreatedAt }).IsDescending(false, true);
             });
         }
     }

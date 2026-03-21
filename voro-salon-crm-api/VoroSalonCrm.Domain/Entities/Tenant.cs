@@ -27,6 +27,7 @@ namespace VoroSalonCrm.Domain.Entities
         
         public string ThemeMode { get; set; } = "system";
 
+        public bool IsDemo { get; set; } = false;
         public bool IsActive { get; set; } = true;
         public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }

@@ -16,6 +16,7 @@ using VoroSalonCrm.Infrastructure.Integration;
 using VoroSalonCrm.Infrastructure.Repositories;
 using VoroSalonCrm.Infrastructure.Repositories.Identity;
 using VoroSalonCrm.Infrastructure.Seeds;
+using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Infrastructure.UnitOfWork;
 using VoroSalonCrm.Shared.Utils;
 
@@ -35,12 +36,19 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            services.AddHttpClient("expo-push", client =>
+            {
+                client.BaseAddress = new Uri("https://exp.host");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
             services.Configure<IntegrationUtil>(configuration.GetSection("IntegrationSettings"));
 
             services.AddScoped<IDataSeeder, DataSeeder>();
+            services.AddScoped<IDemoResetService, DemoResetService>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IBlobService, BlobService>();
@@ -72,6 +80,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAnamnesisSheetRepository, AnamnesisSheetRepository>();
             services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
             services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
+            services.AddScoped<IPushTokenRepository, PushTokenRepository>();
+            services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
             #endregion
 
             #region Identity Services
@@ -95,6 +105,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAnamnesisService, AnamnesisService>();
             services.AddScoped<ISubscriptionService, SubscriptionService>();
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
+            services.AddScoped<IExpoPushNotificationService, ExpoPushNotificationService>();
+            services.AddScoped<IUserNotificationService, UserNotificationService>();
             #endregion
 
             return services;

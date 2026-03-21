@@ -55,7 +55,7 @@ const PROTECTED_PATHS = [
   "/api",
 ]
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Permite estáticos e públicos
