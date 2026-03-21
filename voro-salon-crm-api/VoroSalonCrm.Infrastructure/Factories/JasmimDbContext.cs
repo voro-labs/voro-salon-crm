@@ -192,6 +192,17 @@ namespace VoroSalonCrm.Infrastructure.Factories
             });
 
             // ---------------------------
+            // NOTIFICATION
+            // ---------------------------
+            builder.Entity<Notification>(b =>
+            {
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(n => n.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
             // USER TENANT (Join Table)
             // ---------------------------
             builder.Entity<UserTenant>(b =>
@@ -204,7 +215,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
                 b.HasOne(ut => ut.Tenant)
                     .WithMany(t => t.UserTenants)
-                    .HasForeignKey(ut => ut.TenantId);
+                    .HasForeignKey(ut => ut.TenantId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 b.Property(ut => ut.IsDefault).HasDefaultValue(false);
                 b.Property(ut => ut.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
@@ -527,6 +539,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
                 b.HasIndex(aq => aq.TenantId);
                 b.HasIndex(aq => new { aq.TenantId, aq.Identifier }).IsUnique();
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(aq => aq.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ---------------------------
@@ -542,6 +559,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(asheet => asheet.TenantId);
                 b.HasIndex(asheet => asheet.ClientId);
                 b.HasIndex(asheet => new { asheet.TenantId, asheet.Date });
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(asheet => asheet.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
 
                 b.HasOne(asheet => asheet.Client)
                  .WithMany()
@@ -617,6 +639,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(pt => pt.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
                 b.HasIndex(pt => pt.UserId);
                 b.HasIndex(pt => pt.Token).IsUnique();
+
+                b.HasOne<User>()
+                 .WithMany()
+                 .HasForeignKey(pt => pt.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ---------------------------
@@ -632,6 +659,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(n => n.UserId);
                 b.HasIndex(n => new { n.UserId, n.IsRead });
                 b.HasIndex(n => new { n.UserId, n.CreatedAt }).IsDescending(false, true);
+
+                b.HasOne<Tenant>()
+                 .WithMany()
+                 .HasForeignKey(n => n.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
