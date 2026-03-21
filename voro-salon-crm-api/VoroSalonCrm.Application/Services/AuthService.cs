@@ -92,7 +92,27 @@ namespace VoroSalonCrm.Application.Services
 
             var isReviewer = ReviewerConstants.IsReviewer(user.Email);
             if (isReviewer)
-                await _demoResetService.ResetAsync();
+            {
+                var ext = await _userExtensionRepository
+                    .Query(e => e.UserId == user.Id)
+                    .FirstOrDefaultAsync();
+
+                var resetCooldownHours = 2;
+                var shouldReset = ext?.LastDemoResetAt == null ||
+                    (DateTime.UtcNow - ext.LastDemoResetAt.Value).TotalHours >= resetCooldownHours;
+
+                if (shouldReset)
+                {
+                    await _demoResetService.ResetAsync();
+
+                    if (ext != null)
+                    {
+                        ext.LastDemoResetAt = DateTime.UtcNow;
+                        _userExtensionRepository.Update(ext);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+            }
 
             return await GenerateAuthDtoAsync(user, roles);
         }
