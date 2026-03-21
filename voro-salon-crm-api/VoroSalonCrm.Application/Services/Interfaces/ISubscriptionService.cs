@@ -11,5 +11,10 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task CancelAsync(Guid subscriptionId);
         Task<IEnumerable<TenantSubscriptionDto>> GetAllAsync(int page, int pageSize);
         Task ProcessWebhookAsync(string eventType, string resourceId);
+
+        Task<CouponValidationResultDto?> ValidateCouponAsync(string code);
+        Task<CouponDto> CreateCouponAsync(CreateCouponDto dto);
+        Task<IEnumerable<CouponDto>> GetCouponsAsync();
+        Task ExtendTrialAsync(Guid tenantId, int additionalDays);
     }
 }

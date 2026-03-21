@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
-import type { SubscriptionPlanDto, CheckoutResultDto } from "@/types/subscription.interface"
+import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto } from "@/types/subscription.interface"
 
 // ── Static data ──────────────────────────────────────────────────────────────
 
@@ -327,6 +327,10 @@ export default function PrecosPage() {
   const [loadingPlans, setLoadingPlans] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanDto | null>(null)
   const [form, setForm] = useState({ name: "", email: "", salonName: "" })
+  const [couponCode, setCouponCode] = useState("")
+  const [couponResult, setCouponResult] = useState<CouponValidationResultDto | null>(null)
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [validatingCoupon, setValidatingCoupon] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -344,6 +348,28 @@ export default function PrecosPage() {
       .finally(() => setLoadingPlans(false))
   })
 
+  const handleValidateCoupon = async () => {
+    const code = couponCode.trim()
+    if (!code) return
+    setValidatingCoupon(true)
+    setCouponError(null)
+    setCouponResult(null)
+    try {
+      const res = await apiCall<CouponValidationResultDto>(`${API_CONFIG.ENDPOINTS.SUBSCRIPTION_COUPON}/${encodeURIComponent(code)}`)
+      if (res.hasError || !res.data) {
+        setCouponError("Cupom inválido ou expirado.")
+      } else {
+        setCouponResult(res.data)
+      }
+    } catch {
+      setCouponError("Erro ao validar cupom.")
+    } finally {
+      setValidatingCoupon(false)
+    }
+  }
+
+  const trialDays = couponResult?.trialDays ?? selectedPlan?.defaultTrialDays ?? 0
+
   const handleCheckout = async () => {
     if (!selectedPlan) return
     if (!form.name || !form.email || !form.salonName) {
@@ -357,15 +383,22 @@ export default function PrecosPage() {
     setSubmitting(true)
     setError(null)
     try {
+      const body: Record<string, unknown> = { planId: selectedPlan.id, ...form }
+      if (couponResult) body.couponCode = couponResult.code
+
       const res = await apiCall<CheckoutResultDto>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT, {
         method: "POST",
-        body: JSON.stringify({ planId: selectedPlan.id, ...form }),
+        body: JSON.stringify(body),
       })
       if (res.hasError || !res.data) {
         setError(res.message ?? "Erro ao iniciar checkout.")
         return
       }
-      window.location.href = res.data.checkoutUrl
+      if (res.data.isTrial) {
+        router.push("/prices/feedback?trial=true")
+      } else {
+        window.location.href = res.data.checkoutUrl!
+      }
     } catch {
       setError("Erro inesperado. Tente novamente.")
     } finally {
@@ -696,12 +729,17 @@ export default function PrecosPage() {
       </footer>
 
       {/* ── Checkout Dialog ── */}
-      <Dialog open={!!selectedPlan} onOpenChange={(o) => { if (!o) { setSelectedPlan(null); setTermsAccepted(false); setError(null) } }}>
+      <Dialog open={!!selectedPlan} onOpenChange={(o) => { if (!o) { setSelectedPlan(null); setTermsAccepted(false); setError(null); setCouponCode(""); setCouponResult(null); setCouponError(null) } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Assinar plano {selectedPlan?.name}</DialogTitle>
             <DialogDescription>
-              {selectedPlan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês — você será redirecionado ao MercadoPago.
+              {selectedPlan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês
+              {trialDays > 0 && (
+                <span className="ml-1 text-green-600 dark:text-green-400 font-medium">
+                  — {trialDays} dias de trial grátis incluídos
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -732,6 +770,35 @@ export default function PrecosPage() {
               />
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <Label>Cupom <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Ex: TRIAL30"
+                  value={couponCode}
+                  onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); setCouponError(null) }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleValidateCoupon() }}
+                  className="uppercase"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleValidateCoupon}
+                  disabled={!couponCode.trim() || validatingCoupon}
+                  className="shrink-0"
+                >
+                  {validatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
+                </Button>
+              </div>
+              {couponResult && (
+                <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                  ✓ Cupom válido — {couponResult.trialDays} dias de trial grátis!
+                  {couponResult.description && <span className="text-muted-foreground font-normal"> ({couponResult.description})</span>}
+                </p>
+              )}
+              {couponError && <p className="text-sm text-destructive">{couponError}</p>}
+            </div>
+
             <div className="flex items-start gap-2.5 pt-1">
               <Checkbox
                 id="terms"
@@ -754,7 +821,7 @@ export default function PrecosPage() {
 
             <Button onClick={handleCheckout} disabled={submitting || !termsAccepted} className="w-full mt-1">
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Ir para pagamento
+              {trialDays > 0 ? "Iniciar trial grátis" : "Ir para pagamento"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>

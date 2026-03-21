@@ -12,7 +12,8 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         bool HasAnamnesis,
         bool HasFinancial,
         bool HasReports,
-        int SortOrder
+        int SortOrder,
+        int DefaultTrialDays
     );
 
     public record TenantSubscriptionDto(
@@ -27,7 +28,8 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         DateTimeOffset? LastPaymentAt,
         string? ContactEmail,
         string? ContactName,
-        string? SalonName
+        string? SalonName,
+        DateTimeOffset? TrialEndsAt
     );
 
     public record CreateCheckoutDto(
@@ -35,10 +37,16 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         string Email,
         string Name,
         string SalonName,
-        Guid? TenantId
+        Guid? TenantId,
+        string? CouponCode = null
     );
 
-    public record CheckoutResultDto(string CheckoutUrl, string SubscriptionId);
+    public record CheckoutResultDto(
+        string? CheckoutUrl,
+        string SubscriptionId,
+        bool IsTrial = false,
+        DateTimeOffset? TrialEndsAt = null
+    );
 
     public record GrantManualSubscriptionDto(
         Guid TenantId,
@@ -46,5 +54,37 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         DateTimeOffset StartDate,
         DateTimeOffset? EndDate,
         string? Notes
+    );
+
+    public record CouponValidationResultDto(
+        string Code,
+        int TrialDays,
+        string? Description
+    );
+
+    public record CreateCouponDto(
+        string Code,
+        string? Description,
+        int TrialDays,
+        bool IsActive,
+        int? MaxUses,
+        DateTimeOffset? ExpiresAt
+    );
+
+    public record CouponDto(
+        Guid Id,
+        string Code,
+        string? Description,
+        int TrialDays,
+        bool IsActive,
+        int? MaxUses,
+        int UsedCount,
+        DateTimeOffset? ExpiresAt,
+        DateTimeOffset CreatedAt
+    );
+
+    public record ExtendTrialDto(
+        Guid TenantId,
+        int AdditionalDays
     );
 }

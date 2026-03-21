@@ -73,6 +73,8 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseMiddleware<AuditMiddleware>();
 
+app.UseMiddleware<SubscriptionAccessMiddleware>();
+
 app.UseCors("JasmimCors");
 
 app.UseRateLimiter();

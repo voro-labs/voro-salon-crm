@@ -3,20 +3,25 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle2, Scissors, Loader2, XCircle, SearchX } from "lucide-react"
+import { CheckCircle2, Scissors, Loader2, XCircle, SearchX, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { API_CONFIG, apiCall } from "@/lib/api"
 
-type Status = "loading" | "success" | "error" | "not_found"
+type Status = "loading" | "success" | "trial" | "error" | "not_found"
 
 export default function PagarSucessoPage() {
   const searchParams = useSearchParams()
   const preapprovalId = searchParams.get("preapproval_id")
-  const [status, setStatus] = useState<Status>(preapprovalId ? "loading" : "not_found")
+  const isTrial = searchParams.get("trial") === "true"
+  const [status, setStatus] = useState<Status>(() => {
+    if (isTrial) return "trial"
+    if (preapprovalId) return "loading"
+    return "not_found"
+  })
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!preapprovalId) return
+    if (!preapprovalId || isTrial) return
 
     apiCall<null>(`${API_CONFIG.ENDPOINTS.SUBSCRIPTION_CONFIRM}/${preapprovalId}`, {
       method: "POST",
@@ -28,7 +33,40 @@ export default function PagarSucessoPage() {
         setStatus("success")
       }
     })
-  }, [preapprovalId])
+  }, [preapprovalId, isTrial])
+
+  if (status === "trial") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Clock className="h-10 w-10 text-primary" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight mb-3">Trial ativado!</h1>
+          <p className="text-muted-foreground text-base mb-2">
+            Sua conta foi criada e o período de trial foi iniciado.
+          </p>
+          <p className="text-muted-foreground text-sm mb-8">
+            Você receberá um e-mail com suas credenciais de acesso. Use o sistema gratuitamente durante o trial — ao final, assine um plano para continuar.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild>
+              <Link href="/admin/sign-in">Acessar minha conta</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/prices">Ver planos</Link>
+            </Button>
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-10 text-xs text-muted-foreground">
+            <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+              <Scissors className="h-3 w-3 text-primary-foreground" />
+            </div>
+            Voro Salon CRM © {new Date().getFullYear()}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (status === "not_found") {
     return (

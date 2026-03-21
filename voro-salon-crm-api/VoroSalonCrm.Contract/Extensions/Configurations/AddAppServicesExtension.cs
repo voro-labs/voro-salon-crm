@@ -79,6 +79,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAnamnesisSheetRepository, AnamnesisSheetRepository>();
             services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
             services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
+            services.AddScoped<ISubscriptionCouponRepository, SubscriptionCouponRepository>();
             services.AddScoped<IPushTokenRepository, PushTokenRepository>();
             services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
             #endregion
