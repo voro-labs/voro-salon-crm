@@ -2,6 +2,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using VoroSalonCrm.Application.Constants;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Application.DTOs.Identity;
@@ -84,9 +85,6 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         // ── Two-Factor Authentication ─────────────────────────────────────────
 
-        private const string ReviewerEmail = "reviewer@vorolabs.app";
-        private const string ReviewerTwoFactorCode = "123456";
-
         public async Task<(string code, string pendingToken)> GenerateTwoFactorCodeAsync(Guid userId)
         {
             var pendingToken = Guid.NewGuid().ToString("N");
@@ -99,9 +97,9 @@ namespace VoroSalonCrm.Application.Services.Identity
             }
 
             var user = await userManager.FindByIdAsync(userId.ToString());
-            var isReviewer = string.Equals(user?.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase);
+            var isReviewer = ReviewerConstants.IsReviewer(user?.Email);
 
-            var code = isReviewer ? ReviewerTwoFactorCode : Random.Shared.Next(100000, 999999).ToString();
+            var code = isReviewer ? ReviewerConstants.TwoFactorCode : Random.Shared.Next(100000, 999999).ToString();
 
             ext.TwoFactorCode = code;
             ext.TwoFactorCodeExpiry = isReviewer ? DateTime.UtcNow.AddYears(10) : DateTime.UtcNow.AddMinutes(10);
@@ -134,7 +132,7 @@ namespace VoroSalonCrm.Application.Services.Identity
             var user = await GetByIdAsync(ext.UserId)
                 ?? throw new UnauthorizedAccessException("Usuário não encontrado.");
 
-            var isReviewer = string.Equals(user.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase);
+            var isReviewer = ReviewerConstants.IsReviewer(user.Email);
 
             if (isReviewer)
             {
@@ -160,9 +158,9 @@ namespace VoroSalonCrm.Application.Services.Identity
         public async Task<string> GenerateEnable2FACodeAsync(Guid userId)
         {
             var user = await userManager.FindByIdAsync(userId.ToString());
-            var isReviewer = string.Equals(user?.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase);
+            var isReviewer = ReviewerConstants.IsReviewer(user?.Email);
             
-            var code = isReviewer ? ReviewerTwoFactorCode : Random.Shared.Next(100000, 999999).ToString();
+            var code = isReviewer ? ReviewerConstants.TwoFactorCode : Random.Shared.Next(100000, 999999).ToString();
 
             var ext = await userExtensionRepository.GetByIdAsync(userId);
             if (ext == null)
@@ -291,7 +289,7 @@ namespace VoroSalonCrm.Application.Services.Identity
             var user = await FindUserByEmailAsync(resetPasswordDto.Email)
                 ?? throw new KeyNotFoundException("Nenhuma conta encontrada com este e-mail.");
 
-            if (string.Equals(user.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase))
+            if (ReviewerConstants.IsReviewer(user.Email))
                 return true;
 
             // Verificar histórico de senhas antes de alterar
@@ -357,7 +355,7 @@ namespace VoroSalonCrm.Application.Services.Identity
             var userById = await GetByIdAsync(userId)
                 ?? throw new KeyNotFoundException("Usuário não encontrado.");
 
-            if (string.Equals(userById.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase))
+            if (ReviewerConstants.IsReviewer(userById.Email))
                 return;
 
             var user = await userManager.FindByEmailAsync($"{userById.Email}")

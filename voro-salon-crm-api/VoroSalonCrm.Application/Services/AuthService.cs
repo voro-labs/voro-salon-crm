@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using VoroSalonCrm.Application.Constants;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Application.DTOs.CRM;
@@ -61,7 +62,10 @@ namespace VoroSalonCrm.Application.Services
                 // Enviar apenas para método de comunicação confirmado
                 if (user.EmailConfirmed)
                 {
-                    await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+                    var isReviewer = ReviewerConstants.IsReviewer(user.Email);
+                    
+                    if (!isReviewer)
+                        await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
                 }
                 // Futuramente: else if (user.PhoneNumberConfirmed) → enviar via SMS
                 else
@@ -86,7 +90,7 @@ namespace VoroSalonCrm.Application.Services
         {
             var (user, roles) = await _userService.VerifyTwoFactorAsync(dto.PendingToken, dto.Code);
 
-            var isReviewer = string.Equals(user.Email, "reviewer@vorolabs.app", StringComparison.OrdinalIgnoreCase);
+            var isReviewer = ReviewerConstants.IsReviewer(user.Email);
             if (isReviewer)
                 await _demoResetService.ResetAsync();
 
@@ -341,7 +345,10 @@ namespace VoroSalonCrm.Application.Services
             var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                              ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
-            await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
+            var isReviewer = ReviewerConstants.IsReviewer(user.Email);
+            
+            if (!isReviewer)
+                await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
         }
 
         public async Task ConfirmEnable2FAAsync(Guid userId, string code)
