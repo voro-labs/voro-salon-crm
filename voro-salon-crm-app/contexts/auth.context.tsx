@@ -36,8 +36,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const PUSH_TOKEN_KEY = "push_token"
 
+const isExpoGo = Constants.appOwnership === "expo"
+
 async function registerPushTokenInternal() {
   try {
+    if (isExpoGo) return
+
     const existingToken = await SecureStore.getItemAsync(PUSH_TOKEN_KEY)
     if (existingToken) return
 
