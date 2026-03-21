@@ -1,11 +1,12 @@
 import { Stack, useRouter, useSegments } from "expo-router"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { View, ActivityIndicator } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider, useAuth } from "contexts/auth.context"
 import { TenantThemeProvider, useTenantTheme } from "contexts/tenant-theme.context"
 import * as SecureStore from "expo-secure-store"
 import * as Notifications from "expo-notifications"
+import { usePushNotifications } from "hooks/use-push-notifications.hook"
 import "../global.css"
 
 Notifications.setNotificationHandler({
@@ -22,6 +23,22 @@ function RootLayoutNav() {
   const { primaryColor } = useTenantTheme()
   const segments = useSegments()
   const router = useRouter()
+  const { registerPushToken, unregisterPushToken, handleNotificationResponse } = usePushNotifications()
+  const notificationResponseListener = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | null>(null)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      registerPushToken()
+      notificationResponseListener.current = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse)
+    } else {
+      unregisterPushToken()
+    }
+
+    return () => {
+      notificationResponseListener.current?.remove()
+      notificationResponseListener.current = null
+    }
+  }, [isAuthenticated])
 
   const inAuthGroup = segments[0] === "(auth)"
   const inBookingGroup = segments[0] === "booking"

@@ -36,7 +36,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.vorolabs.vorosaloncrm"
+      "package": "com.vorolabs.vorosaloncrm",
+      "googleServicesFile": "./google-services.json"
     },
     "extra": {
       "eas": {
