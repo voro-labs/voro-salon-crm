@@ -47,6 +47,9 @@ export const API_CONFIG = {
     SUBSCRIPTION_CONFIRM: "/subscription/confirm",
     ADMIN_SUBSCRIPTIONS: "/admin/subscription",
     ADMIN_SUBSCRIPTION_GRANT: "/admin/subscription/grant",
+    NOTIFICATIONS: "/notifications",
+    NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
+    PUSH_TOKENS: "/push-tokens",
   },
   HEADERS: {
     "Content-Type": "application/json",

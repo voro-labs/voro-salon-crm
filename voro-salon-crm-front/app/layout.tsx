@@ -8,6 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Main } from "@/components/layout/admin/main"
 import { TenantThemeProvider } from "@/contexts/tenant-theme.context"
 import { BrowserNotificationsProvider } from "@/contexts/browser-notifications.context"
+import { WebPushManager } from "@/components/web-push-manager"
 
 const _geist = Geist({ subsets: ["latin"] });
 
@@ -65,13 +66,14 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TenantThemeProvider>
-            <BrowserNotificationsProvider>
-              <AuthProvider>
+            <AuthProvider>
+              <BrowserNotificationsProvider>
+                <WebPushManager />
                 <Main>
                   {children}
                 </Main>
-              </AuthProvider>
-            </BrowserNotificationsProvider>
+              </BrowserNotificationsProvider>
+            </AuthProvider>
           </TenantThemeProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && (

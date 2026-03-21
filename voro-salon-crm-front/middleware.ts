@@ -52,6 +52,7 @@ const PROTECTED_PATHS = [
   "/admin/terms",
   "/admin/complete-profile",
   "/dashboard",
+  "/notifications",
   "/api",
 ]
 

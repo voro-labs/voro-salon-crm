@@ -13,7 +13,9 @@ import {
   Scissors,
   Calendar,
   Banknote,
+  Bell,
 } from "lucide-react"
+import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { toTitleCase } from "@/lib/utils"
 import {
   Select,
@@ -82,6 +84,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
   const { user, logout, switchTenant } = useAuth()
   const pathname = usePathname()
+  const { unreadCount } = useUserNotifications()
   const { data: modulesData, isLoading: modulesLoading } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, async (url) => {
     const res = await secureApiCall<any[]>(url, { method: "GET" });
     if (res.hasError) return [];
@@ -220,6 +223,31 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
               </Link>
             )
           })}
+
+          <div className="border-t border-border my-4" />
+
+          {/* Notificações */}
+          <Link
+            href="/notifications"
+            onClick={onClose}
+            className={`
+              flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+              ${isActive("/notifications")
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              }
+            `}
+          >
+            <div className="relative">
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center leading-none">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
+            Notificações
+          </Link>
 
           <div className="border-t border-border my-4" />
 
