@@ -36,7 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       const token = getAuthToken()
       const storedTenants = localStorage.getItem("user_tenants")
-      const parsedTenants = storedTenants ? JSON.parse(storedTenants) : []
+      let parsedTenants = []
+      try {
+        parsedTenants = storedTenants ? JSON.parse(storedTenants) : []
+      } catch {
+        localStorage.removeItem("user_tenants")
+      }
 
       // Aplica um JWT válido ao estado do usuário
       const applyToken = (jwt: string, refresh?: string) => {

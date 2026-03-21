@@ -42,12 +42,17 @@ export function BrowserNotificationsProvider({ children }: { children: ReactNode
     const permission = permissionRef.current ?? Notification.permission
     if (permission !== "granted") return
 
-    new Notification(title, {
-      body: options?.body,
-      icon: options?.icon ?? "/icon.ico",
-      tag: options?.tag,
-      silent: options?.silent ?? false,
-    })
+    try {
+      new Notification(title, {
+        body: options?.body,
+        icon: options?.icon ?? "/icon.ico",
+        tag: options?.tag,
+        silent: options?.silent ?? false,
+      })
+    } catch {
+      // Mobile Chrome (Android) não suporta new Notification() diretamente
+      // Requer ServiceWorkerRegistration.showNotification()
+    }
   }, [isSupported])
 
   return (
