@@ -12,6 +12,7 @@ import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 
 import { ThemeToggle } from "../../theme-toggle"
+import { useBrowserNotifications } from "@/contexts/browser-notifications.context"
 
 // Páginas de onboarding obrigatório — o guard não redireciona quando já está nelas
 const ONBOARDING_PATHS = [
@@ -26,6 +27,7 @@ interface MainProps {
 
 export function Main({ children }: MainProps) {
   const { user, loading } = useAuth()
+  const { requestPermission } = useBrowserNotifications()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -38,6 +40,13 @@ export function Main({ children }: MainProps) {
       return res.data
     }
   )
+
+  // Solicita permissão para notificações do navegador ao autenticar
+  useEffect(() => {
+    if (user?.token) {
+      requestPermission()
+    }
+  }, [user?.token, requestPermission])
 
   // Guard de onboarding obrigatório: redireciona para a primeira etapa pendente
   // enquanto o usuário estiver autenticado e não tiver cumprido as flags pós-login
