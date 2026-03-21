@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidateModelFilter>();
+    options.Filters.Add<DemoTenantFilter>();
 });
 
 builder.Services.AddOpenApi();

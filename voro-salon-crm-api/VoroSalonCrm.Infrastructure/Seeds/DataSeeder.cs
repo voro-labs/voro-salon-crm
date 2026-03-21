@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
@@ -11,6 +12,13 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 {
     public class DataSeeder : IDataSeeder
     {
+        private readonly UserManager<User> _userManager;
+
+        public DataSeeder(UserManager<User> userManager)
+        {
+            _userManager = userManager;
+        }
+
         public async Task SeedAsync(JasmimDbContext context)
         {
             // Garante que o banco existe e está migrado
@@ -31,8 +39,18 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             await context.SaveChangesAsync();
 
+            // SEED: Tenant Demo
+            SeedDemoTenant(context);
+
+            await context.SaveChangesAsync();
+
             // SEED: Usuário Admin
             SeedUsers(context);
+
+            await context.SaveChangesAsync();
+
+            // SEED: Reviewer (conta fixa para revisão Google Play / demo)
+            await SeedReviewerUserAsync(context);
 
             await context.SaveChangesAsync();
 
@@ -414,6 +432,79 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
                 context.SubscriptionPlans.AddRange(plans);
             }
+        }
+
+        private static void SeedDemoTenant(JasmimDbContext context)
+        {
+            if (context.Tenants.IgnoreQueryFilters().Any(t => t.Slug == "vorodemo"))
+                return;
+
+            context.Tenants.Add(new Tenant
+            {
+                Name = "Salão Demo",
+                Slug = "vorodemo",
+                ContactEmail = "demo@vorolabs.app",
+                IsDemo = true,
+                IsActive = true,
+                PrimaryColor = "#0f172a",
+                SecondaryColor = "#6366f1",
+                ThemeMode = "light",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        private async Task SeedReviewerUserAsync(JasmimDbContext context)
+        {
+            const string reviewerEmail = "reviewer@vorolabs.app";
+
+            if (context.Users.IgnoreQueryFilters().Any(u => u.Email == reviewerEmail))
+                return;
+
+            var ownerRole = context.Roles.FirstOrDefault(r => r.Name == "SalonOwner");
+            var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == "vorodemo");
+
+            if (tenant == null || ownerRole == null)
+                return;
+
+            var reviewer = new User
+            {
+                UserName = "reviewer.vorolabs",
+                NormalizedUserName = "REVIEWER.VOROLABS",
+                Email = reviewerEmail,
+                NormalizedEmail = reviewerEmail.ToUpper(),
+                EmailConfirmed = true,
+                FirstName = "Reviewer",
+                LastName = "Google",
+                CountryCode = "+55",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                BirthDate = DateTime.UtcNow,
+                SecurityStamp = Guid.NewGuid().ToString(),
+                TwoFactorEnabled = true,
+                UserTenants =
+                [
+                    new UserTenant
+                    {
+                        TenantId = tenant.Id,
+                        IsDefault = true
+                    }
+                ],
+                UserRoles =
+                [
+                    new UserRole
+                    {
+                        Role = ownerRole
+                    }
+                ],
+                UserExtension = new UserExtension
+                {
+                    TermsAcceptedAt = DateTime.UtcNow,
+                    PasswordChangedAt = DateTime.UtcNow,
+                    MustChangePassword = false
+                }
+            };
+
+            await _userManager.CreateAsync(reviewer, "Reviewer@123456!");
         }
 
         private static void SeedUsers(JasmimDbContext context)

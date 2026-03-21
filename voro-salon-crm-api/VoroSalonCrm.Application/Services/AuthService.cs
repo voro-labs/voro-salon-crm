@@ -29,7 +29,7 @@ namespace VoroSalonCrm.Application.Services
         ICurrentUserService currentUserService, Domain.Interfaces.Repositories.IUserExtensionRepository userExtensionRepository,
         Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork,
         ITenantRepository tenantRepository, IUserTenantRepository userTenantRepository,
-        UserManager<User> userManager) : IAuthService
+        UserManager<User> userManager, IDemoResetService demoResetService) : IAuthService
     {
         private readonly INotificationService _notificationService = notificationService;
         private readonly CookieUtil _cookieUtil = cookieUtil.Value;
@@ -40,6 +40,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly UserManager<User> _userManager = userManager;
+        private readonly IDemoResetService _demoResetService = demoResetService;
 
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
@@ -84,6 +85,10 @@ namespace VoroSalonCrm.Application.Services
         public async Task<AuthDto> VerifyTwoFactorAsync(VerifyTwoFactorDto dto)
         {
             var (user, roles) = await _userService.VerifyTwoFactorAsync(dto.PendingToken, dto.Code);
+
+            var isReviewer = string.Equals(user.Email, "reviewer@vorolabs.app", StringComparison.OrdinalIgnoreCase);
+            if (isReviewer)
+                await _demoResetService.ResetAsync();
 
             return await GenerateAuthDtoAsync(user, roles);
         }
