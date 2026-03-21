@@ -16,6 +16,7 @@ const TAB_ICONS: Record<string, { active: IconName; inactive: IconName; label: s
   services: { active: "cut", inactive: "cut-outline", label: "Serviços" },
   employees: { active: "person", inactive: "person-outline", label: "Equipe" },
   finance: { active: "wallet", inactive: "wallet-outline", label: "Finanças" },
+  notifications: { active: "notifications", inactive: "notifications-outline", label: "Avisos" },
   settings: { active: "settings", inactive: "settings-outline", label: "Config." },
 }
 
@@ -129,6 +130,12 @@ export default function TabsLayout() {
         options={{ href: isTabEnabled("finance") ? undefined : null }}
         listeners={({ navigation }) => ({
           tabPress: () => navigation.navigate("finance", { screen: "index" }),
+        })}
+      />
+      <Tabs.Screen
+        name="notifications"
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate("notifications", { screen: "index" }),
         })}
       />
       <Tabs.Screen name="settings" />

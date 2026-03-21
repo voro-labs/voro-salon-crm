@@ -36,6 +36,12 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            services.AddHttpClient("expo-push", client =>
+            {
+                client.BaseAddress = new Uri("https://exp.host");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
@@ -74,6 +80,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAnamnesisSheetRepository, AnamnesisSheetRepository>();
             services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
             services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
+            services.AddScoped<IPushTokenRepository, PushTokenRepository>();
+            services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
             #endregion
 
             #region Identity Services
@@ -97,6 +105,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAnamnesisService, AnamnesisService>();
             services.AddScoped<ISubscriptionService, SubscriptionService>();
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
+            services.AddScoped<IExpoPushNotificationService, ExpoPushNotificationService>();
+            services.AddScoped<IUserNotificationService, UserNotificationService>();
             #endregion
 
             return services;

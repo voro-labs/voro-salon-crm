@@ -42,6 +42,9 @@ export const API_CONFIG = {
     PUBLIC_EMPLOYEES: "/public/PublicBooking/employees",
     PUBLIC_BOOKING: "/public/PublicBooking/booking",
     PUBLIC_AVAILABILITY: "/public/PublicBooking/availability",
+    PUSH_TOKENS: "/push-tokens",
+    NOTIFICATIONS: "/notifications",
+    NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
   },
   HEADERS: {
     "Content-Type": "application/json",

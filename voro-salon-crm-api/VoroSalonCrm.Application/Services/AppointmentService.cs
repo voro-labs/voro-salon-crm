@@ -17,7 +17,9 @@ namespace VoroSalonCrm.Application.Services
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         ITenantRepository tenantRepository,
-        IWhatsappService whatsappService) : IAppointmentService
+        IWhatsappService whatsappService,
+        IUserTenantRepository userTenantRepository,
+        IExpoPushNotificationService expoPushNotificationService) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -26,6 +28,8 @@ namespace VoroSalonCrm.Application.Services
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IWhatsappService _whatsappService = whatsappService;
+        private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
+        private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -147,6 +151,62 @@ namespace VoroSalonCrm.Application.Services
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Send push notifications to tenant owners
+            if (oldStatus != status && (status == AppointmentStatus.Confirmed || status == AppointmentStatus.Cancelled || status == AppointmentStatus.Completed))
+            {
+                try
+                {
+                    var ownerTenants = await _userTenantRepository.GetAllAsync(
+                        ut => ut.TenantId == appointment.TenantId);
+
+                    var ownerIds = ownerTenants.Select(ut => ut.UserId).ToList();
+
+                    if (ownerIds.Count > 0)
+                    {
+                        var clientName = appointment.Client?.Name ?? "Cliente";
+                        var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
+                        var dateStr = localTime.ToString("dd/MM/yyyy");
+                        var timeStr = localTime.ToString("HH:mm");
+
+                        string pushTitle;
+                        string pushBody;
+                        string notificationType;
+
+                        if (status == AppointmentStatus.Confirmed)
+                        {
+                            pushTitle = "Agendamento Confirmado";
+                            pushBody = $"O agendamento de {clientName} foi confirmado para {dateStr} às {timeStr}";
+                            notificationType = "status_changed_confirmed";
+                        }
+                        else if (status == AppointmentStatus.Cancelled)
+                        {
+                            pushTitle = "Agendamento Cancelado";
+                            pushBody = $"O agendamento de {clientName} para {dateStr} às {timeStr} foi cancelado";
+                            notificationType = "status_changed_cancelled";
+                        }
+                        else // Completed
+                        {
+                            pushTitle = "Atendimento Concluído";
+                            pushBody = $"{clientName} foi atendido(a)";
+                            notificationType = "status_changed_completed";
+                        }
+
+                        await _expoPushNotificationService.SendToUsersAsync(
+                            ownerIds,
+                            pushTitle,
+                            pushBody,
+                            new { appointmentId = appointment.Id, status = status.ToString() },
+                            appointment.TenantId,
+                            notificationType,
+                            appointment.Id);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Do not fail the main flow if push notifications fail
+                }
+            }
 
             // Send WhatsApp notifications
             if (oldStatus != status && appointment.Client != null && !string.IsNullOrWhiteSpace(appointment.Client.Phone))

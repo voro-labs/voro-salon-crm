@@ -5,7 +5,16 @@ import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider, useAuth } from "contexts/auth.context"
 import { TenantThemeProvider, useTenantTheme } from "contexts/tenant-theme.context"
 import * as SecureStore from "expo-secure-store"
+import * as Notifications from "expo-notifications"
 import "../global.css"
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+})
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth()
