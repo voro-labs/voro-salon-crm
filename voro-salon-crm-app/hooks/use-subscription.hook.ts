@@ -1,7 +1,24 @@
 import useSWR from "swr"
-import { fetcher } from "@/lib/fetcher"
-import { API_CONFIG } from "@/lib/api"
-import type { TenantSubscriptionDto } from "@/types/subscription.interface"
+import { API_CONFIG } from "../lib/api"
+import { fetcher } from "../lib/fetcher"
+
+interface SubscriptionPlanDto {
+  id: string
+  name: string
+  maxEmployees: number
+  maxClients: number
+  hasFinancial: boolean
+  hasAnamnesis: boolean
+  monthlyPrice: number
+}
+
+interface TenantSubscriptionDto {
+  status: string
+  trialEndsAt: string | null
+  nextPaymentAt: string | null
+  lastPaymentAt: string | null
+  plan: SubscriptionPlanDto
+}
 
 export function useSubscription() {
   const { data: subscription, isLoading, mutate } = useSWR<TenantSubscriptionDto>(
@@ -17,9 +34,10 @@ export function useSubscription() {
   const isInactive = status === "Inactive" || status === (2 as any)
   const isPaywalled = isTrialExpired || isInactive
 
-  const trialDaysLeft = trialEndsAt && trialEndsAt > now
-    ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    : 0
+  const trialDaysLeft =
+    trialEndsAt && trialEndsAt > now
+      ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      : 0
 
   return {
     subscription,

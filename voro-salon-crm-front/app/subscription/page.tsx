@@ -1,13 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import {
   CheckCircle2, Clock, CreditCard, Loader2, Zap, ArrowRight, AlertCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { API_CONFIG, apiCall, secureApiCall } from "@/lib/api"
@@ -29,8 +28,8 @@ function statusLabel(status: string) {
 
 export default function SubscriptionPage() {
   const router = useRouter()
-  const { user } = useAuth()
-  const { subscription, isLoading, isTrial, trialDaysLeft, trialEndsAt, mutate } = useSubscription()
+  const { user, loading } = useAuth()
+  const { subscription, isLoading, isTrial, isActive, trialDaysLeft, trialEndsAt, mutate } = useSubscription()
 
   const { data: tenant } = useSWR(
     user?.token ? API_CONFIG.ENDPOINTS.TENANT_ME : null,
@@ -49,8 +48,14 @@ export default function SubscriptionPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Guard de autenticação
+  useEffect(() => {
+    if (!loading && !user?.token) {
+      router.replace("/sign-in")
+    }
+  }, [loading, user, router])
+
   const handleSelectPlan = (plan: SubscriptionPlanDto) => {
-    if (plan.id === subscription?.plan?.id) return
     setSelectedPlan(plan)
     setError(null)
   }
@@ -87,7 +92,7 @@ export default function SubscriptionPage() {
     }
   }
 
-  if (isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -95,8 +100,9 @@ export default function SubscriptionPage() {
     )
   }
 
+  if (!user?.token) return null
+
   const status = subscription ? statusLabel(subscription.status) : null
-  const currentPlanId = subscription?.plan?.id
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -105,7 +111,7 @@ export default function SubscriptionPage() {
         <p className="text-muted-foreground text-sm mt-1">Gerencie seu plano e assinatura.</p>
       </div>
 
-      {/* Current plan card */}
+      {/* Plano atual */}
       {subscription ? (
         <Card>
           <CardHeader className="pb-3">
@@ -141,7 +147,7 @@ export default function SubscriptionPage() {
               </div>
             )}
 
-            {subscription.status === "Active" && subscription.nextPaymentAt && (
+            {isActive && subscription.nextPaymentAt && (
               <p className="text-sm text-muted-foreground">
                 Próxima cobrança em{" "}
                 <span className="font-medium text-foreground">
@@ -150,7 +156,7 @@ export default function SubscriptionPage() {
               </p>
             )}
 
-            {subscription.status === "Active" && subscription.lastPaymentAt && (
+            {isActive && subscription.lastPaymentAt && (
               <p className="text-sm text-muted-foreground">
                 Último pagamento:{" "}
                 <span className="font-medium text-foreground">
@@ -169,10 +175,10 @@ export default function SubscriptionPage() {
         </Card>
       )}
 
-      {/* Plan selection */}
+      {/* Seleção de plano */}
       <div>
         <h2 className="text-lg font-bold mb-4">
-          {subscription ? "Mudar plano" : "Escolher plano"}
+          {isActive ? "Trocar plano" : "Escolher plano"}
         </h2>
 
         {!plans ? (
@@ -182,11 +188,11 @@ export default function SubscriptionPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {plans.map((plan) => {
-              const isCurrent = plan.id === currentPlanId
+              const isCurrent = plan.id === subscription?.plan?.id
               return (
                 <button
                   key={plan.id}
-                  onClick={() => handleSelectPlan(plan)}
+                  onClick={() => !isCurrent && handleSelectPlan(plan)}
                   disabled={isCurrent}
                   className={`text-left rounded-xl border p-4 transition-all ${
                     isCurrent
@@ -196,9 +202,7 @@ export default function SubscriptionPage() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-bold text-sm">{plan.name}</span>
-                    {isCurrent && (
-                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                    )}
+                    {isCurrent && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
                   </div>
                   <p className="text-xl font-black mb-1">
                     {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -213,7 +217,7 @@ export default function SubscriptionPage() {
                   </div>
                   {!isCurrent && (
                     <div className="mt-3 text-xs font-semibold text-primary flex items-center gap-1">
-                      Selecionar <ArrowRight className="h-3 w-3" />
+                      {isActive ? "Fazer upgrade" : "Assinar"} <ArrowRight className="h-3 w-3" />
                     </div>
                   )}
                 </button>
@@ -223,11 +227,11 @@ export default function SubscriptionPage() {
         )}
       </div>
 
-      {/* Confirm plan dialog */}
+      {/* Dialog de confirmação */}
       <Dialog open={!!selectedPlan} onOpenChange={(o) => { if (!o) { setSelectedPlan(null); setError(null) } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Confirmar plano</DialogTitle>
+            <DialogTitle>Confirmar assinatura</DialogTitle>
             <DialogDescription>
               Você será redirecionado ao MercadoPago para completar a assinatura.
             </DialogDescription>

@@ -563,12 +563,12 @@ export default function PrecosPage() {
             <div className="absolute inset-0 -z-10 bg-primary/15 blur-2xl scale-90 rounded-[3rem]" />
 
             {/* Outer shell */}
-            <div className="relative w-[230px] rounded-[2.5rem] border-[6px] border-foreground/10 bg-foreground/10 shadow-2xl overflow-hidden">
+            <div className="relative w-57.5 rounded-[2.5rem] border-[6px] border-foreground/10 bg-foreground/10 shadow-2xl overflow-hidden">
               {/* Dynamic island */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 h-5 w-20 rounded-full bg-black/80" />
 
               {/* Screen */}
-              <div className="rounded-[2rem] overflow-hidden bg-background">
+              <div className="rounded-4xl overflow-hidden bg-background">
                 {/* Status bar */}
                 <div className="flex items-center justify-between px-4 pt-7 pb-1 bg-background">
                   <span className="text-[9px] font-bold text-foreground/70">9:41</span>
@@ -774,7 +774,7 @@ export default function PrecosPage() {
               <Label>Cupom <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Ex: TRIAL30"
+                  placeholder="Ex: VORO10"
                   value={couponCode}
                   onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponResult(null); setCouponError(null) }}
                   onKeyDown={(e) => { if (e.key === "Enter") handleValidateCoupon() }}

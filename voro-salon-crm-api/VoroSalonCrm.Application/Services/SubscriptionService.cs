@@ -136,12 +136,16 @@ namespace VoroSalonCrm.Application.Services
         {
             var backUrl = $"{UrlBase}/prices/feedback";
 
-            var externalRef = dto.TenantId.HasValue
-                ? dto.TenantId.Value.ToString()
+            var email = env.IsDevelopment()
+                ? configuration["MercadoPagoSettings:TestPayerEmail"] ?? dto.Email
                 : dto.Email;
 
+            var externalRef = dto.TenantId.HasValue
+                ? dto.TenantId.Value.ToString()
+                : email;
+
             var result = await mercadoPagoService.CreatePreapprovalAsync(new MpCreatePreapprovalDto(
-                PayerEmail: dto.Email,
+                PayerEmail: email,
                 Reason: $"Voro Salon CRM — Plano {plan.Name}",
                 TransactionAmount: plan.MonthlyPrice,
                 ExternalReference: externalRef,

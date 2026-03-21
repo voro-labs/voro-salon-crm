@@ -30,7 +30,7 @@ interface MainProps {
 export function Main({ children }: MainProps) {
   const { user, loading } = useAuth()
   const { requestPermission } = useBrowserNotifications()
-  const { isTrialExpired, trialEndsAt, mutate: refreshSubscription } = useSubscription()
+  const { isPaywalled, trialEndsAt, mutate: refreshSubscription } = useSubscription()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -128,8 +128,8 @@ export function Main({ children }: MainProps) {
     )
   }
 
-  // Paywall de trial expirado
-  if (isTrialExpired) {
+  // Paywall: trial expirado ou assinatura inativa — exceto na página de assinatura
+  if (isPaywalled && !pathname.startsWith("/subscription")) {
     return <SubscriptionPaywall trialEndsAt={trialEndsAt} onRefresh={() => refreshSubscription()} />
   }
 

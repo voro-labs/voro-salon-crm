@@ -7,6 +7,8 @@ import { TenantThemeProvider, useTenantTheme } from "contexts/tenant-theme.conte
 import * as SecureStore from "expo-secure-store"
 import * as Notifications from "expo-notifications"
 import { usePushNotifications } from "hooks/use-push-notifications.hook"
+import { useSubscription } from "hooks/use-subscription.hook"
+import { SubscriptionPaywall } from "components/SubscriptionPaywall"
 import "../global.css"
 
 Notifications.setNotificationHandler({
@@ -31,6 +33,7 @@ if (Platform.OS === "android") {
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth()
   const { primaryColor } = useTenantTheme()
+  const { isPaywalled, isLoading: isSubscriptionLoading } = useSubscription()
   const segments = useSegments()
   const router = useRouter()
   const { registerPushToken, unregisterPushToken, handleNotificationResponse } = usePushNotifications()
@@ -77,12 +80,16 @@ function RootLayoutNav() {
     // Se está em /(onboarding), não redireciona — usuário está completando o cadastro
   }, [isAuthenticated, isLoading, segments])
 
-  if (isLoading || pendingRedirect) {
+  if (isLoading || pendingRedirect || (isAuthenticated && isSubscriptionLoading)) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color={primaryColor} />
       </View>
     )
+  }
+
+  if (isAuthenticated && isPaywalled) {
+    return <SubscriptionPaywall />
   }
 
   return (
