@@ -8,7 +8,7 @@ import { apiCall, API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthDto } from "@/types/DTOs/auth.interface"
 import { useAuth } from "@/contexts/auth.context"
 import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
-import { TWO_FACTOR_PENDING_KEY, TWO_FACTOR_EMAIL_KEY } from "@/hooks/use-sign-in.hook"
+import { TWO_FACTOR_PENDING_KEY, TWO_FACTOR_EMAIL_KEY, TWO_FACTOR_REDIRECT_KEY } from "@/hooks/use-sign-in.hook"
 
 const CODE_LENGTH = 6
 
@@ -22,12 +22,14 @@ export default function VerifyTwoFactorPage() {
   const [success, setSuccess] = useState(false)
   const [pendingToken, setPendingToken] = useState<string | null>(null)
   const [email, setEmail] = useState<string | null>(null)
+  const [redirectTo, setRedirectTo] = useState("/")
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
     const token = sessionStorage.getItem(TWO_FACTOR_PENDING_KEY)
     const storedEmail = sessionStorage.getItem(TWO_FACTOR_EMAIL_KEY)
+    const storedRedirect = sessionStorage.getItem(TWO_FACTOR_REDIRECT_KEY)
 
     if (!token) {
       router.replace("/admin/sign-in")
@@ -36,6 +38,7 @@ export default function VerifyTwoFactorPage() {
 
     setPendingToken(token)
     setEmail(storedEmail)
+    if (storedRedirect) setRedirectTo(storedRedirect)
     inputRefs.current[0]?.focus()
   }, [router])
 
@@ -113,6 +116,7 @@ export default function VerifyTwoFactorPage() {
       // Limpar dados temporários
       sessionStorage.removeItem(TWO_FACTOR_PENDING_KEY)
       sessionStorage.removeItem(TWO_FACTOR_EMAIL_KEY)
+      sessionStorage.removeItem(TWO_FACTOR_REDIRECT_KEY)
 
       login(response.data.token, response.data.refreshToken, response.data.tenants)
 
@@ -140,7 +144,7 @@ export default function VerifyTwoFactorPage() {
           ? "/admin/terms"
           : response.data.requiresProfileCompletion
             ? "/admin/complete-profile"
-            : "/"
+            : redirectTo
       window.location.replace(dest)
     } catch {
       setError("Erro inesperado. Tente novamente.")

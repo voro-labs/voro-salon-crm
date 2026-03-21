@@ -51,7 +51,7 @@ export default function SubscriptionPage() {
   // Guard de autenticação
   useEffect(() => {
     if (!loading && !user?.token) {
-      router.replace("/sign-in")
+      router.replace("/admin/sign-in?redirect=/subscription")
     }
   }, [loading, user, router])
 
