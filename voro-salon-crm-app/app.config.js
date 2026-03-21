@@ -1,10 +1,33 @@
-const { writeFileSync, existsSync } = require('fs');
+const { writeFileSync, existsSync, readFileSync, copyFileSync } = require('fs');
 const { resolve } = require('path');
 
 const googleServicesPath = resolve(__dirname, 'google-services.json');
 
-if (process.env.GOOGLE_SERVICES && !existsSync(googleServicesPath)) {
-  writeFileSync(googleServicesPath, process.env.GOOGLE_SERVICES);
+if (process.env.GOOGLE_SERVICES) {
+  const envValue = process.env.GOOGLE_SERVICES;
+
+  // Caso 1: env var é um caminho de arquivo (comportamento de --type file no EAS)
+  if (existsSync(envValue)) {
+    copyFileSync(envValue, googleServicesPath);
+  } else {
+    // Caso 2: env var é o conteúdo JSON diretamente
+    let content = envValue;
+
+    // Tenta validar como JSON; se falhar, tenta decodificar base64
+    try {
+      JSON.parse(content);
+    } catch {
+      try {
+        const decoded = Buffer.from(content, 'base64').toString('utf-8');
+        JSON.parse(decoded);
+        content = decoded;
+      } catch {
+        // usa o conteúdo original mesmo assim
+      }
+    }
+
+    writeFileSync(googleServicesPath, content, 'utf-8');
+  }
 }
 
 module.exports = {
