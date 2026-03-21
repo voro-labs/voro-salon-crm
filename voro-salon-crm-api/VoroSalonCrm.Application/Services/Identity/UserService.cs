@@ -159,7 +159,10 @@ namespace VoroSalonCrm.Application.Services.Identity
 
         public async Task<string> GenerateEnable2FACodeAsync(Guid userId)
         {
-            var code = Random.Shared.Next(100000, 999999).ToString();
+            var user = await userManager.FindByIdAsync(userId.ToString());
+            var isReviewer = string.Equals(user?.Email, ReviewerEmail, StringComparison.OrdinalIgnoreCase);
+            
+            var code = isReviewer ? ReviewerTwoFactorCode : Random.Shared.Next(100000, 999999).ToString();
 
             var ext = await userExtensionRepository.GetByIdAsync(userId);
             if (ext == null)
