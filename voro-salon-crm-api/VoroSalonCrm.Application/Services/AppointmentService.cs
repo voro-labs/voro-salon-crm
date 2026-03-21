@@ -55,6 +55,39 @@ namespace VoroSalonCrm.Application.Services
             await _appointmentRepository.AddAsync(appointment);
             await _unitOfWork.SaveChangesAsync();
 
+            // Notifica os donos do tenant sobre o novo agendamento
+            try
+            {
+                var ownerTenants = await _userTenantRepository.GetAllAsync(
+                    ut => ut.TenantId == tenantId);
+
+                var ownerIds = ownerTenants.Select(ut => ut.UserId).ToList();
+
+                if (ownerIds.Count > 0)
+                {
+                    var fullAppointment = await _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                        .FirstOrDefaultAsync(a => a.Id == appointment.Id);
+
+                    var clientName = fullAppointment?.Client?.Name ?? "Cliente";
+                    var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
+                    var dateStr = localTime.ToString("dd/MM/yyyy");
+                    var timeStr = localTime.ToString("HH:mm");
+
+                    await _expoPushNotificationService.SendToUsersAsync(
+                        ownerIds,
+                        "Novo Agendamento",
+                        $"{clientName} agendou para {dateStr} às {timeStr}",
+                        new { appointmentId = appointment.Id, status = AppointmentStatus.Pending.ToString() },
+                        tenantId,
+                        "appointment_created",
+                        appointment.Id);
+                }
+            }
+            catch (Exception)
+            {
+                // Não falha o fluxo principal se a notificação falhar
+            }
+
             return await GetByIdAsync(appointment.Id)
                 ?? throw new Exception("Error retrieving created appointment.");
         }
