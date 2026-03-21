@@ -12,6 +12,7 @@ namespace VoroSalonCrm.Domain.Entities
         public bool HasFinancial { get; set; }
         public bool HasReports { get; set; }
         public int SortOrder { get; set; }
+        public int DefaultTrialDays { get; set; } = 7;
         public bool IsActive { get; set; } = true;
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }

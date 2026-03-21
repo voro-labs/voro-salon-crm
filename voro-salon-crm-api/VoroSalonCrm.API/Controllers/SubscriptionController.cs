@@ -83,5 +83,76 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpGet("coupon/{code}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ValidateCoupon(string code)
+        {
+            try
+            {
+                var result = await subscriptionService.ValidateCouponAsync(code);
+                if (result == null)
+                    return ResponseViewModel<object>.Fail("Cupom inválido ou expirado.").ToActionResult();
+
+                return ResponseViewModel<CouponValidationResultDto>
+                    .SuccessWithMessage("Cupom válido.", result)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("admin/coupons")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetCoupons()
+        {
+            try
+            {
+                var coupons = await subscriptionService.GetCouponsAsync();
+                return ResponseViewModel<IEnumerable<CouponDto>>
+                    .SuccessWithMessage("Coupons retrieved.", coupons)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("admin/coupons")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateCoupon([FromBody] CreateCouponDto dto)
+        {
+            try
+            {
+                var coupon = await subscriptionService.CreateCouponAsync(dto);
+                return ResponseViewModel<CouponDto>
+                    .SuccessWithMessage("Cupom criado.", coupon)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("admin/extend-trial")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ExtendTrial([FromBody] ExtendTrialDto dto)
+        {
+            try
+            {
+                await subscriptionService.ExtendTrialAsync(dto.TenantId, dto.AdditionalDays);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Trial estendido com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

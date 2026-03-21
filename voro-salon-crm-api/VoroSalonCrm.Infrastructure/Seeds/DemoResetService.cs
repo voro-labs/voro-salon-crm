@@ -110,6 +110,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 .IgnoreQueryFilters()
                 .Where(c => c.TenantId == tenantId)
                 .ExecuteDeleteAsync();
+
+            await context.UserNotifications
+                .IgnoreQueryFilters()
+                .Where(c => c.TenantId == tenantId)
+                .ExecuteDeleteAsync();
         }
 
         private async Task SeedDemoDefaultsAsync(Guid tenantId)

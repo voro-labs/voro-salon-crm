@@ -48,6 +48,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
         public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
         public DbSet<TenantSubscription> TenantSubscriptions { get; set; }
+        public DbSet<SubscriptionCoupon> SubscriptionCoupons { get; set; }
 
         public DbSet<PushToken> PushTokens { get; set; }
         public DbSet<UserNotification> UserNotifications { get; set; }
@@ -507,6 +508,21 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(s => s.PlanId)
                  .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ---------------------------
+            // SUBSCRIPTION COUPON
+            // ---------------------------
+            builder.Entity<SubscriptionCoupon>(b =>
+            {
+                b.HasKey(c => c.Id);
+                b.Property(c => c.Code).HasMaxLength(50).IsRequired();
+                b.Property(c => c.Description).HasMaxLength(300);
+                b.Property(c => c.TrialDays).HasDefaultValue(7);
+                b.Property(c => c.IsActive).HasDefaultValue(true);
+                b.Property(c => c.UsedCount).HasDefaultValue(0);
+                b.Property(c => c.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.HasIndex(c => c.Code).IsUnique();
             });
 
             builder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims");

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import useSWR from "swr"
+import useSWR, { mutate } from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { toast } from "sonner"
 import { fetcher } from "@/lib/fetcher"
@@ -42,6 +42,7 @@ export function useClientDetails(clientId: string) {
       if (res.hasError) throw new Error(res.message || "Erro ao atualizar cliente.")
       toast.success("Cliente atualizado com sucesso!")
       await mutateClient()
+      mutate(API_CONFIG.ENDPOINTS.CLIENTS)
       return true
     } catch (err: any) {
       toast.error(err.message || "Erro de conexão.")
@@ -57,6 +58,7 @@ export function useClientDetails(clientId: string) {
       const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, { method: "DELETE" })
       if (res.hasError) throw new Error("Erro ao excluir cliente.")
       toast.success("Cliente excluído!")
+      mutate(API_CONFIG.ENDPOINTS.CLIENTS)
       router.push("/clients")
       return true
     } catch (err: any) {

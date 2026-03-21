@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 
 export const TWO_FACTOR_PENDING_KEY = "voro_2fa_pending_token"
 export const TWO_FACTOR_EMAIL_KEY = "voro_2fa_email"
+export const TWO_FACTOR_REDIRECT_KEY = "voro_2fa_redirect"
 
 export function useSignIn() {
   const { login } = useAuth()
@@ -17,7 +18,7 @@ export function useSignIn() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const signIn = async (data: SignInDto) => {
+  const signIn = async (data: SignInDto, redirectTo = "/") => {
     setLoading(true)
     setError(null)
 
@@ -45,6 +46,7 @@ export function useSignIn() {
       if (response.data.requiresTwoFactor && response.data.twoFactorPendingToken) {
         sessionStorage.setItem(TWO_FACTOR_PENDING_KEY, response.data.twoFactorPendingToken)
         sessionStorage.setItem(TWO_FACTOR_EMAIL_KEY, data.email)
+        sessionStorage.setItem(TWO_FACTOR_REDIRECT_KEY, redirectTo)
         router.push("/admin/verify-2fa")
         return { success: false, requiresTwoFactor: true }
       }
@@ -74,7 +76,7 @@ export function useSignIn() {
             ? "/admin/terms"
             : response.data.requiresProfileCompletion
               ? "/admin/complete-profile"
-              : "/"
+              : redirectTo
         window.location.replace(dest)
       }
 

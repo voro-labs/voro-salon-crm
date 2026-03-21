@@ -58,6 +58,7 @@ export function useServiceDetail(serviceId?: string) {
         return false
       }
       toast.success("Serviço criado com sucesso!")
+      mutate(API_CONFIG.ENDPOINTS.SERVICES)
       router.push("/services")
       return true
     } catch {
@@ -85,6 +86,7 @@ export function useServiceDetail(serviceId?: string) {
       }
       toast.success("Serviço atualizado com sucesso!")
       mutate(`${API_CONFIG.ENDPOINTS.SERVICES}/${serviceId}`)
+      mutate(API_CONFIG.ENDPOINTS.SERVICES)
       router.push("/services")
       return true
     } catch {
@@ -106,6 +108,7 @@ export function useServiceDetail(serviceId?: string) {
         return false
       }
       toast.success("Serviço excluído com sucesso!")
+      mutate(API_CONFIG.ENDPOINTS.SERVICES)
       router.push("/services")
       return true
     } catch {

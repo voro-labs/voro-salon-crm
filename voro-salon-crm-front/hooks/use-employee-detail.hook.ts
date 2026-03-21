@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import useSWR from "swr"
+import useSWR, { mutate } from "swr"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { API_CONFIG, secureApiCall, getAuthToken } from "@/lib/api"
@@ -137,6 +137,7 @@ export function useEmployeeDetail(employeeId?: string) {
       }
 
       toast.success(isNew ? "Funcionário cadastrado!" : "Dados atualizados!")
+      mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
       router.push("/employees")
       return true
     } catch {
@@ -158,6 +159,7 @@ export function useEmployeeDetail(employeeId?: string) {
         return false
       }
       toast.success("Funcionário excluído.")
+      mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
       router.push("/employees")
       return true
     } catch {

@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, AlertCircle, Scissors, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth.context"
 import { useSignIn } from "@/hooks/use-sign-in.hook"
@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label"
 
 export default function SignInPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get("redirect") || "/"
   const { user, loading: authLoading } = useAuth()
   const { signIn, loading, error, clearError } = useSignIn()
 
@@ -29,9 +31,9 @@ export default function SignInPage() {
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (!authLoading && user?.token) {
-      router.replace("/")
+      router.replace(redirectTo)
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading, router, redirectTo])
 
   const validateForm = (): boolean => {
     const errors: any = { email: "", password: "" }
@@ -56,10 +58,7 @@ export default function SignInPage() {
     e.preventDefault()
     clearError()
     if (!validateForm()) return
-    const result = await signIn(formData)
-    if (result.success) {
-      router.push("/")
-    }
+    await signIn(formData, redirectTo)
   }
 
   const handleInputChange = (field: keyof SignInDto, value: string) => {

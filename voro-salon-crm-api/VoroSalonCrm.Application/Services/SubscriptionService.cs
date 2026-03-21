@@ -14,13 +14,14 @@ namespace VoroSalonCrm.Application.Services
     public class SubscriptionService(
         ISubscriptionPlanRepository planRepository,
         ITenantSubscriptionRepository subscriptionRepository,
+        ISubscriptionCouponRepository couponRepository,
         IMercadoPagoService mercadoPagoService,
         IConfiguration configuration, IHostEnvironment env,
         IAuthService authService,
         IUnitOfWork unitOfWork,
         ILogger<SubscriptionService> logger) : ISubscriptionService
     {
-        private string UrlBase => env.IsDevelopment() ? 
+        private string UrlBase => env.IsDevelopment() ?
             $"{configuration
                 .GetSection("CorsSettings")
                 .GetSection("AllowedOrigins")
@@ -47,14 +48,104 @@ namespace VoroSalonCrm.Application.Services
             var plan = await planRepository.GetByIdAsync(false, dto.PlanId)
                 ?? throw new InvalidOperationException("Plano não encontrado.");
 
+            // Determine trial days: coupon overrides plan default
+            int trialDays = plan.DefaultTrialDays;
+            SubscriptionCoupon? coupon = null;
+
+            // Tenant existente faz checkout direto sem trial
+            if (!dto.TenantId.HasValue)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.CouponCode))
+                {
+                    coupon = await couponRepository.GetByCodeAsync(dto.CouponCode);
+                    if (coupon == null)
+                        throw new InvalidOperationException("Cupom não encontrado ou inativo.");
+                    if (coupon.ExpiresAt.HasValue && coupon.ExpiresAt < DateTimeOffset.UtcNow)
+                        throw new InvalidOperationException("Cupom expirado.");
+                    if (coupon.MaxUses.HasValue && coupon.UsedCount >= coupon.MaxUses.Value)
+                        throw new InvalidOperationException("Cupom já atingiu o limite de usos.");
+
+                    trialDays = coupon.TrialDays;
+                }
+
+                if (trialDays > 0)
+                    return await CreateTrialSubscriptionAsync(dto, plan, coupon, trialDays);
+            }
+
+            return await CreateMercadoPagoCheckoutAsync(dto, plan);
+        }
+
+        private async Task<CheckoutResultDto> CreateTrialSubscriptionAsync(
+            CreateCheckoutDto dto, SubscriptionPlan plan, SubscriptionCoupon? coupon, int trialDays)
+        {
+            Guid tenantId;
+
+            if (dto.TenantId.HasValue)
+            {
+                tenantId = dto.TenantId.Value;
+            }
+            else
+            {
+                try
+                {
+                    tenantId = await authService.ProvisionAccountFromSubscriptionAsync(
+                        dto.Email, dto.Name, dto.SalonName);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Falha ao provisionar conta trial para {Email}.", dto.Email);
+                    throw;
+                }
+            }
+
+            var trialEndsAt = DateTimeOffset.UtcNow.AddDays(trialDays);
+
+            var subscription = new TenantSubscription
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                PlanId = dto.PlanId,
+                Status = SubscriptionStatus.Trial,
+                PaymentSource = PaymentSource.MercadoPago,
+                StartDate = DateTimeOffset.UtcNow,
+                TrialEndsAt = trialEndsAt,
+                ContactEmail = dto.Email,
+                ContactName = dto.Name,
+                SalonName = dto.SalonName,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            await subscriptionRepository.AddAsync(subscription);
+
+            if (coupon != null)
+            {
+                var trackedCoupon = await couponRepository.GetByIdAsync(false, coupon.Id);
+                if (trackedCoupon != null)
+                {
+                    trackedCoupon.UsedCount++;
+                    couponRepository.Update(trackedCoupon);
+                }
+            }
+
+            await subscriptionRepository.SaveChangesAsync();
+
+            return new CheckoutResultDto(null, subscription.Id.ToString(), true, trialEndsAt);
+        }
+
+        private async Task<CheckoutResultDto> CreateMercadoPagoCheckoutAsync(CreateCheckoutDto dto, SubscriptionPlan plan)
+        {
             var backUrl = $"{UrlBase}/prices/feedback";
+
+            var email = env.IsDevelopment()
+                ? configuration["MercadoPagoSettings:TestPayerEmail"] ?? dto.Email
+                : dto.Email;
 
             var externalRef = dto.TenantId.HasValue
                 ? dto.TenantId.Value.ToString()
-                : dto.Email;
+                : email;
 
             var result = await mercadoPagoService.CreatePreapprovalAsync(new MpCreatePreapprovalDto(
-                PayerEmail: dto.Email,
+                PayerEmail: email,
                 Reason: $"Voro Salon CRM — Plano {plan.Name}",
                 TransactionAmount: plan.MonthlyPrice,
                 ExternalReference: externalRef,
@@ -80,7 +171,7 @@ namespace VoroSalonCrm.Application.Services
             await subscriptionRepository.AddAsync(subscription);
             await subscriptionRepository.SaveChangesAsync();
 
-            return new CheckoutResultDto(result.InitPoint, result.Id);
+            return new CheckoutResultDto(result.InitPoint, subscription.Id.ToString());
         }
 
         public async Task GrantManualAsync(GrantManualSubscriptionDto dto, Guid grantedByUserId)
@@ -171,24 +262,81 @@ namespace VoroSalonCrm.Application.Services
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "Falha ao provisionar conta para {Email} após pagamento.", sub.ContactEmail);
-                    // Limpa entidades sujas do tracker para não contaminar saves subsequentes (ex: AuditMiddleware)
                     unitOfWork.ClearTracker();
                 }
             }
+        }
+
+        public async Task<CouponValidationResultDto?> ValidateCouponAsync(string code)
+        {
+            var coupon = await couponRepository.GetByCodeAsync(code);
+            if (coupon == null || !coupon.IsActive) return null;
+            if (coupon.ExpiresAt.HasValue && coupon.ExpiresAt < DateTimeOffset.UtcNow) return null;
+            if (coupon.MaxUses.HasValue && coupon.UsedCount >= coupon.MaxUses.Value) return null;
+
+            return new CouponValidationResultDto(coupon.Code, coupon.TrialDays, coupon.Description);
+        }
+
+        public async Task<CouponDto> CreateCouponAsync(CreateCouponDto dto)
+        {
+            var coupon = new SubscriptionCoupon
+            {
+                Id = Guid.NewGuid(),
+                Code = dto.Code.ToUpper().Trim(),
+                Description = dto.Description,
+                TrialDays = dto.TrialDays,
+                IsActive = dto.IsActive,
+                MaxUses = dto.MaxUses,
+                ExpiresAt = dto.ExpiresAt,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            await couponRepository.AddAsync(coupon);
+            await couponRepository.SaveChangesAsync();
+
+            return MapCoupon(coupon);
+        }
+
+        public async Task<IEnumerable<CouponDto>> GetCouponsAsync()
+        {
+            var coupons = await couponRepository.GetAllAsync();
+            return coupons.OrderByDescending(c => c.CreatedAt).Select(MapCoupon);
+        }
+
+        public async Task ExtendTrialAsync(Guid tenantId, int additionalDays)
+        {
+            var sub = await subscriptionRepository.GetActiveByTenantIdAsync(tenantId)
+                ?? throw new InvalidOperationException("Assinatura não encontrada para este tenant.");
+
+            var baseDate = sub.TrialEndsAt.HasValue && sub.TrialEndsAt > DateTimeOffset.UtcNow
+                ? sub.TrialEndsAt.Value
+                : DateTimeOffset.UtcNow;
+
+            sub.TrialEndsAt = baseDate.AddDays(additionalDays);
+            sub.Status = SubscriptionStatus.Trial;
+            sub.UpdatedAt = DateTimeOffset.UtcNow;
+
+            subscriptionRepository.Update(sub);
+            await subscriptionRepository.SaveChangesAsync();
         }
 
         // ── Mappers ────────────────────────────────────────────────────────────
 
         private static SubscriptionPlanDto MapPlan(SubscriptionPlan p) => new(
             p.Id, p.Name, p.Description, p.MonthlyPrice,
-            p.MaxEmployees, p.MaxClients, p.HasAnamnesis, p.HasFinancial, p.HasReports, p.SortOrder
+            p.MaxEmployees, p.MaxClients, p.HasAnamnesis, p.HasFinancial, p.HasReports, p.SortOrder,
+            p.DefaultTrialDays
         );
 
         private static TenantSubscriptionDto MapSubscription(TenantSubscription s) => new(
             s.Id, s.TenantId, MapPlan(s.Plan!),
             s.Status.ToString(), s.PaymentSource.ToString(),
             s.StartDate, s.EndDate, s.NextPaymentAt, s.LastPaymentAt,
-            s.ContactEmail, s.ContactName, s.SalonName
+            s.ContactEmail, s.ContactName, s.SalonName, s.TrialEndsAt
+        );
+
+        private static CouponDto MapCoupon(SubscriptionCoupon c) => new(
+            c.Id, c.Code, c.Description, c.TrialDays, c.IsActive, c.MaxUses, c.UsedCount, c.ExpiresAt, c.CreatedAt
         );
     }
 }

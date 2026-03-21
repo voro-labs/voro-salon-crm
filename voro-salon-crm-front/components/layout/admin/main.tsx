@@ -13,6 +13,8 @@ import { API_CONFIG, secureApiCall } from "@/lib/api"
 
 import { ThemeToggle } from "../../theme-toggle"
 import { useBrowserNotifications } from "@/contexts/browser-notifications.context"
+import { useSubscription } from "@/hooks/use-subscription.hook"
+import { SubscriptionPaywall } from "@/components/subscription/subscription-paywall"
 
 // Páginas de onboarding obrigatório — o guard não redireciona quando já está nelas
 const ONBOARDING_PATHS = [
@@ -28,6 +30,7 @@ interface MainProps {
 export function Main({ children }: MainProps) {
   const { user, loading } = useAuth()
   const { requestPermission } = useBrowserNotifications()
+  const { isPaywalled, trialEndsAt, mutate: refreshSubscription } = useSubscription()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -98,8 +101,8 @@ export function Main({ children }: MainProps) {
     const isPublicRoute = routesAllowed.some(item => pathname.startsWith(item))
 
     if (!isPublicRoute) {
-      // Rota protegida sem usuário: redireciona para preços
-      router.replace("/prices")
+      // Rota protegida sem usuário: redireciona para login com redirect de volta
+      router.replace(`/admin/sign-in?redirect=${encodeURIComponent(pathname)}`)
     }
 
     // Layout público (sign-in, forgot-password, etc.) — nunca mostra loading aqui
@@ -123,6 +126,11 @@ export function Main({ children }: MainProps) {
         <main className="flex-1">{children}</main>
       </div>
     )
+  }
+
+  // Paywall: trial expirado ou assinatura inativa — exceto na página de assinatura
+  if (isPaywalled && !pathname.startsWith("/subscription")) {
+    return <SubscriptionPaywall trialEndsAt={trialEndsAt} onRefresh={() => refreshSubscription()} />
   }
 
   // Layout autenticado

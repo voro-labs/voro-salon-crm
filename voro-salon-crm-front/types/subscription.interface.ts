@@ -9,6 +9,7 @@ export interface SubscriptionPlanDto {
   hasFinancial: boolean
   hasReports: boolean
   sortOrder: number
+  defaultTrialDays: number
 }
 
 export interface TenantSubscriptionDto {
@@ -24,6 +25,7 @@ export interface TenantSubscriptionDto {
   contactEmail: string | null
   contactName: string | null
   salonName: string | null
+  trialEndsAt: string | null
 }
 
 export interface CreateCheckoutDto {
@@ -32,9 +34,18 @@ export interface CreateCheckoutDto {
   name: string
   salonName: string
   tenantId?: string
+  couponCode?: string
 }
 
 export interface CheckoutResultDto {
-  checkoutUrl: string
+  checkoutUrl: string | null
   subscriptionId: string
+  isTrial: boolean
+  trialEndsAt: string | null
+}
+
+export interface CouponValidationResultDto {
+  code: string
+  trialDays: number
+  description: string | null
 }
