@@ -13,6 +13,8 @@ import { API_CONFIG, secureApiCall } from "@/lib/api"
 
 import { ThemeToggle } from "../../theme-toggle"
 import { useBrowserNotifications } from "@/contexts/browser-notifications.context"
+import { useSubscription } from "@/hooks/use-subscription.hook"
+import { SubscriptionPaywall } from "@/components/subscription/subscription-paywall"
 
 // Páginas de onboarding obrigatório — o guard não redireciona quando já está nelas
 const ONBOARDING_PATHS = [
@@ -28,6 +30,7 @@ interface MainProps {
 export function Main({ children }: MainProps) {
   const { user, loading } = useAuth()
   const { requestPermission } = useBrowserNotifications()
+  const { isTrialExpired, trialEndsAt, mutate: refreshSubscription } = useSubscription()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -123,6 +126,11 @@ export function Main({ children }: MainProps) {
         <main className="flex-1">{children}</main>
       </div>
     )
+  }
+
+  // Paywall de trial expirado
+  if (isTrialExpired) {
+    return <SubscriptionPaywall trialEndsAt={trialEndsAt} onRefresh={() => refreshSubscription()} />
   }
 
   // Layout autenticado

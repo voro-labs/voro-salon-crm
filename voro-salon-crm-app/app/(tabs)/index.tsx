@@ -10,6 +10,7 @@ import { useAuth } from "contexts/auth.context"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useDashboard } from "hooks/use-dashboard.hook"
 import { usePlanLimits } from "hooks/use-plan-limits.hook"
+import { useWhatsApp } from "hooks/use-whatsapp.hook"
 import useSWR, { useSWRConfig } from "swr"
 import { fetcher } from "lib/fetcher"
 import { API_CONFIG, secureApiCall } from "lib/api"
@@ -321,6 +322,7 @@ export default function DashboardScreen() {
   const { dashboardData, loading, refetch } = useDashboard()
   const { maxClients } = usePlanLimits()
   const { mutate: mutateAll } = useSWRConfig()
+  const { sendWhatsAppMessage } = useWhatsApp()
 
   const { primaryColor, reload: reloadTheme } = useTenantTheme()
 
@@ -392,15 +394,26 @@ export default function DashboardScreen() {
     })
 
   async function handleStatusChange(id: string, newStatus: number) {
+    const appointment = appointments?.find((a) => a.id === id)
     mutateAppointments(
       (prev) => prev?.map((a) => a.id === id ? { ...a, status: newStatus } : a),
       false
     )
     try {
-      await secureApiCall(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`, {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`, {
         method: "PATCH",
         body: JSON.stringify(newStatus),
       })
+      if (!res.hasError && appointment && !tenant?.useWhatsappBooking) {
+        Alert.alert(
+          "Enviar via WhatsApp?",
+          "Deseja notificar o cliente sobre a mudança de status pelo WhatsApp?",
+          [
+            { text: "Não", style: "cancel" },
+            { text: "Enviar", onPress: () => sendWhatsAppMessage(appointment, newStatus, false) },
+          ]
+        )
+      }
     } finally {
       mutateAppointments()
     }

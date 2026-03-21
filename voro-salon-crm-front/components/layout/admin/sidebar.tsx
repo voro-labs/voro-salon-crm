@@ -14,8 +14,10 @@ import {
   Calendar,
   Banknote,
   Bell,
+  CreditCard,
 } from "lucide-react"
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
+import { useSubscription } from "@/hooks/use-subscription.hook"
 import { toTitleCase } from "@/lib/utils"
 import {
   Select,
@@ -85,6 +87,7 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
   const { user, logout, switchTenant } = useAuth()
   const pathname = usePathname()
   const { unreadCount } = useUserNotifications()
+  const { isTrial, trialDaysLeft } = useSubscription()
   const { data: modulesData, isLoading: modulesLoading } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, async (url) => {
     const res = await secureApiCall<any[]>(url, { method: "GET" });
     if (res.hasError) return [];
@@ -223,6 +226,31 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
               </Link>
             )
           })}
+
+          <div className="border-t border-border my-4" />
+
+          {/* Assinatura */}
+          {["SalonOwner", "Owner"].includes((user?.roles?.map((r) => r.name) ?? [])[0]) && (
+            <Link
+              href="/subscription"
+              onClick={onClose}
+              className={`
+                flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                ${isActive("/subscription")
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }
+              `}
+            >
+              <CreditCard className="h-5 w-5" />
+              <span className="flex-1">Assinatura</span>
+              {isTrial && trialDaysLeft > 0 && (
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                  {trialDaysLeft}d
+                </span>
+              )}
+            </Link>
+          )}
 
           <div className="border-t border-border my-4" />
 

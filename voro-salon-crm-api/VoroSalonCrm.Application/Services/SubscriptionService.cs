@@ -52,21 +52,25 @@ namespace VoroSalonCrm.Application.Services
             int trialDays = plan.DefaultTrialDays;
             SubscriptionCoupon? coupon = null;
 
-            if (!string.IsNullOrWhiteSpace(dto.CouponCode))
+            // Tenant existente faz checkout direto sem trial
+            if (!dto.TenantId.HasValue)
             {
-                coupon = await couponRepository.GetByCodeAsync(dto.CouponCode);
-                if (coupon == null)
-                    throw new InvalidOperationException("Cupom não encontrado ou inativo.");
-                if (coupon.ExpiresAt.HasValue && coupon.ExpiresAt < DateTimeOffset.UtcNow)
-                    throw new InvalidOperationException("Cupom expirado.");
-                if (coupon.MaxUses.HasValue && coupon.UsedCount >= coupon.MaxUses.Value)
-                    throw new InvalidOperationException("Cupom já atingiu o limite de usos.");
+                if (!string.IsNullOrWhiteSpace(dto.CouponCode))
+                {
+                    coupon = await couponRepository.GetByCodeAsync(dto.CouponCode);
+                    if (coupon == null)
+                        throw new InvalidOperationException("Cupom não encontrado ou inativo.");
+                    if (coupon.ExpiresAt.HasValue && coupon.ExpiresAt < DateTimeOffset.UtcNow)
+                        throw new InvalidOperationException("Cupom expirado.");
+                    if (coupon.MaxUses.HasValue && coupon.UsedCount >= coupon.MaxUses.Value)
+                        throw new InvalidOperationException("Cupom já atingiu o limite de usos.");
 
-                trialDays = coupon.TrialDays;
+                    trialDays = coupon.TrialDays;
+                }
+
+                if (trialDays > 0)
+                    return await CreateTrialSubscriptionAsync(dto, plan, coupon, trialDays);
             }
-
-            if (trialDays > 0)
-                return await CreateTrialSubscriptionAsync(dto, plan, coupon, trialDays);
 
             return await CreateMercadoPagoCheckoutAsync(dto, plan);
         }
