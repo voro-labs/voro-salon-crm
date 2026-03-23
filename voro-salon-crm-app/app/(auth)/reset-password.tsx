@@ -7,7 +7,6 @@ import { apiCall, API_CONFIG } from "lib/api"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
 type FieldErrors = {
-  code?: string
   newPassword?: string
   confirmPassword?: string
 }
@@ -16,7 +15,6 @@ export default function ResetPasswordScreen() {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { email, token } = useLocalSearchParams<{ email: string; token: string }>()
-  const [code, setCode] = useState(token ?? "")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showNew, setShowNew] = useState(false)
@@ -28,9 +26,6 @@ export default function ResetPasswordScreen() {
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
-    if (!code.trim()) {
-      errors.code = "Código de verificação é obrigatório."
-    }
     if (!newPassword) {
       errors.newPassword = "Nova senha é obrigatória."
     } else if (newPassword.length < 6) {
@@ -45,6 +40,7 @@ export default function ResetPasswordScreen() {
   }
 
   const handleReset = async () => {
+    if (!token) { setError("Link inválido ou expirado. Solicite um novo."); return }
     const errors = validate()
     if (Object.keys(errors).length > 0) { setFieldErrors(errors); return }
     setFieldErrors({})
@@ -53,7 +49,7 @@ export default function ResetPasswordScreen() {
     try {
       const res = await apiCall(API_CONFIG.ENDPOINTS.RESET_PASSWORD, {
         method: "POST",
-        body: JSON.stringify({ email, token: code, newPassword }),
+        body: JSON.stringify({ email, token, newPassword }),
       })
       if (res.hasError) { setError(res.message ?? "Erro ao redefinir senha"); return }
       setSuccess(true)
@@ -82,33 +78,10 @@ export default function ResetPasswordScreen() {
               <Text className="text-3xl font-black text-zinc-900 mt-6 tracking-tighter text-center">
                 Nova <Text style={{ color: primaryColor }}>Senha</Text>
               </Text>
-              <Text className="text-zinc-500 font-medium mt-2 text-center">Digite o código recebido e sua nova senha</Text>
+              <Text className="text-zinc-500 font-medium mt-2 text-center">Digite sua nova senha</Text>
             </View>
 
             <View className="gap-3">
-              {/* Código */}
-              <View className="gap-1">
-                <View
-                  className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
-                  style={{ borderWidth: 1, borderColor: fieldErrors.code ? "#fca5a5" : "#f4f4f5" }}
-                >
-                  <Ionicons name="keypad-outline" size={20} color={fieldErrors.code ? "#ef4444" : "#71717a"} />
-                  <TextInput
-                    className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
-                    placeholder="Código de verificação"
-                    placeholderTextColor="#a1a1aa"
-                    value={code}
-                    onChangeText={(t) => { setCode(t); clearField("code") }}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    returnKeyType="next"
-                  />
-                </View>
-                {fieldErrors.code && (
-                  <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.code}</Text>
-                )}
-              </View>
-
               {/* Nova senha */}
               <View className="gap-1">
                 <View

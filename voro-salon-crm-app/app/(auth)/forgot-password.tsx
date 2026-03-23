@@ -38,7 +38,6 @@ export default function ForgotPasswordScreen() {
       })
       if (res.hasError) { setError(res.message ?? "Erro ao enviar e-mail"); return }
       setSuccess(true)
-      setTimeout(() => router.push({ pathname: "/(auth)/reset-password", params: { email: email.trim() } }), 2000)
     } catch { setError("Erro inesperado. Tente novamente.") }
     finally { setLoading(false) }
   }
@@ -58,7 +57,7 @@ export default function ForgotPasswordScreen() {
               <Text className="text-3xl font-black text-zinc-900 mt-6 tracking-tighter text-center">
                 Recuperar<Text style={{ color: primaryColor }}> Senha</Text>
               </Text>
-              <Text className="text-zinc-500 font-medium mt-2 text-center">Informe seu e-mail para receber o código</Text>
+              <Text className="text-zinc-500 font-medium mt-2 text-center">Informe seu e-mail para receber o link de redefinição</Text>
             </View>
 
             <View className="mt-2 gap-3">
@@ -92,9 +91,14 @@ export default function ForgotPasswordScreen() {
                 </View>
               )}
               {success && (
-                <View className="bg-green-50 p-4 rounded-2xl flex-row items-center border border-green-100">
-                  <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-                  <Text className="ml-3 text-green-600 text-sm font-bold flex-1">Código enviado! Redirecionando...</Text>
+                <View className="bg-emerald-950 p-4 rounded-2xl border border-emerald-900 gap-1">
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="checkmark-circle" size={20} color="#34d399" />
+                    <Text className="text-emerald-300 text-sm font-bold flex-1">E-mail enviado!</Text>
+                  </View>
+                  <Text className="text-emerald-400 text-xs leading-5">
+                    Verifique sua caixa de entrada e clique no link para redefinir sua senha.
+                  </Text>
                 </View>
               )}
             </View>
