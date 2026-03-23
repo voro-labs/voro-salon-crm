@@ -5,9 +5,12 @@ export interface SubscriptionPlanDto {
   monthlyPrice: number
   maxEmployees: number
   maxClients: number
+  hasEmployees: boolean
   hasAnamnesis: boolean
   hasFinancial: boolean
   hasReports: boolean
+  hasBooking: boolean
+  hasWhatsAppBot: boolean
   sortOrder: number
   defaultTrialDays: number
 }

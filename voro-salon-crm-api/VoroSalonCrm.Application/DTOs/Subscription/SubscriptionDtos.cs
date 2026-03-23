@@ -9,9 +9,12 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         decimal MonthlyPrice,
         int MaxEmployees,
         int MaxClients,
+        bool HasEmployees,
         bool HasAnamnesis,
         bool HasFinancial,
         bool HasReports,
+        bool HasBooking,
+        bool HasWhatsAppBot,
         int SortOrder,
         int DefaultTrialDays
     );

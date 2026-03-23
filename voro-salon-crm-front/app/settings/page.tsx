@@ -664,7 +664,9 @@ export default function ConfiguracoesPage() {
                     4: "Funcionários",
                     5: "Financeiros",
                     6: "Relatórios",
-                    7: "Configurações"
+                    7: "Configurações",
+                    8: "Booking",
+                    9: "WhatsAppBot"
                   };
 
                   return (

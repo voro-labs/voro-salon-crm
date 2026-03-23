@@ -8,6 +8,8 @@ namespace VoroSalonCrm.Domain.Enums
         Employees = 4,
         Financial = 5,
         Reports = 6,
-        Settings = 7
+        Settings = 7,
+        Booking = 8,
+        WhatsAppBot = 9
     }
 }

@@ -8,9 +8,12 @@ namespace VoroSalonCrm.Domain.Entities
         public decimal MonthlyPrice { get; set; }
         public int MaxEmployees { get; set; }       // -1 = ilimitado
         public int MaxClients { get; set; }         // -1 = ilimitado
+        public bool HasEmployees { get; set; }
         public bool HasAnamnesis { get; set; }
         public bool HasFinancial { get; set; }
         public bool HasReports { get; set; }
+        public bool HasBooking { get; set; }
+        public bool HasWhatsAppBot { get; set; }
         public int SortOrder { get; set; }
         public int DefaultTrialDays { get; set; } = 7;
         public bool IsActive { get; set; } = true;

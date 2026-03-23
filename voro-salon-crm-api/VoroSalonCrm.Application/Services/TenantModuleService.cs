@@ -27,13 +27,16 @@ namespace VoroSalonCrm.Application.Services
             var allModules = Enum.GetValues<AppModule>();
             var result = new List<TenantModuleDto>();
 
+            // Módulos sempre habilitados independente do plano
+            var alwaysEnabled = new[] { AppModule.Clients, AppModule.Scheduling, AppModule.Services, AppModule.Settings };
+
             foreach (var mod in allModules)
             {
                 var existing = modules.FirstOrDefault(m => m.Module == mod);
                 result.Add(new TenantModuleDto
                 {
                     Module = mod,
-                    IsEnabled = existing?.IsEnabled ?? true, // Default to enabled
+                    IsEnabled = existing?.IsEnabled ?? alwaysEnabled.Contains(mod),
                     Configuration = existing?.ConfigurationJson
                 });
             }
@@ -70,7 +73,8 @@ namespace VoroSalonCrm.Application.Services
         public async Task<bool> IsModuleEnabledAsync(Guid tenantId, AppModule module)
         {
             var existing = await _repository.GetModuleAsync(tenantId, module);
-            return existing?.IsEnabled ?? true; // Default to enabled
+            var alwaysEnabled = new[] { AppModule.Clients, AppModule.Scheduling, AppModule.Services, AppModule.Settings };
+            return existing?.IsEnabled ?? alwaysEnabled.Contains(module);
         }
     }
 }

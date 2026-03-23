@@ -15,6 +15,7 @@ namespace VoroSalonCrm.Application.Services
         ISubscriptionPlanRepository planRepository,
         ITenantSubscriptionRepository subscriptionRepository,
         ISubscriptionCouponRepository couponRepository,
+        ITenantModuleRepository moduleRepository,
         IMercadoPagoService mercadoPagoService,
         IConfiguration configuration, IHostEnvironment env,
         IAuthService authService,
@@ -127,6 +128,7 @@ namespace VoroSalonCrm.Application.Services
                 }
             }
 
+            await InitializePlanModulesAsync(tenantId, plan);
             await subscriptionRepository.SaveChangesAsync();
 
             return new CheckoutResultDto(null, subscription.Id.ToString(), true, trialEndsAt);
@@ -257,6 +259,11 @@ namespace VoroSalonCrm.Application.Services
                     sub.TenantId = tenantId;
                     sub.UpdatedAt = DateTimeOffset.UtcNow;
                     subscriptionRepository.Update(sub);
+
+                    var plan = await planRepository.GetByIdAsync(false, sub.PlanId);
+                    if (plan != null)
+                        await InitializePlanModulesAsync(tenantId, plan);
+
                     await subscriptionRepository.SaveChangesAsync();
                 }
                 catch (Exception ex)
@@ -320,12 +327,43 @@ namespace VoroSalonCrm.Application.Services
             await subscriptionRepository.SaveChangesAsync();
         }
 
+        // ── Module Initialization ──────────────────────────────────────────────
+
+        private async Task InitializePlanModulesAsync(Guid tenantId, SubscriptionPlan plan)
+        {
+            var modules = new[]
+            {
+                (AppModule.Clients,     true),
+                (AppModule.Scheduling,  true),
+                (AppModule.Services,    true),
+                (AppModule.Settings,    true),
+                (AppModule.Employees,   plan.HasEmployees),
+                (AppModule.Financial,   plan.HasFinancial),
+                (AppModule.Reports,     plan.HasReports),
+                (AppModule.Booking,     plan.HasBooking),
+                (AppModule.WhatsAppBot, plan.HasWhatsAppBot),
+            };
+
+            foreach (var (module, isEnabled) in modules)
+            {
+                await moduleRepository.AddAsync(new TenantModule
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Module = module,
+                    IsEnabled = isEnabled,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
+        }
+
         // ── Mappers ────────────────────────────────────────────────────────────
 
         private static SubscriptionPlanDto MapPlan(SubscriptionPlan p) => new(
             p.Id, p.Name, p.Description, p.MonthlyPrice,
-            p.MaxEmployees, p.MaxClients, p.HasAnamnesis, p.HasFinancial, p.HasReports, p.SortOrder,
-            p.DefaultTrialDays
+            p.MaxEmployees, p.MaxClients,
+            p.HasEmployees, p.HasAnamnesis, p.HasFinancial, p.HasReports, p.HasBooking, p.HasWhatsAppBot,
+            p.SortOrder, p.DefaultTrialDays
         );
 
         private static TenantSubscriptionDto MapSubscription(TenantSubscription s) => new(

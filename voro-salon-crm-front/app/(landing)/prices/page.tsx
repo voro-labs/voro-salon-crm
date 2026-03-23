@@ -269,14 +269,21 @@ interface PlanCardProps {
 
 function PlanCard({ plan, popular, onSelect }: PlanCardProps) {
   const featureList = [
-    `${plan.maxEmployees === -1 ? "Funcionários ilimitados" : `Até ${plan.maxEmployees} funcionário${plan.maxEmployees > 1 ? "s" : ""}`}`,
-    `${plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes`}`,
-    "Agendamentos online",
+    plan.hasEmployees
+      ? (plan.maxEmployees === -1 ? "Funcionários ilimitados" : `Até ${plan.maxEmployees} funcionários`)
+      : "Apenas o proprietário",
+    plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes`,
+    "Agendamentos internos",
     "Gestão de clientes e serviços",
+    "Notificações de agendamentos",
+    "Mensagem WhatsApp manual",
     ...(plan.hasFinancial ? ["Módulo financeiro"] : []),
     ...(plan.hasReports ? ["Relatórios e métricas"] : []),
     ...(plan.hasAnamnesis ? ["Ficha de anamnese"] : []),
-    "App mobile (iOS e Android)",
+    ...(plan.hasBooking ? ["Agendamento online pelo cliente"] : []),
+    ...(plan.hasWhatsAppBot ? ["Bot WhatsApp automático"] : []),
+    "Exportar dados (CSV)",
+    "Autenticação 2FA",
     "Suporte por e-mail",
   ]
 

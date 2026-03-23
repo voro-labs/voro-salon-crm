@@ -210,10 +210,15 @@ export default function SubscriptionPage() {
                   </p>
                   <p className="text-xs text-muted-foreground line-clamp-2">{plan.description}</p>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                    <div>{plan.maxEmployees === -1 ? "Funcionários ilimitados" : `Até ${plan.maxEmployees} funcionários`}</div>
+                    {plan.hasEmployees
+                      ? <div>{plan.maxEmployees === -1 ? "Funcionários ilimitados" : `Até ${plan.maxEmployees} funcionários`}</div>
+                      : <div>Apenas o proprietário</div>
+                    }
                     <div>{plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes`}</div>
-                    {plan.hasFinancial && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Financeiro</div>}
-                    {plan.hasAnamnesis && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Anamnese</div>}
+                    {plan.hasFinancial && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Módulo financeiro</div>}
+                    {plan.hasAnamnesis && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Ficha de anamnese</div>}
+                    {plan.hasBooking && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Agendamento online</div>}
+                    {plan.hasWhatsAppBot && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Bot WhatsApp</div>}
                   </div>
                   {!isCurrent && (
                     <div className="mt-3 text-xs font-semibold text-primary flex items-center gap-1">
