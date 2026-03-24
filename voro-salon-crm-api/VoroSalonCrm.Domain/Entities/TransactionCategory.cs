@@ -7,6 +7,7 @@ namespace VoroSalonCrm.Domain.Entities
     {
         public Guid Id { get; set; }
         public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; } = null!;
 
         public string Name { get; set; } = string.Empty;
         public TransactionType Type { get; set; }

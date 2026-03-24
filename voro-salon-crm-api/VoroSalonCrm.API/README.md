@@ -1,7 +1,7 @@
 ASPNETCORE_ENVIRONMENT=Development
 
 # Last Migrations
-dotnet ef migrations add AddSaasMoney --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API --output-dir Migrations
+dotnet ef migrations add FixFKInTables --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API --output-dir Migrations
 
 # Remove Last Migrations
 dotnet ef migrations remove --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API

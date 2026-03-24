@@ -73,8 +73,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
                     EntityName = entry.Entity.GetType().Name,
                     Action = entry.State.ToString(),
                     Timestamp = DateTime.UtcNow,
-                    TenantId = _currentUser.TenantId,
-                    UserId = _currentUser.UserId
+                    TenantId = _currentUser.TenantId != Guid.Empty ? _currentUser.TenantId : null,
+                    UserId = _currentUser.UserId != Guid.Empty ? _currentUser.UserId : null
                 };
 
                 var primaryKey = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey());
@@ -126,6 +126,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
             builder.Entity<User>().HasQueryFilter(u => !u.IsDeleted);
 
             builder.Entity<UserExtension>().HasQueryFilter(ue => !ue.User.IsDeleted);
+
+            builder.Entity<UserNotification>().HasQueryFilter(un =>
+                !un.IsDeleted && un.TenantId == _currentUser.TenantId);
 
             builder.Entity<Notification>().HasQueryFilter(n =>
                 !n.IsDeleted && (n.TenantId == _currentUser.TenantId || n.TenantId == Guid.Empty));
@@ -226,7 +229,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(c => c.TenantId);
                 b.HasIndex(c => new { c.TenantId, c.Name });
 
-                b.HasOne<Tenant>()
+                b.HasOne(p => p.Tenant)
                  .WithMany()
                  .HasForeignKey(c => c.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -245,7 +248,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
                 b.HasIndex(s => s.TenantId);
 
-                b.HasOne<Tenant>()
+                b.HasOne(p => p.Tenant)
                  .WithMany()
                  .HasForeignKey(s => s.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -268,7 +271,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(s => s.ServiceId);
                 b.HasIndex(s => new { s.TenantId, s.ServiceDate }).IsDescending(false, true);
 
-                b.HasOne<Tenant>()
+                b.HasOne(p => p.Tenant)
                  .WithMany()
                  .HasForeignKey(s => s.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -301,7 +304,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(a => a.ServiceId);
                 b.HasIndex(a => new { a.TenantId, a.ScheduledDateTime });
 
-                b.HasOne<Tenant>()
+                b.HasOne(p => p.Tenant)
                  .WithMany()
                  .HasForeignKey(a => a.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -353,7 +356,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
                 b.HasIndex(tc => tc.TenantId);
 
-                b.HasOne<Tenant>()
+                b.HasOne(p => p.Tenant)
                  .WithMany()
                  .HasForeignKey(tc => tc.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -377,7 +380,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(t => t.TenantId);
                 b.HasIndex(t => new { t.TenantId, t.DueDate }).IsDescending(false, true);
 
-                b.HasOne<Tenant>()
+                b.HasOne(p => p.Tenant)
                  .WithMany()
                  .HasForeignKey(t => t.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -545,7 +548,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(aq => aq.TenantId);
                 b.HasIndex(aq => new { aq.TenantId, aq.Identifier }).IsUnique();
 
-                b.HasOne<Tenant>()
+                b.HasOne(aq => aq.Tenant)
                  .WithMany()
                  .HasForeignKey(aq => aq.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -565,7 +568,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(asheet => asheet.ClientId);
                 b.HasIndex(asheet => new { asheet.TenantId, asheet.Date });
 
-                b.HasOne<Tenant>()
+                b.HasOne(asheet => asheet.Tenant)
                  .WithMany()
                  .HasForeignKey(asheet => asheet.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -645,7 +648,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(pt => pt.UserId);
                 b.HasIndex(pt => pt.Token).IsUnique();
 
-                b.HasOne<User>()
+                b.HasOne(pt => pt.User)
                  .WithMany()
                  .HasForeignKey(pt => pt.UserId)
                  .OnDelete(DeleteBehavior.Cascade);
@@ -665,7 +668,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(n => new { n.UserId, n.IsRead });
                 b.HasIndex(n => new { n.UserId, n.CreatedAt }).IsDescending(false, true);
 
-                b.HasOne<Tenant>()
+                b.HasOne(n => n.Tenant)
                  .WithMany()
                  .HasForeignKey(n => n.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);

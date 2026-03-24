@@ -25,5 +25,6 @@ namespace VoroSalonCrm.Domain.Entities
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         
         public Guid? TenantId { get; set; }
+        public Tenant Tenant { get; set; } = null!;
     }
 }

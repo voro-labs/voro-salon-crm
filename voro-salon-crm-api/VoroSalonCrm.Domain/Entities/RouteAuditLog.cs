@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using VoroSalonCrm.Domain.Entities.Identity;
 
 namespace VoroSalonCrm.Domain.Entities
 {
@@ -28,7 +29,7 @@ namespace VoroSalonCrm.Domain.Entities
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         
         public Guid? UserId { get; set; }
-        
+
         public Guid? TenantId { get; set; }
     }
 }

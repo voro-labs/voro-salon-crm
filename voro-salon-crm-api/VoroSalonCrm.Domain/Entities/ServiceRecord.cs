@@ -6,6 +6,7 @@ namespace VoroSalonCrm.Domain.Entities
     {
         public Guid Id { get; set; }
         public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; } = null!;
 
         public Guid ClientId { get; set; }
         public Client Client { get; set; } = null!;
