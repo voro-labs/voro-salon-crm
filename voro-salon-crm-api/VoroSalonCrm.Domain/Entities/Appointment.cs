@@ -31,6 +31,12 @@ namespace VoroSalonCrm.Domain.Entities
 
         public bool IsEncaixe { get; set; }
 
+        /// <summary>Minutos antes do agendamento para enviar lembrete ao cliente (null = sem lembrete).</summary>
+        public int? ReminderMinutes { get; set; }
+
+        /// <summary>Data/hora em que o lembrete de 24h foi enviado. Null se ainda não enviado.</summary>
+        public DateTimeOffset? Reminder24hSentAt { get; set; }
+
         public bool IsDeleted { get; set; }
         public DateTimeOffset? DeletedAt { get; set; }
     }

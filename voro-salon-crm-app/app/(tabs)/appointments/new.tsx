@@ -1,6 +1,7 @@
 import React, { useState } from "react"
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native"
+import { View, Text, TextInput, Pressable, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useAppointmentForm } from "hooks/use-appointment-form.hook"
@@ -61,21 +62,20 @@ export default function NewAppointmentScreen() {
   ]
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <View className="bg-white px-5 pt-4 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-          <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
-            <Ionicons name="chevron-back" size={20} color="#18181b" />
-          </Pressable>
-          <Text className="text-xl font-black text-zinc-900">Novo Agendamento</Text>
-        </View>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
+      <View className="bg-white px-5 pt-4 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
+        <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
+          <Ionicons name="chevron-back" size={20} color="#18181b" />
+        </Pressable>
+        <Text className="text-xl font-black text-zinc-900">Novo Agendamento</Text>
+      </View>
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={primaryColor} size="large" />
           </View>
         ) : (
-          <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
             {showClients && (
               <View className="mb-4">
@@ -177,9 +177,8 @@ export default function NewAppointmentScreen() {
               {isCreating ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar Agendamento</Text>}
             </Pressable>
 
-          </ScrollView>
+          </KeyboardAwareScrollView>
         )}
-      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }

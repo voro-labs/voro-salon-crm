@@ -8,7 +8,7 @@ export default function AnamnesisSettingsScreen() {
   const router = useRouter()
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
       {/* Header */}
       <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
         <Pressable

@@ -39,5 +39,6 @@ namespace VoroSalonCrm.Application.DTOs.Public
         public Guid ServiceId { get; init; }
         public Guid? EmployeeId { get; init; }
         public DateTimeOffset ScheduledDateTime { get; init; }
+        public int? ReminderMinutes { get; init; }
     }
 }

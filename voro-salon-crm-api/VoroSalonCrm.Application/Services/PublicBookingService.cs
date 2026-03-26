@@ -104,7 +104,8 @@ namespace VoroSalonCrm.Application.Services
                 Amount = service.Price,
                 Status = AppointmentStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
-                Description = dto.Description
+                Description = dto.Description,
+                ReminderMinutes = dto.ReminderMinutes,
             };
 
             await appointmentRepository.AddAsync(appointment);

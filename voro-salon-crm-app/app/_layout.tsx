@@ -2,6 +2,7 @@ import { Stack, useRouter, useSegments } from "expo-router"
 import { useEffect, useRef } from "react"
 import { View, ActivityIndicator, Platform } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
+import { KeyboardProvider } from "react-native-keyboard-controller"
 import { AuthProvider, useAuth } from "contexts/auth.context"
 import { TenantThemeProvider, useTenantTheme } from "contexts/tenant-theme.context"
 import * as SecureStore from "expo-secure-store"
@@ -106,12 +107,14 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <TenantThemeProvider>
-          <RootLayoutNav />
-          <ToastManager />
-        </TenantThemeProvider>
-      </AuthProvider>
+      <KeyboardProvider>
+        <AuthProvider>
+          <TenantThemeProvider>
+            <RootLayoutNav />
+            <ToastManager />
+          </TenantThemeProvider>
+        </AuthProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
   )
 }

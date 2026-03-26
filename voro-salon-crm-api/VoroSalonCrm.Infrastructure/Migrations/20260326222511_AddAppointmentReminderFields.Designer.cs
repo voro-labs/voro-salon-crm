@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VoroSalonCrm.Infrastructure.Factories;
@@ -11,9 +12,11 @@ using VoroSalonCrm.Infrastructure.Factories;
 namespace VoroSalonCrm.Infrastructure.Migrations
 {
     [DbContext(typeof(JasmimDbContext))]
-    partial class JasmimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326222511_AddAppointmentReminderFields")]
+    partial class AddAppointmentReminderFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -429,91 +432,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasIndex("TenantId", "Name");
 
                     b.ToTable("Clients");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientMembership", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("EndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("PlanId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("RemainingSessions")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
-
-                    b.HasIndex("PlanId");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("ClientMemberships");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientMembershipPlan", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<int>("DurationDays")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("numeric");
-
-                    b.Property<int?>("Sessions")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("ClientMembershipPlans");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Employee", b =>
@@ -1809,44 +1727,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientMembership", b =>
-                {
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Client", "Client")
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("VoroSalonCrm.Domain.Entities.ClientMembershipPlan", "Plan")
-                        .WithMany("Memberships")
-                        .HasForeignKey("PlanId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Client");
-
-                    b.Navigation("Plan");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientMembershipPlan", b =>
-                {
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Employee", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
@@ -2095,11 +1975,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Responses");
 
                     b.Navigation("Signatures");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientMembershipPlan", b =>
-                {
-                    b.Navigation("Memberships");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Employee", b =>

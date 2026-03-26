@@ -15,6 +15,7 @@ using VoroSalonCrm.Infrastructure.Email;
 using VoroSalonCrm.Infrastructure.Integration;
 using VoroSalonCrm.Infrastructure.Repositories;
 using VoroSalonCrm.Infrastructure.Repositories.Identity;
+using Microsoft.Extensions.Hosting;
 using VoroSalonCrm.Infrastructure.Seeds;
 using VoroSalonCrm.Infrastructure.UnitOfWork;
 using VoroSalonCrm.Shared.Utils;
@@ -83,6 +84,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ISubscriptionCouponRepository, SubscriptionCouponRepository>();
             services.AddScoped<IPushTokenRepository, PushTokenRepository>();
             services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
+            services.AddScoped<IClientMembershipPlanRepository, ClientMembershipPlanRepository>();
+            services.AddScoped<IClientMembershipRepository, ClientMembershipRepository>();
             #endregion
 
             #region Identity Services
@@ -109,7 +112,10 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
             services.AddScoped<IExpoPushNotificationService, ExpoPushNotificationService>();
             services.AddScoped<IUserNotificationService, UserNotificationService>();
+            services.AddScoped<IClientMembershipService, ClientMembershipService>();
             #endregion
+
+            services.AddHostedService<AppointmentReminderBackgroundService>();
 
             return services;
         }

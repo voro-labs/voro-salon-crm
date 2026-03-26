@@ -1,9 +1,10 @@
 import React, { useState } from "react"
 import {
   View, Text, ScrollView, Pressable, ActivityIndicator,
-  RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, TouchableOpacity,
+  RefreshControl, Modal, TextInput, Alert, TouchableOpacity,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
 import { useLocalSearchParams, router } from "expo-router"
 import useSWR from "swr"
@@ -435,14 +436,14 @@ export default function ClientDetailScreen() {
 
       {/* Edit Modal */}
       <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+        <View className="flex-1 bg-white">
           <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Editar Cliente</Text>
             <Pressable onPress={() => setEditOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
               <Ionicons name="close" size={20} color="#71717a" />
             </Pressable>
           </View>
-          <ScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {([
               { label: "Nome *", key: "name", placeholder: "Nome" },
             ] as const).map(({ label, key, placeholder }) => (
@@ -497,7 +498,7 @@ export default function ClientDetailScreen() {
                 textAlignVertical="top"
               />
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <Pressable
               onPress={handleEditSubmit}
@@ -511,19 +512,19 @@ export default function ClientDetailScreen() {
               }
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Add Service Modal */}
       <Modal visible={svcOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSvcOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+        <View className="flex-1 bg-white">
           <View className="flex-row items-center justify-between px-5 p-4 pt-6 pb-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Registrar Serviço</Text>
             <Pressable onPress={() => setSvcOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
               <Ionicons name="close" size={20} color="#71717a" />
             </Pressable>
           </View>
-          <ScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Catalog picker */}
             {catalogServices && (catalogServices as any[]).length > 0 && (
               <View className="gap-3 mb-4">
@@ -595,7 +596,7 @@ export default function ClientDetailScreen() {
                 textAlignVertical="top"
               />
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <Pressable
               onPress={handleAddService}
@@ -609,12 +610,12 @@ export default function ClientDetailScreen() {
               }
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Anamnesis Modal */}
       <Modal visible={anamnesisOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAnamnesisOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+        <View className="flex-1 bg-white">
           <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
             <View>
               <Text className="text-lg font-black text-zinc-900">Nova Ficha de Anamnese</Text>
@@ -625,7 +626,7 @@ export default function ClientDetailScreen() {
             </Pressable>
           </View>
 
-          <ScrollView className="flex-1 px-5 m-2" showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView className="flex-1 px-5 m-2" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {isQuestionsLoading ? (
               <View className="py-12 items-center">
                 <ActivityIndicator color={primaryColor} />
@@ -804,7 +805,7 @@ export default function ClientDetailScreen() {
                 )
               })()
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <Pressable
@@ -819,7 +820,7 @@ export default function ClientDetailScreen() {
               }
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </SafeAreaView>
   )

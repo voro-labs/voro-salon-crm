@@ -21,6 +21,7 @@ import {
   LayoutGrid,
   ClipboardList,
   ChevronRight,
+  CreditCard,
   Shield,
   ShieldCheck,
   ShieldOff,
@@ -302,6 +303,12 @@ export default function ConfiguracoesPage() {
                 <TabsTrigger value="anamnesis" className="shrink-0 py-2">
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Anamnese
+                </TabsTrigger>
+              )}
+              {isSalonOwner && (
+                <TabsTrigger value="assinaturas" className="shrink-0 py-2">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Assinaturas
                 </TabsTrigger>
               )}
               <TabsTrigger value="seguranca" className="shrink-0 py-2">
@@ -757,6 +764,31 @@ export default function ConfiguracoesPage() {
                   <Button asChild>
                     <Link href="/settings/anamnesis">
                       Abrir Editor
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>}
+          {isSalonOwner && <TabsContent value="assinaturas">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  <CardTitle>Planos de Assinatura</CardTitle>
+                </div>
+                <CardDescription>Crie e gerencie planos de assinatura para seus clientes</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-6">
+                <div className="p-4 rounded-lg border border-border bg-muted/20 flex items-center justify-between">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-foreground">Gerenciar Planos</span>
+                    <span className="text-sm text-muted-foreground text-balance">Defina planos com preço, duração e número de sessões</span>
+                  </div>
+                  <Button asChild>
+                    <Link href="/settings/membership-plans">
+                      Abrir Planos
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>

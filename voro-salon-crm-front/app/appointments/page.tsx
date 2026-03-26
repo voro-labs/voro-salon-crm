@@ -21,6 +21,7 @@ import { EmptyState } from "@/components/ui/custom/empty-state"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { StatusBadge } from "@/components/ui/custom/status-badge"
 import { fetcher } from "@/lib/fetcher"
+import { BlockTimeSlotDialog } from "@/components/custom/block-time-slot-dialog"
 
 export default function AppointmentsPage() {
   const [periodFilter, setPeriodFilter] = useState("today")
@@ -88,6 +89,7 @@ export default function AppointmentsPage() {
                   { header: "Descrição", value: (a: any) => a.description ?? "" },
                 ]}
               />
+              <BlockTimeSlotDialog />
               <Button asChild size="sm">
                 <Link href="/appointments/new">
                   <Plus className="mr-2 h-4 w-4" />
