@@ -96,6 +96,8 @@ export default function SignInScreen() {
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={(t) => { setPassword(t); clearError(); setFieldErrors((p) => ({ ...p, password: undefined })) }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     returnKeyType="done"
                     onSubmitEditing={handleSignIn}
                   />

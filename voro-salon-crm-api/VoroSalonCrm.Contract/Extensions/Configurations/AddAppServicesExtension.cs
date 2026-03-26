@@ -71,6 +71,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IServiceRepository, ServiceRepository>();
             services.AddScoped<IServiceRecordRepository, ServiceRecordRepository>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+            services.AddScoped<ITimeSlotBlockRepository, TimeSlotBlockRepository>();
             services.AddScoped<ITenantModuleRepository, TenantModuleRepository>();
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<ITransactionCategoryRepository, TransactionCategoryRepository>();
@@ -97,6 +98,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IExportService, ExportService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<ITimeSlotBlockService, TimeSlotBlockService>();
             services.AddScoped<ITenantModuleService, TenantModuleService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IPublicBookingService, PublicBookingService>();

@@ -6,7 +6,7 @@ import Link from "next/link"
 import {
   CheckCircle2, Scissors, BarChart3, Users, Calendar, ClipboardList,
   Wallet, Zap, ArrowRight, Loader2, ChevronLeft, ChevronRight,
-  Bell, Search, TrendingUp, Clock, Star,
+  Bell, Search, TrendingUp, Clock, Star, Info,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
 import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto } from "@/types/subscription.interface"
+import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
 
 // ── Static data ──────────────────────────────────────────────────────────────
 
@@ -265,26 +266,29 @@ interface PlanCardProps {
   plan: SubscriptionPlanDto
   popular?: boolean
   onSelect: (plan: SubscriptionPlanDto) => void
+  onModuleInfo: (key: string) => void
 }
 
-function PlanCard({ plan, popular, onSelect }: PlanCardProps) {
-  const featureList = [
-    plan.hasEmployees
-      ? (plan.maxEmployees === -1 ? "Funcionários ilimitados" : `Até ${plan.maxEmployees} funcionários`)
-      : "Apenas o proprietário",
-    plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes`,
-    "Agendamentos internos",
-    "Gestão de clientes e serviços",
-    "Notificações de agendamentos",
-    "Mensagem WhatsApp manual",
-    ...(plan.hasFinancial ? ["Módulo financeiro"] : []),
-    ...(plan.hasReports ? ["Relatórios e métricas"] : []),
-    ...(plan.hasAnamnesis ? ["Ficha de anamnese"] : []),
-    ...(plan.hasBooking ? ["Agendamento online pelo cliente"] : []),
-    ...(plan.hasWhatsAppBot ? ["Bot WhatsApp automático"] : []),
-    "Exportar dados (CSV)",
-    "Autenticação 2FA",
-    "Suporte por e-mail",
+function PlanCard({ plan, popular, onSelect, onModuleInfo }: PlanCardProps) {
+  type FeatureItem = { label: string; moduleKey?: string }
+
+  const featureList: FeatureItem[] = [
+    { label: plan.hasEmployees
+        ? (plan.maxEmployees === -1 ? "Funcionários ilimitados" : `Até ${plan.maxEmployees} funcionários`)
+        : "Apenas o proprietário" },
+    { label: plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes` },
+    { label: "Agendamentos internos" },
+    { label: "Gestão de clientes e serviços" },
+    { label: "Notificações de agendamentos" },
+    { label: "Mensagem WhatsApp manual" },
+    ...(plan.hasFinancial ? [{ label: "Finanças", moduleKey: "financial" }] : []),
+    ...(plan.hasReports ? [{ label: "Relatórios", moduleKey: "reports" }] : []),
+    ...(plan.hasAnamnesis ? [{ label: "Anamnese", moduleKey: "anamnesis" }] : []),
+    ...(plan.hasBooking ? [{ label: "Agendamento Online", moduleKey: "booking" }] : []),
+    ...(plan.hasWhatsAppBot ? [{ label: "Bot WhatsApp", moduleKey: "whatsappBot" }] : []),
+    { label: "Exportar dados (CSV)" },
+    { label: "Autenticação 2FA" },
+    { label: "Suporte por e-mail" },
   ]
 
   return (
@@ -303,13 +307,28 @@ function PlanCard({ plan, popular, onSelect }: PlanCardProps) {
           <span className="text-muted-foreground mb-1">/mês</span>
         </div>
         <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
+        {plan.defaultTrialDays > 0 && (
+          <div className="flex items-center gap-1.5 mt-2 text-xs font-semibold text-green-600 dark:text-green-400">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            {plan.defaultTrialDays} dias grátis para testar
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col flex-1 gap-6">
         <ul className="flex flex-col gap-2.5 flex-1">
           {featureList.map((f) => (
-            <li key={f} className="flex items-center gap-2 text-sm">
+            <li key={f.label} className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-              <span>{f}</span>
+              <span className="flex-1">{f.label}</span>
+              {f.moduleKey && (
+                <button
+                  onClick={() => onModuleInfo(f.moduleKey!)}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  title={`Saiba mais sobre ${f.label}`}
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -344,16 +363,17 @@ export default function PrecosPage() {
   const [showTerms, setShowTerms] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [screenshotIdx, setScreenshotIdx] = useState(0)
+  const [openModuleKey, setOpenModuleKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (getAuthToken()) router.replace("/dashboard")
   }, [router])
 
-  useState(() => {
+  useEffect(() => {
     apiCall<SubscriptionPlanDto[]>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_PLANS)
       .then((res) => { if (!res.hasError && res.data) setPlans(res.data) })
       .finally(() => setLoadingPlans(false))
-  })
+  }, [])
 
   const handleValidateCoupon = async () => {
     const code = couponCode.trim()
@@ -570,7 +590,7 @@ export default function PrecosPage() {
             <div className="absolute inset-0 -z-10 bg-primary/15 blur-2xl scale-90 rounded-[3rem]" />
 
             {/* Outer shell */}
-            <div className="relative w-57.5 rounded-[2.5rem] border-[6px] border-foreground/10 bg-foreground/10 shadow-2xl overflow-hidden">
+            <div className="relative w-[230px] rounded-[2.5rem] border-[6px] border-foreground/10 bg-foreground/10 shadow-2xl overflow-hidden">
               {/* Dynamic island */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 h-5 w-20 rounded-full bg-black/80" />
 
@@ -691,6 +711,7 @@ export default function PrecosPage() {
                 plan={plan}
                 popular={i === 1}
                 onSelect={setSelectedPlan}
+                onModuleInfo={setOpenModuleKey}
               />
             ))}
           </div>
@@ -912,6 +933,9 @@ export default function PrecosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Module Info Dialog ── */}
+      <ModuleInfoDialog moduleKey={openModuleKey} onClose={() => setOpenModuleKey(null)} />
     </div>
   )
 }

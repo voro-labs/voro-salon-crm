@@ -19,7 +19,8 @@ namespace VoroSalonCrm.Application.Services
         ITenantRepository tenantRepository,
         IWhatsappService whatsappService,
         IUserTenantRepository userTenantRepository,
-        IExpoPushNotificationService expoPushNotificationService) : IAppointmentService
+        IExpoPushNotificationService expoPushNotificationService,
+        ITimeSlotBlockService timeSlotBlockService) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -30,6 +31,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly IWhatsappService _whatsappService = whatsappService;
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
+        private readonly ITimeSlotBlockService _timeSlotBlockService = timeSlotBlockService;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -49,6 +51,7 @@ namespace VoroSalonCrm.Application.Services
                 Description = dto.Description,
                 Amount = dto.Amount,
                 Notes = dto.Notes,
+                IsEncaixe = dto.IsEncaixe,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -129,6 +132,7 @@ namespace VoroSalonCrm.Application.Services
             if (dto.Description != null) appointment.Description = dto.Description;
             if (dto.Amount.HasValue) appointment.Amount = dto.Amount.Value;
             if (dto.Notes != null) appointment.Notes = dto.Notes;
+            if (dto.IsEncaixe.HasValue) appointment.IsEncaixe = dto.IsEncaixe.Value;
 
             appointment.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -138,6 +142,12 @@ namespace VoroSalonCrm.Application.Services
             if (oldStatus != AppointmentStatus.Completed && appointment.Status == AppointmentStatus.Completed)
             {
                 await CreateHistoryFromAppointmentAsync(appointment);
+            }
+            // Se saiu de concluído para cancelado/pendente, remove o histórico
+            else if (oldStatus == AppointmentStatus.Completed &&
+                (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
+            {
+                await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -369,6 +379,9 @@ namespace VoroSalonCrm.Application.Services
                     .CountAsync();
             }
 
+            // Load time blocks for this day
+            var blocks = (await _timeSlotBlockService.GetOverlappingAsync(startOfDay, endOfDay.ToUniversalTime())).ToList();
+
             var slots = new List<AvailabilitySlotDto>();
             var current = startOfDay.ToUniversalTime();
 
@@ -381,6 +394,15 @@ namespace VoroSalonCrm.Application.Services
             while (current < endUtc)
             {
                 var next = current.AddMinutes(30);
+
+                // Check if slot is blocked
+                var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
+                if (overlappingBlock != null)
+                {
+                    slots.Add(new AvailabilitySlotDto(current, next, false, true, overlappingBlock.Reason));
+                    current = next;
+                    continue;
+                }
 
                 bool isBusy;
                 if (activeEmployeesCount <= 0)
@@ -441,7 +463,8 @@ namespace VoroSalonCrm.Application.Services
                 a.Description,
                 a.Amount,
                 a.Notes,
-                a.CreatedAt
+                a.CreatedAt,
+                a.IsEncaixe
             );
         }
     }

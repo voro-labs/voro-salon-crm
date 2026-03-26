@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { AppState } from "react-native"
 import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import useSWR, { useSWRConfig } from "swr"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { API_CONFIG } from "lib/api"
@@ -32,6 +33,7 @@ const TAB_MODULE_IDS: Record<string, number> = {
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
+  const insets = useSafeAreaInsets()
   const { data: modules } = useSWR(
     API_CONFIG.ENDPOINTS.TENANT_MODULES,
     fetcher,
@@ -84,9 +86,9 @@ export default function TabsLayout() {
             backgroundColor: "#ffffff",
             borderTopWidth: 1,
             borderTopColor: "#f4f4f5",
-            paddingBottom: 6,
+            paddingBottom: insets.bottom + 6,
             paddingTop: 6,
-            height: 64,
+            height: 64 + insets.bottom,
           },
           tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
           tabBarLabel: getTabLabel(route.name),

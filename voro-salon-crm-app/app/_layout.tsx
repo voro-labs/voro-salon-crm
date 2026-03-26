@@ -9,6 +9,7 @@ import * as Notifications from "expo-notifications"
 import { usePushNotifications } from "hooks/use-push-notifications.hook"
 import { useSubscription } from "hooks/use-subscription.hook"
 import { SubscriptionPaywall } from "components/SubscriptionPaywall"
+import ToastManager from "toastify-react-native"
 import "../global.css"
 
 Notifications.setNotificationHandler({
@@ -108,6 +109,7 @@ export default function RootLayout() {
       <AuthProvider>
         <TenantThemeProvider>
           <RootLayoutNav />
+          <ToastManager />
         </TenantThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>

@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Bell, BellOff, Calendar, Wallet, Users, Info } from "lucide-react"
 import { useUserNotifications, type UserNotification } from "@/hooks/use-user-notifications.hook"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/auth.context"
 
 function getNotificationIcon(type: string) {
   switch (type?.toLowerCase()) {
@@ -95,8 +96,17 @@ function NotificationItem({
 
 export default function NotificationsPage() {
   const router = useRouter()
+  const { user, loading } = useAuth()
   const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } =
     useUserNotifications()
+
+  useEffect(() => {
+    if (!loading && !user?.token) {
+      router.replace("/admin/sign-in?redirect=/notifications")
+    }
+  }, [loading, user, router])
+
+  if (loading || !user?.token) return null
 
   const handleItemPress = useCallback(
     async (item: UserNotification) => {

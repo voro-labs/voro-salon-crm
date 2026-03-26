@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { Plus, Search, Calendar, Clock } from "lucide-react"
+import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -74,6 +75,19 @@ export default function AppointmentsPage() {
                   <TabsTrigger value="all" className="text-[10px] h-7 px-3">Tudo</TabsTrigger>
                 </TabsList>
               </Tabs>
+              <ExportMenu
+                rows={finalFiltered}
+                filename="agendamentos"
+                columns={[
+                  { header: "Cliente", value: (a: any) => a.clientName },
+                  { header: "Serviço", value: (a: any) => a.serviceName ?? "" },
+                  { header: "Data/Hora", value: (a: any) => format(new Date(a.scheduledDateTime), "dd/MM/yyyy HH:mm") },
+                  { header: "Duração (min)", value: (a: any) => a.durationMinutes },
+                  { header: "Valor (R$)", value: (a: any) => Number(a.amount ?? 0).toFixed(2) },
+                  { header: "Status", value: (a: any) => ["Pendente","Confirmado","Concluído","Cancelado","Faltou"][a.status] ?? a.status },
+                  { header: "Descrição", value: (a: any) => a.description ?? "" },
+                ]}
+              />
               <Button asChild size="sm">
                 <Link href="/appointments/new">
                   <Plus className="mr-2 h-4 w-4" />

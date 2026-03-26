@@ -27,7 +27,7 @@ export default function NewClientScreen() {
   const { primaryColor } = useTenantTheme()
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
       <ScreenHeader title="Novo Cliente" showBack onBack={() => router.back()} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
         <ScrollView

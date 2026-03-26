@@ -29,6 +29,8 @@ namespace VoroSalonCrm.Domain.Entities
         public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }
 
+        public bool IsEncaixe { get; set; }
+
         public bool IsDeleted { get; set; }
         public DateTimeOffset? DeletedAt { get; set; }
     }

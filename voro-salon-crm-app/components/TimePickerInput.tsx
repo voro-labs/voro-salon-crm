@@ -1,20 +1,25 @@
-import React, { useState } from "react"
-import { View, Text, Pressable, Modal, ScrollView } from "react-native"
+import React, { useState, useRef } from "react"
+import { View, Text, Pressable, Modal, FlatList } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"))
-const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]
+// Slots de 30 em 30 minutos — de 06:00 até 22:30
+const TIME_SLOTS: string[] = []
+for (let h = 6; h <= 22; h++) {
+  TIME_SLOTS.push(`${String(h).padStart(2, "0")}:00`)
+  if (h < 23) TIME_SLOTS.push(`${String(h).padStart(2, "0")}:30`)
+}
 
-function parseTime(value: string): { hour: string; minute: string } {
-  if (!value) return { hour: "08", minute: "00" }
-  const [h, m] = value.split(":")
-  const rawMin = m?.padStart(2, "0") ?? "00"
-  const nearestMin = MINUTES.reduce((prev, curr) =>
-    Math.abs(parseInt(curr) - parseInt(rawMin)) < Math.abs(parseInt(prev) - parseInt(rawMin)) ? curr : prev
-  )
-  return { hour: h?.padStart(2, "0") ?? "08", minute: nearestMin }
+function snapToSlot(value: string): string {
+  if (!value) return "08:00"
+  const [h, m] = value.split(":").map(Number)
+  const totalMin = h * 60 + (m ?? 0)
+  return TIME_SLOTS.reduce((prev, curr) => {
+    const [ph, pm] = prev.split(":").map(Number)
+    const [ch, cm] = curr.split(":").map(Number)
+    return Math.abs(ch * 60 + cm - totalMin) < Math.abs(ph * 60 + pm - totalMin) ? curr : prev
+  })
 }
 
 interface TimePickerInputProps {
@@ -27,23 +32,24 @@ export function TimePickerInput({ value, onChange, placeholder = "Selecionar hor
   const insets = useSafeAreaInsets()
   const { primaryColor } = useTenantTheme()
   const [open, setOpen] = useState(false)
-  const [selHour, setSelHour] = useState(() => parseTime(value).hour)
-  const [selMinute, setSelMinute] = useState(() => parseTime(value).minute)
+  const [selected, setSelected] = useState(() => snapToSlot(value))
+  const listRef = useRef<FlatList>(null)
 
   function handleOpen() {
-    const { hour, minute } = parseTime(value)
-    setSelHour(hour)
-    setSelMinute(minute)
+    const snapped = snapToSlot(value)
+    setSelected(snapped)
     setOpen(true)
+    // Rola para o item selecionado ao abrir
+    const idx = TIME_SLOTS.indexOf(snapped)
+    if (idx > 0) {
+      setTimeout(() => listRef.current?.scrollToIndex({ index: idx, viewPosition: 0.3 }), 100)
+    }
   }
 
   function confirm() {
-    onChange(`${selHour}:${selMinute}`)
+    onChange(selected)
     setOpen(false)
   }
-
-  const hourRows = Array.from({ length: 6 }, (_, i) => HOURS.slice(i * 4, i * 4 + 4))
-  const minuteRows = Array.from({ length: 3 }, (_, i) => MINUTES.slice(i * 4, i * 4 + 4))
 
   return (
     <>
@@ -68,55 +74,44 @@ export function TimePickerInput({ value, onChange, placeholder = "Selecionar hor
             </Pressable>
           </View>
 
-          <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-            <Text className="text-xs font-black text-zinc-400 tracking-widest mb-3">HORA</Text>
-            {hourRows.map((row, ri) => (
-              <View key={ri} className="flex-row mb-2">
-                {row.map((h) => (
-                  <View key={h} className="flex-1 items-center px-1">
-                    <Pressable
-                      onPress={() => setSelHour(h)}
-                      className="h-12 w-full rounded-2xl items-center justify-center"
-                      style={selHour === h
-                        ? { backgroundColor: primaryColor }
-                        : { backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#f4f4f5" }}
-                    >
-                      <Text className={`text-base font-bold ${selHour === h ? "text-white" : "text-zinc-800"}`}>
-                        {h}
-                      </Text>
-                    </Pressable>
+          <FlatList
+            ref={listRef}
+            data={TIME_SLOTS}
+            keyExtractor={(item) => item}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 16, paddingBottom: insets.bottom + 16 }}
+            onScrollToIndexFailed={() => {}}
+            renderItem={({ item }) => {
+              const isSelected = item === selected
+              return (
+                <Pressable
+                  onPress={() => setSelected(item)}
+                  className="flex-row items-center justify-between px-4 py-3.5 rounded-2xl mb-1.5"
+                  style={isSelected
+                    ? { backgroundColor: primaryColor }
+                    : { backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#f4f4f5" }}
+                >
+                  <View className="flex-row items-center gap-3">
+                    <Ionicons
+                      name="time-outline"
+                      size={18}
+                      color={isSelected ? "white" : "#71717a"}
+                    />
+                    <Text className={`text-base font-bold ${isSelected ? "text-white" : "text-zinc-800"}`}>
+                      {item}
+                    </Text>
                   </View>
-                ))}
-              </View>
-            ))}
-
-            <Text className="text-xs font-black text-zinc-400 tracking-widest mt-6 mb-3">MINUTO</Text>
-            {minuteRows.map((row, ri) => (
-              <View key={ri} className="flex-row mb-2">
-                {row.map((m) => (
-                  <View key={m} className="flex-1 items-center px-1">
-                    <Pressable
-                      onPress={() => setSelMinute(m)}
-                      className="h-12 w-full rounded-2xl items-center justify-center"
-                      style={selMinute === m
-                        ? { backgroundColor: primaryColor }
-                        : { backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#f4f4f5" }}
-                    >
-                      <Text className={`text-base font-bold ${selMinute === m ? "text-white" : "text-zinc-800"}`}>
-                        {m}
-                      </Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ))}
-          </ScrollView>
+                  {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
+                </Pressable>
+              )
+            }}
+          />
 
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <View className="flex-row items-center justify-center gap-1 mb-4">
               <Ionicons name="checkmark-circle" size={16} color={primaryColor} />
               <Text className="font-bold text-sm" style={{ color: primaryColor }}>
-                {selHour}:{selMinute} selecionado
+                {selected} selecionado
               </Text>
             </View>
             <Pressable

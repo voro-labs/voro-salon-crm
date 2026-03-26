@@ -269,8 +269,8 @@ export default function ClientDetailScreen() {
             </View>
             <View className="w-px bg-zinc-100" />
             <View className="flex-1 items-center">
-              <Text className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Cliente desde</Text>
-              <Text className="text-sm font-black text-zinc-900 mt-0.5">{formatDate(c.createdAt)}</Text>
+              <Text className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider text-center">Cliente desde</Text>
+              <Text className="text-sm font-black text-zinc-900 mt-0.5 text-center">{formatDate(c.createdAt)}</Text>
             </View>
           </View>
         </View>
