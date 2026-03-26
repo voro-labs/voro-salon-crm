@@ -1,8 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  useInView,
+} from "framer-motion"
 import {
   CheckCircle2, Scissors, BarChart3, Users, Calendar, ClipboardList,
   Wallet, Zap, ArrowRight, Loader2, ChevronLeft, ChevronRight,
@@ -20,7 +26,65 @@ import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
 import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto } from "@/types/subscription.interface"
 import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
 
+// ── Animation helpers ────────────────────────────────────────────────────────
+
+function CountUp({ target, prefix = "", suffix = "" }: { target: number; prefix?: string; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const isInView = useInView(ref, { once: true, margin: "-80px" })
+  const shouldReduce = useReducedMotion()
+
+  useEffect(() => {
+    if (!isInView) return
+    const start = Date.now()
+    const duration = shouldReduce ? 0 : 1800
+    const tick = () => {
+      const elapsed = Date.now() - start
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      if (ref.current) ref.current.textContent = `${prefix}${Math.round(eased * target).toLocaleString("pt-BR")}${suffix}`
+      if (progress < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }, [isInView, target, prefix, suffix, shouldReduce])
+
+  return <span ref={ref}>{prefix}0{suffix}</span>
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+}
+
+const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09 } },
+}
+
 // ── Static data ──────────────────────────────────────────────────────────────
+
+const TESTIMONIALS = [
+  {
+    name: "Camila Ferreira",
+    role: "Proprietária · Estúdio CF",
+    avatar: "CF",
+    result: "Reduziu 80% dos no-shows",
+    text: "Antes eu perdia umas 3 clientes por semana que simplesmente sumiam. Com o Voro, os lembretes automáticos resolveram isso. Faturei R$1.200 a mais só no primeiro mês.",
+  },
+  {
+    name: "Juliana Matos",
+    role: "Sócia · Salão Matos & Arte",
+    avatar: "JM",
+    result: "Economizou 5h por semana",
+    text: "Eu ficava no celular marcando horário a semana toda. Hoje o sistema faz tudo sozinho. Sobrou tempo pra me dedicar aos atendimentos e aumentei o ticket médio.",
+  },
+  {
+    name: "Bruna Oliveira",
+    role: "Autônoma · Studio Bruna",
+    avatar: "BO",
+    result: "+R$2.400/mês em média",
+    text: "Não acreditei que um sistema tão simples ia fazer tanta diferença. O financeiro integrado me mostrou que eu estava cobrando barato. Reajustei os preços e o lucro subiu.",
+  },
+]
 
 const FEATURES = [
   { icon: Calendar, label: "Agendamentos online" },
@@ -459,32 +523,96 @@ export default function PrecosPage() {
 
       {/* ── Hero ── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-20 pb-16 text-center">
-        <Badge variant="secondary" className="mb-4">Sistema de Gestão para Salões</Badge>
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tighter text-balance leading-tight mb-6">
-          Gerencie seu salão com{" "}
-          <span className="text-primary">inteligência</span>
-        </h1>
-        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 text-balance">
-          Agendamentos, clientes, serviços, financeiro e muito mais em uma única plataforma. Simples, rápido e acessível.
-        </p>
-        <div className="flex flex-wrap gap-3 justify-center">
-          <Button size="lg" asChild>
-            <a href="#precos">
-              Ver planos <ArrowRight className="ml-2 h-4 w-4" />
-            </a>
-          </Button>
-          <Button size="lg" variant="outline" asChild>
-            <Link href="/admin/sign-in">Já tenho conta</Link>
-          </Button>
+        <div className="flex flex-col items-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <Badge variant="secondary" className="mb-4">Sistema de Gestão para Salões</Badge>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: "easeOut", delay: 0.08 }}
+            className="text-4xl sm:text-6xl font-black tracking-tighter text-balance leading-tight mb-4"
+          >
+            Chega de cliente{" "}
+            <span className="text-primary relative inline-block">
+              que não aparece
+              <motion.span
+                className="absolute bottom-0 left-0 h-[3px] w-full bg-primary/40 rounded-full"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ delay: 0.7, duration: 0.45, ease: "easeOut" }}
+                style={{ originX: 0 }}
+              />
+            </span>
+            .
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.16 }}
+            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 text-balance"
+          >
+            Lembretes automáticos, agendamento online e gestão completa do seu salão — tudo em um só lugar.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.24 }}
+            className="flex flex-wrap gap-3 justify-center"
+          >
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            >
+              <Button size="lg" asChild className="shadow-lg shadow-primary/20">
+                <a href="#precos">
+                  Testar 14 dias grátis — sem cartão <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </motion.div>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            >
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/admin/sign-in">Já tenho conta</Link>
+              </Button>
+            </motion.div>
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            className="mt-4 text-xs text-muted-foreground flex items-center gap-1.5"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+            Sem cartão de crédito · Cancele quando quiser · Suporte incluído
+          </motion.p>
         </div>
       </section>
 
       {/* ── Product preview ── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-24">
-        <div className="text-center mb-10">
+        <motion.div
+          className="text-center mb-10"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        >
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">Veja o sistema em ação</h2>
           <p className="text-muted-foreground">Simples de usar, poderoso no dia a dia</p>
-        </div>
+        </motion.div>
 
         {/* Tab buttons */}
         <div className="flex justify-center gap-2 mb-6 flex-wrap">
@@ -556,9 +684,18 @@ export default function PrecosPage() {
                 ))}
               </div>
               <div className="flex-1 bg-background overflow-hidden relative">
-                <div key={screenshotIdx} className="absolute inset-0 animate-in fade-in slide-in-from-right-4 duration-300">
-                  {SCREENSHOTS[screenshotIdx].content}
-                </div>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={screenshotIdx}
+                    className="absolute inset-0"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -16 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                  >
+                    {SCREENSHOTS[screenshotIdx].content}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -626,9 +763,18 @@ export default function PrecosPage() {
 
                 {/* Content area */}
                 <div className="overflow-hidden relative" style={{ height: 340 }}>
-                  <div key={screenshotIdx} className="absolute inset-0 animate-in fade-in duration-300">
-                    {SCREENSHOTS[screenshotIdx].content}
-                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={screenshotIdx}
+                      className="absolute inset-0"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {SCREENSHOTS[screenshotIdx].content}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
 
                 {/* Bottom navigation */}
@@ -678,66 +824,235 @@ export default function PrecosPage() {
       {/* ── Features grid ── */}
       <section className="bg-muted/30 border-y border-border/60 py-14">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <h2 className="text-2xl font-black text-center mb-10 tracking-tight">Tudo que seu salão precisa</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <motion.h2
+            className="text-2xl font-black text-center mb-10 tracking-tight"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+          >
+            Tudo que seu salão precisa
+          </motion.h2>
+          <motion.div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
             {FEATURES.map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-background border border-border/60 text-center">
+              <motion.div
+                key={label}
+                variants={fadeUp}
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-background border border-border/60 text-center"
+                whileHover={{ y: -4, transition: { type: "spring", stiffness: 300, damping: 18 } }}
+              >
                 <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <span className="text-sm font-semibold">{label}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── Impact (no-show calculator) ── */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <motion.div
+          className="rounded-3xl bg-primary/5 border border-primary/20 p-8 sm:p-12 text-center"
+          initial={{ opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.55, ease: "easeOut" }}
+        >
+          <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">O custo do no-show</p>
+          <h2 className="text-2xl sm:text-4xl font-black tracking-tight mb-4 text-balance">
+            Cada cliente que falta é dinheiro que some
+          </h2>
+          <p className="text-muted-foreground max-w-xl mx-auto mb-10 text-balance">
+            Se você perde apenas 3 clientes por semana com ticket médio de R$80, calcule o prejuízo:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+            {[
+              { label: "Por semana", value: 240, prefix: "R$", color: "text-orange-500" },
+              { label: "Por mês", value: 960, prefix: "R$", color: "text-red-500" },
+              { label: "Por ano", value: 11520, prefix: "R$", color: "text-destructive" },
+            ].map((item) => (
+              <div key={item.label} className="flex flex-col items-center gap-1">
+                <span className={`text-4xl sm:text-5xl font-black ${item.color}`}>
+                  <CountUp target={item.value} prefix={item.prefix} />
+                </span>
+                <span className="text-sm text-muted-foreground font-medium">{item.label}</span>
               </div>
             ))}
           </div>
+
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="inline-block"
+          >
+            <Button size="lg" asChild className="shadow-lg shadow-primary/20">
+              <a href="#precos">
+                Eliminar no-shows agora <ArrowRight className="ml-2 h-4 w-4" />
+              </a>
+            </Button>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* ── Social proof (testimonials) ── */}
+      <section className="bg-muted/30 border-y border-border/60 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <motion.div
+            className="text-center mb-10"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+          >
+            <div className="flex justify-center mb-2">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
+              ))}
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">
+              Salões que já transformaram o negócio
+            </h2>
+            <p className="text-muted-foreground">Resultados reais de quem usa o Voro todos os dias</p>
+          </motion.div>
+
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-6"
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
+            {TESTIMONIALS.map((t) => (
+              <motion.div
+                key={t.name}
+                variants={fadeUp}
+                className="flex flex-col gap-4 p-6 rounded-2xl bg-background border border-border/60"
+                whileHover={{ y: -4, transition: { type: "spring", stiffness: 300, damping: 18 } }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-black text-primary">{t.avatar}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{t.name}</p>
+                    <p className="text-xs text-muted-foreground">{t.role}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  {t.result}
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed flex-1">"{t.text}"</p>
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
       {/* ── Pricing ── */}
       <section id="precos" className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
-        <div className="text-center mb-12">
+        <motion.div
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        >
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-3">Planos simples e transparentes</h2>
           <p className="text-muted-foreground text-lg">Sem taxa de adesão. Cancele quando quiser.</p>
-        </div>
+        </motion.div>
 
         {loadingPlans ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start"
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
             {plans.map((plan, i) => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                popular={i === 1}
-                onSelect={setSelectedPlan}
-                onModuleInfo={setOpenModuleKey}
-              />
+              <motion.div key={plan.id} variants={fadeUp}>
+                <PlanCard
+                  plan={plan}
+                  popular={i === 1}
+                  onSelect={setSelectedPlan}
+                  onModuleInfo={setOpenModuleKey}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </section>
 
       {/* ── FAQ ── */}
       <section className="bg-muted/30 border-y border-border/60 py-16">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
-          <h2 className="text-2xl font-black text-center mb-8 tracking-tight">Perguntas frequentes</h2>
-          <div className="flex flex-col gap-2">
+          <motion.h2
+            className="text-2xl font-black text-center mb-8 tracking-tight"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+          >
+            Perguntas frequentes
+          </motion.h2>
+          <motion.div
+            className="flex flex-col gap-2"
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
             {FAQ.map((item, i) => (
-              <div key={i} className="border border-border/60 rounded-xl bg-background overflow-hidden">
+              <motion.div key={i} variants={fadeUp} className="border border-border/60 rounded-xl bg-background overflow-hidden">
                 <button
                   className="w-full text-left px-5 py-4 font-semibold text-sm flex items-center justify-between gap-2"
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 >
                   {item.q}
-                  <span className="text-muted-foreground shrink-0">{openFaq === i ? "−" : "+"}</span>
+                  <motion.span
+                    animate={{ rotate: openFaq === i ? 45 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-muted-foreground shrink-0 text-lg leading-none"
+                  >
+                    +
+                  </motion.span>
                 </button>
-                {openFaq === i && (
-                  <div className="px-5 pb-4 text-sm text-muted-foreground">{item.a}</div>
-                )}
-              </div>
+                <AnimatePresence initial={false}>
+                  {openFaq === i && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-5 pb-4 text-sm text-muted-foreground">{item.a}</div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
