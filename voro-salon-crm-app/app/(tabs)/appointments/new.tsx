@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { View, Text, TextInput, Pressable, ActivityIndicator, Switch } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
@@ -12,6 +12,7 @@ import { SelectPickerInput } from "components/SelectPickerInput"
 import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { API_CONFIG, secureApiCall } from "lib/api"
 
 export default function NewAppointmentScreen() {
   const router = useRouter()
@@ -24,6 +25,50 @@ export default function NewAppointmentScreen() {
 
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
+  const [availableSlots, setAvailableSlots] = useState<string[] | undefined>(undefined)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  const fetchAvailability = useCallback(async (d: string, serviceId: string, employeeId: string) => {
+    if (!d) return
+    setLoadingSlots(true)
+    setAvailableSlots(undefined)
+    setTime("")
+    try {
+      const params = new URLSearchParams({ date: d })
+      if (serviceId && serviceId !== "none") params.set("serviceId", serviceId)
+      if (employeeId && employeeId !== "none") params.set("employeeId", employeeId)
+      const res = await secureApiCall<any[]>(
+        `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?${params.toString()}`,
+        { method: "GET" }
+      )
+      if (!res.hasError && res.data) {
+        const slots = res.data
+          .filter((s: any) => s.isAvailable)
+          .map((s: any) => {
+            const d = new Date(s.startTime)
+            return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+          })
+        setAvailableSlots(slots)
+      } else {
+        setAvailableSlots([])
+      }
+    } catch {
+      setAvailableSlots([])
+    } finally {
+      setLoadingSlots(false)
+    }
+  }, [])
+
+  // Re-fetch quando data, serviço ou profissional mudam (exceto em encaixe)
+  useEffect(() => {
+    if (form.isEncaixe) {
+      setAvailableSlots(undefined)
+      return
+    }
+    if (date) {
+      fetchAvailability(date, form.serviceId, form.employeeId)
+    }
+  }, [date, form.serviceId, form.employeeId, form.isEncaixe])
 
   function handleDateChange(d: string) {
     setDate(d)
@@ -118,7 +163,12 @@ export default function NewAppointmentScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-zinc-700 font-bold text-sm mb-1.5">Horário *</Text>
-                <TimePickerInput value={time} onChange={handleTimeChange} />
+                <TimePickerInput
+                  value={time}
+                  onChange={handleTimeChange}
+                  availableSlots={form.isEncaixe ? undefined : availableSlots}
+                  loadingSlots={!form.isEncaixe && loadingSlots}
+                />
               </View>
             </View>
 

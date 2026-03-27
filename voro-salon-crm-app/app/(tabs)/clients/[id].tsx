@@ -98,7 +98,7 @@ export default function ClientDetailScreen() {
     try {
       const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}`, {
         method: "POST",
-        body: JSON.stringify({ clientId: id, planId: selectedPlanId }),
+        body: JSON.stringify({ clientId: id, planId: selectedPlanId, startDate: new Date().toISOString() }),
       })
       if (!res.hasError) {
         await mutateMemberships()
@@ -122,9 +122,8 @@ export default function ClientDetailScreen() {
           onPress: async () => {
             setCancellingMembershipId(membershipId)
             try {
-              await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/${membershipId}`, {
+              await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/${membershipId}/cancel`, {
                 method: "PATCH",
-                body: JSON.stringify({ status: 2 }),
               })
               await mutateMemberships()
             } finally {
