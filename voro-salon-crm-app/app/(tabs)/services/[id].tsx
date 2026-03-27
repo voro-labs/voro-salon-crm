@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { useServiceDetail } from "hooks/use-service-detail.hook"
+import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
 function fmtCurrency(v: number) {
@@ -60,34 +61,32 @@ export default function ServiceDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
-      {/* Header */}
-      <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-        <Pressable
-          onPress={() => router.back()}
-          className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100"
-        >
-          <Ionicons name="chevron-back" size={20} color="#18181b" />
-        </Pressable>
-        <Text className="flex-1 text-xl font-black text-zinc-900">Serviço</Text>
-
-        <Pressable
-          onPress={() => router.push(`/(tabs)/services/edit?id=${id}` as any)}
-          className="h-9 w-9 rounded-xl items-center justify-center"
-          style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}
-        >
-          <Ionicons name="create-outline" size={18} color={primaryColor} />
-        </Pressable>
-        <Pressable
-          onPress={confirmDelete}
-          disabled={isDeleting}
-          className="h-9 w-9 bg-red-50 rounded-xl items-center justify-center border border-red-100"
-        >
-          {isDeleting
-            ? <ActivityIndicator size="small" color="#dc2626" />
-            : <Ionicons name="trash-outline" size={18} color="#dc2626" />
-          }
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Serviço"
+        showBack
+        onBack={() => router.back()}
+        right={
+          <View className="flex-row gap-2">
+            <Pressable
+              onPress={() => router.push(`/(tabs)/services/edit?id=${id}` as any)}
+              className="h-9 w-9 rounded-xl items-center justify-center"
+              style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}
+            >
+              <Ionicons name="create-outline" size={18} color={primaryColor} />
+            </Pressable>
+            <Pressable
+              onPress={confirmDelete}
+              disabled={isDeleting}
+              className="h-9 w-9 bg-red-50 rounded-xl items-center justify-center border border-red-100"
+            >
+              {isDeleting
+                ? <ActivityIndicator size="small" color="#dc2626" />
+                : <Ionicons name="trash-outline" size={18} color="#dc2626" />
+              }
+            </Pressable>
+          </View>
+        }
+      />
 
       <ScrollView
         className="flex-1"

@@ -56,6 +56,7 @@ export function useAppointmentForm() {
       ...p,
       serviceId,
       amount: selected?.price ?? p.amount,
+      durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
       description: p.description || selected?.name || "",
     }))
   }
@@ -67,6 +68,14 @@ export function useAppointmentForm() {
     }
     if (!f.scheduledDateTime) {
       toast.error("Por favor, selecione uma data e hora.")
+      return false
+    }
+    if (!f.serviceId || f.serviceId === "none") {
+      toast.error("Por favor, selecione um serviço.")
+      return false
+    }
+    if (!f.durationMinutes || f.durationMinutes <= 0) {
+      toast.error("Por favor, informe a duração do serviço.")
       return false
     }
 

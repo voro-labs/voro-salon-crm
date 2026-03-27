@@ -2,7 +2,6 @@ import React, { useState } from "react"
 import { View, Text, TextInput, Pressable, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
-import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useAppointmentForm } from "hooks/use-appointment-form.hook"
 import { DatePickerInput } from "components/DatePickerInput"
@@ -10,6 +9,7 @@ import { TimePickerInput } from "components/TimePickerInput"
 import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
 import { SelectPickerInput } from "components/SelectPickerInput"
+import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
@@ -62,13 +62,8 @@ export default function NewAppointmentScreen() {
   ]
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
-      <View className="bg-white px-5 pt-4 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-        <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
-          <Ionicons name="chevron-back" size={20} color="#18181b" />
-        </Pressable>
-        <Text className="text-xl font-black text-zinc-900">Novo Agendamento</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
+      <ScreenHeader title="Novo Agendamento" showBack onBack={() => router.back()} />
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center">

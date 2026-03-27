@@ -651,7 +651,7 @@ export default function PublicBookingPage() {
                   Lembrete antes do horário (opcional)
                 </Label>
                 <div className="grid grid-cols-4 gap-2">
-                  {[null, 15, 20, 30].map((min) => (
+                  {[null, 15, 30, 60, 120, 180, 360, 720, 1440].map((min) => (
                     <button
                       key={min ?? 'none'}
                       type="button"
@@ -663,7 +663,7 @@ export default function PublicBookingPage() {
                           : "border-border bg-background text-muted-foreground hover:border-primary/50"
                       )}
                     >
-                      {min === null ? "Sem" : `${min} min`}
+                      {min === null ? "Sem" : min < 60 ? `${min}min` : min === 60 ? "1h" : min < 1440 ? `${min / 60}h` : "1 dia"}
                     </button>
                   ))}
                 </div>

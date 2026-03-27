@@ -569,82 +569,96 @@ export default function ClienteDetailPage() {
                     <p className="text-sm text-muted-foreground">Nenhum serviço registrado ainda.</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    {services.map(
-                      (svc: {
-                        id: string
-                        description: string
-                        amount: number
-                        serviceDate: string
-                        notes: string
-                      }) => (
-                        <div
-                          key={svc.id}
-                          className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate)
-                            ? "border-primary/30 bg-primary/5"
-                            : "border-border"
-                            }`}
-                        >
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                            <CalendarDays className="h-4 w-4" />
-                          </div>
-                          <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate font-medium text-foreground">
-                                {svc.description}
-                              </span>
-                              {isRecent(svc.serviceDate) && (
-                                <Badge variant="outline" className="shrink-0 text-xs border-primary/30 text-primary">
-                                  Recente
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                              <span>{formatDate(svc.serviceDate)}</span>
-                              {svc.amount > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <Banknote className="h-3 w-3" />
-                                  {formatCurrency(svc.amount)}
+                  (() => {
+                    type Svc = { id: string; description: string; amount: number; serviceDate: string; notes: string }
+                    const sorted = [...services as Svc[]].sort(
+                      (a, b) => new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime()
+                    )
+                    const groups = sorted.reduce<Record<string, Svc[]>>((acc, svc) => {
+                      const key = new Date(svc.serviceDate).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+                      if (!acc[key]) acc[key] = []
+                      acc[key].push(svc)
+                      return acc
+                    }, {})
+                    return (
+                      <div className="relative pl-6">
+                        {/* Linha vertical da timeline */}
+                        <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border" />
+                        <div className="space-y-6">
+                          {Object.entries(groups).map(([month, svcs]) => (
+                            <div key={month}>
+                              {/* Label do mês */}
+                              <div className="relative flex items-center gap-3 mb-3">
+                                <div className="absolute -left-6 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold z-10">
+                                  {svcs.length}
+                                </div>
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  {month}
                                 </span>
-                              )}
+                              </div>
+                              <div className="space-y-2">
+                                {svcs.map((svc, i) => (
+                                  <div key={svc.id} className="relative">
+                                    {/* Dot da timeline */}
+                                    <div className={`absolute -left-6 mt-[14px] h-2.5 w-2.5 rounded-full border-2 border-background z-10 ${isRecent(svc.serviceDate) ? "bg-primary" : "bg-border"}`} />
+                                    <div className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate) ? "border-primary/30 bg-primary/5" : "border-border hover:bg-accent/40"}`}>
+                                      <div className="flex flex-1 flex-col gap-0.5 overflow-hidden min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="truncate font-medium text-sm text-foreground">
+                                            {svc.description}
+                                          </span>
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            {isRecent(svc.serviceDate) && (
+                                              <Badge variant="outline" className="text-[10px] border-primary/30 text-primary px-1.5 py-0">
+                                                Recente
+                                              </Badge>
+                                            )}
+                                            <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  <Trash2 className="h-3 w-3 text-muted-foreground" />
+                                                </Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    Essa ação irá remover o registro permanentemente.
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                  <AlertDialogAction onClick={() => handleDeleteService(svc.id)} className="bg-red-600 text-white hover:bg-red-700">
+                                                    Excluir
+                                                  </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                            </AlertDialog>
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                                          <span>{formatDate(svc.serviceDate)}</span>
+                                          {svc.amount > 0 && (
+                                            <span className="flex items-center gap-1 font-medium text-foreground">
+                                              <Banknote className="h-3 w-3" />
+                                              {formatCurrency(svc.amount)}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {svc.notes && (
+                                          <p className="mt-0.5 text-xs text-muted-foreground italic">{svc.notes}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            {svc.notes && (
-                              <p className="mt-0.5 text-xs text-muted-foreground">{svc.notes}</p>
-                            )}
-                          </div>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="sr-only">Excluir serviço</span>
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Essa acao ira remover o registro deste serviço permanentemente.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteService(svc.id)}
-                                  className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
-                                >
-                                  Excluir
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          ))}
                         </div>
-                      )
-                    )}
-                  </div>
+                      </div>
+                    )
+                  })()
                 )}
               </CardContent>
             </Card>

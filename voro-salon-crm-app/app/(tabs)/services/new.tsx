@@ -1,8 +1,8 @@
 import React from "react"
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import { ScreenHeader } from "components/ScreenHeader"
 import { useServiceDetail } from "hooks/use-service-detail.hook"
 import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
@@ -14,14 +14,9 @@ export default function NewServiceScreen() {
   const { primaryColor } = useTenantTheme()
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
+      <ScreenHeader title="Novo Serviço" showBack onBack={() => router.back()} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-          <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
-            <Ionicons name="chevron-back" size={20} color="#18181b" />
-          </Pressable>
-          <Text className="text-xl font-black text-zinc-900">Novo Serviço</Text>
-        </View>
 
         <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
           <View className="mb-4">

@@ -1,8 +1,8 @@
 import React from "react"
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { Ionicons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
+import { ScreenHeader } from "components/ScreenHeader"
 import { useServiceDetail } from "hooks/use-service-detail.hook"
 import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
@@ -26,16 +26,7 @@ export default function EditServiceScreen() {
     <SafeAreaView className="flex-1 bg-zinc-50">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
 
-        {/* Header */}
-        <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-          <Pressable
-            onPress={() => router.back()}
-            className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100"
-          >
-            <Ionicons name="chevron-back" size={20} color="#18181b" />
-          </Pressable>
-          <Text className="flex-1 text-xl font-black text-zinc-900">Editar Serviço</Text>
-        </View>
+        <ScreenHeader title="Editar Serviço" showBack onBack={() => router.back()} />
 
         <ScrollView
           className="flex-1"

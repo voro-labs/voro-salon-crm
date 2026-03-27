@@ -23,7 +23,7 @@ export function ExportMenu<T>({ columns, rows, filename, disabled }: ExportMenuP
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled || rows.length === 0}>
+        <Button variant="outline" className="h-10 text-xs sm:text-sm" disabled={disabled || rows.length === 0}>
           <Download className="mr-2 h-4 w-4" />
           Exportar
         </Button>
