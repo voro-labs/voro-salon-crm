@@ -23,6 +23,8 @@ const MODULE_NAMES: Record<number, string> = {
   5: "Financeiro",
   6: "Relatórios",
   7: "Configurações",
+  8: "Booking",
+  9: "WhatsAppBot"
 }
 
 const MODULE_ICONS: Record<number, string> = {
@@ -33,6 +35,8 @@ const MODULE_ICONS: Record<number, string> = {
   5: "wallet-outline",
   6: "bar-chart-outline",
   7: "settings-outline",
+  8: "calendar-outline",
+  9: "logo-whatsapp"
 }
 
 export default function ModulesSettingsScreen() {
