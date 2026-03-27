@@ -141,7 +141,7 @@ export default function AppointmentsPage() {
               size="sm"
               className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white border-0 self-start sm:self-auto"
             >
-              <Link href="/prices">Ativar WhatsApp automático</Link>
+              <Link href="/subscription">Ativar WhatsApp automático</Link>
             </Button>
           </div>
         )}
