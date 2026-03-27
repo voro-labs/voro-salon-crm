@@ -81,6 +81,7 @@ export default function ClientDetailScreen() {
   const [membershipOpen, setMembershipOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState<string>("")
   const [isCreatingMembership, setIsCreatingMembership] = useState(false)
+  const [cancellingMembershipId, setCancellingMembershipId] = useState<string | null>(null)
 
   const { data: memberships, mutate: mutateMemberships } = useSWR<any[]>(
     id ? `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/client/${id}` : null,
@@ -107,6 +108,32 @@ export default function ClientDetailScreen() {
     } finally {
       setIsCreatingMembership(false)
     }
+  }
+
+  function handleCancelMembership(membershipId: string) {
+    Alert.alert(
+      "Cancelar plano?",
+      "O plano será cancelado e o cliente perderá o acesso. Essa ação não pode ser desfeita.",
+      [
+        { text: "Voltar", style: "cancel" },
+        {
+          text: "Cancelar Plano",
+          style: "destructive",
+          onPress: async () => {
+            setCancellingMembershipId(membershipId)
+            try {
+              await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/${membershipId}`, {
+                method: "PATCH",
+                body: JSON.stringify({ status: 2 }),
+              })
+              await mutateMemberships()
+            } finally {
+              setCancellingMembershipId(null)
+            }
+          },
+        },
+      ]
+    )
   }
 
   function toggleSection(section: number) {
@@ -480,6 +507,23 @@ export default function ClientDetailScreen() {
                         <Text className="text-xs text-zinc-400 font-medium">
                           {`R$ ${Number(m.plan.price).toFixed(2).replace(".", ",")}/plano`}
                         </Text>
+                      )}
+
+                      {/* Cancel action — only for active memberships (status === 0) */}
+                      {m.status === 0 && (
+                        <Pressable
+                          onPress={() => handleCancelMembership(m.id)}
+                          disabled={cancellingMembershipId === m.id}
+                          className="flex-row items-center justify-center gap-1.5 h-9 rounded-xl border border-red-100 bg-red-50"
+                        >
+                          {cancellingMembershipId === m.id
+                            ? <ActivityIndicator size="small" color="#ef4444" />
+                            : <>
+                                <Ionicons name="close-circle-outline" size={15} color="#ef4444" />
+                                <Text className="text-red-600 font-bold text-sm">Cancelar Plano</Text>
+                              </>
+                          }
+                        </Pressable>
                       )}
                     </View>
                   )

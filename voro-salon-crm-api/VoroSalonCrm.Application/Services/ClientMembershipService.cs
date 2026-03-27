@@ -164,6 +164,6 @@ namespace VoroSalonCrm.Application.Services
         private static ClientMembershipDto MapMembershipToDto(ClientMembership m) =>
             new(m.Id, m.ClientId, m.Client.Name, m.PlanId, m.Plan.Name, m.Plan.Price,
                 m.StartDate, m.EndDate, m.RemainingSessions, m.Plan.Sessions,
-                m.Status.ToString(), m.Notes);
+                (int)m.Status, m.Notes);
     }
 }

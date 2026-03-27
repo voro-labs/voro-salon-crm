@@ -52,7 +52,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         DateTimeOffset EndDate,
         int? RemainingSessions,
         int? TotalSessions,
-        string Status,
+        int Status,
         string? Notes
     );
 }

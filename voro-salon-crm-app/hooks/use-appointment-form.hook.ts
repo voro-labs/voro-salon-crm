@@ -57,6 +57,7 @@ export function useAppointmentForm() {
       serviceId,
       amount: selected?.price ?? p.amount,
       description: p.description || selected?.name || "",
+      durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
     }))
   }
 

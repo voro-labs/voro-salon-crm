@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { View, Text, TextInput, Pressable, ActivityIndicator } from "react-native"
+import { View, Text, TextInput, Pressable, ActivityIndicator, Switch } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useRouter } from "expo-router"
@@ -150,7 +150,7 @@ export default function NewAppointmentScreen() {
               />
             </View>
 
-            <View className="mb-6">
+            <View className="mb-4">
               <Text className="text-zinc-700 font-bold text-sm mb-1.5">Observações</Text>
               <TextInput
                 className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base h-24"
@@ -160,6 +160,19 @@ export default function NewAppointmentScreen() {
                 onChangeText={(v) => setForm((p) => ({ ...p, notes: v }))}
                 multiline
                 textAlignVertical="top"
+              />
+            </View>
+
+            <View className="flex-row items-center justify-between bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 mb-6">
+              <View>
+                <Text className="text-zinc-700 font-bold text-sm">Encaixe</Text>
+                <Text className="text-zinc-400 text-xs mt-0.5">Atendimento sem hora marcada</Text>
+              </View>
+              <Switch
+                value={form.isEncaixe ?? false}
+                onValueChange={(v) => setForm((p) => ({ ...p, isEncaixe: v }))}
+                trackColor={{ false: "#e4e4e7", true: primaryColor + "80" }}
+                thumbColor={form.isEncaixe ? primaryColor : "#a1a1aa"}
               />
             </View>
 
