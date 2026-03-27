@@ -12,6 +12,7 @@ import { API_CONFIG } from "lib/api"
 import { flags } from "lib/flag-utils"
 import { PhoneInput } from "components/PhoneInput"
 import { formatPhone } from "@/lib/mask-utils"
+import { CountrySelector } from "@/components/CountrySelector"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -644,19 +645,7 @@ export default function BookingScreen() {
                 <Text className="text-zinc-700 font-bold text-sm mb-1.5">Telefone / WhatsApp *</Text>
                 <View className="flex-row gap-2">
                   {/* Country selector inline button */}
-                  <Pressable
-                    onPress={() => setCountryModalOpen(true)}
-                    className="flex-row items-center gap-2 bg-white border border-zinc-200 rounded-2xl px-3 h-[50px]"
-                  >
-                    <Image
-                      source={{ uri: flags[countryCode]?.flagUrl }}
-                      style={{ width: 24, height: 16, borderRadius: 2 }}
-                    />
-                    <Text className="text-zinc-900 font-semibold text-base">
-                      {flags[countryCode]?.dialCode}
-                    </Text>
-                    <Ionicons name="chevron-down" size={14} color="#71717a" />
-                  </Pressable>
+                  <CountrySelector value={countryCode} onChange={setCountryCode} />
                   <View className="flex-1">
                     <PhoneInput
                       value={form.phone}

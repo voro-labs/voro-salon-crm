@@ -14,22 +14,28 @@ namespace VoroSalonCrm.Application.Services
         IAppointmentRepository appointmentRepository,
         IServiceRecordService serviceRecordService,
         IEmployeeRepository employeeRepository,
+        IServiceRepository serviceRepository,
+        IClientMembershipRepository clientMembershipRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         ITenantRepository tenantRepository,
         IWhatsappService whatsappService,
         IUserTenantRepository userTenantRepository,
-        IExpoPushNotificationService expoPushNotificationService) : IAppointmentService
+        IExpoPushNotificationService expoPushNotificationService,
+        ITimeSlotBlockService timeSlotBlockService) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
         private readonly IEmployeeRepository _employeeRepository = employeeRepository;
+        private readonly IServiceRepository _serviceRepository = serviceRepository;
+        private readonly IClientMembershipRepository _clientMembershipRepository = clientMembershipRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IWhatsappService _whatsappService = whatsappService;
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
+        private readonly ITimeSlotBlockService _timeSlotBlockService = timeSlotBlockService;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -49,6 +55,7 @@ namespace VoroSalonCrm.Application.Services
                 Description = dto.Description,
                 Amount = dto.Amount,
                 Notes = dto.Notes,
+                IsEncaixe = dto.IsEncaixe,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -129,6 +136,7 @@ namespace VoroSalonCrm.Application.Services
             if (dto.Description != null) appointment.Description = dto.Description;
             if (dto.Amount.HasValue) appointment.Amount = dto.Amount.Value;
             if (dto.Notes != null) appointment.Notes = dto.Notes;
+            if (dto.IsEncaixe.HasValue) appointment.IsEncaixe = dto.IsEncaixe.Value;
 
             appointment.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -138,6 +146,12 @@ namespace VoroSalonCrm.Application.Services
             if (oldStatus != AppointmentStatus.Completed && appointment.Status == AppointmentStatus.Completed)
             {
                 await CreateHistoryFromAppointmentAsync(appointment);
+            }
+            // Se saiu de concluído para cancelado/pendente, remove o histórico
+            else if (oldStatus == AppointmentStatus.Completed &&
+                (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
+            {
+                await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -176,6 +190,7 @@ namespace VoroSalonCrm.Application.Services
             if (oldStatus != AppointmentStatus.Completed && appointment.Status == AppointmentStatus.Completed)
             {
                 await CreateHistoryFromAppointmentAsync(appointment);
+                await DecrementMembershipSessionAsync(appointment.ClientId, appointment.TenantId);
             }
             else if (oldStatus == AppointmentStatus.Completed &&
                 (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
@@ -333,6 +348,15 @@ namespace VoroSalonCrm.Application.Services
             var startUtc = startOfDay.ToUniversalTime();
             var endUtc = endOfDay.ToUniversalTime();
 
+            // Resolve service duration to properly check if a new booking fits without conflict
+            var serviceDurationMinutes = 30;
+            if (serviceId.HasValue && serviceId.Value != Guid.Empty)
+            {
+                var service = await _serviceRepository.GetByIdAsync(true, serviceId.Value);
+                if (service != null)
+                    serviceDurationMinutes = service.DurationMinutes;
+            }
+
             var query = _appointmentRepository.Query(a =>
                 a.TenantId == tenantId &&
                 a.ScheduledDateTime >= startUtc &&
@@ -369,6 +393,9 @@ namespace VoroSalonCrm.Application.Services
                     .CountAsync();
             }
 
+            // Load time blocks for this day
+            var blocks = (await _timeSlotBlockService.GetOverlappingAsync(startUtc, endUtc)).ToList();
+
             var slots = new List<AvailabilitySlotDto>();
             var current = startOfDay.ToUniversalTime();
 
@@ -380,7 +407,25 @@ namespace VoroSalonCrm.Application.Services
 
             while (current < endUtc)
             {
-                var next = current.AddMinutes(30);
+                var next = current.AddMinutes(30); // iteration step
+                var slotEnd = current.AddMinutes(serviceDurationMinutes); // actual end for conflict check
+
+                // Check if slot is blocked
+                var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
+                if (overlappingBlock != null)
+                {
+                    slots.Add(new AvailabilitySlotDto(current, next, false, true, overlappingBlock.Reason));
+                    current = next;
+                    continue;
+                }
+
+                // A slot is unavailable if the full service duration extends beyond end of day
+                if (slotEnd > endUtc)
+                {
+                    slots.Add(new AvailabilitySlotDto(current, next, false));
+                    current = next;
+                    continue;
+                }
 
                 bool isBusy;
                 if (activeEmployeesCount <= 0)
@@ -389,17 +434,17 @@ namespace VoroSalonCrm.Application.Services
                 }
                 else if (employeeId.HasValue && employeeId.Value != Guid.Empty)
                 {
-                    // For specific professional
+                    // For specific professional: check if the full service window overlaps any existing appointment
                     isBusy = appointments.Any(a =>
                         current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        next > a.ScheduledDateTime);
+                        slotEnd > a.ScheduledDateTime);
                 }
                 else
                 {
-                    // For "Any professional" or Salon-only mode, busy only if ALL (or the default 1) capacity is occupied
+                    // For "Any professional" or Salon-only mode, busy only if ALL capacity is occupied
                     var overlappingCount = appointments.Count(a =>
                         current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        next > a.ScheduledDateTime);
+                        slotEnd > a.ScheduledDateTime);
 
                     isBusy = overlappingCount >= activeEmployeesCount;
                 }
@@ -409,6 +454,26 @@ namespace VoroSalonCrm.Application.Services
             }
 
             return slots;
+        }
+
+        private async Task DecrementMembershipSessionAsync(Guid clientId, Guid tenantId)
+        {
+            var activeMemberships = await _clientMembershipRepository
+                .Query(m => m.ClientId == clientId && m.TenantId == tenantId && m.Status == ClientMembershipStatus.Active)
+                .ToListAsync();
+
+            foreach (var membership in activeMemberships)
+            {
+                if (membership.RemainingSessions == null) continue; // ilimitado
+
+                membership.RemainingSessions = Math.Max(0, membership.RemainingSessions.Value - 1);
+                membership.UpdatedAt = DateTimeOffset.UtcNow;
+
+                if (membership.RemainingSessions == 0)
+                    membership.Status = ClientMembershipStatus.Expired;
+
+                _clientMembershipRepository.Update(membership);
+            }
         }
 
         private async Task CreateHistoryFromAppointmentAsync(Appointment appointment)
@@ -441,7 +506,8 @@ namespace VoroSalonCrm.Application.Services
                 a.Description,
                 a.Amount,
                 a.Notes,
-                a.CreatedAt
+                a.CreatedAt,
+                a.IsEncaixe
             );
         }
     }

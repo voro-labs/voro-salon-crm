@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar, Smartphone, X } from "lucide-react"
+import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar, Smartphone, X, Bell, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
@@ -40,7 +41,8 @@ export default function PublicBookingPage() {
     employeeId: '' as string,
     date: '',
     time: '',
-    description: ''
+    description: '',
+    reminderMinutes: null as number | null,
   })
 
   const [loading, setLoading] = useState(true)
@@ -258,7 +260,8 @@ export default function PublicBookingPage() {
           serviceId: form.serviceId,
           employeeId: !form.employeeId || form.employeeId === 'none' ? null : form.employeeId,
           scheduledDateTime,
-          description: form.description
+          description: form.description,
+          reminderMinutes: form.reminderMinutes,
         })
       })
 
@@ -609,14 +612,63 @@ export default function PublicBookingPage() {
 
           {step === 'CONFIRM' && !loading && (
             <form onSubmit={handleFinalSubmit} className="flex flex-col gap-3">
+              {/* Resumo do agendamento */}
+              {form.date && form.time && (
+                <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 flex flex-col gap-1.5">
+                  {form.serviceId && services.find(s => s.id === form.serviceId) && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-semibold text-foreground">{services.find(s => s.id === form.serviceId)?.name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{format(new Date(`${form.date}T00:00:00`), "dd/MM/yyyy")} às {form.time}</span>
+                  </div>
+                  {form.employeeId && form.employeeId !== 'none' && employees.find(e => e.id === form.employeeId) && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <User className="h-3.5 w-3.5" />
+                      <span>{employees.find(e => e.id === form.employeeId)?.name}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
                 <Label className="text-[10px] text-muted-foreground ml-1">Observações (opcional)</Label>
-                <Input
+                <Textarea
                   placeholder="Ex: Cabelo curto, barba desenhada..."
+                  rows={2}
                   value={form.description}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  className="resize-none text-sm"
                 />
               </div>
+
+              {/* Lembrete */}
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-[10px] text-muted-foreground ml-1 flex items-center gap-1">
+                  <Bell className="h-3 w-3" />
+                  Lembrete antes do horário (opcional)
+                </Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[null, 15, 30, 60, 120, 180, 360, 720, 1440].map((min) => (
+                    <button
+                      key={min ?? 'none'}
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, reminderMinutes: min }))}
+                      className={cn(
+                        "h-9 rounded-lg border text-xs font-semibold transition-colors",
+                        form.reminderMinutes === min
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-muted-foreground hover:border-primary/50"
+                      )}
+                    >
+                      {min === null ? "Sem" : min < 60 ? `${min}min` : min === 60 ? "1h" : min < 1440 ? `${min / 60}h` : "1 dia"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <Button type="submit" className="w-full font-bold" disabled={submitting}>
                 {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                 Finalizar Agendamento

@@ -1,7 +1,7 @@
-import React, { useState } from "react"
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native"
+import React, { useState, useEffect, useCallback } from "react"
+import { View, Text, TextInput, Pressable, ActivityIndicator, Switch } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { Ionicons } from "@expo/vector-icons"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useRouter } from "expo-router"
 import { useAppointmentForm } from "hooks/use-appointment-form.hook"
 import { DatePickerInput } from "components/DatePickerInput"
@@ -9,8 +9,10 @@ import { TimePickerInput } from "components/TimePickerInput"
 import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
 import { SelectPickerInput } from "components/SelectPickerInput"
+import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { API_CONFIG, secureApiCall } from "lib/api"
 
 export default function NewAppointmentScreen() {
   const router = useRouter()
@@ -23,6 +25,50 @@ export default function NewAppointmentScreen() {
 
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
+  const [availableSlots, setAvailableSlots] = useState<string[] | undefined>(undefined)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+
+  const fetchAvailability = useCallback(async (d: string, serviceId: string, employeeId: string) => {
+    if (!d) return
+    setLoadingSlots(true)
+    setAvailableSlots(undefined)
+    setTime("")
+    try {
+      const params = new URLSearchParams({ date: d })
+      if (serviceId && serviceId !== "none") params.set("serviceId", serviceId)
+      if (employeeId && employeeId !== "none") params.set("employeeId", employeeId)
+      const res = await secureApiCall<any[]>(
+        `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?${params.toString()}`,
+        { method: "GET" }
+      )
+      if (!res.hasError && res.data) {
+        const slots = res.data
+          .filter((s: any) => s.isAvailable)
+          .map((s: any) => {
+            const d = new Date(s.startTime)
+            return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+          })
+        setAvailableSlots(slots)
+      } else {
+        setAvailableSlots([])
+      }
+    } catch {
+      setAvailableSlots([])
+    } finally {
+      setLoadingSlots(false)
+    }
+  }, [])
+
+  // Re-fetch quando data, serviço ou profissional mudam (exceto em encaixe)
+  useEffect(() => {
+    if (form.isEncaixe) {
+      setAvailableSlots(undefined)
+      return
+    }
+    if (date) {
+      fetchAvailability(date, form.serviceId, form.employeeId)
+    }
+  }, [date, form.serviceId, form.employeeId, form.isEncaixe])
 
   function handleDateChange(d: string) {
     setDate(d)
@@ -61,21 +107,15 @@ export default function NewAppointmentScreen() {
   ]
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <View className="bg-white px-5 pt-4 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-          <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
-            <Ionicons name="chevron-back" size={20} color="#18181b" />
-          </Pressable>
-          <Text className="text-xl font-black text-zinc-900">Novo Agendamento</Text>
-        </View>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
+      <ScreenHeader title="Novo Agendamento" showBack onBack={() => router.back()} />
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={primaryColor} size="large" />
           </View>
         ) : (
-          <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
             {showClients && (
               <View className="mb-4">
@@ -123,7 +163,12 @@ export default function NewAppointmentScreen() {
               </View>
               <View className="flex-1">
                 <Text className="text-zinc-700 font-bold text-sm mb-1.5">Horário *</Text>
-                <TimePickerInput value={time} onChange={handleTimeChange} />
+                <TimePickerInput
+                  value={time}
+                  onChange={handleTimeChange}
+                  availableSlots={form.isEncaixe ? undefined : availableSlots}
+                  loadingSlots={!form.isEncaixe && loadingSlots}
+                />
               </View>
             </View>
 
@@ -155,7 +200,7 @@ export default function NewAppointmentScreen() {
               />
             </View>
 
-            <View className="mb-6">
+            <View className="mb-4">
               <Text className="text-zinc-700 font-bold text-sm mb-1.5">Observações</Text>
               <TextInput
                 className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base h-24"
@@ -168,6 +213,19 @@ export default function NewAppointmentScreen() {
               />
             </View>
 
+            <View className="flex-row items-center justify-between bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 mb-6">
+              <View>
+                <Text className="text-zinc-700 font-bold text-sm">Encaixe</Text>
+                <Text className="text-zinc-400 text-xs mt-0.5">Atendimento sem hora marcada</Text>
+              </View>
+              <Switch
+                value={form.isEncaixe ?? false}
+                onValueChange={(v) => setForm((p) => ({ ...p, isEncaixe: v }))}
+                trackColor={{ false: "#e4e4e7", true: primaryColor + "80" }}
+                thumbColor={form.isEncaixe ? primaryColor : "#a1a1aa"}
+              />
+            </View>
+
             <Pressable
               onPress={() => createAppointment(form)}
               disabled={isCreating}
@@ -177,9 +235,8 @@ export default function NewAppointmentScreen() {
               {isCreating ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar Agendamento</Text>}
             </Pressable>
 
-          </ScrollView>
+          </KeyboardAwareScrollView>
         )}
-      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }

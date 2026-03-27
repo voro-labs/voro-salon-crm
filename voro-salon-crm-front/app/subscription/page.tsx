@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import {
-  CheckCircle2, Clock, CreditCard, Loader2, Zap, ArrowRight, AlertCircle,
+  CheckCircle2, Clock, CreditCard, Loader2, ArrowRight, AlertCircle, Info,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -14,6 +14,7 @@ import { fetcher } from "@/lib/fetcher"
 import { useSubscription } from "@/hooks/use-subscription.hook"
 import { useAuth } from "@/contexts/auth.context"
 import type { SubscriptionPlanDto, CheckoutResultDto } from "@/types/subscription.interface"
+import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
 
 function statusLabel(status: string) {
   switch (status) {
@@ -47,6 +48,7 @@ export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanDto | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [openModuleKey, setOpenModuleKey] = useState<string | null>(null)
 
   // Guard de autenticação
   useEffect(() => {
@@ -215,10 +217,26 @@ export default function SubscriptionPage() {
                       : <div>Apenas o proprietário</div>
                     }
                     <div>{plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes`}</div>
-                    {plan.hasFinancial && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Módulo financeiro</div>}
-                    {plan.hasAnamnesis && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Ficha de anamnese</div>}
-                    {plan.hasBooking && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Agendamento online</div>}
-                    {plan.hasWhatsAppBot && <div className="flex items-center gap-1"><Zap className="h-3 w-3" /> Bot WhatsApp</div>}
+                    {plan.hasFinancial && (
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("financial") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("financial")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
+                        <CheckCircle2 className="h-3 w-3 text-primary" /> Finanças <Info className="h-3 w-3 ml-auto opacity-60" />
+                      </div>
+                    )}
+                    {plan.hasAnamnesis && (
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("anamnesis") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("anamnesis")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
+                        <CheckCircle2 className="h-3 w-3 text-primary" /> Anamnese <Info className="h-3 w-3 ml-auto opacity-60" />
+                      </div>
+                    )}
+                    {plan.hasBooking && (
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("booking") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("booking")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
+                        <CheckCircle2 className="h-3 w-3 text-primary" /> Agendamento Online <Info className="h-3 w-3 ml-auto opacity-60" />
+                      </div>
+                    )}
+                    {plan.hasWhatsAppBot && (
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("whatsappBot") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("whatsappBot")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
+                        <CheckCircle2 className="h-3 w-3 text-primary" /> Bot WhatsApp <Info className="h-3 w-3 ml-auto opacity-60" />
+                      </div>
+                    )}
                   </div>
                   {!isCurrent && (
                     <div className="mt-3 text-xs font-semibold text-primary flex items-center gap-1">
@@ -231,6 +249,9 @@ export default function SubscriptionPage() {
           </div>
         )}
       </div>
+
+      {/* Module info dialog */}
+      <ModuleInfoDialog moduleKey={openModuleKey} onClose={() => setOpenModuleKey(null)} />
 
       {/* Dialog de confirmação */}
       <Dialog open={!!selectedPlan} onOpenChange={(o) => { if (!o) { setSelectedPlan(null); setError(null) } }}>

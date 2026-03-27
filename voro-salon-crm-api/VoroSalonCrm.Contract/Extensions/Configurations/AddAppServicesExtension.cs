@@ -15,6 +15,7 @@ using VoroSalonCrm.Infrastructure.Email;
 using VoroSalonCrm.Infrastructure.Integration;
 using VoroSalonCrm.Infrastructure.Repositories;
 using VoroSalonCrm.Infrastructure.Repositories.Identity;
+using Microsoft.Extensions.Hosting;
 using VoroSalonCrm.Infrastructure.Seeds;
 using VoroSalonCrm.Infrastructure.UnitOfWork;
 using VoroSalonCrm.Shared.Utils;
@@ -71,6 +72,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IServiceRepository, ServiceRepository>();
             services.AddScoped<IServiceRecordRepository, ServiceRecordRepository>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+            services.AddScoped<ITimeSlotBlockRepository, TimeSlotBlockRepository>();
             services.AddScoped<ITenantModuleRepository, TenantModuleRepository>();
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<ITransactionCategoryRepository, TransactionCategoryRepository>();
@@ -82,6 +84,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ISubscriptionCouponRepository, SubscriptionCouponRepository>();
             services.AddScoped<IPushTokenRepository, PushTokenRepository>();
             services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
+            services.AddScoped<IClientMembershipPlanRepository, ClientMembershipPlanRepository>();
+            services.AddScoped<IClientMembershipRepository, ClientMembershipRepository>();
             #endregion
 
             #region Identity Services
@@ -97,6 +101,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IExportService, ExportService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<ITimeSlotBlockService, TimeSlotBlockService>();
             services.AddScoped<ITenantModuleService, TenantModuleService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IPublicBookingService, PublicBookingService>();
@@ -107,7 +112,10 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
             services.AddScoped<IExpoPushNotificationService, ExpoPushNotificationService>();
             services.AddScoped<IUserNotificationService, UserNotificationService>();
+            services.AddScoped<IClientMembershipService, ClientMembershipService>();
             #endregion
+
+            services.AddHostedService<AppointmentReminderBackgroundService>();
 
             return services;
         }

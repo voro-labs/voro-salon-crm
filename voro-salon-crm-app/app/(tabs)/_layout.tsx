@@ -6,6 +6,7 @@ import useSWR, { useSWRConfig } from "swr"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { API_CONFIG } from "lib/api"
 import { fetcher } from "lib/fetcher"
+import { ScrollableTabBar } from "components/ScrollableTabBar"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -74,21 +75,13 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <ScrollableTabBar {...props} />}
       screenOptions={({ route }) => {
         const icon = TAB_ICONS[route.name] ?? TAB_ICONS["index"]
         return {
           headerShown: false,
           tabBarActiveTintColor: primaryColor,
           tabBarInactiveTintColor: "#9ca3af",
-          tabBarStyle: {
-            backgroundColor: "#ffffff",
-            borderTopWidth: 1,
-            borderTopColor: "#f4f4f5",
-            paddingBottom: 6,
-            paddingTop: 6,
-            height: 64,
-          },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
           tabBarLabel: getTabLabel(route.name),
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={size} color={color} />

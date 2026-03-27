@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react"
+import { useState } from "react"
+import { ArrowLeft, Loader2, Trash2, UserCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +27,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { CurrencyInput } from "@/components/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useAppointmentDetail } from "@/hooks/use-appointment-detail.hook"
@@ -34,6 +43,9 @@ import { appointmentStatusConfig } from "@/components/ui/custom/status-badge"
 export default function AppointmentDetailPage() {
   const params = useParams()
   const appointmentId = params.id as string
+  const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState<number | null>(null)
+  const [selectedEmployeeForCompletion, setSelectedEmployeeForCompletion] = useState<string>("none")
 
   const {
     appointment,
@@ -51,6 +63,33 @@ export default function AppointmentDetailPage() {
     updateStatus,
     deleteAppointment,
   } = useAppointmentDetail(appointmentId)
+
+  async function handleStatusClick(statusKey: number) {
+    const COMPLETED_STATUS = 2
+    const needsEmployeeSelection =
+      statusKey === COMPLETED_STATUS &&
+      (form.employeeId === "none" || !form.employeeId) &&
+      employees && employees.length > 0
+
+    if (needsEmployeeSelection) {
+      setPendingStatus(statusKey)
+      setSelectedEmployeeForCompletion("none")
+      setEmployeeDialogOpen(true)
+    } else {
+      await updateStatus(statusKey)
+    }
+  }
+
+  async function handleConfirmEmployeeAndComplete() {
+    if (pendingStatus === null) return
+    if (selectedEmployeeForCompletion !== "none") {
+      setForm(p => ({ ...p, employeeId: selectedEmployeeForCompletion }))
+      await updateAppointment({ ...form, employeeId: selectedEmployeeForCompletion })
+    }
+    await updateStatus(pendingStatus)
+    setEmployeeDialogOpen(false)
+    setPendingStatus(null)
+  }
 
   if (isLoading || !appointment || !clients || !services) {
     return (
@@ -273,7 +312,7 @@ export default function AppointmentDetailPage() {
                       key={key}
                       variant={isActive ? "default" : "outline"}
                       className={`justify-start ${isActive ? config.color + " border-none" : ""}`}
-                      onClick={() => updateStatus(parseInt(key))}
+                      onClick={() => handleStatusClick(parseInt(key))}
                       disabled={isSaving}
                     >
                       <StatusIcon className="mr-2 h-4 w-4" />
@@ -295,6 +334,43 @@ export default function AppointmentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Dialog: selecionar funcionário ao concluir agendamento sem profissional */}
+      <Dialog open={employeeDialogOpen} onOpenChange={(o) => { if (!o) { setEmployeeDialogOpen(false); setPendingStatus(null) } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" />
+              Quem realizou o serviço?
+            </DialogTitle>
+            <DialogDescription>
+              Este agendamento não tem funcionário definido. Selecione quem atendeu o cliente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Select value={selectedEmployeeForCompletion} onValueChange={setSelectedEmployeeForCompletion}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar funcionário" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Não informar</SelectItem>
+                {employees?.map((emp: any) => (
+                  <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setEmployeeDialogOpen(false); setPendingStatus(null) }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmEmployeeAndComplete} disabled={isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Concluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthGuard>
   )
 }

@@ -1,23 +1,35 @@
 import React, { useState, useEffect } from "react"
 import {
-  View, Text, TextInput, Pressable,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  View, Text, TextInput, Pressable, ActivityIndicator, ScrollView,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import * as SecureStore from "expo-secure-store"
 import { API_CONFIG } from "lib/api"
 import { useTenantTheme } from "@/contexts/tenant-theme.context"
 
-const { primaryColor: PRIMARY } = useTenantTheme()
-
 const KEY_SLUG = "voro_booking_slug"
 const KEY_TENANT_NAME = "voro_booking_tenant_name"
+const KEY_HISTORY = "voro_booking_history"
+
+type HistoryEntry = { slug: string; name: string; visitedAt: string }
+
+async function saveToHistory(slug: string, name: string) {
+  try {
+    const raw = await SecureStore.getItemAsync(KEY_HISTORY)
+    const history: HistoryEntry[] = raw ? JSON.parse(raw) : []
+    const filtered = history.filter((h) => h.slug !== slug)
+    const updated = [{ slug, name, visitedAt: new Date().toISOString() }, ...filtered].slice(0, 5)
+    await SecureStore.setItemAsync(KEY_HISTORY, JSON.stringify(updated))
+  } catch {}
+}
 
 export default function BookingEntryScreen() {
   const router = useRouter()
   const { change } = useLocalSearchParams<{ change?: string }>()
+  const { primaryColor: PRIMARY } = useTenantTheme()
 
   const [initializing, setInitializing] = useState(true)
   const [savedSlug, setSavedSlug] = useState<string | null>(null)
@@ -26,23 +38,27 @@ export default function BookingEntryScreen() {
   const [slug, setSlug] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [history, setHistory] = useState<HistoryEntry[]>([])
 
-  // Carrega slug salvo ao abrir
   useEffect(() => {
     async function loadSaved() {
-      const s = await SecureStore.getItemAsync(KEY_SLUG)
-      const name = await SecureStore.getItemAsync(KEY_TENANT_NAME)
+      const [s, name, historyRaw] = await Promise.all([
+        SecureStore.getItemAsync(KEY_SLUG),
+        SecureStore.getItemAsync(KEY_TENANT_NAME),
+        SecureStore.getItemAsync(KEY_HISTORY),
+      ])
+      if (historyRaw) {
+        try { setHistory(JSON.parse(historyRaw)) } catch {}
+      }
       if (s) {
         setSavedSlug(s)
         setSavedTenantName(name)
-        // Se vier de "Trocar salão", mostra a tela em vez de redirecionar
         if (change === "1") {
           setChanging(true)
           setSlug(s)
           setInitializing(false)
           return
         }
-        // Navega automaticamente para o salão salvo
         router.replace(`/booking/${s}`)
         return
       }
@@ -51,28 +67,28 @@ export default function BookingEntryScreen() {
     loadSaved()
   }, [])
 
+  async function navigateToSlug(trimmed: string, tenantName: string) {
+    await Promise.all([
+      SecureStore.setItemAsync(KEY_SLUG, trimmed),
+      SecureStore.setItemAsync(KEY_TENANT_NAME, tenantName),
+      saveToHistory(trimmed, tenantName),
+    ])
+  }
+
   async function handleContinue() {
     const trimmed = slug.trim().toLowerCase()
     if (!trimmed) return
     setLoading(true)
     setError("")
     try {
-      const res = await fetch(
-        `${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`
-      )
+      const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`)
       if (!res.ok) {
         setError("Salão não encontrado. Verifique o código informado.")
         return
       }
       const json = await res.json()
       const tenantName: string = json.data?.name ?? json.name ?? trimmed
-
-      // Salva para uso futuro
-      await Promise.all([
-        SecureStore.setItemAsync(KEY_SLUG, trimmed),
-        SecureStore.setItemAsync(KEY_TENANT_NAME, tenantName),
-      ])
-
+      await navigateToSlug(trimmed, tenantName)
       router.push(`/booking/${trimmed}`)
     } catch {
       setError("Erro de conexão. Tente novamente.")
@@ -86,7 +102,7 @@ export default function BookingEntryScreen() {
     router.push(`/booking/${savedSlug}`)
   }
 
-  async function handleChangeSlug() {
+  function handleChangeSlug() {
     setChanging(true)
     setSlug(savedSlug ?? "")
     setError("")
@@ -98,21 +114,14 @@ export default function BookingEntryScreen() {
     setLoading(true)
     setError("")
     try {
-      const res = await fetch(
-        `${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`
-      )
+      const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${trimmed}`)
       if (!res.ok) {
         setError("Salão não encontrado. Verifique o código informado.")
         return
       }
       const json = await res.json()
       const tenantName: string = json.data?.name ?? json.name ?? trimmed
-
-      await Promise.all([
-        SecureStore.setItemAsync(KEY_SLUG, trimmed),
-        SecureStore.setItemAsync(KEY_TENANT_NAME, tenantName),
-      ])
-
+      await navigateToSlug(trimmed, tenantName)
       setSavedSlug(trimmed)
       setSavedTenantName(tenantName)
       setChanging(false)
@@ -124,7 +133,13 @@ export default function BookingEntryScreen() {
     }
   }
 
-  // Enquanto verifica slug salvo
+  async function handleSelectHistory(entry: HistoryEntry) {
+    await navigateToSlug(entry.slug, entry.name)
+    setSavedSlug(entry.slug)
+    setSavedTenantName(entry.name)
+    router.push(`/booking/${entry.slug}`)
+  }
+
   if (initializing) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
@@ -134,140 +149,166 @@ export default function BookingEntryScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+      {/* Header */}
+      <View className="px-5 pt-4 pb-4 flex-row items-center gap-3 border-b border-zinc-100">
+        <Pressable
+          onPress={() => {
+            if (changing) { setChanging(false); setError("") }
+            else router.back()
+          }}
+          className="h-9 w-9 rounded-xl items-center justify-center border border-zinc-100"
+        >
+          <Ionicons name="chevron-back" size={20} color="#18181b" />
+        </Pressable>
+        <Text className="text-xl font-black text-zinc-900">Agendar</Text>
+      </View>
+
+      <KeyboardAwareScrollView
         className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View className="px-5 pt-4 pb-4 flex-row items-center gap-3 border-b border-zinc-100">
-          <Pressable
-            onPress={() => {
-              if (changing) { setChanging(false); setError("") }
-              else router.back()
-            }}
-            className="h-9 w-9 rounded-xl items-center justify-center border border-zinc-100"
-          >
-            <Ionicons name="chevron-back" size={20} color="#18181b" />
-          </Pressable>
-          <Text className="text-xl font-black text-zinc-900">Agendar</Text>
+        <View
+          className="h-16 w-16 rounded-2xl items-center justify-center mb-6"
+          style={{ backgroundColor: PRIMARY + "18" }}
+        >
+          <Ionicons name="calendar-outline" size={32} color={PRIMARY} />
         </View>
 
-        <View className="flex-1 px-6 pt-10">
-          <View
-            className="h-16 w-16 rounded-2xl items-center justify-center mb-6"
-            style={{ backgroundColor: PRIMARY + "18" }}
-          >
-            <Ionicons name="calendar-outline" size={32} color={PRIMARY} />
-          </View>
+        {/* ── Salão salvo ──────────────────────────────────────────────── */}
+        {savedSlug && !changing ? (
+          <>
+            <Text className="text-2xl font-black text-zinc-900 mb-2">Seu salão</Text>
+            <Text className="text-zinc-500 font-medium mb-8">
+              Já temos o código do seu salão salvo. Pode continuar diretamente!
+            </Text>
 
-          {/* ── Salão salvo ──────────────────────────────────────────────── */}
-          {savedSlug && !changing ? (
-            <>
-              <Text className="text-2xl font-black text-zinc-900 mb-2">Seu salão</Text>
-              <Text className="text-zinc-500 font-medium mb-8">
-                Já temos o código do seu salão salvo. Pode continuar diretamente!
-              </Text>
+            <View className="border border-zinc-200 rounded-2xl px-4 py-4 flex-row items-center gap-3 mb-4">
+              <View
+                className="h-10 w-10 rounded-xl items-center justify-center"
+                style={{ backgroundColor: PRIMARY + "18" }}
+              >
+                <Ionicons name="storefront-outline" size={20} color={PRIMARY} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-zinc-900 font-black text-base">
+                  {savedTenantName ?? savedSlug}
+                </Text>
+                <Text className="text-zinc-400 font-medium text-sm">{savedSlug}</Text>
+              </View>
+              <View className="px-2 py-1 rounded-lg" style={{ backgroundColor: "#22c55e18" }}>
+                <Text className="text-xs font-bold" style={{ color: "#16a34a" }}>Salvo</Text>
+              </View>
+            </View>
 
-              {/* Saved salon card */}
-              <View className="border border-zinc-200 rounded-2xl px-4 py-4 flex-row items-center gap-3 mb-4">
-                <View
-                  className="h-10 w-10 rounded-xl items-center justify-center"
-                  style={{ backgroundColor: PRIMARY + "18" }}
-                >
-                  <Ionicons name="storefront-outline" size={20} color={PRIMARY} />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-zinc-900 font-black text-base">
-                    {savedTenantName ?? savedSlug}
-                  </Text>
-                  <Text className="text-zinc-400 font-medium text-sm">{savedSlug}</Text>
-                </View>
-                <View
-                  className="px-2 py-1 rounded-lg"
-                  style={{ backgroundColor: "#22c55e18" }}
-                >
-                  <Text className="text-xs font-bold" style={{ color: "#16a34a" }}>Salvo</Text>
+            <Pressable
+              onPress={handleUseSaved}
+              className="h-14 rounded-2xl items-center justify-center mb-3"
+              style={{ backgroundColor: PRIMARY }}
+            >
+              <View className="flex-row items-center gap-2">
+                <Text className="text-white font-black text-base">Continuar para agendamento</Text>
+                <Ionicons name="arrow-forward" size={18} color="white" />
+              </View>
+            </Pressable>
+
+            <Pressable
+              onPress={handleChangeSlug}
+              className="h-12 rounded-2xl items-center justify-center border border-zinc-200 flex-row gap-2"
+            >
+              <Ionicons name="swap-horizontal-outline" size={18} color="#71717a" />
+              <Text className="text-zinc-600 font-bold text-sm">Trocar salão</Text>
+            </Pressable>
+          </>
+        ) : (
+          /* ── Entrada de slug ──────────────────────────────────────────── */
+          <>
+            <Text className="text-2xl font-black text-zinc-900 mb-2">
+              {changing ? "Trocar de salão" : "Qual é o código do salão?"}
+            </Text>
+            <Text className="text-zinc-500 font-medium mb-8">
+              {changing
+                ? "Insira o código do novo estabelecimento."
+                : "Insira o código do estabelecimento onde deseja agendar seu serviço."
+              }
+            </Text>
+
+            <View className="border border-zinc-200 rounded-2xl px-4 py-3 flex-row items-center gap-3 mb-3">
+              <Ionicons name="search-outline" size={20} color="#a1a1aa" />
+              <TextInput
+                className="flex-1 text-zinc-900 font-semibold text-base py-0"
+                placeholder="Ex: meu-salao"
+                placeholderTextColor="#a1a1aa"
+                value={slug}
+                onChangeText={(t) => { setSlug(t); setError("") }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="go"
+                onSubmitEditing={changing ? handleConfirmChange : handleContinue}
+                autoFocus={changing}
+              />
+            </View>
+
+            {error ? (
+              <View className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex-row items-center gap-2 mb-3">
+                <Ionicons name="alert-circle" size={18} color="#ef4444" />
+                <Text className="text-red-600 font-semibold text-sm flex-1">{error}</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              onPress={changing ? handleConfirmChange : handleContinue}
+              disabled={loading || !slug.trim()}
+              className="h-14 rounded-2xl items-center justify-center mt-2"
+              style={{ backgroundColor: (!slug.trim() || loading) ? PRIMARY + "55" : PRIMARY }}
+            >
+              {loading
+                ? <ActivityIndicator color="white" />
+                : (
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-white font-black text-base">
+                      {changing ? "Confirmar" : "Continuar"}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={18} color="white" />
+                  </View>
+                )
+              }
+            </Pressable>
+
+            {/* Histórico de estabelecimentos */}
+            {history.length > 0 && (
+              <View className="mt-8">
+                <Text className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">
+                  Usados recentemente
+                </Text>
+                <View className="gap-2">
+                  {history.map((entry) => (
+                    <Pressable
+                      key={entry.slug}
+                      onPress={() => handleSelectHistory(entry)}
+                      className="border border-zinc-100 rounded-2xl px-4 py-3 flex-row items-center gap-3 bg-zinc-50"
+                    >
+                      <View
+                        className="h-9 w-9 rounded-xl items-center justify-center"
+                        style={{ backgroundColor: PRIMARY + "15" }}
+                      >
+                        <Ionicons name="storefront-outline" size={18} color={PRIMARY} />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-zinc-900 font-bold text-sm">{entry.name}</Text>
+                        <Text className="text-zinc-400 text-xs font-medium">{entry.slug}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color="#d4d4d8" />
+                    </Pressable>
+                  ))}
                 </View>
               </View>
-
-              <Pressable
-                onPress={handleUseSaved}
-                className="h-14 rounded-2xl items-center justify-center mb-3"
-                style={{ backgroundColor: PRIMARY }}
-              >
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-white font-black text-base">Continuar para agendamento</Text>
-                  <Ionicons name="arrow-forward" size={18} color="white" />
-                </View>
-              </Pressable>
-
-              <Pressable
-                onPress={handleChangeSlug}
-                className="h-12 rounded-2xl items-center justify-center border border-zinc-200 flex-row gap-2"
-              >
-                <Ionicons name="swap-horizontal-outline" size={18} color="#71717a" />
-                <Text className="text-zinc-600 font-bold text-sm">Trocar salão</Text>
-              </Pressable>
-            </>
-          ) : (
-            /* ── Entrada de slug ──────────────────────────────────────────── */
-            <>
-              <Text className="text-2xl font-black text-zinc-900 mb-2">
-                {changing ? "Trocar de salão" : "Qual é o código do salão?"}
-              </Text>
-              <Text className="text-zinc-500 font-medium mb-8">
-                {changing
-                  ? "Insira o código do novo estabelecimento."
-                  : "Insira o código do estabelecimento onde deseja agendar seu serviço."
-                }
-              </Text>
-
-              <View className="border border-zinc-200 rounded-2xl px-4 py-3 flex-row items-center gap-3 mb-3">
-                <Ionicons name="search-outline" size={20} color="#a1a1aa" />
-                <TextInput
-                  className="flex-1 text-zinc-900 font-semibold text-base py-0"
-                  placeholder="Ex: meu-salao"
-                  placeholderTextColor="#a1a1aa"
-                  value={slug}
-                  onChangeText={(t) => { setSlug(t); setError("") }}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="go"
-                  onSubmitEditing={changing ? handleConfirmChange : handleContinue}
-                  autoFocus={changing}
-                />
-              </View>
-
-              {error ? (
-                <View className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex-row items-center gap-2 mb-3">
-                  <Ionicons name="alert-circle" size={18} color="#ef4444" />
-                  <Text className="text-red-600 font-semibold text-sm flex-1">{error}</Text>
-                </View>
-              ) : null}
-
-              <Pressable
-                onPress={changing ? handleConfirmChange : handleContinue}
-                disabled={loading || !slug.trim()}
-                className="h-14 rounded-2xl items-center justify-center mt-2"
-                style={{ backgroundColor: (!slug.trim() || loading) ? PRIMARY + "55" : PRIMARY }}
-              >
-                {loading
-                  ? <ActivityIndicator color="white" />
-                  : (
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-white font-black text-base">
-                        {changing ? "Confirmar" : "Continuar"}
-                      </Text>
-                      <Ionicons name="arrow-forward" size={18} color="white" />
-                    </View>
-                  )
-                }
-              </Pressable>
-            </>
-          )}
-        </View>
-      </KeyboardAvoidingView>
+            )}
+          </>
+        )}
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   )
 }

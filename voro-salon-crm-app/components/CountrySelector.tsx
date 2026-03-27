@@ -42,7 +42,7 @@ export function CountrySelector({ value, onChange }: CountrySelectorProps) {
     <>
       <Pressable
         onPress={() => setOpen(true)}
-        className="flex-row items-center gap-2 bg-zinc-50 border border-zinc-200 rounded-2xl px-3 py-3 h-[50px]"
+        className="flex-row items-center gap-2 bg-zinc-50 border border-zinc-200 rounded-2xl px-3 py-3"
       >
         <Image
           source={{ uri: selected.flagUrl }}

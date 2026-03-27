@@ -15,6 +15,7 @@ export interface NewAppointmentForm {
   description: string
   amount: number
   notes: string
+  isEncaixe?: boolean
 }
 
 const DEFAULT_FORM: NewAppointmentForm = {
@@ -55,6 +56,7 @@ export function useAppointmentForm() {
       ...p,
       serviceId,
       amount: selected?.price ?? p.amount,
+      durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
       description: p.description || selected?.name || "",
     }))
   }
@@ -68,6 +70,14 @@ export function useAppointmentForm() {
       toast.error("Por favor, selecione uma data e hora.")
       return false
     }
+    if (!f.serviceId || f.serviceId === "none") {
+      toast.error("Por favor, selecione um serviço.")
+      return false
+    }
+    if (!f.durationMinutes || f.durationMinutes <= 0) {
+      toast.error("Por favor, informe a duração do serviço.")
+      return false
+    }
 
     setIsCreating(true)
     try {
@@ -79,6 +89,7 @@ export function useAppointmentForm() {
           scheduledDateTime: date.toISOString(),
           serviceId: f.serviceId === "none" ? null : f.serviceId,
           employeeId: f.employeeId === "none" ? null : f.employeeId,
+          isEncaixe: f.isEncaixe ?? false,
         }),
       })
       if (res.hasError) {

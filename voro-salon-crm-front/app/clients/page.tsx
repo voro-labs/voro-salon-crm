@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/ui/custom/page-header"
 import { EmptyState } from "@/components/ui/custom/empty-state"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { PlanLimitModal } from "@/components/ui/custom/plan-limit-modal"
+import { ExportMenu } from "@/components/ui/custom/export-menu"
 
 export default function ClientesPage() {
   const router = useRouter()
@@ -62,6 +63,17 @@ export default function ClientesPage() {
                   {currentCount}/{maxClients}
                 </span>
               )}
+              <ExportMenu
+                rows={data}
+                filename="clientes"
+                columns={[
+                  { header: "Nome", value: (c: any) => c.name },
+                  { header: "Telefone", value: (c: any) => c.phone ?? "" },
+                  { header: "E-mail", value: (c: any) => c.email ?? "" },
+                  { header: "Observações", value: (c: any) => c.notes ?? "" },
+                  { header: "Qtd. Serviços", value: (c: any) => c.serviceCount ?? 0 },
+                ]}
+              />
               <Button size="sm" onClick={handleNewClient}>
                 <Plus className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Novo Cliente</span>

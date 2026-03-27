@@ -1,10 +1,11 @@
 import React from "react"
 import {
-  View, Text, TextInput, Pressable, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  View, Text, TextInput, Pressable,
+  ActivityIndicator,
 } from "react-native"
 import { router } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useClientForm } from "hooks/use-client-form.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { PhoneInput } from "components/PhoneInput"
@@ -27,14 +28,14 @@ export default function NewClientScreen() {
   const { primaryColor } = useTenantTheme()
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
       <ScreenHeader title="Novo Cliente" showBack onBack={() => router.back()} />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView
-          className="flex-1"
-          contentContainerStyle={{ padding: 16 }}
-          showsVerticalScrollIndicator={false}
-        >
+      <KeyboardAwareScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: 16 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
           <View className="bg-white rounded-3xl border border-zinc-100 p-5">
             <Text className="text-base font-black text-zinc-900 mb-4">Dados do Cliente</Text>
 
@@ -97,8 +98,7 @@ export default function NewClientScreen() {
               : <Text className="text-white font-black text-base">Salvar Cliente</Text>
             }
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   )
 }

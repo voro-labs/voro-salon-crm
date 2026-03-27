@@ -50,6 +50,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<TenantSubscription> TenantSubscriptions { get; set; }
         public DbSet<SubscriptionCoupon> SubscriptionCoupons { get; set; }
 
+        public DbSet<TimeSlotBlock> TimeSlotBlocks { get; set; }
+
+        public DbSet<ClientMembershipPlan> ClientMembershipPlans { get; set; }
+        public DbSet<ClientMembership> ClientMemberships { get; set; }
+
         public DbSet<PushToken> PushTokens { get; set; }
         public DbSet<UserNotification> UserNotifications { get; set; }
 
@@ -159,6 +164,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             builder.Entity<AnamnesisQuestion>().HasQueryFilter(aq =>
                 !aq.IsDeleted && aq.TenantId == _currentUser.TenantId);
+
+            builder.Entity<TimeSlotBlock>().HasQueryFilter(b =>
+                b.TenantId == _currentUser.TenantId);
 
             builder.Entity<AnamnesisSheet>().HasQueryFilter(asheet =>
                 !asheet.IsDeleted && asheet.TenantId == _currentUser.TenantId);
@@ -634,6 +642,27 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .OnDelete(DeleteBehavior.Cascade);
 
                 b.HasIndex(asign => asign.SheetId);
+            });
+
+            // ---------------------------
+            // TIME SLOT BLOCK
+            // ---------------------------
+            builder.Entity<TimeSlotBlock>(b =>
+            {
+                b.HasKey(tsb => tsb.Id);
+                b.Property(tsb => tsb.StartDateTime).IsRequired();
+                b.Property(tsb => tsb.EndDateTime).IsRequired();
+                b.Property(tsb => tsb.Reason).HasMaxLength(300);
+                b.Property(tsb => tsb.ClientMessage).HasMaxLength(300);
+                b.Property(tsb => tsb.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(tsb => tsb.TenantId);
+                b.HasIndex(tsb => new { tsb.TenantId, tsb.StartDateTime });
+
+                b.HasOne(tsb => tsb.Tenant)
+                 .WithMany()
+                 .HasForeignKey(tsb => tsb.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ---------------------------

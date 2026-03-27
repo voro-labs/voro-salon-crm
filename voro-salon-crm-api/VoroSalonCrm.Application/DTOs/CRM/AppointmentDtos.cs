@@ -10,7 +10,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         int DurationMinutes,
         string? Description,
         decimal Amount,
-        string? Notes
+        string? Notes,
+        bool IsEncaixe = false
     );
 
     public record UpdateAppointmentDto(
@@ -21,7 +22,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         AppointmentStatus? Status,
         string? Description,
         decimal? Amount,
-        string? Notes
+        string? Notes,
+        bool? IsEncaixe = null
     );
 
     public record AppointmentDto(
@@ -37,12 +39,15 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Description,
         decimal Amount,
         string? Notes,
-        DateTimeOffset CreatedAt
+        DateTimeOffset CreatedAt,
+        bool IsEncaixe = false
     );
 
     public record AvailabilitySlotDto(
         DateTimeOffset StartTime,
         DateTimeOffset EndTime,
-        bool IsAvailable
+        bool IsAvailable,
+        bool IsBlocked = false,
+        string? BlockReason = null
     );
 }

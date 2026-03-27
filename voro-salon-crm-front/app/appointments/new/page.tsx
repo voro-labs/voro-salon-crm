@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Loader2, Calendar as CalendarIcon } from "lucide-react"
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,6 +28,7 @@ import { QuickCreateEmployee } from "@/components/custom/quick-create-employee"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentForm } from "@/hooks/use-appointment-form.hook"
+import { Switch } from "@/components/ui/switch"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -52,6 +53,7 @@ export default function NovoAgendamentoPage() {
   } = useAppointmentForm()
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [isEncaixe, setIsEncaixe] = useState(false)
 
   const { data: availability, isLoading: loadingAvailability } = useSWR(
     selectedDate
@@ -90,7 +92,7 @@ export default function NovoAgendamentoPage() {
           </CardHeader>
           <CardContent>
             <form
-              onSubmit={(e) => { e.preventDefault(); createAppointment(form) }}
+              onSubmit={(e) => { e.preventDefault(); createAppointment({ ...form, isEncaixe } as any) }}
               className="flex flex-col gap-5"
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -255,22 +257,29 @@ export default function NovoAgendamentoPage() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
-                        {visibleSlots.map((slot: any) => (
-                          <Button
-                            key={slot.startTime}
-                            type="button"
-                            variant={form.scheduledDateTime === slot.startTime ? "default" : "outline"}
-                            size="sm"
-                            className={cn(
-                              "h-9 px-1 text-[10px] sm:text-xs",
-                              !slot.isAvailable && "opacity-30 cursor-not-allowed bg-muted"
-                            )}
-                            disabled={!slot.isAvailable}
-                            onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
-                          >
-                            {format(new Date(slot.startTime), "HH:mm")}
-                          </Button>
-                        ))}
+                        {visibleSlots.map((slot: any) => {
+                          const isSelected = form.scheduledDateTime === slot.startTime
+                          const canSelect = slot.isAvailable || (isEncaixe && !slot.isBlocked)
+                          return (
+                            <Button
+                              key={slot.startTime}
+                              type="button"
+                              variant={isSelected ? "default" : "outline"}
+                              size="sm"
+                              className={cn(
+                                "h-9 px-1 text-[10px] sm:text-xs relative",
+                                slot.isBlocked && "opacity-30 cursor-not-allowed bg-muted",
+                                !slot.isAvailable && !slot.isBlocked && !isEncaixe && "opacity-30 cursor-not-allowed bg-muted",
+                                !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 text-amber-600",
+                              )}
+                              disabled={!canSelect}
+                              onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
+                              title={slot.isBlocked ? "Horário bloqueado" : undefined}
+                            >
+                              {format(new Date(slot.startTime), "HH:mm")}
+                            </Button>
+                          )
+                        })}
                       </div>
                     )}
                     {visibleSlots.length === 0 && !loadingAvailability && (
@@ -310,6 +319,21 @@ export default function NovoAgendamentoPage() {
                   value={form.notes}
                   onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                 />
+              </div>
+
+              <div className="flex items-center gap-3 py-1">
+                <Switch
+                  id="encaixe"
+                  checked={isEncaixe}
+                  onCheckedChange={setIsEncaixe}
+                />
+                <div>
+                  <Label htmlFor="encaixe" className="flex items-center gap-1.5 cursor-pointer">
+                    <Zap className="h-3.5 w-3.5 text-amber-500" />
+                    Encaixe
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Permite agendar em horários já ocupados</p>
+                </div>
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">

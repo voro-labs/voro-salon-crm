@@ -1,9 +1,10 @@
 import React, { useState } from "react"
 import {
   View, Text, ScrollView, Pressable, ActivityIndicator,
-  RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, TouchableOpacity,
+  RefreshControl, Modal, TextInput, Alert, TouchableOpacity,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
 import { useLocalSearchParams, router } from "expo-router"
 import useSWR from "swr"
@@ -17,7 +18,7 @@ import { flags, getCountryFromPhone } from "lib/flag-utils"
 import { formatPhone } from "lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { fetcher } from "lib/fetcher"
-import { API_CONFIG } from "lib/api"
+import { API_CONFIG, secureApiCall } from "lib/api"
 
 // ── Anamnesis types ──────────────────────────────────────────────────────────
 enum AnamnesisFieldType { ShortText = 1, LongText = 2, Number = 3, SingleSelection = 4, MultipleSelection = 5, Boolean = 6 }
@@ -49,7 +50,7 @@ function isRecent(dateStr?: string) {
   return Date.now() - new Date(dateStr).getTime() < 7 * 24 * 60 * 60 * 1000
 }
 
-type TabType = "services" | "anamnesis"
+type TabType = "services" | "anamnesis" | "memberships"
 
 export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -75,6 +76,64 @@ export default function ClientDetailScreen() {
     anamnesisOpen ? `${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions` : null,
     fetcher
   )
+
+  // Membership state
+  const [membershipOpen, setMembershipOpen] = useState(false)
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("")
+  const [isCreatingMembership, setIsCreatingMembership] = useState(false)
+  const [cancellingMembershipId, setCancellingMembershipId] = useState<string | null>(null)
+
+  const { data: memberships, mutate: mutateMemberships } = useSWR<any[]>(
+    id ? `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/client/${id}` : null,
+    fetcher
+  )
+  const { data: membershipPlans } = useSWR<any[]>(
+    membershipOpen ? API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIP_PLANS : null,
+    fetcher
+  )
+
+  async function handleCreateMembership() {
+    if (!selectedPlanId || !id) return
+    setIsCreatingMembership(true)
+    try {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}`, {
+        method: "POST",
+        body: JSON.stringify({ clientId: id, planId: selectedPlanId, startDate: new Date().toISOString() }),
+      })
+      if (!res.hasError) {
+        await mutateMemberships()
+        setMembershipOpen(false)
+        setSelectedPlanId("")
+      }
+    } finally {
+      setIsCreatingMembership(false)
+    }
+  }
+
+  function handleCancelMembership(membershipId: string) {
+    Alert.alert(
+      "Cancelar plano?",
+      "O plano será cancelado e o cliente perderá o acesso. Essa ação não pode ser desfeita.",
+      [
+        { text: "Voltar", style: "cancel" },
+        {
+          text: "Cancelar Plano",
+          style: "destructive",
+          onPress: async () => {
+            setCancellingMembershipId(membershipId)
+            try {
+              await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/${membershipId}/cancel`, {
+                method: "PATCH",
+              })
+              await mutateMemberships()
+            } finally {
+              setCancellingMembershipId(null)
+            }
+          },
+        },
+      ]
+    )
+  }
 
   function toggleSection(section: number) {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -269,45 +328,49 @@ export default function ClientDetailScreen() {
             </View>
             <View className="w-px bg-zinc-100" />
             <View className="flex-1 items-center">
-              <Text className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Cliente desde</Text>
-              <Text className="text-sm font-black text-zinc-900 mt-0.5">{formatDate(c.createdAt)}</Text>
+              <Text className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider text-center">Cliente desde</Text>
+              <Text className="text-sm font-black text-zinc-900 mt-0.5 text-center">{formatDate(c.createdAt)}</Text>
             </View>
           </View>
         </View>
 
         {/* Tabs */}
         <View style={{ flexDirection: "row", backgroundColor: "#f4f4f5", borderRadius: 16, padding: 4, marginBottom: 16 }}>
-          {(["services", "anamnesis"] as TabType[]).map((t) => (
-            <TouchableOpacity
-              key={t}
-              activeOpacity={0.7}
-              onPress={() => setTab(t)}
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                height: 40,
-                borderRadius: 12,
-                backgroundColor: tab === t ? "#ffffff" : "transparent",
-                shadowColor: tab === t ? "#000" : "transparent",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: tab === t ? 0.06 : 0,
-                shadowRadius: 2,
-                elevation: tab === t ? 1 : 0,
-              }}
-            >
-              <Ionicons
-                name={t === "services" ? "calendar-outline" : "clipboard-outline"}
-                size={15}
-                color={tab === t ? primaryColor : "#71717a"}
-              />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: tab === t ? primaryColor : "#71717a" }}>
-                {t === "services" ? "Serviços" : "Anamnese"}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(["services", "memberships", "anamnesis"] as TabType[]).map((t) => {
+            const icon = t === "services" ? "calendar-outline" : t === "memberships" ? "card-outline" : "clipboard-outline"
+            const label = t === "services" ? "Serviços" : t === "memberships" ? "Planos" : "Anamnese"
+            return (
+              <TouchableOpacity
+                key={t}
+                activeOpacity={0.7}
+                onPress={() => setTab(t)}
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: tab === t ? "#ffffff" : "transparent",
+                  shadowColor: tab === t ? "#000" : "transparent",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: tab === t ? 0.06 : 0,
+                  shadowRadius: 2,
+                  elevation: tab === t ? 1 : 0,
+                }}
+              >
+                <Ionicons
+                  name={icon}
+                  size={15}
+                  color={tab === t ? primaryColor : "#71717a"}
+                />
+                <Text style={{ fontSize: 14, fontWeight: "700", color: tab === t ? primaryColor : "#71717a" }}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
 
         {/* Services Tab */}
@@ -378,6 +441,97 @@ export default function ClientDetailScreen() {
           </View>
         </View>
 
+        {/* Memberships Tab */}
+        <View style={{ display: tab === "memberships" ? "flex" : "none" }}>
+          <View className="bg-white rounded-3xl border border-zinc-100">
+            {/* Header */}
+            <View className="flex-row items-center justify-between px-5 py-4 border-b border-zinc-100">
+              <View>
+                <Text className="text-base font-black text-zinc-900">Planos de Fidelidade</Text>
+                <Text className="text-xs text-zinc-400 mt-0.5">Assinaturas ativas deste cliente</Text>
+              </View>
+              <Pressable
+                onPress={() => setMembershipOpen(true)}
+                className="flex-row items-center gap-1 px-3 h-9 rounded-xl"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Ionicons name="add" size={16} color="white" />
+                <Text className="text-white font-bold text-sm">Assinar</Text>
+              </Pressable>
+            </View>
+
+            {/* Lista de memberships */}
+            <View className="p-4 gap-3">
+              {!memberships || memberships.length === 0 ? (
+                <View className="items-center py-8 gap-2">
+                  <Ionicons name="card-outline" size={36} color="#d4d4d8" />
+                  <Text className="text-zinc-400 font-semibold text-center">Nenhum plano ativo</Text>
+                  <Text className="text-zinc-300 text-xs text-center">Adicione um plano de fidelidade para este cliente</Text>
+                </View>
+              ) : (
+                memberships.map((m: any) => {
+                  const statusColor = m.status === 0 ? "#22c55e" : m.status === 1 ? "#f59e0b" : "#ef4444"
+                  const statusLabel = m.status === 0 ? "Ativo" : m.status === 1 ? "Expirado" : "Cancelado"
+                  const endDate = m.endDate ? new Date(m.endDate).toLocaleDateString("pt-BR") : "—"
+                  return (
+                    <View key={m.id} className="border border-zinc-100 rounded-2xl p-4 gap-3">
+                      {/* Plan name + status badge */}
+                      <View className="flex-row items-center justify-between">
+                        <Text className="font-black text-zinc-900 text-base flex-1 mr-2" numberOfLines={1}>
+                          {m.plan?.name ?? "Plano"}
+                        </Text>
+                        <View className="px-2.5 py-1 rounded-full" style={{ backgroundColor: statusColor + "20" }}>
+                          <Text className="text-xs font-bold" style={{ color: statusColor }}>{statusLabel}</Text>
+                        </View>
+                      </View>
+
+                      {/* Sessions + validity */}
+                      <View className="flex-row gap-4">
+                        <View className="flex-1 bg-zinc-50 rounded-xl p-3">
+                          <Text className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Sessões</Text>
+                          <Text className="text-xl font-black text-zinc-900 mt-0.5">
+                            {m.remainingSessions != null ? m.remainingSessions : "∞"}
+                          </Text>
+                          <Text className="text-[10px] text-zinc-400">restantes</Text>
+                        </View>
+                        <View className="flex-1 bg-zinc-50 rounded-xl p-3">
+                          <Text className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Validade</Text>
+                          <Text className="text-sm font-bold text-zinc-900 mt-0.5">{endDate}</Text>
+                          <Text className="text-[10px] text-zinc-400">vencimento</Text>
+                        </View>
+                      </View>
+
+                      {/* Price */}
+                      {m.plan?.price != null && (
+                        <Text className="text-xs text-zinc-400 font-medium">
+                          {`R$ ${Number(m.plan.price).toFixed(2).replace(".", ",")}/plano`}
+                        </Text>
+                      )}
+
+                      {/* Cancel action — only for active memberships (status === 0) */}
+                      {m.status === 0 && (
+                        <Pressable
+                          onPress={() => handleCancelMembership(m.id)}
+                          disabled={cancellingMembershipId === m.id}
+                          className="flex-row items-center justify-center gap-1.5 h-9 rounded-xl border border-red-100 bg-red-50"
+                        >
+                          {cancellingMembershipId === m.id
+                            ? <ActivityIndicator size="small" color="#ef4444" />
+                            : <>
+                                <Ionicons name="close-circle-outline" size={15} color="#ef4444" />
+                                <Text className="text-red-600 font-bold text-sm">Cancelar Plano</Text>
+                              </>
+                          }
+                        </Pressable>
+                      )}
+                    </View>
+                  )
+                })
+              )}
+            </View>
+          </View>
+        </View>
+
         {/* Anamnesis Tab */}
         <View style={{ display: tab === "anamnesis" ? "flex" : "none" }}>
           <View className="bg-white rounded-3xl border border-zinc-100">
@@ -435,14 +589,14 @@ export default function ClientDetailScreen() {
 
       {/* Edit Modal */}
       <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+        <View className="flex-1 bg-white">
           <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Editar Cliente</Text>
             <Pressable onPress={() => setEditOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
               <Ionicons name="close" size={20} color="#71717a" />
             </Pressable>
           </View>
-          <ScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {([
               { label: "Nome *", key: "name", placeholder: "Nome" },
             ] as const).map(({ label, key, placeholder }) => (
@@ -497,7 +651,7 @@ export default function ClientDetailScreen() {
                 textAlignVertical="top"
               />
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <Pressable
               onPress={handleEditSubmit}
@@ -511,19 +665,19 @@ export default function ClientDetailScreen() {
               }
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Add Service Modal */}
       <Modal visible={svcOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSvcOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+        <View className="flex-1 bg-white">
           <View className="flex-row items-center justify-between px-5 p-4 pt-6 pb-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Registrar Serviço</Text>
             <Pressable onPress={() => setSvcOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
               <Ionicons name="close" size={20} color="#71717a" />
             </Pressable>
           </View>
-          <ScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Catalog picker */}
             {catalogServices && (catalogServices as any[]).length > 0 && (
               <View className="gap-3 mb-4">
@@ -595,7 +749,7 @@ export default function ClientDetailScreen() {
                 textAlignVertical="top"
               />
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <Pressable
               onPress={handleAddService}
@@ -609,12 +763,12 @@ export default function ClientDetailScreen() {
               }
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* Anamnesis Modal */}
       <Modal visible={anamnesisOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAnamnesisOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+        <View className="flex-1 bg-white">
           <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
             <View>
               <Text className="text-lg font-black text-zinc-900">Nova Ficha de Anamnese</Text>
@@ -625,7 +779,7 @@ export default function ClientDetailScreen() {
             </Pressable>
           </View>
 
-          <ScrollView className="flex-1 px-5 m-2" showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView className="flex-1 px-5 m-2" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {isQuestionsLoading ? (
               <View className="py-12 items-center">
                 <ActivityIndicator color={primaryColor} />
@@ -804,7 +958,7 @@ export default function ClientDetailScreen() {
                 )
               })()
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
             <Pressable
@@ -819,7 +973,74 @@ export default function ClientDetailScreen() {
               }
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Modal: Assinar plano */}
+      <Modal visible={membershipOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMembershipOpen(false)}>
+        <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+          <View className="flex-row items-center justify-between px-5 py-4 border-b border-zinc-100">
+            <Text className="text-xl font-black text-zinc-900">Escolher Plano</Text>
+            <Pressable onPress={() => setMembershipOpen(false)} className="h-9 w-9 items-center justify-center rounded-xl bg-zinc-100">
+              <Ionicons name="close" size={20} color="#18181b" />
+            </Pressable>
+          </View>
+
+          <ScrollView className="flex-1 p-4" contentContainerStyle={{ gap: 12 }}>
+            {!membershipPlans || membershipPlans.length === 0 ? (
+              <View className="items-center py-12 gap-2">
+                <Ionicons name="card-outline" size={36} color="#d4d4d8" />
+                <Text className="text-zinc-400 font-semibold">Nenhum plano cadastrado</Text>
+                <Text className="text-zinc-300 text-xs text-center">Cadastre planos de fidelidade nas configurações</Text>
+              </View>
+            ) : (
+              membershipPlans.filter((p: any) => p.isActive).map((plan: any) => (
+                <Pressable
+                  key={plan.id}
+                  onPress={() => setSelectedPlanId(plan.id)}
+                  className="rounded-2xl border p-4 gap-1"
+                  style={{
+                    borderColor: selectedPlanId === plan.id ? primaryColor : "#e4e4e7",
+                    backgroundColor: selectedPlanId === plan.id ? primaryColor + "08" : "#ffffff",
+                  }}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-black text-zinc-900 text-base">{plan.name}</Text>
+                    {selectedPlanId === plan.id && <Ionicons name="checkmark-circle" size={20} color={primaryColor} />}
+                  </View>
+                  <Text className="text-xl font-black" style={{ color: primaryColor }}>
+                    {`R$ ${Number(plan.price).toFixed(2).replace(".", ",")}`}
+                  </Text>
+                  <View className="flex-row gap-3 mt-1">
+                    {plan.sessions != null && (
+                      <Text className="text-xs text-zinc-400 font-semibold">{plan.sessions} sessões</Text>
+                    )}
+                    {plan.durationDays != null && (
+                      <Text className="text-xs text-zinc-400 font-semibold">{plan.durationDays} dias</Text>
+                    )}
+                  </View>
+                  {plan.description ? (
+                    <Text className="text-xs text-zinc-400 mt-1">{plan.description}</Text>
+                  ) : null}
+                </Pressable>
+              ))
+            )}
+          </ScrollView>
+
+          <View className="px-5 pb-8 pt-3 border-t border-zinc-100">
+            <Pressable
+              onPress={handleCreateMembership}
+              disabled={isCreatingMembership || !selectedPlanId}
+              className="h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: (!selectedPlanId || isCreatingMembership) ? primaryColor + "55" : primaryColor }}
+            >
+              {isCreatingMembership
+                ? <ActivityIndicator color="white" />
+                : <Text className="text-white font-black text-base">Confirmar Assinatura</Text>
+              }
+            </Pressable>
+          </View>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   )

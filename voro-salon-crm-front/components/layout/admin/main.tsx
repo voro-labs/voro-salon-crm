@@ -23,12 +23,15 @@ const ONBOARDING_PATHS = [
   "/admin/complete-profile",
 ]
 
+// Rotas de landing que têm navbar própria — não devem exibir o ThemeToggle flutuante
+const LANDING_PATHS = ["/prices", "/"]
+
 interface MainProps {
   children: React.ReactNode
 }
 
 export function Main({ children }: MainProps) {
-  const { user, loading } = useAuth()
+  const { user, loading, logout } = useAuth()
   const { requestPermission } = useBrowserNotifications()
   const { isPaywalled, trialEndsAt, mutate: refreshSubscription } = useSubscription()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -106,11 +109,14 @@ export function Main({ children }: MainProps) {
     }
 
     // Layout público (sign-in, forgot-password, etc.) — nunca mostra loading aqui
+    const hasOwnNavbar = LANDING_PATHS.some((p) => pathname === p)
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <div className="fixed top-4 right-4 z-50">
-          <ThemeToggle />
-        </div>
+        {!hasOwnNavbar && (
+          <div className="fixed top-4 right-4 z-50">
+            <ThemeToggle />
+          </div>
+        )}
         <main className="flex-1">{children}</main>
       </div>
     )
@@ -124,6 +130,33 @@ export function Main({ children }: MainProps) {
           <ThemeToggle />
         </div>
         <main className="flex-1">{children}</main>
+      </div>
+    )
+  }
+
+  // Bloqueia funcionários: o painel web é exclusivo para proprietários
+  const isEmployee = (user.roles?.length ?? 0) > 0 && (user.roles ?? []).every(r => r.name === "SalonEmployee")
+  if (isEmployee) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
+        <div className="max-w-sm w-full text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <span className="text-3xl">📱</span>
+          </div>
+          <h1 className="text-xl font-bold">Use o aplicativo</h1>
+          <p className="text-sm text-muted-foreground">
+            O painel web é destinado aos proprietários do salão. Como funcionário, utilize o aplicativo móvel para acessar seus agendamentos.
+          </p>
+          <button
+            onClick={() => { logout(); router.replace("/admin/sign-in"); }}
+            className="text-xs text-muted-foreground underline underline-offset-4"
+          >
+            Sair
+          </button>
+        </div>
       </div>
     )
   }

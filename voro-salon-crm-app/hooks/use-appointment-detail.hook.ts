@@ -106,6 +106,7 @@ export function useAppointmentDetail(appointmentId: string) {
       }
       Toast.success("Agendamento atualizado com sucesso!")
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
+      mutate(API_CONFIG.ENDPOINTS.APPOINTMENTS)
       router.push("/appointments")
       return true
     } catch {
@@ -132,6 +133,7 @@ export function useAppointmentDetail(appointmentId: string) {
       }
       Toast.success(`Status atualizado para ${statusLabels[newStatus] ?? newStatus}`)
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
+      mutate(API_CONFIG.ENDPOINTS.APPOINTMENTS)
       if (appointment && !tenant?.useWhatsappBooking) {
         Alert.alert(
           "Enviar via WhatsApp?",

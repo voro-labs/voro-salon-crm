@@ -122,11 +122,11 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet("availability")]
-        public async Task<IActionResult> GetAvailability([FromQuery] DateTime date, [FromQuery] Guid? employeeId)
+        public async Task<IActionResult> GetAvailability([FromQuery] DateTime date, [FromQuery] Guid? serviceId, [FromQuery] Guid? employeeId)
         {
             try
             {
-                var result = await _appointmentService.GetAvailableSlotsAsync(date, employeeId);
+                var result = await _appointmentService.GetAvailableSlotsAsync(date, serviceId, employeeId);
                 return ResponseViewModel<IEnumerable<AvailabilitySlotDto>>.Success(result).ToActionResult();
             }
             catch (Exception ex)

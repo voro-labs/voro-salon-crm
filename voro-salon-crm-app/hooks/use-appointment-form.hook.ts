@@ -15,6 +15,7 @@ export interface NewAppointmentForm {
   description: string
   amount: number
   notes: string
+  isEncaixe?: boolean
 }
 
 const DEFAULT_FORM: NewAppointmentForm = {
@@ -56,6 +57,7 @@ export function useAppointmentForm() {
       serviceId,
       amount: selected?.price ?? p.amount,
       description: p.description || selected?.name || "",
+      durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
     }))
   }
 
@@ -79,6 +81,7 @@ export function useAppointmentForm() {
           scheduledDateTime: date.toISOString(),
           serviceId: f.serviceId === "none" ? null : f.serviceId,
           employeeId: f.employeeId === "none" ? null : f.employeeId,
+          isEncaixe: f.isEncaixe ?? false,
         }),
       })
       if (res.hasError) {

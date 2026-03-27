@@ -64,6 +64,7 @@ module.exports = {
       },
       package: 'com.vorolabs.vorosaloncrm',
       googleServicesFile: './google-services.json',
+      softwareKeyboardLayoutMode: 'pan',
     },
     extra: {
       eas: {

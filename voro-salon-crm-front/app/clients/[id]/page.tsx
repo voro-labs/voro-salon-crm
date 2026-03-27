@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
+import useSWR from "swr"
 import { useClientDetails } from "@/hooks/use-client-details.hook"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import {
@@ -16,6 +17,9 @@ import {
   CalendarDays,
   Banknote,
   Clock,
+  CreditCard,
+  Infinity,
+  XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -68,6 +72,7 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ClipboardList, History } from "lucide-react"
+import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
 
 
 function formatCurrency(val: number) {
@@ -88,6 +93,36 @@ function formatDate(dateStr: string) {
 function isRecent(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()
   return diff < 7 * 24 * 60 * 60 * 1000
+}
+
+interface MembershipPlan {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  sessions: number | null
+  durationDays: number
+  isActive: boolean
+}
+
+interface ClientMembership {
+  id: string
+  clientId: string
+  planId: string
+  planName: string
+  startDate: string
+  endDate: string
+  remainingSessions: number | null
+  status: string
+  notes: string | null
+}
+
+function membershipFetcher(url: string) {
+  return authenticatedApiCall<ClientMembership[]>(url).then((r) => r.data ?? [])
+}
+
+function plansFetcher(url: string) {
+  return authenticatedApiCall<MembershipPlan[]>(url).then((r) => (r.data ?? []).filter((p) => p.isActive))
 }
 
 export default function ClienteDetailPage() {
@@ -127,6 +162,20 @@ export default function ClienteDetailPage() {
 
   const [anamnesisOpen, setAnamnesisOpen] = useState(false)
   const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
+
+  // Membership state
+  const { data: memberships, mutate: mutateMemberships } = useSWR(
+    clientId ? `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/client/${clientId}` : null,
+    membershipFetcher
+  )
+  const { data: availablePlans } = useSWR(
+    API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIP_PLANS,
+    plansFetcher
+  )
+  const [membershipOpen, setMembershipOpen] = useState(false)
+  const [membershipForm, setMembershipForm] = useState({ planId: "", notes: "" })
+  const [membershipSaving, setMembershipSaving] = useState(false)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   function openEdit() {
     if (client) {
@@ -200,6 +249,48 @@ export default function ClienteDetailPage() {
 
   async function handleDeleteService(serviceId: string) {
     await deleteService(serviceId)
+  }
+
+  async function handleAssignMembership(e: React.FormEvent) {
+    e.preventDefault()
+    if (!membershipForm.planId) {
+      toast.error("Selecione um plano.")
+      return
+    }
+    setMembershipSaving(true)
+    const result = await authenticatedApiCall(API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS, {
+      method: "POST",
+      body: JSON.stringify({
+        clientId,
+        planId: membershipForm.planId,
+        startDate: new Date().toISOString(),
+        notes: membershipForm.notes || null,
+      }),
+    })
+    setMembershipSaving(false)
+    if (result.hasError) {
+      toast.error(result.message ?? "Erro ao criar assinatura.")
+      return
+    }
+    toast.success("Assinatura criada com sucesso.")
+    setMembershipOpen(false)
+    setMembershipForm({ planId: "", notes: "" })
+    mutateMemberships()
+  }
+
+  async function handleCancelMembership(id: string) {
+    setCancellingId(id)
+    const result = await authenticatedApiCall(
+      `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/${id}/cancel`,
+      { method: "PATCH" }
+    )
+    setCancellingId(null)
+    if (result.hasError) {
+      toast.error(result.message ?? "Erro ao cancelar assinatura.")
+      return
+    }
+    toast.success("Assinatura cancelada.")
+    mutateMemberships()
   }
 
   if (isClientLoading) {
@@ -344,7 +435,7 @@ export default function ClienteDetailPage() {
 
         {/* Tabs for History */}
         <Tabs defaultValue="services" className="w-full">
-          <TabsList className="w-full sm:w-auto grid grid-cols-2">
+          <TabsList className="w-full sm:w-auto grid grid-cols-3">
             <TabsTrigger value="services">
               <CalendarDays className="h-4 w-4" />
               Serviços
@@ -352,6 +443,10 @@ export default function ClienteDetailPage() {
             <TabsTrigger value="anamnesis">
               <ClipboardList className="h-4 w-4" />
               Anamnese
+            </TabsTrigger>
+            <TabsTrigger value="membership">
+              <CreditCard className="h-4 w-4" />
+              Assinatura
             </TabsTrigger>
           </TabsList>
 
@@ -474,82 +569,96 @@ export default function ClienteDetailPage() {
                     <p className="text-sm text-muted-foreground">Nenhum serviço registrado ainda.</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    {services.map(
-                      (svc: {
-                        id: string
-                        description: string
-                        amount: number
-                        serviceDate: string
-                        notes: string
-                      }) => (
-                        <div
-                          key={svc.id}
-                          className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate)
-                            ? "border-primary/30 bg-primary/5"
-                            : "border-border"
-                            }`}
-                        >
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                            <CalendarDays className="h-4 w-4" />
-                          </div>
-                          <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate font-medium text-foreground">
-                                {svc.description}
-                              </span>
-                              {isRecent(svc.serviceDate) && (
-                                <Badge variant="outline" className="shrink-0 text-xs border-primary/30 text-primary">
-                                  Recente
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                              <span>{formatDate(svc.serviceDate)}</span>
-                              {svc.amount > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <Banknote className="h-3 w-3" />
-                                  {formatCurrency(svc.amount)}
+                  (() => {
+                    type Svc = { id: string; description: string; amount: number; serviceDate: string; notes: string }
+                    const sorted = [...services as Svc[]].sort(
+                      (a, b) => new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime()
+                    )
+                    const groups = sorted.reduce<Record<string, Svc[]>>((acc, svc) => {
+                      const key = new Date(svc.serviceDate).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+                      if (!acc[key]) acc[key] = []
+                      acc[key].push(svc)
+                      return acc
+                    }, {})
+                    return (
+                      <div className="relative pl-6">
+                        {/* Linha vertical da timeline */}
+                        <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border" />
+                        <div className="space-y-6">
+                          {Object.entries(groups).map(([month, svcs]) => (
+                            <div key={month}>
+                              {/* Label do mês */}
+                              <div className="relative flex items-center gap-3 mb-3">
+                                <div className="absolute -left-6 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold z-10">
+                                  {svcs.length}
+                                </div>
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  {month}
                                 </span>
-                              )}
+                              </div>
+                              <div className="space-y-2">
+                                {svcs.map((svc, i) => (
+                                  <div key={svc.id} className="relative">
+                                    {/* Dot da timeline */}
+                                    <div className={`absolute -left-6 mt-[14px] h-2.5 w-2.5 rounded-full border-2 border-background z-10 ${isRecent(svc.serviceDate) ? "bg-primary" : "bg-border"}`} />
+                                    <div className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate) ? "border-primary/30 bg-primary/5" : "border-border hover:bg-accent/40"}`}>
+                                      <div className="flex flex-1 flex-col gap-0.5 overflow-hidden min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="truncate font-medium text-sm text-foreground">
+                                            {svc.description}
+                                          </span>
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            {isRecent(svc.serviceDate) && (
+                                              <Badge variant="outline" className="text-[10px] border-primary/30 text-primary px-1.5 py-0">
+                                                Recente
+                                              </Badge>
+                                            )}
+                                            <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  <Trash2 className="h-3 w-3 text-muted-foreground" />
+                                                </Button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    Essa ação irá remover o registro permanentemente.
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                  <AlertDialogAction onClick={() => handleDeleteService(svc.id)} className="bg-red-600 text-white hover:bg-red-700">
+                                                    Excluir
+                                                  </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                            </AlertDialog>
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                                          <span>{formatDate(svc.serviceDate)}</span>
+                                          {svc.amount > 0 && (
+                                            <span className="flex items-center gap-1 font-medium text-foreground">
+                                              <Banknote className="h-3 w-3" />
+                                              {formatCurrency(svc.amount)}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {svc.notes && (
+                                          <p className="mt-0.5 text-xs text-muted-foreground italic">{svc.notes}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            {svc.notes && (
-                              <p className="mt-0.5 text-xs text-muted-foreground">{svc.notes}</p>
-                            )}
-                          </div>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="sr-only">Excluir serviço</span>
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Excluir serviço?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Essa acao ira remover o registro deste serviço permanentemente.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteService(svc.id)}
-                                  className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
-                                >
-                                  Excluir
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          ))}
                         </div>
-                      )
-                    )}
-                  </div>
+                      </div>
+                    )
+                  })()
                 )}
               </CardContent>
             </Card>
@@ -646,6 +755,160 @@ export default function ClienteDetailPage() {
                         </Button>
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="membership" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-foreground text-lg">Assinaturas</CardTitle>
+                  <CardDescription>Planos ativos e histórico de assinaturas</CardDescription>
+                </div>
+                <Dialog open={membershipOpen} onOpenChange={setMembershipOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" disabled={!availablePlans || availablePlans.length === 0}>
+                      <Plus className="mr-1.5 h-3.5 w-3.5" />
+                      Assinar Plano
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Assinar Plano</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAssignMembership} className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="mem-plan">Plano *</Label>
+                        <Select
+                          value={membershipForm.planId}
+                          onValueChange={(v) => setMembershipForm((p) => ({ ...p, planId: v }))}
+                        >
+                          <SelectTrigger id="mem-plan" className="w-full">
+                            <SelectValue placeholder="Selecione um plano" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(availablePlans ?? []).map((plan) => (
+                              <SelectItem key={plan.id} value={plan.id}>
+                                {plan.name} — {formatCurrency(plan.price)} / {plan.durationDays}d
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="mem-notes">Observações</Label>
+                        <Textarea
+                          id="mem-notes"
+                          rows={2}
+                          placeholder="Anotações internas sobre a assinatura..."
+                          value={membershipForm.notes}
+                          onChange={(e) => setMembershipForm((p) => ({ ...p, notes: e.target.value }))}
+                        />
+                      </div>
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline">Cancelar</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={membershipSaving}>
+                          {membershipSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Confirmar
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {!memberships ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i} className="h-20 w-full animate-pulse rounded-lg bg-muted" />
+                    ))}
+                  </div>
+                ) : memberships.length === 0 ? (
+                  <div className="flex flex-col items-center py-12 text-center text-muted-foreground bg-muted/10 rounded-xl border border-dashed">
+                    <CreditCard className="mb-3 h-10 w-10 opacity-30" />
+                    <p className="text-sm">Nenhuma assinatura registrada.</p>
+                    {availablePlans && availablePlans.length > 0 && (
+                      <Button variant="link" onClick={() => setMembershipOpen(true)} className="mt-2">
+                        Criar primeira assinatura
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {memberships.map((m) => {
+                      const isActive = m.status === "Active"
+                      return (
+                        <div
+                          key={m.id}
+                          className={`flex items-start gap-3 rounded-lg border p-3 ${isActive ? "border-primary/30 bg-primary/5" : "border-border opacity-60"}`}
+                        >
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                            <CreditCard className="h-4 w-4" />
+                          </div>
+                          <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-foreground truncate">{m.planName}</span>
+                              <Badge
+                                variant={isActive ? "default" : "secondary"}
+                                className="text-xs shrink-0"
+                              >
+                                {m.status === "Active" ? "Ativo" : m.status === "Expired" ? "Expirado" : "Cancelado"}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                              <span>{formatDate(m.startDate)} → {formatDate(m.endDate)}</span>
+                              {m.remainingSessions !== null && (
+                                <span className="flex items-center gap-1">
+                                  <Infinity className="h-3 w-3" />
+                                  {m.remainingSessions} sessão(ões) restantes
+                                </span>
+                              )}
+                            </div>
+                            {m.notes && (
+                              <p className="mt-0.5 text-xs text-muted-foreground">{m.notes}</p>
+                            )}
+                          </div>
+                          {isActive && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                                  disabled={cancellingId === m.id}
+                                >
+                                  {cancellingId === m.id
+                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    : <XCircle className="h-3.5 w-3.5" />
+                                  }
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Cancelar assinatura?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    A assinatura do plano &quot;{m.planName}&quot; será cancelada imediatamente.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Voltar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleCancelMembership(m.id)}
+                                    className="bg-red-600 text-white hover:bg-red-700"
+                                  >
+                                    Cancelar Assinatura
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>

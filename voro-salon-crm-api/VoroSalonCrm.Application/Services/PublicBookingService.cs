@@ -17,10 +17,12 @@ namespace VoroSalonCrm.Application.Services
         IAppointmentRepository appointmentRepository,
         IUnitOfWork unitOfWork,
         IUserTenantRepository userTenantRepository,
-        IExpoPushNotificationService expoPushNotificationService) : IPublicBookingService
+        IExpoPushNotificationService expoPushNotificationService,
+        ITimeSlotBlockRepository timeSlotBlockRepository) : IPublicBookingService
     {
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
+        private readonly ITimeSlotBlockRepository _timeSlotBlockRepository = timeSlotBlockRepository;
 
         public async Task<PublicTenantDto?> GetTenantBySlugAsync(string slug)
         {
@@ -104,7 +106,8 @@ namespace VoroSalonCrm.Application.Services
                 Amount = service.Price,
                 Status = AppointmentStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
-                Description = dto.Description
+                Description = dto.Description,
+                ReminderMinutes = dto.ReminderMinutes,
             };
 
             await appointmentRepository.AddAsync(appointment);
@@ -147,6 +150,15 @@ namespace VoroSalonCrm.Application.Services
             var tenant = await tenantRepository.GetBySlugAsync(tenantSlug);
             if (tenant == null) return [];
 
+            // Resolve service duration for conflict window calculation
+            int serviceDurationMinutes = 30;
+            if (serviceId.HasValue && serviceId.Value != Guid.Empty)
+            {
+                var service = await serviceRepository.GetPublicByIdAsync(tenant.Id, serviceId.Value);
+                if (service != null)
+                    serviceDurationMinutes = service.DurationMinutes;
+            }
+
             var nowBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3));
             var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 8, 0, 0, TimeSpan.FromHours(-3));
             var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 18, 0, 0, TimeSpan.FromHours(-3));
@@ -177,6 +189,13 @@ namespace VoroSalonCrm.Application.Services
             }
 
             var appointments = await query.ToListAsync();
+
+            // Fetch time slot blocks for this tenant directly, bypassing the global tenant filter
+            // (no authenticated user in public context)
+            var blocks = await _timeSlotBlockRepository
+                .Query(b => b.TenantId == tenant.Id && b.StartDateTime < endUtc && b.EndDateTime > startUtc)
+                .IgnoreQueryFilters()
+                .ToListAsync();
 
             // Get total active employees to handle "Any professional" case
             int activeEmployeesCount;
@@ -214,6 +233,24 @@ namespace VoroSalonCrm.Application.Services
             while (current < endOfDay)
             {
                 var next = current.AddMinutes(30);
+                var slotEnd = current.AddMinutes(serviceDurationMinutes);
+
+                // If the service would extend past end of day, this slot is unavailable
+                if (slotEnd > endOfDay)
+                {
+                    slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, false));
+                    current = next;
+                    continue;
+                }
+
+                // Check if the slot falls within a configured time slot block
+                var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
+                if (overlappingBlock != null)
+                {
+                    slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, false, true, overlappingBlock.Reason));
+                    current = next;
+                    continue;
+                }
 
                 bool isBusy;
                 if (activeEmployeesCount <= 0)
@@ -223,17 +260,17 @@ namespace VoroSalonCrm.Application.Services
                 }
                 else if (employeeId.HasValue && employeeId.Value != Guid.Empty)
                 {
-                    // For specific professional
+                    // For specific professional: conflict if the service window overlaps any existing appointment
                     isBusy = appointments.Any(a =>
                         current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        next > a.ScheduledDateTime);
+                        slotEnd > a.ScheduledDateTime);
                 }
                 else
                 {
                     // For "Any professional" or Salon-only mode, busy only if ALL (or the default 1) capacity is occupied
                     var overlappingCount = appointments.Count(a =>
                         current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        next > a.ScheduledDateTime);
+                        slotEnd > a.ScheduledDateTime);
 
                     isBusy = overlappingCount >= activeEmployeesCount;
                 }
