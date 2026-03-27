@@ -20,13 +20,13 @@ export default function CategoriesScreen() {
   // Create form
   const [createOpen, setCreateOpen] = useState(false)
   const [newName, setNewName] = useState("")
-  const [newType, setNewType] = useState<TransactionType>(TransactionType.Income)
+  const [newType, setNewType] = useState<TransactionType>(TransactionType.Expense)
   const [isSaving, setIsSaving] = useState(false)
 
   // Edit modal
   const [editTarget, setEditTarget] = useState<TransactionCategoryDto | null>(null)
   const [editName, setEditName] = useState("")
-  const [editType, setEditType] = useState<TransactionType>(TransactionType.Income)
+  const [editType, setEditType] = useState<TransactionType>(TransactionType.Expense)
   const [isUpdating, setIsUpdating] = useState(false)
 
   const filtered = (categories ?? []).filter((c: any) => {
