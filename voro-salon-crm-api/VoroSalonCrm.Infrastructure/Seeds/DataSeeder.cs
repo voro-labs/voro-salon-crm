@@ -377,69 +377,118 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             }
         }
 
+        // GUIDs estáveis para upsert idempotente
+        private static readonly Guid StarterPlanId = Guid.Parse("a1b2c3d4-0001-4000-8000-ef1234560001");
+        private static readonly Guid ProPlanId     = Guid.Parse("a1b2c3d4-0001-4000-8000-ef1234560002");
+        private static readonly Guid PremiumPlanId = Guid.Parse("a1b2c3d4-0001-4000-8000-ef1234560003");
+
         private static void SeedSubscriptionPlans(JasmimDbContext context)
         {
-            if (!context.SubscriptionPlans.Any())
+            var seed = new[]
             {
-                var plans = new List<Domain.Entities.SubscriptionPlan>
+                // ── Starter — autônomo / solo ─────────────────────────────────
+                // Entrega valor imediato (agenda digital) e cria o gatilho de
+                // upgrade: o dono percebe que perde clientes por falta de lembrete
+                new Domain.Entities.SubscriptionPlan
                 {
-                    new()
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "Básico",
-                        Description = "Ideal para salões que estão começando",
-                        MonthlyPrice = 49.90m,
-                        MaxEmployees = 1,
-                        MaxClients = 100,
-                        HasEmployees = false,
-                        HasAnamnesis = false,
-                        HasFinancial = false,
-                        HasReports = false,
-                        HasBooking = false,
-                        HasWhatsAppBot = false,
-                        SortOrder = 1,
-                        IsActive = true,
-                        CreatedAt = DateTimeOffset.UtcNow
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "Pro",
-                        Description = "Para salões em crescimento com mais recursos",
-                        MonthlyPrice = 99.90m,
-                        MaxEmployees = 5,
-                        MaxClients = 500,
-                        HasEmployees = true,
-                        HasAnamnesis = true,
-                        HasFinancial = true,
-                        HasReports = true,
-                        HasBooking = true,
-                        HasWhatsAppBot = false,
-                        SortOrder = 2,
-                        IsActive = true,
-                        CreatedAt = DateTimeOffset.UtcNow
-                    },
-                    new()
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "Premium",
-                        Description = "Tudo ilimitado para salões de alto volume",
-                        MonthlyPrice = 199.90m,
-                        MaxEmployees = -1,
-                        MaxClients = -1,
-                        HasEmployees = true,
-                        HasAnamnesis = true,
-                        HasFinancial = true,
-                        HasReports = true,
-                        HasBooking = true,
-                        HasWhatsAppBot = true,
-                        SortOrder = 3,
-                        IsActive = true,
-                        CreatedAt = DateTimeOffset.UtcNow
-                    }
-                };
+                    Id = StarterPlanId,
+                    Name = "Starter",
+                    Description = "Para autônomos e salões solo que querem sair do caderno",
+                    MonthlyPrice = 39.00m,
+                    MaxEmployees = 3,
+                    MaxClients = -1,          // ilimitado
+                    HasEmployees = true,
+                    HasAnamnesis = false,
+                    HasFinancial = false,
+                    HasReports = false,
+                    HasBooking = false,
+                    HasWhatsAppBot = false,   // gate de upgrade para Pro
+                    DefaultTrialDays = 14,
+                    SortOrder = 1,
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                },
 
-                context.SubscriptionPlans.AddRange(plans);
+                // ── Pro ⭐ — 2 a 10 profissionais ─────────────────────────────
+                // Principal plano: WhatsApp automático é o gate #1 de upgrade.
+                // "1 cliente confirmado pelo bot já paga o sistema no mês."
+                new Domain.Entities.SubscriptionPlan
+                {
+                    Id = ProPlanId,
+                    Name = "Pro",
+                    Description = "Para salões com equipe que querem acabar com o no-show",
+                    MonthlyPrice = 79.00m,
+                    MaxEmployees = 10,
+                    MaxClients = -1,          // ilimitado
+                    HasEmployees = true,
+                    HasAnamnesis = false,     // gate de upgrade para Premium
+                    HasFinancial = true,
+                    HasReports = true,
+                    HasBooking = true,
+                    HasWhatsAppBot = true,    // diferencial principal vs concorrência
+                    DefaultTrialDays = 14,
+                    SortOrder = 2,
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                },
+
+                // ── Premium — salões maiores / foco em química ────────────────
+                // Gate #2: anamnese capilar é diferencial para coloristas e
+                // salões que precisam de registro clínico-estético completo
+                new Domain.Entities.SubscriptionPlan
+                {
+                    Id = PremiumPlanId,
+                    Name = "Premium",
+                    Description = "Para salões maiores com foco em química e multi-profissional",
+                    MonthlyPrice = 149.00m,
+                    MaxEmployees = -1,        // ilimitado
+                    MaxClients = -1,          // ilimitado
+                    HasEmployees = true,
+                    HasAnamnesis = true,      // ficha capilar + histórico completo
+                    HasFinancial = true,
+                    HasReports = true,
+                    HasBooking = true,
+                    HasWhatsAppBot = true,
+                    DefaultTrialDays = 14,
+                    SortOrder = 3,
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                },
+            };
+
+            foreach (var plan in seed)
+            {
+                // Busca por ID estável primeiro; se não achar, busca pelo nome
+                // (cobre rename de "Básico" → "Starter" e outros futuros renames)
+                var existing = context.SubscriptionPlans
+                    .IgnoreQueryFilters()
+                    .FirstOrDefault(p => p.Id == plan.Id)
+                    ?? context.SubscriptionPlans
+                    .IgnoreQueryFilters()
+                    .FirstOrDefault(p => p.Name == plan.Name || p.Name == "Básico" && plan.SortOrder == 1);
+
+                if (existing == null)
+                {
+                    context.SubscriptionPlans.Add(plan);
+                }
+                else
+                {
+                    existing.Id               = plan.Id;
+                    existing.Name             = plan.Name;
+                    existing.Description      = plan.Description;
+                    existing.MonthlyPrice     = plan.MonthlyPrice;
+                    existing.MaxEmployees     = plan.MaxEmployees;
+                    existing.MaxClients       = plan.MaxClients;
+                    existing.HasEmployees     = plan.HasEmployees;
+                    existing.HasAnamnesis     = plan.HasAnamnesis;
+                    existing.HasFinancial     = plan.HasFinancial;
+                    existing.HasReports       = plan.HasReports;
+                    existing.HasBooking       = plan.HasBooking;
+                    existing.HasWhatsAppBot   = plan.HasWhatsAppBot;
+                    existing.DefaultTrialDays = plan.DefaultTrialDays;
+                    existing.SortOrder        = plan.SortOrder;
+                    existing.IsActive         = plan.IsActive;
+                }
             }
         }
 

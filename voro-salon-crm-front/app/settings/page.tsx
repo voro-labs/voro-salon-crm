@@ -293,12 +293,6 @@ export default function ConfiguracoesPage() {
                   Módulos
                 </TabsTrigger>
               )}
-              {isSalonOwner && (
-                <TabsTrigger value="exportar" className="shrink-0 py-2">
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </TabsTrigger>
-              )}
               {isOwner && (
                 <TabsTrigger value="anamnesis" className="shrink-0 py-2">
                   <ClipboardList className="mr-2 h-4 w-4" />
@@ -717,31 +711,6 @@ export default function ConfiguracoesPage() {
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
-          </TabsContent>}
-
-          {isSalonOwner && <TabsContent value="exportar">
-            {/* ── Exportar ── */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Download className="h-5 w-5 text-primary" />
-                  <CardTitle>Exportar Dados</CardTitle>
-                </div>
-                <CardDescription>Exporte seus dados em formato CSV para planilhas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" size="sm" onClick={() => handleExport("clients")} disabled={exportingClients}>
-                    {exportingClients ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Exportar Clientes
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleExport("services")} disabled={exportingServices}>
-                    {exportingServices ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Exportar Serviços
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>}

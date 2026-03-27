@@ -23,6 +23,9 @@ const ONBOARDING_PATHS = [
   "/admin/complete-profile",
 ]
 
+// Rotas de landing que têm navbar própria — não devem exibir o ThemeToggle flutuante
+const LANDING_PATHS = ["/prices", "/"]
+
 interface MainProps {
   children: React.ReactNode
 }
@@ -106,11 +109,14 @@ export function Main({ children }: MainProps) {
     }
 
     // Layout público (sign-in, forgot-password, etc.) — nunca mostra loading aqui
+    const hasOwnNavbar = LANDING_PATHS.some((p) => pathname === p)
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <div className="fixed top-4 right-4 z-50">
-          <ThemeToggle />
-        </div>
+        {!hasOwnNavbar && (
+          <div className="fixed top-4 right-4 z-50">
+            <ThemeToggle />
+          </div>
+        )}
         <main className="flex-1">{children}</main>
       </div>
     )

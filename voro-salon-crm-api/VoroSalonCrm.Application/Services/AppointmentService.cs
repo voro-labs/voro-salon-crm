@@ -380,7 +380,7 @@ namespace VoroSalonCrm.Application.Services
             }
 
             // Load time blocks for this day
-            var blocks = (await _timeSlotBlockService.GetOverlappingAsync(startOfDay, endOfDay.ToUniversalTime())).ToList();
+            var blocks = (await _timeSlotBlockService.GetOverlappingAsync(startUtc, endUtc)).ToList();
 
             var slots = new List<AvailabilitySlotDto>();
             var current = startOfDay.ToUniversalTime();

@@ -53,9 +53,9 @@ export const API_CONFIG = {
     NOTIFICATIONS: "/notifications",
     NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
     PUSH_TOKENS: "/push-tokens",
-    TIME_SLOT_BLOCKS: "/time-slot-blocks",
-    CLIENT_MEMBERSHIP_PLANS: "/client-memberships/plans",
-    CLIENT_MEMBERSHIPS: "/client-memberships",
+    TIME_SLOT_BLOCKS: "/timeslotblocks",
+    CLIENT_MEMBERSHIP_PLANS: "/clientmemberships/plans",
+    CLIENT_MEMBERSHIPS: "/clientmemberships",
   },
   HEADERS: {
     "Content-Type": "application/json",

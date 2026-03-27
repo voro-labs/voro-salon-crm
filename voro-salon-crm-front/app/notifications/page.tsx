@@ -119,7 +119,7 @@ export default function NotificationsPage() {
   )
 
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto">
+    <div className="flex flex-col h-full w-full mx-auto">
       <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Notificações</h1>
         {unreadCount > 0 && (

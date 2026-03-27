@@ -218,24 +218,24 @@ export default function SubscriptionPage() {
                     }
                     <div>{plan.maxClients === -1 ? "Clientes ilimitados" : `Até ${plan.maxClients} clientes`}</div>
                     {plan.hasFinancial && (
-                      <button onClick={() => setOpenModuleKey("financial")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left">
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("financial") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("financial")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
                         <CheckCircle2 className="h-3 w-3 text-primary" /> Finanças <Info className="h-3 w-3 ml-auto opacity-60" />
-                      </button>
+                      </div>
                     )}
                     {plan.hasAnamnesis && (
-                      <button onClick={() => setOpenModuleKey("anamnesis")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left">
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("anamnesis") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("anamnesis")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
                         <CheckCircle2 className="h-3 w-3 text-primary" /> Anamnese <Info className="h-3 w-3 ml-auto opacity-60" />
-                      </button>
+                      </div>
                     )}
                     {plan.hasBooking && (
-                      <button onClick={() => setOpenModuleKey("booking")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left">
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("booking") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("booking")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
                         <CheckCircle2 className="h-3 w-3 text-primary" /> Agendamento Online <Info className="h-3 w-3 ml-auto opacity-60" />
-                      </button>
+                      </div>
                     )}
                     {plan.hasWhatsAppBot && (
-                      <button onClick={() => setOpenModuleKey("whatsappBot")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left">
+                      <div role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); setOpenModuleKey("whatsappBot") }} onKeyDown={(e) => e.key === "Enter" && setOpenModuleKey("whatsappBot")} className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left cursor-pointer">
                         <CheckCircle2 className="h-3 w-3 text-primary" /> Bot WhatsApp <Info className="h-3 w-3 ml-auto opacity-60" />
-                      </button>
+                      </div>
                     )}
                   </div>
                   {!isCurrent && (
