@@ -171,7 +171,7 @@ export default function ConfiguracoesPage() {
   const roleNames = user?.roles?.map((r) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
-  const defaultTab = isOwner ? "geral" : isSalonOwner ? "exportar" : "aparencia"
+  const defaultTab = isOwner ? "geral" : "aparencia"
 
   const {
     modules,

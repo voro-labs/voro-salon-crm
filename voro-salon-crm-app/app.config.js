@@ -43,7 +43,18 @@ module.exports = {
     experiments: {
       tsconfigPaths: true,
     },
-    plugins: ['expo-secure-store', 'expo-router', 'expo-notifications'],
+    plugins: [
+      'expo-secure-store',
+      'expo-router',
+      [
+        'expo-notifications',
+        {
+          icon: './assets/notification-icon.png',
+          color: '#ffffff',
+          sounds: [],
+        },
+      ],
+    ],
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
