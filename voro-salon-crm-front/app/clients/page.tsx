@@ -64,6 +64,7 @@ export default function ClientesPage() {
                 </span>
               )}
               <ExportMenu
+                size="sm"
                 rows={data}
                 filename="clientes"
                 columns={[

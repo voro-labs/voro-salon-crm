@@ -91,6 +91,7 @@ export default function AppointmentsPage() {
                 </TabsList>
               </Tabs>
               <ExportMenu
+                size="sm"
                 rows={finalFiltered}
                 filename="agendamentos"
                 columns={[

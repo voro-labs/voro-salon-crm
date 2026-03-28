@@ -386,23 +386,22 @@ export default function FinancialPage() {
                   </form>
                 </DialogContent>
               </Dialog>
-              <div className="flex-1 sm:flex-none">
-                <ExportMenu
-                  rows={filteredTransactions}
-                  filename="financeiro"
-                  columns={[
-                    { header: "Descrição", value: (t: any) => t.description },
-                    { header: "Tipo", value: (t: any) => t.type === 1 ? "Receita" : "Despesa" },
-                    { header: "Valor (R$)", value: (t: any) => Number(t.amount ?? 0).toFixed(2) },
-                    { header: "Valor Pago (R$)", value: (t: any) => Number(t.paidAmount ?? 0).toFixed(2) },
-                    { header: "Vencimento", value: (t: any) => format(new Date(t.dueDate), "dd/MM/yyyy") },
-                    { header: "Pagamento", value: (t: any) => t.paymentDate ? format(new Date(t.paymentDate), "dd/MM/yyyy") : "" },
-                    { header: "Status", value: (t: any) => ({ 1: "Pago", 2: "Pendente", 3: "Atrasado", 4: "Parcial", 5: "Cancelado" }[t.status as number] ?? "") },
-                    { header: "Categoria", value: (t: any) => t.category?.name ?? "" },
-                    { header: "Observações", value: (t: any) => t.notes ?? "" },
-                  ]}
-                />
-              </div>
+              <ExportMenu
+                className="w-full"
+                rows={filteredTransactions}
+                filename="financeiro"
+                columns={[
+                  { header: "Descrição", value: (t: any) => t.description },
+                  { header: "Tipo", value: (t: any) => t.type === 1 ? "Receita" : "Despesa" },
+                  { header: "Valor (R$)", value: (t: any) => Number(t.amount ?? 0).toFixed(2) },
+                  { header: "Valor Pago (R$)", value: (t: any) => Number(t.paidAmount ?? 0).toFixed(2) },
+                  { header: "Vencimento", value: (t: any) => format(new Date(t.dueDate), "dd/MM/yyyy") },
+                  { header: "Pagamento", value: (t: any) => t.paymentDate ? format(new Date(t.paymentDate), "dd/MM/yyyy") : "" },
+                  { header: "Status", value: (t: any) => ({ 1: "Pago", 2: "Pendente", 3: "Atrasado", 4: "Parcial", 5: "Cancelado" }[t.status as number] ?? "") },
+                  { header: "Categoria", value: (t: any) => t.category?.name ?? "" },
+                  { header: "Observações", value: (t: any) => t.notes ?? "" },
+                ]}
+              />
             </>
           }
         />

@@ -18,16 +18,21 @@ namespace VoroSalonCrm.Application.Services
         IUnitOfWork unitOfWork,
         IUserTenantRepository userTenantRepository,
         IExpoPushNotificationService expoPushNotificationService,
-        ITimeSlotBlockRepository timeSlotBlockRepository) : IPublicBookingService
+        ITimeSlotBlockRepository timeSlotBlockRepository,
+        ITenantModuleRepository tenantModuleRepository) : IPublicBookingService
     {
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
         private readonly ITimeSlotBlockRepository _timeSlotBlockRepository = timeSlotBlockRepository;
+        private readonly ITenantModuleRepository _tenantModuleRepository = tenantModuleRepository;
 
         public async Task<PublicTenantDto?> GetTenantBySlugAsync(string slug)
         {
             var tenant = await tenantRepository.GetBySlugAsync(slug);
             if (tenant == null) return null;
+
+            var bookingModule = await _tenantModuleRepository.GetModuleAsync(tenant.Id, AppModule.Booking);
+            var isBookingEnabled = bookingModule == null || bookingModule.IsEnabled;
 
             return new PublicTenantDto(
                 tenant.Id,
@@ -37,7 +42,8 @@ namespace VoroSalonCrm.Application.Services
                 tenant.LogoUrl,
                 tenant.PrimaryColor,
                 tenant.SecondaryColor,
-                tenant.ThemeMode?.ToString()
+                tenant.ThemeMode?.ToString(),
+                isBookingEnabled
             );
         }
 

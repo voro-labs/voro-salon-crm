@@ -6,9 +6,12 @@ using Microsoft.Extensions.Options;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.Utils;
+using VoroSalonCrm.Shared.ViewModels;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -21,12 +24,14 @@ namespace VoroSalonCrm.API.Controllers
         IOptions<IntegrationUtil> integrationUtil,
         ILogger<WhatsappController> logger,
         IPublicBookingService publicBookingService,
-        ITenantRepository tenantRepository) : ControllerBase
+        ITenantRepository tenantRepository,
+        IWhatsAppMessageService whatsAppMessageService) : ControllerBase
     {
         private readonly IntegrationUtil _integrationUtil = integrationUtil.Value;
         private readonly ILogger<WhatsappController> _logger = logger;
         private readonly IPublicBookingService _publicBookingService = publicBookingService;
         private readonly ITenantRepository _tenantRepository = tenantRepository;
+        private readonly IWhatsAppMessageService _whatsAppMessageService = whatsAppMessageService;
 
         [HttpGet]
         public IActionResult VerifyWebhook(
@@ -76,8 +81,43 @@ namespace VoroSalonCrm.API.Controllers
                     var contact = change.Value.Contacts?.FirstOrDefault();
                     var contactName = contact?.Profile?.Name ?? "Cliente";
 
+                    // Resolve tenant pelo número de telefone exibido
+                    var tenant = await _tenantRepository
+                        .Query(t => t.IsActive && t.ContactPhone != null && t.ContactPhone == metadata.DisplayPhoneNumber)
+                        .FirstOrDefaultAsync();
+
                     foreach (var message in change.Value.Messages)
                     {
+                        // Salvar mensagem recebida
+                        if (tenant != null)
+                        {
+                            var body = message.Type switch
+                            {
+                                "text" => message.Text?.Body ?? string.Empty,
+                                "interactive" => message.Interactive?.ButtonReply?.Title
+                                              ?? message.Interactive?.ListReply?.Title
+                                              ?? "[Interativo]",
+                                "audio" => "[Áudio]",
+                                "image" => "[Imagem]",
+                                "document" => "[Documento]",
+                                _ => $"[{message.Type}]"
+                            };
+
+                            try
+                            {
+                                await _whatsAppMessageService.SaveInboundAsync(
+                                    tenantId: tenant.Id,
+                                    from: message.From,
+                                    to: metadata.DisplayPhoneNumber,
+                                    body: body,
+                                    whatsAppMessageId: message.Id);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Erro ao salvar mensagem inbound do WhatsApp.");
+                            }
+                        }
+
                         var chatService = HttpContext.RequestServices.GetRequiredService<IWhatsappChatService>();
                         await chatService.HandleMessageAsync(message, contactName, metadata.DisplayPhoneNumber);
                     }
@@ -85,6 +125,25 @@ namespace VoroSalonCrm.API.Controllers
             }
 
             return Ok();
+        }
+
+        [HttpGet("messages")]
+        [Authorize]
+        public async Task<IActionResult> GetMessages(
+            [FromServices] ICurrentUserService currentUserService,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var messages = await _whatsAppMessageService.GetByTenantAsync(tenantId, page, pageSize);
+                return ResponseViewModel<IEnumerable<WhatsAppMessageDto>>.Success(messages).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
         }
 
         [HttpPost("flow")]

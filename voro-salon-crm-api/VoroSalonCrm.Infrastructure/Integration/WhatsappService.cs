@@ -18,19 +18,22 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly ILogger<WhatsappService> _logger;
         private readonly IIntegrationAuditService _auditService;
         private readonly ICurrentUserService _currentUser;
+        private readonly IWhatsAppMessageService _messageService;
 
         public WhatsappService(
             IOptions<IntegrationUtil> integrationUtil,
             IHttpClientFactory httpClientFactory,
             ILogger<WhatsappService> logger,
             IIntegrationAuditService auditService,
-            ICurrentUserService currentUser)
+            ICurrentUserService currentUser,
+            IWhatsAppMessageService messageService)
         {
             _config = integrationUtil.Value;
             _http = httpClientFactory.CreateClient("whatsapp");
             _logger = logger;
             _auditService = auditService;
             _currentUser = currentUser;
+            _messageService = messageService;
         }
 
         public async Task<bool> SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? phoneIdOverride = null, CancellationToken ct = default)
@@ -75,7 +78,20 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 text = new { body = text }
             };
 
-            return await SendToWhatsappAsync(payload, phoneIdOverride, ct);
+            var success = await SendToWhatsappAsync(payload, phoneIdOverride, ct);
+
+            if (success)
+            {
+                var tenantId = _currentUser.TenantId;
+                if (tenantId != Guid.Empty)
+                {
+                    var from = phoneIdOverride ?? _config.Whatsapp.PhoneId;
+                    try { await _messageService.SaveOutboundAsync(tenantId, from, to, text); }
+                    catch (Exception ex) { _logger.LogError(ex, "Erro ao salvar mensagem outbound do WhatsApp."); }
+                }
+            }
+
+            return success;
         }
 
         public async Task<bool> SendInteractiveMessageAsync(string to, object interactive, string? phoneIdOverride = null, CancellationToken ct = default)

@@ -15,6 +15,7 @@ import {
   Banknote,
   Bell,
   CreditCard,
+  MessageCircle,
 } from "lucide-react"
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
@@ -68,6 +69,13 @@ const navItems = [
     icon: Banknote,
     roles: ["SalonOwner", "Owner"],
     moduleId: 5 // Finance
+  },
+  {
+    title: "WhatsApp",
+    href: "/whatsapp",
+    icon: MessageCircle,
+    roles: ["SalonOwner", "Owner"],
+    moduleId: 9 // WhatsappBot
   },
   {
     title: "Configurações",
