@@ -319,7 +319,7 @@ export default function AnamnesisConfigPage() {
                       value={form.section.toString()}
                       onValueChange={(v) => setForm((p) => ({ ...p, section: parseInt(v) as AnamnesisSection }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -335,7 +335,7 @@ export default function AnamnesisConfigPage() {
                       value={form.fieldType.toString()}
                       onValueChange={(v) => setForm((p) => ({ ...p, fieldType: parseInt(v) as AnamnesisFieldType }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
