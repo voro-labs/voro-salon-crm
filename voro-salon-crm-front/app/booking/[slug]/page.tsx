@@ -297,22 +297,22 @@ export default function PublicBookingPage() {
     )
   }
 
-  const isSchedulingDisabled = tenant.modules?.find((m: any) => m.module === 2)?.isEnabled === false
+  const isBookingDisabled = tenant.isBookingEnabled === false
   const hasNoServices = services.length === 0
 
-  if (isSchedulingDisabled || hasNoServices) {
+  if (isBookingDisabled || hasNoServices) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background text-center">
         <div className="h-20 w-20 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-4">
           <Calendar className="h-10 w-10" />
         </div>
         <h1 className="text-xl font-bold">
-          {hasNoServices ? "Serviços indisponíveis" : "Agendamentos temporariamente desativados"}
+          {hasNoServices ? "Serviços indisponíveis" : "Agendamento online desativado"}
         </h1>
         <p className="text-muted-foreground mt-2 max-w-md">
           {hasNoServices
             ? "Este estabelecimento ainda não possui serviços cadastrados para agendamento online."
-            : "Este estabelecimento não está aceitando novos agendamentos online no momento."}
+            : "Este estabelecimento não está com o agendamento online ativo no momento."}
           {" "}Entre em contato diretamente para mais informações.
         </p>
         {tenant.contactPhone && (

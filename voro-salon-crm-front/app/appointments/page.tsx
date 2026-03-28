@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Calendar, Clock, Lock, MessageCircle } from "lucide-react"
+import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban } from "lucide-react"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -91,6 +91,7 @@ export default function AppointmentsPage() {
                 </TabsList>
               </Tabs>
               <ExportMenu
+                size="sm"
                 rows={finalFiltered}
                 filename="agendamentos"
                 columns={[
@@ -104,6 +105,13 @@ export default function AppointmentsPage() {
                 ]}
               />
               <BlockTimeSlotDialog />
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/appointments/blocked">
+                  <Ban className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Gerenciar Bloqueios</span>
+                  <span className="sm:hidden">Bloqueios</span>
+                </Link>
+              </Button>
               <Button asChild size="sm">
                 <Link href="/appointments/new">
                   <Plus className="mr-2 h-4 w-4" />

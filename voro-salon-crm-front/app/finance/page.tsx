@@ -387,6 +387,7 @@ export default function FinancialPage() {
                 </DialogContent>
               </Dialog>
               <ExportMenu
+                className="w-full"
                 rows={filteredTransactions}
                 filename="financeiro"
                 columns={[

@@ -8,7 +8,8 @@ namespace VoroSalonCrm.Application.DTOs.Public
         string? LogoUrl,
         string? PrimaryColor,
         string? SecondaryColor,
-        string? ThemeMode
+        string? ThemeMode,
+        bool IsBookingEnabled
     );
 
     public record PublicServiceDto(

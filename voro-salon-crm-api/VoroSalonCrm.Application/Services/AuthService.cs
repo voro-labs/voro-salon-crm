@@ -176,7 +176,27 @@ namespace VoroSalonCrm.Application.Services
             => await _userService.AcceptTermsAsync(userId);
 
         public async Task CompleteProfileAsync(Guid userId, CompleteProfileDto dto)
-            => await _userService.CompleteProfileAsync(userId, dto);
+        {
+            await _userService.CompleteProfileAsync(userId, dto);
+
+            if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
+            {
+                var user = await _userService.GetByIdAsync(userId);
+                var tenantId = user?.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.TenantId
+                            ?? user?.UserTenants?.FirstOrDefault()?.TenantId;
+
+                if (tenantId.HasValue)
+                {
+                    var tenant = await _tenantRepository.GetByIdAsync(false, tenantId.Value);
+                    if (tenant != null)
+                    {
+                        tenant.ContactPhone = dto.PhoneNumber;
+                        _tenantRepository.Update(tenant);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+            }
+        }
 
         public async Task<Guid> ProvisionAccountFromSubscriptionAsync(string email, string contactName, string salonName)
         {

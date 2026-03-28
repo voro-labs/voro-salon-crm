@@ -17,13 +17,15 @@ interface ExportMenuProps<T> {
   rows: T[]
   filename: string
   disabled?: boolean
+  className?: string
+  size?: "default" | "sm" | "lg" | "icon"
 }
 
-export function ExportMenu<T>({ columns, rows, filename, disabled }: ExportMenuProps<T>) {
+export function ExportMenu<T>({ columns, rows, filename, disabled, className, size = "default" }: ExportMenuProps<T>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="h-10 text-xs sm:text-sm" disabled={disabled || rows.length === 0}>
+        <Button variant="outline" size={size} className={`text-xs sm:text-sm ${className ?? ""}`} disabled={disabled || rows.length === 0}>
           <Download className="mr-2 h-4 w-4" />
           Exportar
         </Button>
