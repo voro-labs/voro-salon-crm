@@ -16,6 +16,7 @@ import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags } from "@/lib/flag-utils"
 import { cn } from "@/lib/utils"
+import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 
 type Step = 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'NAME' | 'PHONE' | 'CONFIRM' | 'SUCCESS'
 
@@ -396,16 +397,16 @@ export default function PublicBookingPage() {
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-4 bg-background px-6 py-4 shadow-sm border-b">
         {tenant.logoUrl ? (
-          <img
+          <AuthenticatedImage
             src={tenant.logoUrl}
             alt={tenant.name}
             className="h-10 w-10 rounded-full object-cover border"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden') }}
           />
-        ) : null}
-        <div className={cn("h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold", tenant.logoUrl ? "hidden" : "")}>
-          {tenant.name[0]}
-        </div>
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+            {tenant.name[0]}
+          </div>
+        )}
         <div className="flex flex-col">
           <h1 className="text-lg font-bold leading-tight">{tenant.name}</h1>
           <Badge variant="outline" className="w-fit text-[10px] h-4 py-0 text-green-600 bg-green-50 animate-pulse">
