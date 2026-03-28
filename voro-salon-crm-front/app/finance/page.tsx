@@ -176,7 +176,7 @@ export default function FinancialPage() {
         amount: val,
         type: parseInt(form.type) as TransactionType,
         categoryId: form.categoryId === "none" ? undefined : form.categoryId,
-        dueDate: new Date(form.dueDate).toISOString(),
+        dueDate: form.dueDate + "T12:00:00.000Z",
         paymentMethod: parseInt(form.paymentMethod) as PaymentMethod,
         notes: form.notes
       })
@@ -218,7 +218,7 @@ export default function FinancialPage() {
       const res = await payTransaction(selectedTx.id, {
         id: selectedTx.id,
         paidAmount: selectedTx.paidAmount + val, // Somando com o que já foi pago
-        paymentDate: new Date(payForm.paymentDate).toISOString(),
+        paymentDate: payForm.paymentDate + "T12:00:00.000Z",
         paymentMethod: parseInt(payForm.paymentMethod) as PaymentMethod,
         notes: payForm.notes
       })

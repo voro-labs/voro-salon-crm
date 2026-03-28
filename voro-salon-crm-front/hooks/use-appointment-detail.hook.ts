@@ -88,6 +88,18 @@ export function useAppointmentDetail(appointmentId: string) {
   }
 
   async function updateAppointment(f: AppointmentForm): Promise<boolean> {
+    if (!f.clientId) {
+      toast.error("Por favor, selecione um cliente.")
+      return false
+    }
+    if (!f.scheduledDateTime) {
+      toast.error("Por favor, selecione uma data e hora.")
+      return false
+    }
+    if (!f.durationMinutes || f.durationMinutes <= 0) {
+      toast.error("Por favor, informe a duração do serviço.")
+      return false
+    }
     setIsSaving(true)
     try {
       const date = new Date(f.scheduledDateTime)

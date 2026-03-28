@@ -33,6 +33,14 @@ export function useClientDetails(clientId: string) {
 
   // Actions
   const updateClient = async (updateData: any) => {
+    if (!updateData.name?.trim()) {
+      toast.error("Nome é obrigatório.")
+      return false
+    }
+    if (!updateData.phone?.trim()) {
+      toast.error("Telefone é obrigatório.")
+      return false
+    }
     setIsUpdating(true)
     try {
       const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENTS}/${clientId}`, {

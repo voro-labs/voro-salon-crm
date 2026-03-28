@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { localDateString } from "@/lib/date-utils"
 import useSWR from "swr"
 
 interface QuickCreateEmployeeProps {
@@ -50,7 +51,7 @@ export function QuickCreateEmployee({ onSuccess }: QuickCreateEmployeeProps) {
 				body: JSON.stringify({
 					name: form.name,
 					specialtyIds: form.specialtyIds,
-					hireDate: new Date().toISOString()
+					hireDate: localDateString()
 				}),
 			})
 

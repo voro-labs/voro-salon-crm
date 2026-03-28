@@ -1,6 +1,13 @@
 // Utilitários para conversão de datas
 
 /**
+ * Retorna a data local atual (ou informada) no formato yyyy-MM-dd, sem conversão UTC
+ */
+export function localDateString(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+/**
  * Converte data ISO completa (2002-09-17T00:00:00Z) para formato yyyy-MM-dd
  * @param isoString - String no formato ISO completo
  * @returns String no formato yyyy-MM-dd ou string vazia se inválida
@@ -8,9 +15,9 @@
 export function formatDateToInput(isoDate: string | undefined): string {
   if (!isoDate) return ""
   const date = new Date(isoDate)
-  const day = date.getUTCDate().toString().padStart(2, "0")
-  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0")
-  const year = date.getUTCFullYear()
+  const day = date.getDate().toString().padStart(2, "0")
+  const month = (date.getMonth() + 1).toString().padStart(2, "0")
+  const year = date.getFullYear()
   return `${year}-${month}-${day}`
 }
 
@@ -24,9 +31,9 @@ export function formatDateToBR(isoDate: string): string {
 
   try {
     const date = new Date(isoDate)
-    const day = date.getUTCDate().toString().padStart(2, "0")
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0")
-    const year = date.getUTCFullYear()
+    const day = date.getDate().toString().padStart(2, "0")
+    const month = (date.getMonth() + 1).toString().padStart(2, "0")
+    const year = date.getFullYear()
     return `${day}/${month}/${year}`
   } catch (error) {
     console.error("Erro ao formatar data para BR:", error)
@@ -65,7 +72,7 @@ export function isValidBRDate(dateString: string): boolean {
     if (!day || !month || !year) return false
 
     const date = new Date(year, month - 1, day)
-    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getDate() === day
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
   } catch (error) {
     return false
   }
@@ -84,8 +91,8 @@ export function calculateAge(birthDate: string): number {
     const birth = new Date(dateOnly + "T00:00:00")
     const today = new Date()
 
-    let age = today.getUTCFullYear() - birth.getUTCFullYear()
-    const monthDiff = today.getUTCMonth() - birth.getUTCMonth()
+    let age = today.getFullYear() - birth.getFullYear()
+    const monthDiff = today.getMonth() - birth.getMonth()
 
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
       age--

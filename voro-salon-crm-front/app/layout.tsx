@@ -9,6 +9,7 @@ import { Main } from "@/components/layout/admin/main"
 import { TenantThemeProvider } from "@/contexts/tenant-theme.context"
 import { BrowserNotificationsProvider } from "@/contexts/browser-notifications.context"
 import { WebPushManager } from "@/components/web-push-manager"
+import { Toaster } from "sonner"
 
 const _geist = Geist({ subsets: ["latin"] });
 
@@ -76,6 +77,7 @@ export default function RootLayout({
             </AuthProvider>
           </TenantThemeProvider>
         </ThemeProvider>
+        <Toaster richColors position="top-right" />
         {process.env.NODE_ENV === 'production' && (
           <>
             <Analytics />

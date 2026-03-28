@@ -64,6 +64,7 @@ import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags, getCountryFromPhone } from "@/lib/flag-utils"
 import { formatPhone } from "@/lib/mask-utils"
+import { localDateString } from "@/lib/date-utils"
 import { CurrencyInput } from "@/components/currency-input"
 import { toast } from "sonner"
 
@@ -156,7 +157,7 @@ export default function ClienteDetailPage() {
     serviceId: "none",
     description: "",
     amount: 0,
-    serviceDate: new Date().toISOString().split("T")[0],
+    serviceDate: localDateString(),
     notes: "",
   })
 
@@ -221,6 +222,7 @@ export default function ClienteDetailPage() {
     const success = await addService({
       ...svcForm,
       serviceId: svcForm.serviceId === "none" ? null : svcForm.serviceId,
+      serviceDate: svcForm.serviceDate + "T12:00:00.000Z",
     })
     if (success) {
       setSvcOpen(false)
@@ -228,7 +230,7 @@ export default function ClienteDetailPage() {
         serviceId: "none",
         description: "",
         amount: 0,
-        serviceDate: new Date().toISOString().split("T")[0],
+        serviceDate: localDateString(),
         notes: "",
       })
     }

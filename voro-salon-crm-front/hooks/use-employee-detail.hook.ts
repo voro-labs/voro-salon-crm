@@ -13,10 +13,14 @@ export interface EmployeeForm {
   specialtyIds: string[]
 }
 
+function toLocalDateString(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
 const DEFAULT_FORM: EmployeeForm = {
   name: "",
   photoUrl: "",
-  hireDate: new Date().toISOString().split("T")[0],
+  hireDate: toLocalDateString(new Date()),
   isActive: true,
   specialtyIds: [],
 }
@@ -41,7 +45,7 @@ export function useEmployeeDetail(employeeId?: string) {
       setForm({
         name: employee.name,
         photoUrl: employee.photoUrl || "",
-        hireDate: new Date(employee.hireDate).toISOString().split("T")[0],
+        hireDate: employee.hireDate ? toLocalDateString(new Date(employee.hireDate)) : DEFAULT_FORM.hireDate,
         isActive: employee.isActive,
         specialtyIds: employee.specialtyIds || [],
       })
@@ -115,9 +119,13 @@ export function useEmployeeDetail(employeeId?: string) {
         : `${API_CONFIG.ENDPOINTS.EMPLOYEES}/${employeeId}`
       const method = isNew ? "POST" : "PUT"
 
+      const payload = {
+        ...f,
+        hireDate: f.hireDate ? f.hireDate + "T12:00:00.000Z" : f.hireDate,
+      }
       const res = await secureApiCall<any>(endpoint, {
         method,
-        body: JSON.stringify(f),
+        body: JSON.stringify(payload),
       })
 
       if (res.hasError) {
