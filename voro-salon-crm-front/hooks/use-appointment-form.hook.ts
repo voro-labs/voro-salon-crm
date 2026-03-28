@@ -50,11 +50,12 @@ export function useAppointmentForm() {
   const isModuleEnabled = (moduleId: number) =>
     modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
 
-  function handleServiceChange(serviceId: string) {
-    const selected = services?.find((s: any) => s.id === serviceId)
+  function handleServiceChange(serviceId: string, serviceData?: any) {
+    const selected = serviceData ?? services?.find((s: any) => s.id === serviceId)
     setForm((p) => ({
       ...p,
       serviceId,
+      employeeId: "none",
       amount: selected?.price ?? p.amount,
       durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
       description: p.description || selected?.name || "",

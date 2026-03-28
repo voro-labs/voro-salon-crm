@@ -25,7 +25,7 @@ import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 
 interface QuickCreateServiceProps {
-  onSuccess: (serviceId: string) => void
+  onSuccess: (serviceId: string, serviceData: any) => void
 }
 
 export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
@@ -58,7 +58,7 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
       }
 
       toast.success("Serviço cadastrado com sucesso!")
-      onSuccess(res.data.id)
+      onSuccess(res.data.id, res.data)
       setOpen(false)
       // Clear form
       setForm({ name: "", description: "", price: 0, durationMinutes: 30 })

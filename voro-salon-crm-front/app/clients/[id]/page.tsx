@@ -162,6 +162,11 @@ export default function ClienteDetailPage() {
 
   const [anamnesisOpen, setAnamnesisOpen] = useState(false)
   const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
+  const { data: anamnesisQuestions } = useSWR(
+    `${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions`,
+    (url) => authenticatedApiCall<any[]>(url).then((r) => r.data ?? [])
+  )
+  const hasAnamnesisQuestions = (anamnesisQuestions?.length ?? 0) > 0
 
   // Membership state
   const { data: memberships, mutate: mutateMemberships } = useSWR(
@@ -673,7 +678,11 @@ export default function ClienteDetailPage() {
                 </div>
                 <Dialog open={anamnesisOpen} onOpenChange={setAnamnesisOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button
+                      size="sm"
+                      disabled={!hasAnamnesisQuestions}
+                      title={!hasAnamnesisQuestions ? "Configure as mensagens da anamnese antes de iniciar uma avaliação" : undefined}
+                    >
                       <Plus className="mr-1.5 h-3.5 w-3.5" />
                       Nova Avaliação
                     </Button>

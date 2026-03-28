@@ -127,10 +127,9 @@ export default function NovoAgendamentoPage() {
                     <div className="flex items-center justify-between">
                       <Label htmlFor="serviceId">Serviço (Opcional)</Label>
                       <QuickCreateService
-                        onSuccess={async (id) => {
+                        onSuccess={async (id, serviceData) => {
                           await mutateServices()
-                          setForm((p) => ({ ...p, serviceId: id }))
-                          handleServiceChange(id)
+                          handleServiceChange(id, serviceData)
                         }}
                       />
                     </div>
@@ -274,7 +273,7 @@ export default function NovoAgendamentoPage() {
                               )}
                               disabled={!canSelect}
                               onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
-                              title={slot.isBlocked ? "Horário bloqueado" : undefined}
+                              title={slot.isBlocked ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado") : undefined}
                             >
                               {format(new Date(slot.startTime), "HH:mm")}
                             </Button>

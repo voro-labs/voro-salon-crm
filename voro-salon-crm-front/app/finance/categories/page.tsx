@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useTransactionCategories } from "@/hooks/use-transaction-categories.hook"
 import { TransactionCategoryDto, TransactionType } from "@/types/DTOs/financial.interface"
 import { Button } from "@/components/ui/button"
-import { Plus, Pencil, Trash2, Tag, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Tag, Loader2, ArrowLeft } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -43,6 +43,7 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import Link from "next/link"
 
 export default function FinancialCategoriesPage() {
   const { categories, isLoading, createCategory, updateCategory, deleteCategory } = useTransactionCategories()
@@ -122,6 +123,14 @@ export default function FinancialCategoriesPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <div className="flex flex-col gap-6 p-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
+            <Link href="/finance">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <span className="text-sm text-muted-foreground">Financeiro</span>
+        </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Categorias Financeiras</h1>
