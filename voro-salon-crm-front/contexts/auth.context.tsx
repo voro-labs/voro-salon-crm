@@ -23,6 +23,7 @@ export interface AuthContextType {
   login: (token: string, refreshToken?: string, tenants?: any[]) => void
   logout: () => void
   switchTenant: (tenantId: string) => Promise<void>
+  refreshUser: () => Promise<void>
   loading: boolean
 }
 
@@ -167,6 +168,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("user_tenants")
   }
 
+  const refreshUser = async () => {
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) return
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      })
+      const data = await res.json()
+      if (res.ok && !data.hasError && data.data?.token) {
+        const newToken = data.data.token
+        const newRefresh = data.data.refreshToken
+        setAuthToken(newToken)
+        if (newRefresh) setRefreshToken(newRefresh)
+        const decoded = jwtDecode<JwtPayload>(newToken)
+        const storedTenants = localStorage.getItem("user_tenants")
+        let parsedTenants = []
+        try { parsedTenants = storedTenants ? JSON.parse(storedTenants) : [] } catch { }
+        setUser({
+          userId: decoded.userId,
+          firstName: decoded.firstName,
+          lastName: decoded.lastName,
+          userName: decoded.userName,
+          email: decoded.email,
+          roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
+          twoFactorEnabled: decoded.twoFactorEnabled === "True",
+          token: newToken,
+          refreshToken: newRefresh || refreshToken,
+          tenants: parsedTenants,
+        })
+      }
+    } catch { }
+  }
+
   const switchTenant = async (tenantId: string) => {
     try {
       const { secureApiCall, API_CONFIG } = await import("@/lib/api")
@@ -188,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, switchTenant, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, switchTenant, refreshUser, loading }}>
       {children}
     </AuthContext.Provider>
   )

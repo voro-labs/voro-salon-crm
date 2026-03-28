@@ -85,7 +85,7 @@ export default function ConfiguracoesPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
 
   // 2FA state
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.twoFactorEnabled ?? false)
@@ -161,6 +161,7 @@ export default function ConfiguracoesPage() {
       setTwoFactorEnabled(true)
       set2FADialog("idle")
       setTfaCode("")
+      await refreshUser()
     } finally {
       setTfaLoading(false)
     }
@@ -175,6 +176,7 @@ export default function ConfiguracoesPage() {
       if (res.hasError) { setTfaError(res.message ?? "Erro ao desativar 2FA."); return }
       setTwoFactorEnabled(false)
       set2FADialog("idle")
+      await refreshUser()
     } finally {
       setTfaLoading(false)
     }
