@@ -171,7 +171,7 @@ export default function ConfiguracoesPage() {
   const roleNames = user?.roles?.map((r) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
-  const defaultTab = isOwner ? "geral" : "aparencia"
+  const defaultTab = isSalonOwner ? "geral" : "aparencia"
 
   const {
     modules,
@@ -277,7 +277,7 @@ export default function ConfiguracoesPage() {
         <Tabs defaultValue={defaultTab} className="w-full">
           <div className="relative overflow-hidden">
             <TabsList className="w-full justify-start overflow-x-auto no-scrollbar flex-nowrap h-auto p-1 bg-muted/50">
-              {isOwner && (
+              {isSalonOwner && (
                 <TabsTrigger value="geral" className="shrink-0 py-2">
                   <Building2 className="mr-2 h-4 w-4" />
                   Estabelecimento
@@ -293,7 +293,7 @@ export default function ConfiguracoesPage() {
                   Módulos
                 </TabsTrigger>
               )}
-              {isOwner && (
+              {isSalonOwner && (
                 <TabsTrigger value="anamnesis" className="shrink-0 py-2">
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Anamnese
@@ -312,7 +312,7 @@ export default function ConfiguracoesPage() {
             </TabsList>
           </div>
 
-          {isOwner && <TabsContent value="geral">
+          {isSalonOwner && <TabsContent value="geral">
             {/* ── Estabelecimento ── */}
             <Card>
               <CardHeader>
@@ -715,7 +715,7 @@ export default function ConfiguracoesPage() {
             </Card>
           </TabsContent>}
 
-          {isOwner && <TabsContent value="anamnesis">
+          {isSalonOwner && <TabsContent value="anamnesis">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
