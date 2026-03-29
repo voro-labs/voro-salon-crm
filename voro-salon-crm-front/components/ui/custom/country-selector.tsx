@@ -50,7 +50,7 @@ export function CountrySelector({ value, onChange }: CountrySelectorProps) {
         ))}
       </select>
 
-      <div className="flex items-center gap-1.5 px-3 py-2 h-10 shadow-sm border border-input rounded-md bg-background min-w-[90px]">
+      <div className="flex items-center gap-1.5 px-3 py-1 h-9 shadow-xs border border-input rounded-md bg-transparent min-w-[90px]">
         {selectedCountry?.flagUrl && (
           <img
             src={selectedCountry.flagUrl}

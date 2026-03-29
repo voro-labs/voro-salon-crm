@@ -24,7 +24,8 @@ namespace VoroSalonCrm.Application.Services
                 Name = dto.Name,
                 Slug = dto.Slug.ToLowerInvariant().Trim(),
                 IsActive = true,
-                CreatedAt = DateTimeOffset.UtcNow
+                CreatedAt = DateTimeOffset.UtcNow,
+                EstablishmentType = dto.EstablishmentType ?? Domain.Enums.EstablishmentType.Salon
             };
 
             await _tenantRepository.AddAsync(tenant);
@@ -62,6 +63,7 @@ namespace VoroSalonCrm.Application.Services
             if (dto.ContactPhone is not null) tenant.ContactPhone = dto.ContactPhone;
             if (dto.ContactEmail is not null) tenant.ContactEmail = dto.ContactEmail;
             if (dto.ThemeMode is not null) tenant.ThemeMode = dto.ThemeMode;
+            if (dto.EstablishmentType.HasValue) tenant.EstablishmentType = dto.EstablishmentType.Value;
 
             tenant.UpdatedAt = DateTimeOffset.UtcNow;
 

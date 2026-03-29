@@ -12,6 +12,7 @@ import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { getClientBranding } from "@/lib/branding"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -19,6 +20,7 @@ export default function SignInPage() {
   const redirectTo = searchParams.get("redirect") || "/"
   const { user, loading: authLoading } = useAuth()
   const { signIn, loading, error, clearError } = useSignIn()
+  const branding = getClientBranding()
 
   const [formData, setFormData] = useState<SignInDto>({
     email: "",
@@ -79,7 +81,7 @@ export default function SignInPage() {
             <Scissors className="h-7 w-7" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground">Voro Salon CRM</h1>
+            <h1 className="text-2xl font-bold text-foreground">{branding.productName}</h1>
             <p className="mt-1 text-sm text-muted-foreground">Gerenciamento de clientes e serviços</p>
           </div>
         </div>

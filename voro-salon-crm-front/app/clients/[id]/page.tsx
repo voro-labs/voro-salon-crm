@@ -946,7 +946,7 @@ export default function ClienteDetailPage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="edit-phone">Telefone *</Label>
                 <div className="flex gap-2">
-                  <div className="w-[120px] shrink-0">
+                  <div className="shrink-0">
                     <CountrySelector
                       value={countryCode}
                       onChange={setCountryCode}
