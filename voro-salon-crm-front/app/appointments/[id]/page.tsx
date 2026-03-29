@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useState } from "react"
-import { ArrowLeft, Loader2, Trash2, UserCheck } from "lucide-react"
+import { ArrowLeft, Loader2, Trash2, UserCheck, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog"
 import { CurrencyInput } from "@/components/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { Badge } from "@/components/ui/badge"
 import { useAppointmentDetail } from "@/hooks/use-appointment-detail.hook"
 import { appointmentStatusConfig } from "@/components/ui/custom/status-badge"
 
@@ -322,6 +323,25 @@ export default function AppointmentDetailPage() {
                 })}
               </CardContent>
             </Card>
+
+            {appointment?.clientMembershipId && (
+              <Card className="bg-emerald-50 border-emerald-200">
+                <CardContent className="p-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-emerald-600" />
+                    <h4 className="font-semibold text-sm text-emerald-700">Assinatura Utilizada</h4>
+                  </div>
+                  {appointment.membershipPlanName && (
+                    <p className="text-xs text-emerald-700 font-medium">{appointment.membershipPlanName}</p>
+                  )}
+                  {appointment.membershipRemainingSessions !== null && appointment.membershipRemainingSessions !== undefined && (
+                    <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200 w-fit">
+                      {appointment.membershipRemainingSessions} sessões restantes
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="bg-primary/5 border-primary/10">
               <CardContent className="p-4 flex flex-col gap-3">

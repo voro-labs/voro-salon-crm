@@ -79,7 +79,7 @@ O método `SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? 
 
 ---
 
-## TASK 3 — Validar Uso da Assinatura (Membership) no Agendamento
+## ✅ TASK 3 — Validar Uso da Assinatura (Membership) no Agendamento
 
 **Objetivo:** Verificar se o cliente possui uma `ClientMembership` ativa no momento do agendamento e, se sim, consumir uma sessão automaticamente.
 
@@ -96,14 +96,14 @@ O método `SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? 
      - Decrementar `RemainingSessions` (se não for ilimitado).
      - Vincular o `ClientMembershipId` ao agendamento (`Appointment.ClientMembershipId`).
   3. Se a assinatura estiver esgotada (`RemainingSessions == 0`): não bloquear o agendamento, mas não consumir — ou avisar o cliente.
-- [ ] Adicionar campo `ClientMembershipId` (nullable) na entidade `Appointment` (migration necessária).
-- [ ] Retornar no response do agendamento se uma assinatura foi utilizada.
+- [x] Adicionar campo `ClientMembershipId` (nullable) na entidade `Appointment` (migration criada).
+- [x] Retornar no response do agendamento se uma assinatura foi utilizada.
 
 ### Frontend — Alterações necessárias
 
-- [ ] Na tela de agendamento (admin), exibir badge "Usa assinatura" se o cliente tiver membership ativa.
-- [ ] Exibir quantas sessões restam após o agendamento.
-- [ ] No detalhe do agendamento, mostrar qual plano de assinatura foi utilizado.
+- [x] Na tela de agendamento (admin), exibir badge "Usa assinatura" se o cliente tiver membership ativa.
+- [x] Exibir quantas sessões restam após o agendamento.
+- [x] No detalhe do agendamento, mostrar qual plano de assinatura foi utilizado.
 
 ---
 

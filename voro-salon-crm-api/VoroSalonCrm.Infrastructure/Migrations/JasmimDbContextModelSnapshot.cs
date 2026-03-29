@@ -320,6 +320,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<Guid>("ClientId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ClientMembershipId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -372,6 +375,8 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("ClientMembershipId");
 
                     b.HasIndex("EmployeeId");
 
@@ -1821,6 +1826,11 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("VoroSalonCrm.Domain.Entities.ClientMembership", "Membership")
+                        .WithMany()
+                        .HasForeignKey("ClientMembershipId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("VoroSalonCrm.Domain.Entities.Employee", "Employee")
                         .WithMany()
                         .HasForeignKey("EmployeeId")
@@ -1840,6 +1850,8 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Client");
 
                     b.Navigation("Employee");
+
+                    b.Navigation("Membership");
 
                     b.Navigation("Service");
 

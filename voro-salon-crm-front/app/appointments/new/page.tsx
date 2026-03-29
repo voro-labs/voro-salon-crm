@@ -29,6 +29,7 @@ import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentForm } from "@/hooks/use-appointment-form.hook"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -50,6 +51,7 @@ export default function NovoAgendamentoPage() {
     mutateClients,
     mutateServices,
     mutateEmployees,
+    activeMembership,
   } = useAppointmentForm()
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
@@ -120,6 +122,16 @@ export default function NovoAgendamentoPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {activeMembership && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
+                        Usa assinatura: {activeMembership.planName}
+                        {activeMembership.remainingSessions !== null && (
+                          <span className="ml-1">· {activeMembership.remainingSessions} sessões restantes</span>
+                        )}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
 
                 {isModuleEnabled(3) && (

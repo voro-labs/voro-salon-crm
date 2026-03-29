@@ -40,7 +40,10 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         decimal Amount,
         string? Notes,
         DateTimeOffset CreatedAt,
-        bool IsEncaixe = false
+        bool IsEncaixe = false,
+        Guid? ClientMembershipId = null,
+        string? MembershipPlanName = null,
+        int? MembershipRemainingSessions = null
     );
 
     public record AvailabilitySlotDto(

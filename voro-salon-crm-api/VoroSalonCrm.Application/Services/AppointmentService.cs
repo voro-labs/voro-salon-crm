@@ -102,6 +102,8 @@ namespace VoroSalonCrm.Application.Services
         public async Task<AppointmentDto?> GetByIdAsync(Guid id)
         {
             var appointment = await _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .Include(a => a.Membership!)
+                .ThenInclude(m => m.Plan)
                 .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
             if (appointment == null) return null;
@@ -112,6 +114,8 @@ namespace VoroSalonCrm.Application.Services
         public async Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null)
         {
             var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .Include(a => a.Membership!)
+                .ThenInclude(m => m.Plan)
                 .Where(a => !a.IsDeleted);
 
             if (clientId.HasValue)
@@ -190,7 +194,7 @@ namespace VoroSalonCrm.Application.Services
             if (oldStatus != AppointmentStatus.Completed && appointment.Status == AppointmentStatus.Completed)
             {
                 await CreateHistoryFromAppointmentAsync(appointment);
-                await DecrementMembershipSessionAsync(appointment.ClientId, appointment.TenantId);
+                await DecrementMembershipSessionAsync(appointment);
             }
             else if (oldStatus == AppointmentStatus.Completed &&
                 (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
@@ -456,24 +460,32 @@ namespace VoroSalonCrm.Application.Services
             return slots;
         }
 
-        private async Task DecrementMembershipSessionAsync(Guid clientId, Guid tenantId)
+        private async Task DecrementMembershipSessionAsync(Appointment appointment)
         {
             var activeMemberships = await _clientMembershipRepository
-                .Query(m => m.ClientId == clientId && m.TenantId == tenantId && m.Status == ClientMembershipStatus.Active)
+                .Query(m => m.ClientId == appointment.ClientId && m.TenantId == appointment.TenantId
+                    && m.Status == ClientMembershipStatus.Active
+                    && m.EndDate >= DateTimeOffset.UtcNow)
+                .Include(m => m.Plan)
+                .OrderBy(m => m.EndDate)
                 .ToListAsync();
 
-            foreach (var membership in activeMemberships)
-            {
-                if (membership.RemainingSessions == null) continue; // ilimitado
+            var membership = activeMemberships.FirstOrDefault();
+            if (membership == null) return;
 
-                membership.RemainingSessions = Math.Max(0, membership.RemainingSessions.Value - 1);
-                membership.UpdatedAt = DateTimeOffset.UtcNow;
+            // Vincula a assinatura ao agendamento
+            appointment.ClientMembershipId = membership.Id;
+            _appointmentRepository.Update(appointment);
 
-                if (membership.RemainingSessions == 0)
-                    membership.Status = ClientMembershipStatus.Expired;
+            if (membership.RemainingSessions == null) return; // sessões ilimitadas
 
-                _clientMembershipRepository.Update(membership);
-            }
+            membership.RemainingSessions = Math.Max(0, membership.RemainingSessions.Value - 1);
+            membership.UpdatedAt = DateTimeOffset.UtcNow;
+
+            if (membership.RemainingSessions == 0)
+                membership.Status = ClientMembershipStatus.Expired;
+
+            _clientMembershipRepository.Update(membership);
         }
 
         private async Task CreateHistoryFromAppointmentAsync(Appointment appointment)
@@ -507,7 +519,10 @@ namespace VoroSalonCrm.Application.Services
                 a.Amount,
                 a.Notes,
                 a.CreatedAt,
-                a.IsEncaixe
+                a.IsEncaixe,
+                a.ClientMembershipId,
+                a.Membership?.Plan?.Name,
+                a.Membership?.RemainingSessions
             );
         }
     }
