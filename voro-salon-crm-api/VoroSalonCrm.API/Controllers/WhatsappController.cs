@@ -227,7 +227,11 @@ namespace VoroSalonCrm.API.Controllers
                     try
                     {
                         var parameters = dto.BodyParams
-                            .Select(p => new WhatsappParameterDto { Type = "text", Text = p })
+                            .Select(p => new WhatsappParameterDto
+                            {
+                                Type = "text",
+                                Text = p == "__CLIENT_NAME__" ? client.Name : p
+                            })
                             .ToList();
 
                         var templateMsg = new WhatsappTemplateMessageDto

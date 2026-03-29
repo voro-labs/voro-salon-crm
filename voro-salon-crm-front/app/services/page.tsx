@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { fetcher } from "@/lib/fetcher"
+import { PageHeader } from "@/components/ui/custom/page-header"
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -38,16 +39,23 @@ export default function ServicesPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Serviços</h1>
-          <Button asChild size="sm">
-            <Link href="/services/new">
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Novo Serviço</span>
-              <span className="sm:hidden">Novo</span>
-            </Link>
-          </Button>
-        </div>
+        <PageHeader 
+          title="Serviços" 
+          action={
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+              {/* Linha 2: ações — ícone-only nos secundários em mobile */}
+              <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-end">
+                <Button asChild size="sm">
+                  <Link href="/services/new">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    <span className="hidden sm:inline">Novo Serviço</span>
+                    <span className="sm:hidden">Novo</span>
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          } 
+        />
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

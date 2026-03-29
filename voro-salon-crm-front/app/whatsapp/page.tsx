@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { MessageCircle, RefreshCw, Loader2, User, CalendarCheck, Send, X, CheckCircle, AlertCircle } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
@@ -102,6 +102,7 @@ function ConversationCard({ conv }: { conv: WhatsAppConversation }) {
 function SendTemplateModal({ onClose }: { onClose: () => void }) {
   const { data: templates } = useSWR<Template[]>(API_CONFIG.ENDPOINTS.WHATSAPP_TEMPLATES, fetcher)
   const { data: clients } = useSWR<any[]>(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
+  const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
 
   const [selectedTemplate, setSelectedTemplate] = useState("")
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([])
@@ -111,11 +112,52 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
 
   const currentTemplate = templates?.find((t) => t.name === selectedTemplate)
 
+  // Detecta quais índices são auto-preenchíveis
+  const isAutoParam = (label: string) => {
+    const l = label.toLowerCase()
+    return l.includes("estabelecimento") || l.includes("cliente")
+  }
+
+  const getAutoValue = (label: string): string => {
+    const l = label.toLowerCase()
+    if (l.includes("estabelecimento")) return tenant?.name ?? ""
+    if (l.includes("cliente")) {
+      if (selectedClientIds.length === 1) {
+        return clients?.find((c: any) => c.id === selectedClientIds[0])?.name ?? ""
+      }
+      return "" // múltiplos clientes: cada um recebe seu próprio nome
+    }
+    return ""
+  }
+
   const handleTemplateChange = (name: string) => {
     const tpl = templates?.find((t) => t.name === name)
     setSelectedTemplate(name)
-    setBodyParams(Array(tpl?.paramsCount ?? 0).fill(""))
+    const labels = tpl?.paramLabels ?? []
+    setBodyParams(Array(tpl?.paramsCount ?? 0).fill("").map((_, i) => {
+      const label = labels[i] ?? ""
+      if (label.toLowerCase().includes("estabelecimento")) return tenant?.name ?? ""
+      return ""
+    }))
   }
+
+  // Re-preenche nome do cliente quando a seleção muda para 1 cliente
+  useEffect(() => {
+    if (!currentTemplate) return
+    setBodyParams((prev) =>
+      prev.map((val, i) => {
+        const label = (currentTemplate.paramLabels?.[i] ?? "").toLowerCase()
+        if (label.includes("estabelecimento")) return tenant?.name ?? val
+        if (label.includes("cliente")) {
+          if (selectedClientIds.length === 1) {
+            return clients?.find((c: any) => c.id === selectedClientIds[0])?.name ?? val
+          }
+          return "" // limpa se múltiplos selecionados
+        }
+        return val
+      })
+    )
+  }, [selectedClientIds, tenant])
 
   const toggleClient = (id: string) => {
     setSelectedClientIds((prev) =>
@@ -129,13 +171,21 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
 
     setIsSending(true)
     try {
+      // Para params de "nome do cliente" com múltiplos destinatários,
+      // o backend substitui pelo nome real de cada cliente
+      const finalParams = bodyParams.map((val, i) => {
+        const label = (currentTemplate?.paramLabels?.[i] ?? "").toLowerCase()
+        if (label.includes("cliente") && selectedClientIds.length > 1) return "__CLIENT_NAME__"
+        return val
+      })
+
       const res = await secureApiCall<SendResult[]>(API_CONFIG.ENDPOINTS.WHATSAPP_SEND_TEMPLATE, {
         method: "POST",
         body: JSON.stringify({
           clientIds: selectedClientIds,
           templateName: selectedTemplate,
           language: "pt_BR",
-          bodyParams: bodyParams.filter(Boolean),
+          bodyParams: finalParams,
         }),
       })
       if (res.hasError) { toast.error(res.message || "Erro ao enviar."); return }
@@ -201,16 +251,35 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
                 <Label className="text-xs text-muted-foreground">Parâmetros do template</Label>
                 {bodyParams.map((val, i) => {
                   const label = currentTemplate?.paramLabels?.[i] ?? `Parâmetro {{${i + 1}}}`
+                  const auto = isAutoParam(label)
+                  const isClientParam = label.toLowerCase().includes("cliente")
+                  const multiClient = isClientParam && selectedClientIds.length > 1
                   return (
                     <div key={i} className="flex flex-col gap-1">
-                      <span className="text-[11px] text-muted-foreground">
-                        <span className="font-mono text-primary">{"{{" + (i + 1) + "}}"}</span> — {label}
-                      </span>
-                      <Input
-                        placeholder={label}
-                        value={val}
-                        onChange={(e) => setBodyParams((p) => p.map((v, j) => j === i ? e.target.value : v))}
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-muted-foreground">
+                          <span className="font-mono text-primary">{"{{" + (i + 1) + "}}"}</span> — {label}
+                        </span>
+                        {auto && !multiClient && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">auto</span>
+                        )}
+                      </div>
+                      {multiClient ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-muted/40 text-xs text-muted-foreground">
+                          Será substituído pelo nome de cada destinatário
+                        </div>
+                      ) : (
+                        <Input
+                          placeholder={label}
+                          value={val}
+                          readOnly={auto && !!val}
+                          className={cn(auto && val && "bg-muted/40 text-muted-foreground cursor-default")}
+                          onChange={(e) => {
+                            if (auto && val) return
+                            setBodyParams((p) => p.map((v, j) => j === i ? e.target.value : v))
+                          }}
+                        />
+                      )}
                     </div>
                   )
                 })}

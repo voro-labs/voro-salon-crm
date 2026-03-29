@@ -15,6 +15,7 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 import { fetcher } from "@/lib/fetcher"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PlanLimitModal } from "@/components/ui/custom/plan-limit-modal"
+import { PageHeader } from "@/components/ui/custom/page-header"
 
 function AuthenticatedImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -123,21 +124,26 @@ export default function EmployeesPage() {
         />
       )}
       <div className="flex flex-col gap-6 p-6">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Funcionários</h1>
-          <div className="flex items-center gap-2">
-            {maxEmployees !== -1 && (
-              <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
-                {currentCount}/{maxEmployees}
-              </span>
-            )}
-            <Button size="sm" onClick={handleNewEmployee}>
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Novo Funcionário</span>
-              <span className="sm:hidden">Novo</span>
-            </Button>
-          </div>
-        </div>
+        <PageHeader 
+          title="Funcionários" 
+          action={
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+              {/* Linha 2: ações — ícone-only nos secundários em mobile */}
+              <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-end">
+                {maxEmployees !== -1 && (
+                  <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
+                    {currentCount}/{maxEmployees}
+                  </span>
+                )}
+                <Button size="sm" onClick={handleNewEmployee}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span className="hidden sm:inline">Novo Funcionário</span>
+                  <span className="sm:hidden">Novo</span>
+                </Button>
+              </div>
+            </div>
+          }
+        />
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

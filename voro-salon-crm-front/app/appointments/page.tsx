@@ -22,7 +22,6 @@ import { EmptyState } from "@/components/ui/custom/empty-state"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { StatusBadge } from "@/components/ui/custom/status-badge"
 import { fetcher } from "@/lib/fetcher"
-import { BlockTimeSlotDialog } from "@/components/custom/block-time-slot-dialog"
 
 export default function AppointmentsPage() {
   const [periodFilter, setPeriodFilter] = useState("today")
@@ -82,43 +81,47 @@ export default function AppointmentsPage() {
         <PageHeader 
           title="Agendamentos" 
           action={
-            <div className="flex items-center gap-2">
-              <Tabs value={periodFilter} onValueChange={setPeriodFilter} className="w-fit">
-                <TabsList className="bg-muted/50 border border-border/40 h-8 p-0.5">
-                  <TabsTrigger value="today" className="text-[10px] h-7 px-3">Hoje</TabsTrigger>
-                  <TabsTrigger value="week" className="text-[10px] h-7 px-3">Semana</TabsTrigger>
-                  <TabsTrigger value="all" className="text-[10px] h-7 px-3">Tudo</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <ExportMenu
-                size="sm"
-                rows={finalFiltered}
-                filename="agendamentos"
-                columns={[
-                  { header: "Cliente", value: (a: any) => a.clientName },
-                  { header: "Serviço", value: (a: any) => a.serviceName ?? "" },
-                  { header: "Data/Hora", value: (a: any) => format(new Date(a.scheduledDateTime), "dd/MM/yyyy HH:mm") },
-                  { header: "Duração (min)", value: (a: any) => a.durationMinutes },
-                  { header: "Valor (R$)", value: (a: any) => Number(a.amount ?? 0).toFixed(2) },
-                  { header: "Status", value: (a: any) => ["Pendente","Confirmado","Concluído","Cancelado","Faltou"][a.status] ?? a.status },
-                  { header: "Descrição", value: (a: any) => a.description ?? "" },
-                ]}
-              />
-              <BlockTimeSlotDialog />
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/appointments/blocked">
-                  <Ban className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Gerenciar Bloqueios</span>
-                  <span className="sm:hidden">Bloqueios</span>
-                </Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/appointments/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Novo Agendamento</span>
-                  <span className="sm:hidden">Novo</span>
-                </Link>
-              </Button>
+            <div className="flex flex-col gap-2 w-full">
+              {/* Linha 2: ações — ícone-only nos secundários em mobile */}
+              <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-start">
+                <ExportMenu
+                  size="sm"
+                  rows={finalFiltered}
+                  filename="agendamentos"
+                  columns={[
+                    { header: "Cliente", value: (a: any) => a.clientName },
+                    { header: "Serviço", value: (a: any) => a.serviceName ?? "" },
+                    { header: "Data/Hora", value: (a: any) => format(new Date(a.scheduledDateTime), "dd/MM/yyyy HH:mm") },
+                    { header: "Duração (min)", value: (a: any) => a.durationMinutes },
+                    { header: "Valor (R$)", value: (a: any) => Number(a.amount ?? 0).toFixed(2) },
+                    { header: "Status", value: (a: any) => ["Pendente","Confirmado","Concluído","Cancelado","Faltou"][a.status] ?? a.status },
+                    { header: "Descrição", value: (a: any) => a.description ?? "" },
+                  ]}
+                />
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/appointments/blocked">
+                    <Ban className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Bloqueios</span>
+                  </Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/appointments/new">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    <span className="hidden sm:inline">Novo Agendamento</span>
+                    <span className="sm:hidden">Novo</span>
+                  </Link>
+                </Button>
+              </div>
+              {/* Linha 1: filtro de período */}
+              <div className="flex justify-end w-full">
+                <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
+                  <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
+                    <TabsTrigger value="today" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Hoje</TabsTrigger>
+                    <TabsTrigger value="week" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Semana</TabsTrigger>
+                    <TabsTrigger value="all" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Tudo</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
           } 
         />
