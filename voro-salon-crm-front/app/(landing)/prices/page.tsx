@@ -2015,7 +2015,7 @@ export default function PrecosPage() {
         <div className="max-w-3xl mx-auto">
           <Section className="text-center mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
-              Por que o Voro e não o Trinks?
+              Por que o Voro e não as plataformas tradicionais?
             </h2>
             <p className="text-muted-foreground">Veja a diferença na prática</p>
           </Section>
@@ -2037,7 +2037,7 @@ export default function PrecosPage() {
                     <span className="font-bold text-primary block mb-1">{branding.shortName}</span>
                     <Badge className="text-[10px] px-2 py-0">Recomendado</Badge>
                   </th>
-                  <th className="px-4 py-3 text-center font-medium w-[30%]">Trinks</th>
+                  <th className="px-4 py-3 text-center font-medium w-[30%]">Plataformas tradicionais</th>
                 </tr>
               </thead>
               <tbody>
@@ -2045,32 +2045,32 @@ export default function PrecosPage() {
                   {
                     feature: "Lembrete WhatsApp",
                     voro: { icon: "✅", text: "Nativo e automático", color: "text-green-600" },
-                    trinks: { icon: "❌", text: "SMS pago à parte", color: "text-muted-foreground" },
+                    plataformas_tradicionais: { icon: "❌", text: "SMS pago à parte", color: "text-muted-foreground" },
                   },
                   {
                     feature: "Trial sem cartão",
                     voro: { icon: "✅", text: "14 dias", color: "text-green-600" },
-                    trinks: { icon: "❌", text: "5 dias", color: "text-muted-foreground" },
+                    plataformas_tradicionais: { icon: "❌", text: "5 dias", color: "text-muted-foreground" },
                   },
                   {
                     feature: "App mobile",
                     voro: { icon: "✅", text: "iOS + Android", color: "text-green-600" },
-                    trinks: { icon: "✅", text: "Sim", color: "text-green-600" },
+                    plataformas_tradicionais: { icon: "✅", text: "Sim", color: "text-green-600" },
                   },
                   {
                     feature: "Financeiro",
                     voro: { icon: "✅", text: "Incluso no Pro", color: "text-green-600" },
-                    trinks: { icon: "⚠️", text: "Básico", color: "text-yellow-600" },
+                    plataformas_tradicionais: { icon: "⚠️", text: "Básico", color: "text-yellow-600" },
                   },
                   {
                     feature: "Agendamento online",
                     voro: { icon: "✅", text: "Link público", color: "text-green-600" },
-                    trinks: { icon: "✅", text: "Sim", color: "text-green-600" },
+                    plataformas_tradicionais: { icon: "✅", text: "Sim", color: "text-green-600" },
                   },
                   {
                     feature: "Preço mensal",
                     voro: { icon: "", text: "R$ 79/mês", color: "font-bold text-primary" },
-                    trinks: { icon: "", text: "R$ 65/mês", color: "font-semibold" },
+                    plataformas_tradicionais: { icon: "", text: "R$ 65/mês", color: "font-semibold" },
                   },
                 ].map((row, i) => (
                   <motion.tr
@@ -2087,8 +2087,8 @@ export default function PrecosPage() {
                     >
                       {row.voro.icon} {row.voro.text}
                     </td>
-                    <td className={`px-4 py-3 text-center ${row.trinks.color}`}>
-                      {row.trinks.icon} {row.trinks.text}
+                    <td className={`px-4 py-3 text-center ${row.plataformas_tradicionais.color}`}>
+                      {row.plataformas_tradicionais.icon} {row.plataformas_tradicionais.text}
                     </td>
                   </motion.tr>
                 ))}
