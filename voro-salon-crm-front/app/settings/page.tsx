@@ -280,11 +280,12 @@ export default function ConfiguracoesPage() {
                         onChange={(e) => setForm((p) => p ? { ...p, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') } : null)}
                       />
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="establishment-type">Tipo de Estabelecimento</Label>
-                      <Select
-                        value={String(formData.establishmentType)}
-                        onValueChange={(v) => setEstablishmentType(Number(v))}
+                    {isOwner && (
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="establishment-type">Tipo de Estabelecimento</Label>
+                        <Select
+                          value={String(formData.establishmentType)}
+                          onValueChange={(v) => setEstablishmentType(Number(v))}
                       >
                         <SelectTrigger id="establishment-type" className="w-full">
                           <SelectValue />
@@ -301,7 +302,8 @@ export default function ConfiguracoesPage() {
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="flex flex-col gap-4">
