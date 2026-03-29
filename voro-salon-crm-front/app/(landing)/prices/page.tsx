@@ -26,7 +26,10 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
+import { getClientBranding, getEstablishmentTypeByHostname } from "@/lib/branding"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto } from "@/types/subscription.interface"
 import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
 
@@ -248,28 +251,30 @@ const FEATURES = [
   { icon: Zap, label: "Acesso pelo celular" },
 ]
 
-const FAQ = [
-  {
-    q: "Posso cancelar a qualquer momento?",
-    a: "Sim. Você pode cancelar sua assinatura a qualquer momento sem multa. O acesso fica ativo até o fim do período pago.",
-  },
-  {
-    q: "Como funciona o pagamento?",
-    a: "O pagamento é mensal e recorrente via MercadoPago. Aceitamos cartão de crédito, débito e Pix.",
-  },
-  {
-    q: "Posso mudar de plano depois?",
-    a: "Sim! Entre em contato conosco e faremos o ajuste pro-rata na sua próxima fatura.",
-  },
-  {
-    q: "Os dados do meu salão ficam seguros?",
-    a: "Sim. Todos os dados são criptografados e armazenados com segurança. Somente você tem acesso.",
-  },
-  {
-    q: "Preciso instalar algum programa?",
-    a: "Não. O Voro Salon CRM funciona direto no navegador e também tem aplicativo para iOS e Android.",
-  },
-]
+function buildFaq(productName: string, establishmentLabel: string) {
+  return [
+    {
+      q: "Posso cancelar a qualquer momento?",
+      a: "Sim. Você pode cancelar sua assinatura a qualquer momento sem multa. O acesso fica ativo até o fim do período pago.",
+    },
+    {
+      q: "Como funciona o pagamento?",
+      a: "O pagamento é mensal e recorrente via MercadoPago. Aceitamos cartão de crédito, débito e Pix.",
+    },
+    {
+      q: "Posso mudar de plano depois?",
+      a: "Sim! Entre em contato conosco e faremos o ajuste pro-rata na sua próxima fatura.",
+    },
+    {
+      q: `Os dados do meu ${establishmentLabel} ficam seguros?`,
+      a: "Sim. Todos os dados são criptografados e armazenados com segurança. Somente você tem acesso.",
+    },
+    {
+      q: "Preciso instalar algum programa?",
+      a: `Não. O ${productName} funciona direto no navegador e também tem aplicativo para iOS e Android.`,
+    },
+  ]
+}
 
 // ── Product screenshots (mockups) ─────────────────────────────────────────────
 
@@ -1026,11 +1031,20 @@ function PlanCard({ plan, popular, onSelect, onModuleInfo }: PlanCardProps) {
 export default function PrecosPage() {
   const router = useRouter()
   const shouldReduce = useReducedMotion()
+  const branding = getClientBranding()
+  const FAQ = buildFaq(branding.productName, branding.establishmentLabel)
 
   const [plans, setPlans] = useState<SubscriptionPlanDto[]>([])
   const [loadingPlans, setLoadingPlans] = useState(true)
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanDto | null>(null)
-  const [form, setForm] = useState({ name: "", email: "", salonName: "" })
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    salonName: "",
+    establishmentType: typeof window !== "undefined"
+      ? getEstablishmentTypeByHostname(window.location.hostname)
+      : EstablishmentType.Salon,
+  })
   const [couponCode, setCouponCode] = useState("")
   const [couponResult, setCouponResult] = useState<CouponValidationResultDto | null>(null)
   const [couponError, setCouponError] = useState<string | null>(null)
@@ -1117,7 +1131,13 @@ export default function PrecosPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const body: Record<string, unknown> = { planId: selectedPlan.id, ...form }
+      const body: Record<string, unknown> = {
+        planId: selectedPlan.id,
+        name: form.name,
+        email: form.email,
+        salonName: form.salonName,
+        establishmentType: form.establishmentType,
+      }
       if (couponResult) body.couponCode = couponResult.code
 
       const res = await apiCall<CheckoutResultDto>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT, {
@@ -1174,7 +1194,7 @@ export default function PrecosPage() {
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <Scissors className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-black text-lg tracking-tight">Voro Salon</span>
+            <span className="font-black text-lg tracking-tight">{branding.shortName}</span>
           </motion.div>
           <div className="flex items-center gap-2">
             <motion.div
@@ -1495,7 +1515,7 @@ export default function PrecosPage() {
                 <div className="rounded-md bg-background border border-border px-3 py-1 flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-green-500" />
                   <span className="text-xs text-muted-foreground font-mono">
-                    salon-crm.vorolabs.app
+                    {branding.hostname}
                   </span>
                 </div>
               </div>
@@ -1512,7 +1532,7 @@ export default function PrecosPage() {
                     <Scissors className="h-3 w-3 text-primary-foreground" />
                   </div>
                   <span className="text-xs font-black text-sidebar-foreground truncate">
-                    Voro Salon
+                    {branding.shortName}
                   </span>
                 </div>
                 {SCREENSHOTS.map(({ icon: Icon, label }, idx) => (
@@ -1636,7 +1656,7 @@ export default function PrecosPage() {
                     <div className="h-5 w-5 rounded-md bg-primary flex items-center justify-center">
                       <Scissors className="h-2.5 w-2.5 text-primary-foreground" />
                     </div>
-                    <span className="text-[10px] font-black text-foreground">Voro Salon</span>
+                    <span className="text-[10px] font-black text-foreground">{branding.shortName}</span>
                   </div>
                   <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center">
                     <span className="text-[8px] font-bold text-primary">JS</span>
@@ -1717,7 +1737,7 @@ export default function PrecosPage() {
       <section className="bg-muted/30 border-y border-border/60 py-14">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <Section className="text-center mb-10">
-            <h2 className="text-2xl font-black tracking-tight">Tudo que seu salão precisa</h2>
+            <h2 className="text-2xl font-black tracking-tight">Tudo que seu {branding.establishmentLabel} precisa</h2>
           </Section>
           <motion.div
             className="grid grid-cols-2 sm:grid-cols-4 gap-4"
@@ -1881,7 +1901,7 @@ export default function PrecosPage() {
               <Card className="border-primary bg-primary/5 h-full">
                 <CardContent className="pt-5 pb-5">
                   <p className="font-semibold text-primary mb-3 text-sm uppercase tracking-wider">
-                    Voro Salon
+                    {branding.shortName}
                   </p>
                   <ul className="flex flex-col gap-2.5">
                     {[
@@ -2014,7 +2034,7 @@ export default function PrecosPage() {
                     Funcionalidade
                   </th>
                   <th className="px-4 py-3 text-center w-[30%] bg-primary/5 border-x border-primary/20">
-                    <span className="font-bold text-primary block mb-1">Voro Salon</span>
+                    <span className="font-bold text-primary block mb-1">{branding.shortName}</span>
                     <Badge className="text-[10px] px-2 py-0">Recomendado</Badge>
                   </th>
                   <th className="px-4 py-3 text-center font-medium w-[30%]">Trinks</th>
@@ -2214,7 +2234,7 @@ export default function PrecosPage() {
           <div className="pointer-events-none absolute -top-12 -right-12 w-40 h-40 rounded-full bg-primary/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-primary/8 blur-3xl" />
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-3 relative">
-            Comece hoje, transforme seu salão esta semana
+            Comece hoje, transforme seu {branding.establishmentLabel} esta semana
           </h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
             14 dias grátis, sem cartão de crédito. Configure em minutos e reduza no-shows ainda neste mês.
@@ -2256,7 +2276,7 @@ export default function PrecosPage() {
           <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
             <Scissors className="h-3 w-3 text-primary-foreground" />
           </div>
-          <span className="font-bold text-foreground">Voro Salon CRM</span>
+          <span className="font-bold text-foreground">{branding.productName}</span>
           <span>© {new Date().getFullYear()}</span>
         </motion.div>
         <div className="flex gap-4">
@@ -2319,12 +2339,29 @@ export default function PrecosPage() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Nome do salão</Label>
+              <Label>Nome do {branding.establishmentLabel}</Label>
               <Input
-                placeholder="Salão Beleza Total"
+                placeholder={`${branding.establishmentLabel.charAt(0).toUpperCase() + branding.establishmentLabel.slice(1)} Beleza Total`}
                 value={form.salonName}
                 onChange={(e) => setForm((p) => ({ ...p, salonName: e.target.value }))}
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Tipo de estabelecimento</Label>
+              <Select
+                value={String(form.establishmentType)}
+                onValueChange={(v) => setForm((p) => ({ ...p, establishmentType: Number(v) as EstablishmentType }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={String(EstablishmentType.Salon)}>Salão de beleza</SelectItem>
+                  <SelectItem value={String(EstablishmentType.Barber)}>Barbearia</SelectItem>
+                  <SelectItem value={String(EstablishmentType.Petshop)}>Petshop</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -2446,7 +2483,7 @@ export default function PrecosPage() {
       <Dialog open={showTerms} onOpenChange={setShowTerms}>
         <DialogContent className="max-w-2xl flex flex-col">
           <DialogHeader>
-            <DialogTitle>Termos de Uso — Voro Salon CRM</DialogTitle>
+            <DialogTitle>Termos de Uso — {branding.productName}</DialogTitle>
             <DialogDescription>Última atualização: março de 2025</DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto max-h-[55vh] pr-2 mt-2">
@@ -2454,14 +2491,14 @@ export default function PrecosPage() {
               <section>
                 <h3 className="font-semibold text-foreground mb-1">1. Aceitação dos Termos</h3>
                 <p>
-                  Ao assinar um plano e utilizar o Voro Salon CRM, você concorda com estes Termos de
+                  Ao assinar um plano e utilizar o {branding.productName}, você concorda com estes Termos de
                   Uso. Caso não concorde com qualquer disposição, não utilize o serviço.
                 </p>
               </section>
               <section>
                 <h3 className="font-semibold text-foreground mb-1">2. Descrição do Serviço</h3>
                 <p>
-                  O Voro Salon CRM é uma plataforma SaaS de gestão para salões de beleza, oferecendo
+                  O {branding.productName} é uma plataforma SaaS de gestão para {branding.establishmentLabel}s, oferecendo
                   funcionalidades de agendamento, cadastro de clientes, controle de serviços, gestão
                   financeira e relatórios, conforme o plano contratado.
                 </p>

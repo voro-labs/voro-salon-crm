@@ -90,7 +90,7 @@ namespace VoroSalonCrm.Application.Services
                 try
                 {
                     tenantId = await authService.ProvisionAccountFromSubscriptionAsync(
-                        dto.Email, dto.Name, dto.SalonName);
+                        dto.Email, dto.Name, dto.SalonName, dto.EstablishmentType);
                 }
                 catch (Exception ex)
                 {
@@ -113,6 +113,7 @@ namespace VoroSalonCrm.Application.Services
                 ContactEmail = dto.Email,
                 ContactName = dto.Name,
                 SalonName = dto.SalonName,
+                EstablishmentType = dto.EstablishmentType ?? EstablishmentType.Salon,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -167,6 +168,7 @@ namespace VoroSalonCrm.Application.Services
                 ContactEmail = dto.Email,
                 ContactName = dto.Name,
                 SalonName = dto.SalonName,
+                EstablishmentType = dto.EstablishmentType ?? EstablishmentType.Salon,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -254,7 +256,8 @@ namespace VoroSalonCrm.Application.Services
                     var tenantId = await authService.ProvisionAccountFromSubscriptionAsync(
                         sub.ContactEmail,
                         sub.ContactName ?? sub.ContactEmail,
-                        sub.SalonName ?? sub.ContactEmail);
+                        sub.SalonName ?? sub.ContactEmail,
+                        sub.EstablishmentType);
 
                     sub.TenantId = tenantId;
                     sub.UpdatedAt = DateTimeOffset.UtcNow;

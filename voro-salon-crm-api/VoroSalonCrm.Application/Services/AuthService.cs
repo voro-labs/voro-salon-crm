@@ -198,7 +198,7 @@ namespace VoroSalonCrm.Application.Services
             }
         }
 
-        public async Task<Guid> ProvisionAccountFromSubscriptionAsync(string email, string contactName, string salonName)
+        public async Task<Guid> ProvisionAccountFromSubscriptionAsync(string email, string contactName, string salonName, Domain.Enums.EstablishmentType? establishmentType = null)
         {
             // Separar nome
             var nameParts = (contactName ?? email).Trim().Split(' ', 2);
@@ -216,7 +216,8 @@ namespace VoroSalonCrm.Application.Services
                 Slug = slug,
                 ContactEmail = email,
                 IsActive = true,
-                CreatedAt = DateTimeOffset.UtcNow
+                CreatedAt = DateTimeOffset.UtcNow,
+                EstablishmentType = establishmentType ?? Domain.Enums.EstablishmentType.Salon,
             };
             await _tenantRepository.AddAsync(tenant);
 

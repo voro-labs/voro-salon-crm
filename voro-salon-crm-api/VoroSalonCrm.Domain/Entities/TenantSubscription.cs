@@ -30,6 +30,7 @@ namespace VoroSalonCrm.Domain.Entities
         public string? ContactEmail { get; set; }
         public string? ContactName { get; set; }
         public string? SalonName { get; set; }
+        public EstablishmentType EstablishmentType { get; set; } = EstablishmentType.Salon;
 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }
