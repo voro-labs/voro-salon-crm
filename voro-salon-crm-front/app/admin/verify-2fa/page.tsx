@@ -6,6 +6,8 @@ import { AlertCircle, ArrowLeft, Loader2, Mail, ShieldCheck } from "lucide-react
 import { Button } from "@/components/ui/button"
 import { apiCall, API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthDto } from "@/types/DTOs/auth.interface"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
+import { getEstablishmentTypeByHostname, getBrandingByType } from "@/lib/branding"
 import { useAuth } from "@/contexts/auth.context"
 import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
 import { TWO_FACTOR_PENDING_KEY, TWO_FACTOR_EMAIL_KEY, TWO_FACTOR_REDIRECT_KEY } from "@/hooks/use-sign-in.hook"
@@ -14,7 +16,7 @@ const CODE_LENGTH = 6
 
 export default function VerifyTwoFactorPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, logout } = useAuth()
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""))
   const [loading, setLoading] = useState(false)
@@ -111,8 +113,6 @@ export default function VerifyTwoFactorPage() {
         return
       }
 
-      setSuccess(true)
-
       // Limpar dados temporários
       sessionStorage.removeItem(TWO_FACTOR_PENDING_KEY)
       sessionStorage.removeItem(TWO_FACTOR_EMAIL_KEY)
@@ -120,14 +120,29 @@ export default function VerifyTwoFactorPage() {
 
       login(response.data.token, response.data.refreshToken, response.data.tenants)
 
-      secureApiCall<{ primaryColor: string | null; secondaryColor: string | null }>(
-        API_CONFIG.ENDPOINTS.TENANT_ME,
-        { method: "GET" }
-      ).then((res) => {
-        if (!res.hasError && res.data) {
-          refreshTenantTheme(res.data.primaryColor, res.data.secondaryColor)
+      const tenantRes = await secureApiCall<{
+        establishmentType: number
+        primaryColor: string | null
+        secondaryColor: string | null
+      }>(API_CONFIG.ENDPOINTS.TENANT_ME, { method: "GET" })
+
+      if (!tenantRes.hasError && tenantRes.data) {
+        const expectedType = getEstablishmentTypeByHostname(window.location.hostname)
+        const tenantType = tenantRes.data.establishmentType as EstablishmentType
+
+        if (tenantType !== expectedType) {
+          logout()
+          const correctBranding = getBrandingByType(tenantType)
+          const currentBranding = getBrandingByType(expectedType)
+          setError(`Este acesso é exclusivo para ${currentBranding.establishmentLabelPlural}. Seu estabelecimento deve acessar pelo endereço: https://${correctBranding.hostname}`)
+          setDigits(Array(CODE_LENGTH).fill(""))
+          return
         }
-      }).catch(() => { })
+
+        refreshTenantTheme(tenantRes.data.primaryColor, tenantRes.data.secondaryColor)
+      }
+
+      setSuccess(true)
 
       // Armazenar flags pós-login para encadeamento entre páginas
       sessionStorage.setItem("post_login_flags", JSON.stringify({

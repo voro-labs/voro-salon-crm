@@ -5,6 +5,8 @@ import { API_CONFIG, apiCall, secureApiCall } from "@/lib/api"
 import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
 import { AuthDto } from "@/types/DTOs/auth.interface"
 import { SignInDto } from "@/types/DTOs/sign-in.interface"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
+import { getEstablishmentTypeByHostname, getBrandingByType } from "@/lib/branding"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -13,7 +15,7 @@ export const TWO_FACTOR_EMAIL_KEY = "voro_2fa_email"
 export const TWO_FACTOR_REDIRECT_KEY = "voro_2fa_redirect"
 
 export function useSignIn() {
-  const { login } = useAuth()
+  const { login, logout } = useAuth()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,14 +57,27 @@ export function useSignIn() {
       if (response.data.token) {
         login(response.data.token, response.data.refreshToken, response.data.tenants)
 
-        secureApiCall<{ primaryColor: string | null; secondaryColor: string | null }>(
-          API_CONFIG.ENDPOINTS.TENANT_ME,
-          { method: "GET" }
-        ).then((res) => {
-          if (!res.hasError && res.data) {
-            refreshTenantTheme(res.data.primaryColor, res.data.secondaryColor)
+        const tenantRes = await secureApiCall<{
+          establishmentType: number
+          primaryColor: string | null
+          secondaryColor: string | null
+        }>(API_CONFIG.ENDPOINTS.TENANT_ME, { method: "GET" })
+
+        if (!tenantRes.hasError && tenantRes.data) {
+          const expectedType = getEstablishmentTypeByHostname(window.location.hostname)
+          const tenantType = tenantRes.data.establishmentType as EstablishmentType
+
+          if (tenantType !== expectedType) {
+            logout()
+            const correctBranding = getBrandingByType(tenantType)
+            const currentBranding = getBrandingByType(expectedType)
+            const errorMessage = `Este acesso é exclusivo para ${currentBranding.establishmentLabelPlural}. Seu estabelecimento deve acessar pelo endereço: https://${correctBranding.hostname}`
+            setError(errorMessage)
+            return { success: false, error: errorMessage }
           }
-        }).catch(() => { })
+
+          refreshTenantTheme(tenantRes.data.primaryColor, tenantRes.data.secondaryColor)
+        }
 
         sessionStorage.setItem("post_login_flags", JSON.stringify({
           requiresPasswordChange: !!response.data.requiresPasswordChange,
