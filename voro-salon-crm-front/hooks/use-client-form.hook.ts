@@ -27,8 +27,12 @@ export function useClientForm() {
   const [isCreating, setIsCreating] = useState(false)
 
   async function createClient(): Promise<boolean> {
-    if (!form.name.trim() || !form.phone.trim()) {
-      toast.error("Nome e telefone são obrigatórios.")
+    if (!form.name.trim()) {
+      toast.error("Nome é obrigatório.")
+      return false
+    }
+    if (!form.phone.trim()) {
+      toast.error("Telefone é obrigatório.")
       return false
     }
 

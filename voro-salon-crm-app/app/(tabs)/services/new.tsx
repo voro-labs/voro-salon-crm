@@ -52,7 +52,7 @@ export default function NewServiceScreen() {
           </View>
 
           <View className="mb-6">
-            <Text className="text-zinc-700 font-bold text-sm mb-1.5">Preço</Text>
+            <Text className="text-zinc-700 font-bold text-sm mb-1.5">Preço *</Text>
             <CurrencyInput
               value={form.price}
               onChange={(v) => setForm((p) => ({ ...p, price: v }))}

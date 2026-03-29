@@ -18,16 +18,32 @@ const DEFAULT_FORM: NewClientForm = {
   notes: "",
 }
 
+export interface ClientFormErrors {
+  name: string
+  phone: string
+}
+
+const DEFAULT_ERRORS: ClientFormErrors = { name: "", phone: "" }
+
 export function useClientForm() {
   const [form, setForm] = useState<NewClientForm>(DEFAULT_FORM)
+  const [errors, setErrors] = useState<ClientFormErrors>(DEFAULT_ERRORS)
   const [countryCode, setCountryCode] = useState("BR")
   const [showAnamnesis, setShowAnamnesis] = useState(false)
   const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
   const [isCreating, setIsCreating] = useState(false)
 
+  function clearFieldError(field: keyof ClientFormErrors) {
+    setErrors((p) => ({ ...p, [field]: "" }))
+  }
+
   async function createClient(): Promise<boolean> {
-    if (!form.name.trim() || !form.phone.trim()) {
-      Toast.error("Nome e telefone são obrigatórios.")
+    const newErrors: ClientFormErrors = { name: "", phone: "" }
+    if (!form.name.trim()) newErrors.name = "Nome é obrigatório."
+    if (!form.phone.trim()) newErrors.phone = "Telefone é obrigatório."
+
+    if (newErrors.name || newErrors.phone) {
+      setErrors(newErrors)
       return false
     }
 
@@ -76,6 +92,8 @@ export function useClientForm() {
   return {
     form,
     setForm,
+    errors,
+    clearFieldError,
     countryCode,
     setCountryCode,
     showAnamnesis,

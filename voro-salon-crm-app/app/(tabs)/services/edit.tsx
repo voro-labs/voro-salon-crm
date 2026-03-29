@@ -70,7 +70,7 @@ export default function EditServiceScreen() {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Preço</Text>
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Preço *</Text>
               <CurrencyInput
                 value={form.price}
                 onChange={(v) => setForm((p) => ({ ...p, price: v }))}

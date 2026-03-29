@@ -290,7 +290,7 @@ export default function NovoAgendamentoPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="amount">Valor (R$)</Label>
+                  <Label htmlFor="amount">Valor (R$) *</Label>
                   <CurrencyInput
                     id="amount"
                     value={form.amount}
@@ -299,7 +299,7 @@ export default function NovoAgendamentoPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="description">Descrição Curta</Label>
+                  <Label htmlFor="description">Descrição Curta *</Label>
                   <Input
                     id="description"
                     placeholder="Ex: Corte e Barba"

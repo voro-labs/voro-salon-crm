@@ -169,6 +169,12 @@ export default function FinancialPage() {
       return
     }
 
+    const date = form.dueDate
+    if (!date) {
+      toast.error("Insira uma data de vencimento válida")
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const res = await createTransaction({
@@ -210,6 +216,12 @@ export default function FinancialPage() {
     const val = payForm.paidAmount
     if (isNaN(val) || val <= 0) {
       toast.error("Insira um valor maior que 0")
+      return
+    }
+
+    const date = payForm.paymentDate
+    if (!date) {
+      toast.error("Insira uma data de pagamento válida")
       return
     }
 
@@ -312,7 +324,7 @@ export default function FinancialPage() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="date">Vencimento / Data</Label>
+                        <Label htmlFor="date">Vencimento / Data *</Label>
                         <Input
                           id="date"
                           type="date"
@@ -323,7 +335,7 @@ export default function FinancialPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="description">Descrição</Label>
+                      <Label htmlFor="description">Descrição *</Label>
                       <Input
                         id="description"
                         placeholder="Ex: Aluguel do mês, Faturamento diário..."
@@ -335,7 +347,7 @@ export default function FinancialPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="amount">Valor</Label>
+                        <Label htmlFor="amount">Valor *</Label>
                         <CurrencyInput
                           id="amount"
                           value={form.amount}
@@ -581,7 +593,7 @@ export default function FinancialPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="payAmount">Valor a Pagar</Label>
+                <Label htmlFor="payAmount">Valor a Pagar *</Label>
                 <CurrencyInput
                   id="payAmount"
                   value={payForm.paidAmount}
@@ -589,7 +601,7 @@ export default function FinancialPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="payDate">Data do Pagto</Label>
+                <Label htmlFor="payDate">Data do Pagto *</Label>
                 <Input
                   id="payDate"
                   type="date"

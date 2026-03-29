@@ -52,7 +52,6 @@ export default function NovoClientePage() {
                   placeholder="Nome completo"
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  required
                 />
               </div>
 
@@ -69,7 +68,6 @@ export default function NovoClientePage() {
                       autoComplete="tel"
                       onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
                       countryCode={countryCode}
-                      required
                     />
                   </div>
                 </div>

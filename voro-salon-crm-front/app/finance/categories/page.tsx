@@ -152,7 +152,7 @@ export default function FinancialCategoriesPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome da Categoria</Label>
+                <Label htmlFor="name">Nome da Categoria *</Label>
                 <Input
                   id="name"
                   placeholder="Ex: Aluguel, Produtos, Pix Avulso..."

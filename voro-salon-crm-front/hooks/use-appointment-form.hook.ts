@@ -75,6 +75,14 @@ export function useAppointmentForm() {
       toast.error("Por favor, informe a duração do serviço.")
       return false
     }
+    if (!f.amount || f.amount <= 0) {
+      toast.error("Por favor, informe o valor do agendamento.")
+      return false
+    }
+    if (!f.description.trim()) {
+      toast.error("Por favor, informe a descrição do agendamento.")
+      return false
+    }
 
     setIsCreating(true)
     try {

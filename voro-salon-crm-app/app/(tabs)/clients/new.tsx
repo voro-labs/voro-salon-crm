@@ -24,7 +24,7 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
 const inputClass = "bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base"
 
 export default function NewClientScreen() {
-  const { form, setForm, countryCode, setCountryCode, isCreating, createClient } = useClientForm()
+  const { form, setForm, errors, clearFieldError, countryCode, setCountryCode, isCreating, createClient } = useClientForm()
   const { primaryColor } = useTenantTheme()
 
   return (
@@ -41,12 +41,13 @@ export default function NewClientScreen() {
 
             <FormField label="Nome *">
               <TextInput
-                className={inputClass}
+                className={`${inputClass} ${errors.name ? "border-red-400" : ""}`}
                 placeholder="Nome completo"
                 placeholderTextColor="#a1a1aa"
                 value={form.name}
-                onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
+                onChangeText={(v) => { setForm((p) => ({ ...p, name: v })); clearFieldError("name") }}
               />
+              {!!errors.name && <Text className="text-red-500 text-xs mt-1">{errors.name}</Text>}
             </FormField>
 
             <FormField label="Telefone *">
@@ -56,10 +57,11 @@ export default function NewClientScreen() {
                   <PhoneInput
                     value={form.phone}
                     countryCode={countryCode}
-                    onChange={(v) => setForm((p) => ({ ...p, phone: v }))}
+                    onChange={(v) => { setForm((p) => ({ ...p, phone: v })); clearFieldError("phone") }}
                   />
                 </View>
               </View>
+              {!!errors.phone && <Text className="text-red-500 text-xs mt-1">{errors.phone}</Text>}
             </FormField>
 
             <FormField label="E-mail">

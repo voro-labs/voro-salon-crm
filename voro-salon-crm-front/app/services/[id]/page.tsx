@@ -79,7 +79,7 @@ export default function EditarServicoPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground truncate max-w-[200px] sm:max-w-md">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground truncate max-w-50 sm:max-w-md">
               Editar: {service?.name}
             </h1>
           </div>
@@ -126,12 +126,11 @@ export default function EditarServicoPage() {
                   placeholder="Nome do serviço"
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  required
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="price">Preço Padrão (R$)</Label>
+                <Label htmlFor="price">Preço Padrão (R$) *</Label>
                 <CurrencyInput
                   id="price"
                   value={form.price}

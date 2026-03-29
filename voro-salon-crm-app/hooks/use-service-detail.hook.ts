@@ -47,6 +47,10 @@ export function useServiceDetail(serviceId?: string) {
       Toast.error("O nome do serviço é obrigatório.")
       return false
     }
+    if (!f.price || f.price <= 0) {
+      Toast.error("O preço do serviço é obrigatório.")
+      return false
+    }
     setIsSaving(true)
     try {
       const res = await secureApiCall(API_CONFIG.ENDPOINTS.SERVICES, {
@@ -71,6 +75,10 @@ export function useServiceDetail(serviceId?: string) {
   async function updateService(f: ServiceForm): Promise<boolean> {
     if (!f.name.trim()) {
       Toast.error("O nome do serviço é obrigatório.")
+      return false
+    }
+    if (!f.price || f.price <= 0) {
+      Toast.error("O preço do serviço é obrigatório.")
       return false
     }
     setIsSaving(true)

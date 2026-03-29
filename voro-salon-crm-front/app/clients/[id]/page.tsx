@@ -199,8 +199,12 @@ export default function ClienteDetailPage() {
 
   async function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editForm.name.trim() || !editForm.phone.trim()) {
-      toast.error("Nome e telefone são obrigatórios.")
+    if (!editForm.name.trim()) {
+      toast.error("Nome é obrigatório.")
+      return
+    }
+    if (!editForm.phone.trim()) {
+      toast.error("Telefone é obrigatório.")
       return
     }
     const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""

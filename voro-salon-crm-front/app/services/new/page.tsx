@@ -46,12 +46,11 @@ export default function NovoServicoPage() {
                   placeholder="Nome do serviço (ex: Corte Masculino)"
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  required
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="price">Preço Padrão (R$)</Label>
+                <Label htmlFor="price">Preço Padrão (R$) *</Label>
                 <CurrencyInput
                   id="price"
                   value={form.price}
