@@ -34,5 +34,8 @@ namespace VoroSalonCrm.Domain.Entities
 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }
+
+        /// <summary>Última vez que o aviso de vencimento próximo foi enviado.</summary>
+        public DateTimeOffset? LastExpirationNoticeSentAt { get; set; }
     }
 }

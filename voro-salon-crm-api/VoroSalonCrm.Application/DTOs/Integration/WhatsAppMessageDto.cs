@@ -11,4 +11,14 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         string Status,
         DateTimeOffset Timestamp
     );
+
+    public record WhatsAppConversationDto(
+        Guid Id,
+        string PhoneNumber,
+        string ContactName,
+        string State,
+        string LastMessageBody,
+        DateTimeOffset LastMessageAt,
+        Guid? AppointmentId
+    );
 }

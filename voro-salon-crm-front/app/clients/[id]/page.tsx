@@ -114,7 +114,7 @@ interface ClientMembership {
   startDate: string
   endDate: string
   remainingSessions: number | null
-  status: string
+  status: number
   notes: string | null
 }
 
@@ -855,7 +855,7 @@ export default function ClienteDetailPage() {
                 ) : (
                   <div className="flex flex-col gap-3">
                     {memberships.map((m) => {
-                      const isActive = m.status === "Active"
+                      const isActive = m.status === 0
                       return (
                         <div
                           key={m.id}
@@ -871,7 +871,7 @@ export default function ClienteDetailPage() {
                                 variant={isActive ? "default" : "secondary"}
                                 className="text-xs shrink-0"
                               >
-                                {m.status === "Active" ? "Ativo" : m.status === "Expired" ? "Expirado" : "Cancelado"}
+                                {m.status === 0 ? "Ativo" : m.status === 1 ? "Expirado" : "Cancelado"}
                               </Badge>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">

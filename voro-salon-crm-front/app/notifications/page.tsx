@@ -120,11 +120,12 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex flex-col h-full w-full mx-auto">
-      <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Notificações</h1>
+      <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 min-w-0">
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate">Notificações</h1>
         {unreadCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-primary font-semibold">
-            Marcar todas como lidas
+          <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-primary font-semibold shrink-0 text-xs sm:text-sm">
+            <span className="hidden sm:inline">Marcar todas como lidas</span>
+            <span className="sm:hidden">Marcar lidas</span>
           </Button>
         )}
       </div>

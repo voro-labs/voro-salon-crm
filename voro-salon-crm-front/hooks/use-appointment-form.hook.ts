@@ -40,6 +40,15 @@ export function useAppointmentForm() {
   const [form, setForm] = useState<NewAppointmentForm>(DEFAULT_FORM)
   const [isCreating, setIsCreating] = useState(false)
 
+  const { data: clientMemberships } = useSWR(
+    form.clientId ? `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/client/${form.clientId}` : null,
+    fetcher
+  )
+
+  const activeMembership = clientMemberships?.find(
+    (m: any) => m.status === 0 && new Date(m.endDate) >= new Date() && (m.remainingSessions === null || m.remainingSessions > 0)
+  ) ?? null
+
   const { data: employees, mutate: mutateEmployees } = useSWR(
     form.serviceId !== "none" && form.serviceId !== ""
       ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
@@ -126,5 +135,6 @@ export function useAppointmentForm() {
     mutateClients,
     mutateServices,
     mutateEmployees,
+    activeMembership,
   }
 }

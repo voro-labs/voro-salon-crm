@@ -37,6 +37,10 @@ namespace VoroSalonCrm.Domain.Entities
         /// <summary>Data/hora em que o lembrete de 24h foi enviado. Null se ainda não enviado.</summary>
         public DateTimeOffset? Reminder24hSentAt { get; set; }
 
+        /// <summary>Assinatura do cliente utilizada neste agendamento (consumida ao concluir).</summary>
+        public Guid? ClientMembershipId { get; set; }
+        public ClientMembership? Membership { get; set; }
+
         public bool IsDeleted { get; set; }
         public DateTimeOffset? DeletedAt { get; set; }
     }

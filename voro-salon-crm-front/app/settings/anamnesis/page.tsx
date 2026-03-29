@@ -13,6 +13,7 @@ import {
   Upload,
   FileJson,
   FileSpreadsheet,
+  Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -99,6 +100,31 @@ function downloadTemplate(format: "json" | "csv") {
   URL.revokeObjectURL(url)
 }
 
+function downloadMyQuestions(questions: any[]) {
+  const exportData = questions
+    .sort((a, b) => a.order - b.order)
+    .map(({ label, placeholder, section, fieldType, options, isRequired, order }) => ({
+      label,
+      placeholder: placeholder ?? "",
+      section,
+      fieldType,
+      options: options ?? "",
+      isRequired,
+      order,
+    }))
+
+  const content = JSON.stringify(exportData, null, 2)
+  const blob = new Blob([content], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = `minhas_perguntas_anamnese_${new Date().toISOString().slice(0, 10)}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 export default function AnamnesisConfigPage() {
   const {
     questions,
@@ -158,6 +184,20 @@ export default function AnamnesisConfigPage() {
                 <FileSpreadsheet className="mr-1 h-3 w-3" />
                 CSV
               </Button>
+              {questions && questions.length > 0 && (
+                <>
+                  <span className="mx-1 text-border">|</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[10px] px-2 text-primary hover:text-primary"
+                    onClick={() => downloadMyQuestions(questions)}
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Exportar minhas
+                  </Button>
+                </>
+              )}
             </div>
 
             <div className="flex gap-2">

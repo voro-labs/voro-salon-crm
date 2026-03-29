@@ -52,6 +52,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
         public DbSet<TimeSlotBlock> TimeSlotBlocks { get; set; }
         public DbSet<WhatsAppMessage> WhatsAppMessages { get; set; }
+        public DbSet<WhatsAppConversation> WhatsAppConversations { get; set; }
 
         public DbSet<ClientMembershipPlan> ClientMembershipPlans { get; set; }
         public DbSet<ClientMembership> ClientMemberships { get; set; }

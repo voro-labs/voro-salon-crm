@@ -75,6 +75,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
             services.AddScoped<ITimeSlotBlockRepository, TimeSlotBlockRepository>();
             services.AddScoped<IWhatsAppMessageRepository, WhatsAppMessageRepository>();
+            services.AddScoped<IWhatsAppConversationRepository, WhatsAppConversationRepository>();
             services.AddScoped<ITenantModuleRepository, TenantModuleRepository>();
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<ITransactionCategoryRepository, TransactionCategoryRepository>();
@@ -118,6 +119,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();
+            services.AddHostedService<MembershipExpirationNotificationJob>();
 
             return services;
         }
