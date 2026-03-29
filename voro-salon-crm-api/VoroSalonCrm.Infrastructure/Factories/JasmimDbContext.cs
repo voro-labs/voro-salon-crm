@@ -51,6 +51,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<SubscriptionCoupon> SubscriptionCoupons { get; set; }
 
         public DbSet<TimeSlotBlock> TimeSlotBlocks { get; set; }
+        public DbSet<TenantBusinessHours> TenantBusinessHours { get; set; }
         public DbSet<WhatsAppMessage> WhatsAppMessages { get; set; }
         public DbSet<WhatsAppConversation> WhatsAppConversations { get; set; }
 
@@ -664,6 +665,25 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasOne(tsb => tsb.Tenant)
                  .WithMany()
                  .HasForeignKey(tsb => tsb.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // TENANT BUSINESS HOURS
+            // ---------------------------
+            builder.Entity<TenantBusinessHours>(b =>
+            {
+                b.HasKey(bh => bh.Id);
+                b.Property(bh => bh.OpenTime).HasMaxLength(5).HasDefaultValue("08:00");
+                b.Property(bh => bh.CloseTime).HasMaxLength(5).HasDefaultValue("18:00");
+                b.Property(bh => bh.IsOpen).HasDefaultValue(true);
+
+                b.HasIndex(bh => bh.TenantId);
+                b.HasIndex(bh => new { bh.TenantId, bh.DayOfWeek }).IsUnique();
+
+                b.HasOne(bh => bh.Tenant)
+                 .WithMany()
+                 .HasForeignKey(bh => bh.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
             });
 

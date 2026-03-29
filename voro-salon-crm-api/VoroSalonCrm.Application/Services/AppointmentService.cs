@@ -51,7 +51,7 @@ namespace VoroSalonCrm.Application.Services
                 ServiceId = dto.ServiceId,
                 ScheduledDateTime = dto.ScheduledDateTime,
                 DurationMinutes = dto.DurationMinutes,
-                Status = AppointmentStatus.Pending,
+                Status = AppointmentStatus.Confirmed,
                 Description = dto.Description,
                 Amount = dto.Amount,
                 Notes = dto.Notes,
@@ -84,7 +84,7 @@ namespace VoroSalonCrm.Application.Services
                         ownerIds,
                         "Novo Agendamento",
                         $"{clientName} agendou para {dateStr} às {timeStr}",
-                        new { appointmentId = appointment.Id, status = AppointmentStatus.Pending.ToString() },
+                        new { appointmentId = appointment.Id, status = AppointmentStatus.Confirmed.ToString() },
                         tenantId,
                         "appointment_created",
                         appointment.Id);

@@ -62,14 +62,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Tenta renovar o token silenciosamente usando o refresh token
-      const attemptSilentRefresh = async (): Promise<boolean> => {
+      // expiredToken: JWT expirado para o backend extrair o userId
+      const attemptSilentRefresh = async (expiredToken?: string): Promise<boolean> => {
         const refreshToken = getRefreshToken()
         if (!refreshToken) return false
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 8000)
+
         try {
           const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refreshToken }),
+            body: JSON.stringify({ token: expiredToken ?? "", refreshToken }),
+            signal: controller.signal,
           })
           const data = await res.json()
           if (res.ok && !data.hasError && data.data?.token) {
@@ -80,15 +86,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             applyToken(newToken, newRefresh || refreshToken)
             return true
           }
-        } catch {}
+        } catch {} finally {
+          clearTimeout(timeoutId)
+        }
         return false
       }
 
       if (!token) {
         // Sem access token — tenta refresh antes de deslogar
-        const refreshed = await attemptSilentRefresh()
-        if (!refreshed) setUser(null)
-        setLoading(false)
+        try {
+          const refreshed = await attemptSilentRefresh()
+          if (!refreshed) setUser(null)
+        } catch {
+          setUser(null)
+        } finally {
+          setLoading(false)
+        }
         return
       }
 
@@ -97,8 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isExpired = decoded.exp * 1000 < Date.now()
 
         if (isExpired) {
-          // Token expirado — tenta refresh silencioso
-          const refreshed = await attemptSilentRefresh()
+          // Token expirado — passa o JWT expirado para o backend extrair o userId
+          const refreshed = await attemptSilentRefresh(token)
           if (!refreshed) {
             removeAuthToken()
             removeRefreshToken()
@@ -111,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         // Token malformado — tenta refresh antes de deslogar
         console.error("Token inválido:", err)
-        const refreshed = await attemptSilentRefresh()
+        const refreshed = await attemptSilentRefresh(token)
         if (!refreshed) {
           removeAuthToken()
           removeRefreshToken()

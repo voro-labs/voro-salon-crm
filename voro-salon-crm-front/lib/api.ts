@@ -54,6 +54,7 @@ export const API_CONFIG = {
     NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
     PUSH_TOKENS: "/push-tokens",
     TIME_SLOT_BLOCKS: "/timeslotblocks",
+    BUSINESS_HOURS: "/tenant/me/business-hours",
     WHATSAPP_MESSAGES: "/whatsapp/messages",
     WHATSAPP_CONVERSATIONS: "/whatsapp/conversations",
     WHATSAPP_TEMPLATES: "/whatsapp/templates",
