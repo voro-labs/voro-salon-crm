@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, AlertCircle, Scissors, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth.context"
-import { useSignIn } from "@/hooks/use-sign-in.hook"
+import { useSignIn, SIGN_IN_ERROR_KEY } from "@/hooks/use-sign-in.hook"
 import { SignInDto } from "@/types/DTOs/sign-in.interface"
 import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 import { Input } from "@/components/ui/input"
@@ -29,6 +29,7 @@ export default function SignInPage() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" })
+  const [externalError, setExternalError] = useState<string | null>(null)
 
   // Redirecionar se já estiver logado
   useEffect(() => {
@@ -36,6 +37,15 @@ export default function SignInPage() {
       router.replace(redirectTo)
     }
   }, [user, authLoading, router, redirectTo])
+
+  // Exibir erro vindo de outro fluxo (ex: 2FA com estabelecimento errado)
+  useEffect(() => {
+    const stored = sessionStorage.getItem(SIGN_IN_ERROR_KEY)
+    if (stored) {
+      setExternalError(stored)
+      sessionStorage.removeItem(SIGN_IN_ERROR_KEY)
+    }
+  }, [])
 
   const validateForm = (): boolean => {
     const errors: any = { email: "", password: "" }
@@ -87,10 +97,10 @@ export default function SignInPage() {
         </div>
 
         {/* Error */}
-        {error && (
+        {(error || externalError) && (
           <div className="mb-5 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p className="text-sm">{error}</p>
+            <p className="text-sm">{error ?? externalError}</p>
           </div>
         )}
 

@@ -10,7 +10,7 @@ import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { getEstablishmentTypeByHostname, getBrandingByType } from "@/lib/branding"
 import { useAuth } from "@/contexts/auth.context"
 import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
-import { TWO_FACTOR_PENDING_KEY, TWO_FACTOR_EMAIL_KEY, TWO_FACTOR_REDIRECT_KEY } from "@/hooks/use-sign-in.hook"
+import { TWO_FACTOR_PENDING_KEY, TWO_FACTOR_EMAIL_KEY, TWO_FACTOR_REDIRECT_KEY, SIGN_IN_ERROR_KEY } from "@/hooks/use-sign-in.hook"
 
 const CODE_LENGTH = 6
 
@@ -113,11 +113,6 @@ export default function VerifyTwoFactorPage() {
         return
       }
 
-      // Limpar dados temporários
-      sessionStorage.removeItem(TWO_FACTOR_PENDING_KEY)
-      sessionStorage.removeItem(TWO_FACTOR_EMAIL_KEY)
-      sessionStorage.removeItem(TWO_FACTOR_REDIRECT_KEY)
-
       login(response.data.token, response.data.refreshToken, response.data.tenants)
 
       const tenantRes = await secureApiCall<{
@@ -134,13 +129,22 @@ export default function VerifyTwoFactorPage() {
           logout()
           const correctBranding = getBrandingByType(tenantType)
           const currentBranding = getBrandingByType(expectedType)
-          setError(`Este acesso é exclusivo para ${currentBranding.establishmentLabelPlural}. Seu estabelecimento deve acessar pelo endereço: https://${correctBranding.hostname}`)
-          setDigits(Array(CODE_LENGTH).fill(""))
+          const errorMsg = `Este acesso é exclusivo para ${currentBranding.establishmentLabelPlural}. Seu estabelecimento deve acessar pelo endereço: https://${correctBranding.hostname}`
+          sessionStorage.removeItem(TWO_FACTOR_PENDING_KEY)
+          sessionStorage.removeItem(TWO_FACTOR_EMAIL_KEY)
+          sessionStorage.removeItem(TWO_FACTOR_REDIRECT_KEY)
+          sessionStorage.setItem(SIGN_IN_ERROR_KEY, errorMsg)
+          router.replace("/admin/sign-in")
           return
         }
 
         refreshTenantTheme(tenantRes.data.primaryColor, tenantRes.data.secondaryColor)
       }
+
+      // Limpar dados temporários (somente após verificação bem-sucedida do tenant)
+      sessionStorage.removeItem(TWO_FACTOR_PENDING_KEY)
+      sessionStorage.removeItem(TWO_FACTOR_EMAIL_KEY)
+      sessionStorage.removeItem(TWO_FACTOR_REDIRECT_KEY)
 
       setSuccess(true)
 

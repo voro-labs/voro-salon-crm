@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 export const TWO_FACTOR_PENDING_KEY = "voro_2fa_pending_token"
 export const TWO_FACTOR_EMAIL_KEY = "voro_2fa_email"
 export const TWO_FACTOR_REDIRECT_KEY = "voro_2fa_redirect"
+export const SIGN_IN_ERROR_KEY = "voro_signin_error"
 
 export function useSignIn() {
   const { login, logout } = useAuth()
@@ -25,11 +26,14 @@ export function useSignIn() {
     setError(null)
 
     try {
+      const expectedType = getEstablishmentTypeByHostname(window.location.hostname)
+
       const response = await apiCall<AuthDto>(API_CONFIG.ENDPOINTS.SIGNIN, {
         method: "POST",
         body: JSON.stringify({
           email: data.email,
-          password: data.password
+          password: data.password,
+          establishmentType: expectedType,
         }),
       })
 

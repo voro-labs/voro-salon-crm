@@ -59,6 +59,14 @@ namespace VoroSalonCrm.Application.Services
                 var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
                                  ?? user.UserTenants?.FirstOrDefault()?.Tenant;
 
+                // Validar tipo de estabelecimento antes de enviar o 2FA
+                if (signInDto.EstablishmentType.HasValue && primaryTenant != null &&
+                    (int)primaryTenant.EstablishmentType != signInDto.EstablishmentType.Value)
+                {
+                    throw new UnauthorizedAccessException(
+                        "Credenciais inválidas para este endereço de acesso.");
+                }
+
                 // Enviar apenas para método de comunicação confirmado
                 if (user.EmailConfirmed)
                 {
