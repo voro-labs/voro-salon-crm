@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VoroSalonCrm.Infrastructure.Factories;
@@ -11,9 +12,11 @@ using VoroSalonCrm.Infrastructure.Factories;
 namespace VoroSalonCrm.Infrastructure.Migrations
 {
     [DbContext(typeof(JasmimDbContext))]
-    partial class JasmimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260328234120_AddEstablishmentTypeTenant")]
+    partial class AddEstablishmentTypeTenant
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1323,9 +1326,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset?>("EndDate")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("EstablishmentType")
-                        .HasColumnType("integer");
 
                     b.Property<Guid?>("GrantedByUserId")
                         .HasColumnType("uuid");

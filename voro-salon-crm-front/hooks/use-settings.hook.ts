@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { API_CONFIG, secureApiCall, getAuthToken } from "@/lib/api"
@@ -14,6 +14,7 @@ export interface TenantForm {
   secondaryColor: string
   contactPhone: string
   contactEmail: string
+  establishmentType: number
 }
 
 const DEFAULT_FORM: TenantForm = {
@@ -24,6 +25,7 @@ const DEFAULT_FORM: TenantForm = {
   secondaryColor: "#A0522D",
   contactPhone: "",
   contactEmail: "",
+  establishmentType: 0,
 }
 
 export function useSettings() {
@@ -35,6 +37,7 @@ export function useSettings() {
   })
 
   const [form, setForm] = useState<TenantForm | null>(null)
+  const [localEstablishmentType, setLocalEstablishmentType] = useState<number | null>(null)
   const [countryCode, setCountryCode] = useState("BR")
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
@@ -52,12 +55,24 @@ export function useSettings() {
         secondaryColor: tenant.secondaryColor ?? "#A0522D",
         contactPhone: phoneNumber,
         contactEmail: tenant.contactEmail ?? "",
+        establishmentType: tenant.establishmentType ?? 0,
       })
       setCountryCode(cCode)
     }
   }, [tenant, form])
 
-  const formData = form ?? DEFAULT_FORM
+  // establishmentType exibido: usa a seleção local do usuário se houver,
+  // caso contrário usa diretamente o dado do tenant (evita race condition com SWR cache)
+  const effectiveEstablishmentType = localEstablishmentType ?? tenant?.establishmentType ?? 0
+
+  const formData = {
+    ...(form ?? DEFAULT_FORM),
+    establishmentType: effectiveEstablishmentType,
+  }
+
+  const setEstablishmentType = useCallback((value: number) => {
+    setLocalEstablishmentType(value)
+  }, [])
 
   const handlePreset = useCallback((primary: string, secondary: string) => {
     setForm((p) => (p ? { ...p, primaryColor: primary, secondaryColor: secondary } : null))
@@ -87,6 +102,7 @@ export function useSettings() {
         return false
       }
       toast.success("Configurações salvas com sucesso!")
+      setLocalEstablishmentType(null) // após salvar, volta a usar o valor do tenant
       mutate()
       refreshTenantTheme(f.primaryColor, f.secondaryColor)
       return true
@@ -211,6 +227,7 @@ export function useSettings() {
     isExportingClients,
     isExportingServices,
     handlePreset,
+    setEstablishmentType,
     saveTenant,
     handleLogoUpload,
     exportData,

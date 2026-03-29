@@ -41,6 +41,9 @@ import { useAuth } from "@/contexts/auth.context"
 import { useSettings } from "@/hooks/use-settings.hook"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
+import { getBrandingByType } from "@/lib/branding"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 
 interface TenantData {
@@ -53,6 +56,7 @@ interface TenantData {
   contactPhone: string | null
   contactEmail: string | null
   themeMode: string
+  establishmentType: number
 }
 
 const COLOR_PRESETS = [
@@ -85,7 +89,7 @@ export default function ConfiguracoesPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
 
   // 2FA state
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.twoFactorEnabled ?? false)
@@ -116,6 +120,7 @@ export default function ConfiguracoesPage() {
     isExportingClients: exportingClients,
     isExportingServices: exportingServices,
     handlePreset,
+    setEstablishmentType,
     saveTenant,
     handleLogoUpload,
     exportData: handleExport,
@@ -161,6 +166,7 @@ export default function ConfiguracoesPage() {
       setTwoFactorEnabled(true)
       set2FADialog("idle")
       setTfaCode("")
+      await refreshUser()
     } finally {
       setTfaLoading(false)
     }
@@ -175,6 +181,7 @@ export default function ConfiguracoesPage() {
       if (res.hasError) { setTfaError(res.message ?? "Erro ao desativar 2FA."); return }
       setTwoFactorEnabled(false)
       set2FADialog("idle")
+      await refreshUser()
     } finally {
       setTfaLoading(false)
     }
@@ -254,7 +261,7 @@ export default function ConfiguracoesPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={(e) => { e.preventDefault(); saveTenant(formData) }} className="flex flex-col gap-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="tenant-name">Nome do Estabelecimento *</Label>
                       <Input
@@ -273,6 +280,30 @@ export default function ConfiguracoesPage() {
                         onChange={(e) => setForm((p) => p ? { ...p, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') } : null)}
                       />
                     </div>
+                    {isOwner && (
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="establishment-type">Tipo de Estabelecimento</Label>
+                        <Select
+                          value={String(formData.establishmentType)}
+                          onValueChange={(v) => setEstablishmentType(Number(v))}
+                      >
+                        <SelectTrigger id="establishment-type" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={String(EstablishmentType.Salon)}>
+                            {getBrandingByType(EstablishmentType.Salon).productName}
+                          </SelectItem>
+                          <SelectItem value={String(EstablishmentType.Barber)}>
+                            {getBrandingByType(EstablishmentType.Barber).productName}
+                          </SelectItem>
+                          <SelectItem value={String(EstablishmentType.Petshop)}>
+                            {getBrandingByType(EstablishmentType.Petshop).productName}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="flex flex-col gap-4">
@@ -364,7 +395,7 @@ export default function ConfiguracoesPage() {
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="contact-phone">Telefone / WhatsApp</Label>
                       <div className="flex gap-2">
-                        <div className="w-[120px] shrink-0">
+                        <div className="shrink-0">
                           <CountrySelector
                             value={countryCode}
                             onChange={setCountryCode}

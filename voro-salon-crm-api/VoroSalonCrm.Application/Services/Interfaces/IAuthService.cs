@@ -2,6 +2,7 @@ using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Domain.Enums;
 
 namespace VoroSalonCrm.Application.Services.Interfaces
 {
@@ -37,6 +38,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task CompleteProfileAsync(Guid userId, CompleteProfileDto dto);
 
         // Provisionamento automático via pagamento
-        Task<Guid> ProvisionAccountFromSubscriptionAsync(string email, string contactName, string salonName);
+        Task<Guid> ProvisionAccountFromSubscriptionAsync(string email, string contactName, string salonName, EstablishmentType? establishmentType = null);
     }
 }

@@ -27,6 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getBrandingByType } from "@/lib/branding"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 
 const navItems = [
   {
@@ -300,6 +302,13 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
             Sair
           </button>
         </nav>
+
+        {/* Product name footer */}
+        <div className="px-4 pb-4 text-center">
+          <p className="text-[11px] text-muted-foreground/50 font-medium">
+            {getBrandingByType(tenant?.establishmentType ?? EstablishmentType.Salon).productName}
+          </p>
+        </div>
       </aside>
     </>
   )

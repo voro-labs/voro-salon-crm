@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using VoroSalonCrm.Domain.Enums;
 
 namespace VoroSalonCrm.Application.DTOs.Tenant
 {
     public record CreateTenantDto(
         [Required][StringLength(150)] string Name,
-        [Required][StringLength(100)] string Slug
+        [Required][StringLength(100)] string Slug,
+        EstablishmentType? EstablishmentType
     );
 
     public record UpdateTenantDto(
@@ -16,7 +18,8 @@ namespace VoroSalonCrm.Application.DTOs.Tenant
         string? SecondaryColor,
         string? ContactPhone,
         string? ContactEmail,
-        string? ThemeMode
+        string? ThemeMode,
+        EstablishmentType? EstablishmentType
     );
 
     public record TenantDto(
@@ -30,6 +33,7 @@ namespace VoroSalonCrm.Application.DTOs.Tenant
         string? SecondaryColor,
         string? ContactPhone,
         string? ContactEmail,
-        string? ThemeMode
+        string? ThemeMode,
+        EstablishmentType EstablishmentType
     );
 }

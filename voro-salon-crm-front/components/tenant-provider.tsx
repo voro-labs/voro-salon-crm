@@ -17,6 +17,7 @@ interface TenantData {
   contactPhone: string | null
   contactEmail: string | null
   themeMode: string
+  establishmentType: number
 }
 
 interface UserData {

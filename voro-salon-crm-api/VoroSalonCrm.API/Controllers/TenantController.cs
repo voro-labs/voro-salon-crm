@@ -35,7 +35,7 @@ namespace VoroSalonCrm.API.Controllers
 
                 var dto = new TenantDto(
                     tenant.Id, tenant.Name, tenant.Slug, tenant.IsActive, tenant.CreatedAt,
-                    tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode);
+                    tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode, tenant.EstablishmentType);
 
                 return ResponseViewModel<TenantDto>.SuccessWithMessage("Current tenant retrieved.", dto).ToActionResult();
             }
@@ -59,7 +59,7 @@ namespace VoroSalonCrm.API.Controllers
 
                 var responseDto = new TenantDto(
                     tenant.Id, tenant.Name, tenant.Slug, tenant.IsActive, tenant.CreatedAt,
-                    tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode);
+                    tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode, tenant.EstablishmentType);
 
                 return ResponseViewModel<TenantDto>.SuccessWithMessage("Current tenant updated.", responseDto).ToActionResult();
             }
@@ -134,7 +134,7 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<IEnumerable<TenantDto>>
                     .SuccessWithMessage("Tenants retrieved.", tenants.Select(t => new TenantDto(
                         t.Id, t.Name, t.Slug, t.IsActive, t.CreatedAt,
-                        t.LogoUrl, t.PrimaryColor, t.SecondaryColor, t.ContactPhone, t.ContactEmail, t.ThemeMode)))
+                        t.LogoUrl, t.PrimaryColor, t.SecondaryColor, t.ContactPhone, t.ContactEmail, t.ThemeMode, t.EstablishmentType)))
                     .ToActionResult();
             }
             catch (Exception ex)
@@ -156,7 +156,7 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<TenantDto>
                     .SuccessWithMessage("Tenant retrieved.", new TenantDto(
                         tenant.Id, tenant.Name, tenant.Slug, tenant.IsActive, tenant.CreatedAt,
-                        tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode))
+                        tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode, tenant.EstablishmentType))
                     .ToActionResult();
             }
             catch (Exception ex)
@@ -176,7 +176,7 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<TenantDto>
                     .SuccessWithMessage("Tenant created.", new TenantDto(
                         tenant.Id, tenant.Name, tenant.Slug, tenant.IsActive, tenant.CreatedAt,
-                        tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode))
+                        tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode, tenant.EstablishmentType))
                     .ToActionResult();
             }
             catch (Exception ex)
@@ -196,7 +196,7 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<TenantDto>
                     .SuccessWithMessage("Tenant updated.", new TenantDto(
                         tenant.Id, tenant.Name, tenant.Slug, tenant.IsActive, tenant.CreatedAt,
-                        tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode))
+                        tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode, tenant.EstablishmentType))
                     .ToActionResult();
             }
             catch (Exception ex)

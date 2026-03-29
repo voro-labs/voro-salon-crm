@@ -41,7 +41,8 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         string Name,
         string SalonName,
         Guid? TenantId,
-        string? CouponCode = null
+        string? CouponCode = null,
+        EstablishmentType? EstablishmentType = null
     );
 
     public record CheckoutResultDto(

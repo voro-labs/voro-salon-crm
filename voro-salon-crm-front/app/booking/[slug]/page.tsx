@@ -481,7 +481,7 @@ export default function PublicBookingPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="phone" className="text-xs font-semibold ml-1">Seu WhatsApp</Label>
                 <div className="flex gap-2">
-                  <div className="w-[120px] shrink-0">
+                  <div className="shrink-0">
                     <CountrySelector
                       value={countryCode}
                       onChange={setCountryCode}

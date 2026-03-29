@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Entities;
 
 namespace VoroSalonCrm.Domain.Entities
@@ -26,6 +27,8 @@ namespace VoroSalonCrm.Domain.Entities
         public string? WhatsappBusinessAccountId { get; set; }
         
         public string ThemeMode { get; set; } = "system";
+
+        public EstablishmentType EstablishmentType { get; set; } = EstablishmentType.Salon;
 
         public bool IsDemo { get; set; } = false;
         public bool IsActive { get; set; } = true;
