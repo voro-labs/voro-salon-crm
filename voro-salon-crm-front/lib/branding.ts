@@ -4,6 +4,7 @@ export interface BrandingConfig {
   productName: string
   shortName: string
   establishmentLabel: string
+  establishmentLabelPlural: string
   description: string
   hostname?: string
 }
@@ -13,6 +14,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     productName: "Voro Salon CRM",
     shortName: "Salon CRM",
     establishmentLabel: "salão",
+    establishmentLabelPlural: "salões",
     description: "Sistema de gerenciamento de clientes e serviços para salões de beleza",
     hostname: "salon-crm.vorolabs.app"
   },
@@ -20,6 +22,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     productName: "Voro Barber CRM",
     shortName: "Barber CRM",
     establishmentLabel: "barbearia",
+    establishmentLabelPlural: "barbearias",
     description: "Sistema de gerenciamento de clientes e serviços para barbearias",
     hostname: "barber-crm.vorolabs.app"
   },
@@ -27,6 +30,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     productName: "Voro Petshop CRM",
     shortName: "Petshop CRM",
     establishmentLabel: "petshop",
+    establishmentLabelPlural: "petshops",
     description: "Sistema de gerenciamento de clientes e serviços para petshops",
     hostname: "petshop-crm.vorolabs.app"
   },

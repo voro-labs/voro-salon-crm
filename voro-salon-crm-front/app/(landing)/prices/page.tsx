@@ -1236,7 +1236,7 @@ export default function PrecosPage() {
           >
             <Badge variant="secondary" className="mb-4 px-4 py-1.5 text-xs font-semibold">
               <Sparkles className="h-3 w-3 mr-1.5 text-primary" />
-              Feito para salões brasileiros
+              Feito para {branding.establishmentLabelPlural} brasileiros
             </Badge>
           </motion.div>
 
@@ -1375,7 +1375,7 @@ export default function PrecosPage() {
               ))}
             </motion.div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-1">
-              Salões que já transformaram o negócio
+              {branding.establishmentLabelPlural.charAt(0).toUpperCase() + branding.establishmentLabelPlural.slice(1)} que já transformaram o negócio
             </h2>
             <p className="text-muted-foreground text-sm">
               Resultados reais de quem usa o Voro todos os dias
@@ -1931,7 +1931,7 @@ export default function PrecosPage() {
               Quanto custa não ter lembrete automático?
             </h2>
             <p className="text-muted-foreground">
-              A maioria dos salões perde entre 1 e 3 agendamentos por semana por falta de confirmação.
+              A maioria dos {branding.establishmentLabelPlural} perde entre 1 e 3 agendamentos por semana por falta de confirmação.
               Veja o impacto:
             </p>
           </Section>
