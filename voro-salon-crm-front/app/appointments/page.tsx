@@ -101,7 +101,7 @@ export default function AppointmentsPage() {
                 <Button variant="outline" size="sm" asChild>
                   <Link href="/appointments/blocked">
                     <Ban className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Bloqueios</span>
+                    <span>Bloqueios</span>
                   </Link>
                 </Button>
                 <Button asChild size="sm">
