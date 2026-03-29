@@ -9,6 +9,7 @@ namespace VoroSalonCrm.Application.Services
 {
     public class WhatsAppMessageService(
         IWhatsAppMessageRepository repository,
+        IWhatsAppConversationRepository conversationRepository,
         IUnitOfWork unitOfWork) : IWhatsAppMessageService
     {
         public async Task SaveInboundAsync(Guid tenantId, string from, string to, string body, string? whatsAppMessageId = null)
@@ -63,6 +64,19 @@ namespace VoroSalonCrm.Application.Services
                 .ToListAsync();
 
             return messages;
+        }
+
+        public async Task<IEnumerable<WhatsAppConversationDto>> GetConversationsAsync(Guid tenantId)
+        {
+            var conversations = await conversationRepository
+                .Query(c => c.TenantId == tenantId)
+                .OrderByDescending(c => c.LastMessageAt)
+                .Select(c => new WhatsAppConversationDto(
+                    c.Id, c.PhoneNumber, c.ContactName, c.State,
+                    c.LastMessageBody, c.LastMessageAt, c.AppointmentId))
+                .ToListAsync();
+
+            return conversations;
         }
     }
 }

@@ -146,6 +146,108 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpGet("conversations")]
+        [Authorize]
+        public async Task<IActionResult> GetConversations([FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var conversations = await _whatsAppMessageService.GetConversationsAsync(tenantId);
+                return ResponseViewModel<IEnumerable<WhatsAppConversationDto>>.Success(conversations).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("templates")]
+        [Authorize]
+        public IActionResult GetTemplates()
+        {
+            var templates = new[]
+            {
+                new { name = "appointment_confirmation_1", label = "Confirmação de Agendamento",   paramsCount = 5 },
+                new { name = "appointment_cancellation_1", label = "Cancelamento de Agendamento",  paramsCount = 4 },
+                new { name = "membership_expiring_soon",   label = "Créditos Próximos do Vencimento", paramsCount = 3 },
+            };
+            return ResponseViewModel<object>.Success(templates).ToActionResult();
+        }
+
+        [HttpPost("send-template")]
+        [Authorize]
+        public async Task<IActionResult> SendTemplate(
+            [FromServices] ICurrentUserService currentUserService,
+            [FromServices] IClientRepository clientRepository,
+            [FromServices] IWhatsappService whatsappService,
+            [FromBody] SendTemplateToClientsDto dto)
+        {
+            if (!ModelState.IsValid)
+                return ResponseViewModel<object>.Fail("Dados inválidos.").ToActionResult();
+
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+
+                // Busca o PhoneNumberId do tenant para envio
+                var tenant = await _tenantRepository.GetByIdAsync(true, tenantId);
+                var phoneNumberId = tenant?.WhatsappPhoneNumberId;
+
+                // Busca os clientes selecionados
+                var clients = await clientRepository
+                    .Query(c => dto.ClientIds.Contains(c.Id) && c.TenantId == tenantId)
+                    .ToListAsync();
+
+                var results = new List<SendTemplateResultDto>();
+
+                foreach (var client in clients)
+                {
+                    if (string.IsNullOrWhiteSpace(client.Phone))
+                    {
+                        results.Add(new SendTemplateResultDto(client.Id, client.Name, "", false, "Sem telefone cadastrado"));
+                        continue;
+                    }
+
+                    try
+                    {
+                        var parameters = dto.BodyParams
+                            .Select(p => new WhatsappParameterDto { Type = "text", Text = p })
+                            .ToList();
+
+                        var templateMsg = new WhatsappTemplateMessageDto
+                        {
+                            To = client.Phone.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""),
+                            Template = new WhatsappTemplateDto
+                            {
+                                Name = dto.TemplateName,
+                                Language = new WhatsappLanguageDto { Code = dto.Language },
+                                Components = parameters.Count > 0
+                                    ? new List<WhatsappComponentDto>
+                                    {
+                                        new() { Type = "body", Parameters = parameters }
+                                    }
+                                    : null
+                            }
+                        };
+
+                        var success = await whatsappService.SendTemplateMessageAsync(templateMsg, phoneNumberId);
+                        results.Add(new SendTemplateResultDto(client.Id, client.Name, client.Phone, success, success ? null : "Falha no envio"));
+                    }
+                    catch (Exception ex)
+                    {
+                        results.Add(new SendTemplateResultDto(client.Id, client.Name, client.Phone ?? "", false, ex.Message));
+                    }
+                }
+
+                return ResponseViewModel<IEnumerable<SendTemplateResultDto>>.Success(results).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
         [HttpPost("flow")]
         public async Task<IActionResult> ReceiveFlow([FromBody] FlowRequestDto request)
         {

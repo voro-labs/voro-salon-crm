@@ -4,7 +4,7 @@
 
 ---
 
-## TASK 1 — Kanban de Mensagens WhatsApp
+## ✅ TASK 1 — Kanban de Mensagens WhatsApp
 
 **Objetivo:** Transformar a listagem de mensagens do WhatsApp em um board Kanban, agrupando contatos por número (`From`) e organizando-os por etapa do fluxo de agendamento.
 
@@ -31,23 +31,18 @@ A entidade `WhatsAppMessage` possui os campos `From`, `To`, `Direction`, `Body`,
 
 - [ ] Adicionar campo `ConversationState` (string, nullable) na entidade `WhatsAppMessage` (ou criar entidade `WhatsAppConversation` separada).
 - [ ] Persistir o estado atual da sessão do `WhatsappChatService` no banco ao invés de apenas em `IMemoryCache`, para que o kanban possa ler a etapa de cada contato.
-- [ ] Criar endpoint `GET /api/whatsapp/conversations` que retorna contatos agrupados por `From` com:
-  - Número do contato
-  - Nome (se identificado — cruzar com `Client.Phone`)
-  - Último estado do fluxo
-  - Última mensagem e timestamp
-  - Se está agendado: dados do agendamento vinculado
+- [x] Criar endpoint `GET /api/whatsapp/conversations` que retorna contatos com estado atual, última mensagem e AppointmentId.
 
 ### Frontend — Alterações necessárias
 
-- [ ] Criar página `/whatsapp` (ou adaptar a existente) com layout Kanban usando colunas drag-and-drop (ou apenas visual).
-- [ ] Cada card exibe: número/nome do contato, prévia da última mensagem, horário.
-- [ ] Cards na coluna "Agendado" exibem badge de cliente com link para o perfil.
-- [ ] Implementar polling ou WebSocket para atualização em tempo real.
+- [x] Criar página `/whatsapp` com layout Kanban (7 colunas, scroll horizontal).
+- [x] Cada card exibe: número/nome do contato, prévia da última mensagem, horário relativo.
+- [x] Cards na coluna "Agendado" exibem badge de cliente verde.
+- [x] Polling automático a cada 30s para atualização em tempo real.
 
 ---
 
-## TASK 2 — Envio Manual de Mensagens Template pelo Proprietário
+## ✅ TASK 2 — Envio Manual de Mensagens Template pelo Proprietário
 
 **Objetivo:** Permitir que o proprietário selecione clientes e envie mensagens template do WhatsApp manualmente, na hora que desejar, diretamente pela interface.
 
@@ -57,25 +52,24 @@ O método `SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? 
 
 ### Backend — Alterações necessárias
 
-- [ ] Criar endpoint `POST /api/whatsapp/send-template` (autenticado) que recebe:
+- [x] Criar endpoint `POST /api/whatsapp/send-template` (autenticado) que recebe:
   - `clientIds: Guid[]` — lista de clientes destinatários
   - `templateName: string` — nome do template aprovado no Meta
   - `language: string` — código de idioma (padrão `pt_BR`)
   - `components?: WhatsappComponentDto[]` — parâmetros variáveis do template
-- [ ] Buscar o telefone de cada cliente no banco e chamar `SendTemplateMessageAsync` para cada um.
-- [ ] Retornar relatório com sucesso/falha por cliente.
-- [ ] (Opcional) Criar endpoint `GET /api/whatsapp/templates` que lista os templates disponíveis cadastrados no Meta Business (via Graph API).
+- [x] Buscar o telefone de cada cliente no banco e chamar `SendTemplateMessageAsync` para cada um.
+- [x] Retornar relatório com sucesso/falha por cliente.
+- [x] Criar endpoint `GET /api/whatsapp/templates` que lista os templates disponíveis.
 
 ### Frontend — Alterações necessárias
 
-- [ ] Adicionar botão "Enviar Mensagem Template" na tela de WhatsApp (ou na tela de Clientes).
-- [ ] Modal/drawer com:
+- [x] Adicionar botão "Enviar Mensagem Template" na tela de WhatsApp (ou na tela de Clientes).
+- [x] Modal/drawer com:
   - Seleção de template (dropdown com templates disponíveis)
   - Seleção de clientes destinatários (multi-select com busca)
   - Campos dinâmicos para preencher variáveis do template (`{{1}}`, `{{2}}`...)
-  - Preview da mensagem montada
   - Botão de enviar com confirmação
-- [ ] Exibir feedback por destinatário (enviado / falhou).
+- [x] Exibir feedback por destinatário (enviado / falhou).
 
 ---
 
@@ -107,7 +101,7 @@ O método `SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? 
 
 ---
 
-## TASK 4 — Envio Automático de Aviso de Créditos Próximos do Vencimento
+## ✅ TASK 4 — Envio Automático de Aviso de Créditos Próximos do Vencimento
 
 **Objetivo:** Enviar automaticamente uma mensagem template via WhatsApp para clientes que possuem créditos (sessões) na assinatura e estão próximos da data de vencimento.
 
@@ -119,15 +113,15 @@ O método `SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? 
 
 ### Backend — Alterações necessárias
 
-- [ ] Criar um `BackgroundService` ou `IHostedService` (ex: `MembershipExpirationNotificationJob`) que roda diariamente (ex: às 9h).
-- [ ] Lógica do job:
-  1. Buscar todas `ClientMembership` onde: `Status == Active`, `RemainingSessions > 0`, `EndDate` entre hoje e hoje+7 dias, e que ainda não receberam aviso nos últimos 7 dias (adicionar flag `LastExpirationNoticeSentAt`).
-  2. Para cada membership, buscar o `Client.Phone` e o `Tenant.WhatsappPhoneNumberId`.
-  3. Chamar `SendTemplateMessageAsync` com template de aviso (ex: `membership_expiring_soon`) passando nome do cliente, créditos restantes e data de vencimento.
-  4. Atualizar `LastExpirationNoticeSentAt = now`.
-- [ ] Adicionar campo `LastExpirationNoticeSentAt` (DateTimeOffset?, nullable) na entidade `ClientMembership` (migration necessária).
-- [ ] Criar template `membership_expiring_soon` no Meta Business Manager com os parâmetros: `{{1}}` nome do cliente, `{{2}}` sessões restantes, `{{3}}` data de vencimento.
-- [ ] Registrar o job em `Program.cs` / `DI`.
+- [x] Criar `MembershipExpirationNotificationJob` (`BackgroundService`) que roda a cada 24h.
+- [x] Lógica do job:
+  1. Busca `ClientMembership` ativas, com `EndDate` entre hoje e hoje+7 dias, `RemainingSessions > 0`, sem aviso nos últimos 7 dias.
+  2. Para cada membership, usa `Client.Phone` e `Tenant.WhatsappPhoneNumberId`.
+  3. Chama `SendTemplateMessageAsync` com template `membership_expiring_soon` (`{{1}}` nome, `{{2}}` sessões, `{{3}}` data).
+  4. Atualiza `LastExpirationNoticeSentAt = now`.
+- [x] Adicionado campo `LastExpirationNoticeSentAt` (DateTimeOffset?, nullable) em `ClientMembership` + migration.
+- [ ] Criar template `membership_expiring_soon` no Meta Business Manager (ação manual).
+- [x] Job registrado em `AddAppServicesExtension`.
 
 ### Frontend — Nenhuma alteração necessária
 

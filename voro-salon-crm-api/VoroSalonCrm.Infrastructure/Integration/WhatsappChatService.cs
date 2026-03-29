@@ -6,7 +6,9 @@ using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
+using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
 namespace VoroSalonCrm.Infrastructure.Integration
 {
@@ -15,6 +17,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly IWhatsappService _whatsappService;
         private readonly IPublicBookingService _publicBookingService;
         private readonly ITenantRepository _tenantRepository;
+        private readonly IWhatsAppConversationRepository _conversationRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMemoryCache _cache;
         private readonly ILogger<WhatsappChatService> _logger;
 
@@ -24,12 +28,16 @@ namespace VoroSalonCrm.Infrastructure.Integration
             IWhatsappService whatsappService,
             IPublicBookingService publicBookingService,
             ITenantRepository tenantRepository,
+            IWhatsAppConversationRepository conversationRepository,
+            IUnitOfWork unitOfWork,
             IMemoryCache cache,
             ILogger<WhatsappChatService> logger)
         {
             _whatsappService = whatsappService;
             _publicBookingService = publicBookingService;
             _tenantRepository = tenantRepository;
+            _conversationRepository = conversationRepository;
+            _unitOfWork = unitOfWork;
             _cache = cache;
             _logger = logger;
         }
@@ -37,6 +45,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private class BookingSession
         {
             public string State { get; set; } = "START";
+            public Guid TenantId { get; set; }
             public string? TenantSlug { get; set; }
             public string? TenantName { get; set; }
             public string? WhatsappPhoneNumberId { get; set; }
@@ -47,6 +56,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public string? EmployeeName { get; set; }
             public DateTime? SelectedDate { get; set; }
             public string? SelectedTime { get; set; }
+            public Guid? AppointmentId { get; set; }
         }
 
         public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default)
@@ -69,6 +79,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                         return;
                     }
 
+                    session.TenantId = tenant.Id;
                     session.TenantSlug = tenant.Slug;
                     session.TenantName = tenant.Name;
                     session.WhatsappPhoneNumberId = tenant.WhatsappPhoneNumberId;
@@ -139,6 +150,21 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 else
                 {
                     _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
+                }
+
+                // Persist conversation state to DB (fire-and-forget on failure)
+                if (session.TenantId != Guid.Empty)
+                {
+                    try
+                    {
+                        await PersistConversationStateAsync(
+                            session.TenantId, from, contactName, session,
+                            GetLastInboundBody(message), ct);
+                    }
+                    catch (Exception persistEx)
+                    {
+                        _logger.LogWarning(persistEx, "Falha ao persistir estado da conversa WhatsApp para {From}", from);
+                    }
                 }
             }
             catch (Exception ex)
@@ -466,6 +492,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (result.Success)
                 {
+                    session.AppointmentId = result.AppointmentId;
                     await _whatsappService.SendTextMessageAsync(from, $"✅ *Agendamento Confirmado!*\n\n{contactName}, seu horário para {session.ServiceName} em *{session.TenantName}* foi marcado para o dia {session.SelectedDate:dd/MM} às {session.SelectedTime}. Esperamos por você!", session.WhatsappPhoneNumberId, ct);
                 }
                 else
@@ -479,6 +506,56 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 await _whatsappService.SendTextMessageAsync(from, "Agendamento cancelado. Se precisar de algo mais, é só chamar!", session.WhatsappPhoneNumberId, ct);
                 session.State = "COMPLETED";
             }
+        }
+
+        private static string GetLastInboundBody(WhatsappMessageDto message)
+        {
+            return message.Type switch
+            {
+                "text" => message.Text?.Body ?? string.Empty,
+                "interactive" => message.Interactive?.ButtonReply?.Title
+                              ?? message.Interactive?.ListReply?.Title
+                              ?? "[Interativo]",
+                _ => $"[{message.Type}]"
+            };
+        }
+
+        private async Task PersistConversationStateAsync(
+            Guid tenantId, string phoneNumber, string contactName,
+            BookingSession session, string lastMessageBody, CancellationToken ct)
+        {
+            var existing = await _conversationRepository
+                .Query(c => c.TenantId == tenantId && c.PhoneNumber == phoneNumber)
+                .FirstOrDefaultAsync(ct);
+
+            if (existing == null)
+            {
+                await _conversationRepository.AddAsync(new WhatsAppConversation
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    PhoneNumber = phoneNumber,
+                    ContactName = contactName,
+                    State = session.State,
+                    LastMessageBody = lastMessageBody,
+                    AppointmentId = session.AppointmentId,
+                    LastMessageAt = DateTimeOffset.UtcNow,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+            else
+            {
+                existing.State = session.State;
+                existing.LastMessageBody = lastMessageBody;
+                existing.AppointmentId = session.AppointmentId ?? existing.AppointmentId;
+                existing.LastMessageAt = DateTimeOffset.UtcNow;
+                existing.UpdatedAt = DateTimeOffset.UtcNow;
+                if (!string.IsNullOrEmpty(contactName) && contactName != "Cliente")
+                    existing.ContactName = contactName;
+                _conversationRepository.Update(existing);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 }
