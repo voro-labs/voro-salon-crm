@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://salon-crm.vorolabs.app/sitemap.xml
+Sitemap: https://barber-crm.vorolabs.app/sitemap.xml
+Sitemap: https://petshop-crm.vorolabs.app/sitemap.xml
