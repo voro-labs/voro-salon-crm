@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { useState } from "react"
-import { ArrowLeft, Loader2, Trash2, UserCheck, CreditCard } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, Loader2, Trash2, UserCheck, CreditCard, Calendar as CalendarIcon, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,11 +35,25 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Switch } from "@/components/ui/switch"
 import { CurrencyInput } from "@/components/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
+import useSWR from "swr"
+import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentDetail } from "@/hooks/use-appointment-detail.hook"
 import { appointmentStatusConfig } from "@/components/ui/custom/status-badge"
+
+const slotFetcher = async (url: string) => {
+  const result = await secureApiCall<any>(url, { method: "GET" })
+  if (result.hasError) throw new Error(result.message || "Error")
+  return result.data
+}
 
 export default function AppointmentDetailPage() {
   const params = useParams()
@@ -47,6 +61,8 @@ export default function AppointmentDetailPage() {
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<number | null>(null)
   const [selectedEmployeeForCompletion, setSelectedEmployeeForCompletion] = useState<string>("none")
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [isEncaixe, setIsEncaixe] = useState(false)
 
   const {
     appointment,
@@ -64,6 +80,21 @@ export default function AppointmentDetailPage() {
     updateStatus,
     deleteAppointment,
   } = useAppointmentDetail(appointmentId)
+
+  // Initialize selectedDate from loaded appointment
+  useEffect(() => {
+    if (form.scheduledDateTime && !selectedDate) {
+      const d = new Date(form.scheduledDateTime)
+      if (!isNaN(d.getTime())) setSelectedDate(d)
+    }
+  }, [form.scheduledDateTime])
+
+  const { data: availability, isLoading: loadingAvailability } = useSWR(
+    selectedDate
+      ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?date=${format(selectedDate, "yyyy-MM-dd")}${form.employeeId !== "none" ? `&employeeId=${form.employeeId}` : ""}`
+      : null,
+    slotFetcher
+  )
 
   async function handleStatusClick(statusKey: number) {
     const COMPLETED_STATUS = 2
@@ -221,14 +252,30 @@ export default function AppointmentDetailPage() {
                     )}
 
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="scheduledDateTime">Data e Hora *</Label>
-                      <Input
-                        id="scheduledDateTime"
-                        type="datetime-local"
-                        value={form.scheduledDateTime}
-                        onChange={(e) => setForm((p) => ({ ...p, scheduledDateTime: e.target.value }))}
-                        required
-                      />
+                      <Label>Data *</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn("w-full justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={selectedDate}
+                            onSelect={(date) => {
+                              setSelectedDate(date)
+                              setForm((p) => ({ ...p, scheduledDateTime: "" }))
+                            }}
+                            initialFocus
+                            locale={ptBR}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -250,6 +297,66 @@ export default function AppointmentDetailPage() {
                           <SelectItem value="120">2 horas</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  {selectedDate && (() => {
+                    const now = new Date()
+                    const isToday = selectedDate.toDateString() === now.toDateString()
+                    const visibleSlots = (availability ?? []).filter((slot: any) => {
+                      if (!isToday) return true
+                      return new Date(slot.startTime) > now
+                    })
+                    return (
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-sm font-medium">Horários Disponíveis</Label>
+                        {loadingAvailability ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Carregando horários...
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                            {visibleSlots.map((slot: any) => {
+                              const isSelected = form.scheduledDateTime === slot.startTime
+                              const canSelect = slot.isAvailable || (isEncaixe && !slot.isBlocked)
+                              return (
+                                <Button
+                                  key={slot.startTime}
+                                  type="button"
+                                  variant={isSelected ? "default" : "outline"}
+                                  size="sm"
+                                  className={cn(
+                                    "h-9 px-1 text-[10px] sm:text-xs",
+                                    slot.isBlocked && "opacity-30 cursor-not-allowed bg-muted",
+                                    !slot.isAvailable && !slot.isBlocked && !isEncaixe && "opacity-30 cursor-not-allowed bg-muted",
+                                    !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 text-amber-600",
+                                  )}
+                                  disabled={!canSelect}
+                                  onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
+                                  title={slot.isBlocked ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado") : undefined}
+                                >
+                                  {format(new Date(slot.startTime), "HH:mm")}
+                                </Button>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {visibleSlots.length === 0 && !loadingAvailability && (
+                          <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data.</p>
+                        )}
+                      </div>
+                    )
+                  })()}
+
+                  <div className="flex items-center gap-3 py-1">
+                    <Switch id="encaixe-edit" checked={isEncaixe} onCheckedChange={setIsEncaixe} />
+                    <div>
+                      <Label htmlFor="encaixe-edit" className="flex items-center gap-1.5 cursor-pointer">
+                        <Zap className="h-3.5 w-3.5 text-amber-500" />
+                        Encaixe
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Permite agendar em horários já ocupados</p>
                     </div>
                   </div>
 

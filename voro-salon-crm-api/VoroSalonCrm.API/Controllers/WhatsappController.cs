@@ -168,9 +168,24 @@ namespace VoroSalonCrm.API.Controllers
         {
             var templates = new[]
             {
-                new { name = "appointment_confirmation_1", label = "Confirmação de Agendamento",   paramsCount = 5 },
-                new { name = "appointment_cancellation_1", label = "Cancelamento de Agendamento",  paramsCount = 4 },
-                new { name = "membership_expiring_soon",   label = "Créditos Próximos do Vencimento", paramsCount = 3 },
+                new {
+                    name = "appointment_confirmation_1",
+                    label = "Confirmação de Agendamento",
+                    paramsCount = 5,
+                    paramLabels = new[] { "Nome do cliente", "Nome do serviço", "Data (dd/MM/yyyy)", "Horário (HH:mm)", "Nome do estabelecimento" }
+                },
+                new {
+                    name = "appointment_cancellation_1",
+                    label = "Cancelamento de Agendamento",
+                    paramsCount = 4,
+                    paramLabels = new[] { "Nome do cliente", "Nome do serviço", "Data (dd/MM/yyyy)", "Nome do estabelecimento" }
+                },
+                new {
+                    name = "membership_expiring_soon",
+                    label = "Créditos Próximos do Vencimento",
+                    paramsCount = 3,
+                    paramLabels = new[] { "Nome do cliente", "Sessões restantes", "Data de vencimento (dd/MM/yyyy)" }
+                },
             };
             return ResponseViewModel<object>.Success(templates).ToActionResult();
         }

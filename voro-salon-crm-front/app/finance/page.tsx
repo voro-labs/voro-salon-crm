@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useTransactions } from "@/hooks/use-transactions.hook"
 import { TransactionDto, TransactionType, TransactionStatus, PaymentMethod } from "@/types/DTOs/financial.interface"
 import { Button } from "@/components/ui/button"
-import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode } from "lucide-react"
+import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -284,6 +284,13 @@ export default function FinancialPage() {
   const totalDespesas = transactions?.filter(t => t.type === TransactionType.Expense && t.status !== TransactionStatus.Cancelled).reduce((acc, t) => acc + t.amount, 0) || 0
   const saldoPrevisto = totalReceitas - totalDespesas
 
+  const now = new Date()
+  const receitaMes = transactions?.filter(t => {
+    if (t.type !== TransactionType.Income || t.status === TransactionStatus.Cancelled) return false
+    const d = new Date(t.dueDate)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).reduce((acc, t) => acc + t.amount, 0) || 0
+
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <div className="flex flex-col gap-6 p-3 sm:p-6">
@@ -418,7 +425,7 @@ export default function FinancialPage() {
           }
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs font-medium">Receitas</CardTitle>
@@ -449,6 +456,22 @@ export default function FinancialPage() {
                 {formatCurrency(saldoPrevisto)}
               </div>
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">Balanço do pedido</p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0 sm:col-span-2 lg:col-span-1">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Receita do Mês
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-blue-500 shrink-0" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg sm:text-2xl font-bold text-blue-600 truncate">
+                {formatCurrency(receitaMes)}
+              </div>
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">
+                {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
+              </p>
             </CardContent>
           </Card>
         </div>

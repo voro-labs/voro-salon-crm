@@ -23,6 +23,7 @@ interface Template {
   name: string
   label: string
   paramsCount: number
+  paramLabels?: string[]
 }
 
 interface SendResult {
@@ -198,14 +199,21 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
             {(currentTemplate?.paramsCount ?? 0) > 0 && (
               <div className="flex flex-col gap-2">
                 <Label className="text-xs text-muted-foreground">Parâmetros do template</Label>
-                {bodyParams.map((val, i) => (
-                  <Input
-                    key={i}
-                    placeholder={`Parâmetro {{${i + 1}}}`}
-                    value={val}
-                    onChange={(e) => setBodyParams((p) => p.map((v, j) => j === i ? e.target.value : v))}
-                  />
-                ))}
+                {bodyParams.map((val, i) => {
+                  const label = currentTemplate?.paramLabels?.[i] ?? `Parâmetro {{${i + 1}}}`
+                  return (
+                    <div key={i} className="flex flex-col gap-1">
+                      <span className="text-[11px] text-muted-foreground">
+                        <span className="font-mono text-primary">{"{{" + (i + 1) + "}}"}</span> — {label}
+                      </span>
+                      <Input
+                        placeholder={label}
+                        value={val}
+                        onChange={(e) => setBodyParams((p) => p.map((v, j) => j === i ? e.target.value : v))}
+                      />
+                    </div>
+                  )
+                })}
               </div>
             )}
 
