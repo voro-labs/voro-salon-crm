@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,11 +6,23 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace VoroSalonCrm.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddWhatsAppConversations : Migration
+    public partial class AddMembershipAndConversations : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<DateTimeOffset>(
+                name: "LastExpirationNoticeSentAt",
+                table: "ClientMemberships",
+                type: "timestamp with time zone",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "ClientMembershipId",
+                table: "Appointments",
+                type: "uuid",
+                nullable: true);
+
             migrationBuilder.CreateTable(
                 name: "WhatsAppConversations",
                 columns: table => new
@@ -33,8 +45,7 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         name: "FK_WhatsAppConversations_Appointments_AppointmentId",
                         column: x => x.AppointmentId,
                         principalTable: "Appointments",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_WhatsAppConversations_Tenants_TenantId",
                         column: x => x.TenantId,
@@ -44,22 +55,49 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Appointments_ClientMembershipId",
+                table: "Appointments",
+                column: "ClientMembershipId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_WhatsAppConversations_AppointmentId",
                 table: "WhatsAppConversations",
                 column: "AppointmentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_WhatsAppConversations_TenantId_PhoneNumber",
+                name: "IX_WhatsAppConversations_TenantId",
                 table: "WhatsAppConversations",
-                columns: new[] { "TenantId", "PhoneNumber" },
-                unique: true);
+                column: "TenantId");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Appointments_ClientMemberships_ClientMembershipId",
+                table: "Appointments",
+                column: "ClientMembershipId",
+                principalTable: "ClientMemberships",
+                principalColumn: "Id");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_Appointments_ClientMemberships_ClientMembershipId",
+                table: "Appointments");
+
             migrationBuilder.DropTable(
                 name: "WhatsAppConversations");
+
+            migrationBuilder.DropIndex(
+                name: "IX_Appointments_ClientMembershipId",
+                table: "Appointments");
+
+            migrationBuilder.DropColumn(
+                name: "LastExpirationNoticeSentAt",
+                table: "ClientMemberships");
+
+            migrationBuilder.DropColumn(
+                name: "ClientMembershipId",
+                table: "Appointments");
         }
     }
 }

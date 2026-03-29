@@ -29,8 +29,8 @@ A entidade `WhatsAppMessage` possui os campos `From`, `To`, `Direction`, `Body`,
 
 ### Backend — Alterações necessárias
 
-- [ ] Adicionar campo `ConversationState` (string, nullable) na entidade `WhatsAppMessage` (ou criar entidade `WhatsAppConversation` separada).
-- [ ] Persistir o estado atual da sessão do `WhatsappChatService` no banco ao invés de apenas em `IMemoryCache`, para que o kanban possa ler a etapa de cada contato.
+- [x] Criada entidade `WhatsAppConversation` separada com `State`, `LastMessageBody`, `AppointmentId`.
+- [x] Estado da sessão persistido no banco pelo `WhatsappChatService` via `PersistConversationStateAsync` (mantém cache como primário).
 - [x] Criar endpoint `GET /api/whatsapp/conversations` que retorna contatos com estado atual, última mensagem e AppointmentId.
 
 ### Frontend — Alterações necessárias
@@ -84,12 +84,7 @@ O método `SendTemplateMessageAsync(WhatsappTemplateMessageDto message, string? 
 
 ### Backend — Alterações necessárias
 
-- [ ] No `CreateBookingAsync` (e/ou em um passo do `WhatsappChatService`), após confirmar o agendamento:
-  1. Buscar `ClientMembership` ativa do cliente (`Status == Active`, `EndDate >= hoje`).
-  2. Se encontrada e `RemainingSessions > 0` (ou null = ilimitado):
-     - Decrementar `RemainingSessions` (se não for ilimitado).
-     - Vincular o `ClientMembershipId` ao agendamento (`Appointment.ClientMembershipId`).
-  3. Se a assinatura estiver esgotada (`RemainingSessions == 0`): não bloquear o agendamento, mas não consumir — ou avisar o cliente.
+- [x] Em `AppointmentService.UpdateStatusAsync` → `DecrementMembershipSessionAsync(appointment)`: busca membership ativa com menor `EndDate`, decrementa `RemainingSessions`, vincula `ClientMembershipId` ao agendamento. Agendamento não é bloqueado se a assinatura estiver esgotada.
 - [x] Adicionar campo `ClientMembershipId` (nullable) na entidade `Appointment` (migration criada).
 - [x] Retornar no response do agendamento se uma assinatura foi utilizada.
 
