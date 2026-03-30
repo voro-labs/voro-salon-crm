@@ -131,13 +131,18 @@ namespace VoroSalonCrm.API.Controllers
         [Authorize]
         public async Task<IActionResult> GetMessages(
             [FromServices] ICurrentUserService currentUserService,
+            [FromQuery] string? phone = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50)
         {
             try
             {
                 var tenantId = currentUserService.TenantId;
-                var messages = await _whatsAppMessageService.GetByTenantAsync(tenantId, page, pageSize);
+                IEnumerable<WhatsAppMessageDto> messages;
+                if (!string.IsNullOrWhiteSpace(phone))
+                    messages = await _whatsAppMessageService.GetByPhoneAsync(tenantId, phone, page, 100);
+                else
+                    messages = await _whatsAppMessageService.GetByTenantAsync(tenantId, page, pageSize);
                 return ResponseViewModel<IEnumerable<WhatsAppMessageDto>>.Success(messages).ToActionResult();
             }
             catch (Exception ex)
@@ -148,19 +153,44 @@ namespace VoroSalonCrm.API.Controllers
 
         [HttpGet("conversations")]
         [Authorize]
-        public async Task<IActionResult> GetConversations([FromServices] ICurrentUserService currentUserService)
+        public async Task<IActionResult> GetConversations(
+            [FromServices] ICurrentUserService currentUserService,
+            [FromServices] IClientRepository clientRepository)
         {
             try
             {
                 var tenantId = currentUserService.TenantId;
                 var conversations = await _whatsAppMessageService.GetConversationsAsync(tenantId);
-                return ResponseViewModel<IEnumerable<WhatsAppConversationDto>>.Success(conversations).ToActionResult();
+
+                var clients = await clientRepository
+                    .Query(c => c.TenantId == tenantId && c.Phone != null)
+                    .Select(c => new { c.Id, c.Phone })
+                    .ToListAsync();
+
+                var result = conversations.Select(conv =>
+                {
+                    var convSuffix = NormalizePhone(conv.PhoneNumber);
+                    if (convSuffix.Length > 10) convSuffix = convSuffix[^10..];
+
+                    var match = clients.FirstOrDefault(c =>
+                    {
+                        var clientSuffix = NormalizePhone(c.Phone!);
+                        if (clientSuffix.Length > 10) clientSuffix = clientSuffix[^10..];
+                        return clientSuffix.Length >= 8 && clientSuffix == convSuffix;
+                    });
+                    return conv with { ClientId = match?.Id };
+                });
+
+                return ResponseViewModel<IEnumerable<WhatsAppConversationDto>>.Success(result).ToActionResult();
             }
             catch (Exception ex)
             {
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        private static string NormalizePhone(string phone) =>
+            new string(phone.Where(char.IsDigit).ToArray());
 
         [HttpGet("templates")]
         [Authorize]

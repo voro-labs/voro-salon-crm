@@ -66,6 +66,22 @@ namespace VoroSalonCrm.Application.Services
             return messages;
         }
 
+        public async Task<IEnumerable<WhatsAppMessageDto>> GetByPhoneAsync(Guid tenantId, string phone, int page = 1, int pageSize = 100)
+        {
+            var messages = await repository
+                .Query(m => m.TenantId == tenantId && (m.From == phone || m.To == phone))
+                .OrderBy(m => m.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(m => new WhatsAppMessageDto(
+                    m.Id, m.TenantId, m.Direction,
+                    m.From, m.To, m.Body,
+                    m.WhatsAppMessageId, m.Status, m.Timestamp))
+                .ToListAsync();
+
+            return messages;
+        }
+
         public async Task<IEnumerable<WhatsAppConversationDto>> GetConversationsAsync(Guid tenantId)
         {
             var conversations = await conversationRepository

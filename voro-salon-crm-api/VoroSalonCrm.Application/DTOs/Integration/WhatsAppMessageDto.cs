@@ -19,6 +19,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         string State,
         string LastMessageBody,
         DateTimeOffset LastMessageAt,
-        Guid? AppointmentId
+        Guid? AppointmentId,
+        Guid? ClientId = null
     );
 }

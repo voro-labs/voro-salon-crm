@@ -1,9 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
-import { MessageCircle, RefreshCw, Loader2, User, CalendarCheck, Send, X, CheckCircle, AlertCircle } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import {
+  MessageCircle, RefreshCw, Loader2, User, CalendarCheck, Send, X,
+  CheckCircle, AlertCircle, LayoutGrid, MessageSquare, ExternalLink, ChevronRight,
+} from "lucide-react"
+import { formatDistanceToNow, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
@@ -18,6 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Template {
   name: string
@@ -42,7 +48,22 @@ interface WhatsAppConversation {
   lastMessageBody: string
   lastMessageAt: string
   appointmentId: string | null
+  clientId: string | null
 }
+
+interface WhatsAppMessage {
+  id: string
+  tenantId: string
+  direction: "inbound" | "outbound"
+  from: string
+  to: string
+  body: string
+  whatsAppMessageId: string | null
+  status: string
+  timestamp: string
+}
+
+// ─── Kanban config ───────────────────────────────────────────────────────────
 
 const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor: string }[] = [
   { state: "START",                  label: "Novo Contato",            color: "border-slate-300",   headerColor: "bg-slate-100 text-slate-700" },
@@ -54,14 +75,30 @@ const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor
   { state: "COMPLETED",              label: "Agendado",                color: "border-emerald-300", headerColor: "bg-emerald-100 text-emerald-700" },
 ]
 
-function ConversationCard({ conv }: { conv: WhatsAppConversation }) {
+// ─── Kanban card ─────────────────────────────────────────────────────────────
+
+function ConversationCard({
+  conv,
+  onClick,
+}: {
+  conv: WhatsAppConversation
+  onClick?: () => void
+}) {
+  const router = useRouter()
   const isScheduled = conv.state === "COMPLETED" && conv.appointmentId
+
+  const handleClientClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (conv.clientId) router.push(`/clients/${conv.clientId}`)
+  }
 
   return (
     <div
+      onClick={onClick}
       className={cn(
         "flex flex-col gap-2 p-3 rounded-xl border bg-card shadow-sm hover:shadow-md transition-shadow",
-        isScheduled ? "border-emerald-200 bg-emerald-50/40" : "border-border"
+        isScheduled ? "border-emerald-200 bg-emerald-50/40" : "border-border",
+        onClick && "cursor-pointer"
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -81,10 +118,13 @@ function ConversationCard({ conv }: { conv: WhatsAppConversation }) {
             )}
           </div>
         </div>
-        {isScheduled && (
-          <Badge variant="secondary" className="text-[10px] shrink-0 bg-emerald-100 text-emerald-700 border-emerald-200">
-            Cliente
-          </Badge>
+        {conv.clientId && (
+          <button
+            onClick={handleClientClick}
+            className="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
+          >
+            Ver cliente <ExternalLink className="h-2.5 w-2.5" />
+          </button>
         )}
       </div>
 
@@ -99,6 +139,212 @@ function ConversationCard({ conv }: { conv: WhatsAppConversation }) {
   )
 }
 
+// ─── Chat view ───────────────────────────────────────────────────────────────
+
+function ChatView({
+  conversations,
+  isLoading,
+}: {
+  conversations: WhatsAppConversation[]
+  isLoading: boolean
+}) {
+  const router = useRouter()
+  const [selected, setSelected] = useState<WhatsAppConversation | null>(null)
+  const [search, setSearch] = useState("")
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  const { data: messages, isLoading: loadingMessages } = useSWR<WhatsAppMessage[]>(
+    selected
+      ? `${API_CONFIG.ENDPOINTS.WHATSAPP_MESSAGES}?phone=${encodeURIComponent(selected.phoneNumber)}`
+      : null,
+    async (url) => {
+      const res = await secureApiCall<WhatsAppMessage[]>(url, { method: "GET" })
+      return res.hasError ? [] : (res.data ?? [])
+    },
+    { refreshInterval: 5000 }
+  )
+
+  useEffect(() => {
+    if (messages && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [messages])
+
+  const filtered = conversations.filter((c) => {
+    const q = search.toLowerCase()
+    return (
+      c.contactName.toLowerCase().includes(q) ||
+      c.phoneNumber.includes(q)
+    )
+  })
+
+  const displayName = (conv: WhatsAppConversation) =>
+    conv.contactName !== "Cliente" ? conv.contactName : conv.phoneNumber
+
+  const groupMessagesByDate = (msgs: WhatsAppMessage[]) => {
+    const groups: { date: string; msgs: WhatsAppMessage[] }[] = []
+    for (const msg of msgs) {
+      const dateKey = format(new Date(msg.timestamp), "dd/MM/yyyy", { locale: ptBR })
+      const last = groups[groups.length - 1]
+      if (last && last.date === dateKey) {
+        last.msgs.push(msg)
+      } else {
+        groups.push({ date: dateKey, msgs: [msg] })
+      }
+    }
+    return groups
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        Carregando...
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full overflow-hidden rounded-xl border border-border bg-card">
+      {/* Sidebar – lista de conversas */}
+      <div className="w-72 shrink-0 flex flex-col border-r border-border">
+        <div className="p-3 border-b border-border">
+          <Input
+            placeholder="Buscar conversa..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto divide-y divide-border">
+          {filtered.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center p-6">Nenhuma conversa.</p>
+          ) : (
+            filtered.map((conv) => {
+              const isActive = selected?.id === conv.id
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => setSelected(conv)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-muted/50 transition-colors",
+                    isActive && "bg-primary/5 border-l-2 border-l-primary"
+                  )}
+                >
+                  {/* Avatar */}
+                  <div className={cn(
+                    "shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold",
+                    conv.state === "COMPLETED"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {displayName(conv).charAt(0).toUpperCase()}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-semibold truncate">{displayName(conv)}</p>
+                      <p className="text-[10px] text-muted-foreground shrink-0">
+                        {format(new Date(conv.lastMessageAt), "HH:mm")}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">{conv.lastMessageBody || "—"}</p>
+                  </div>
+                </button>
+              )
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Painel de mensagens */}
+      {selected ? (
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
+                {displayName(selected).charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{displayName(selected)}</p>
+                <p className="text-[11px] text-muted-foreground font-mono">{selected.phoneNumber}</p>
+              </div>
+            </div>
+            {selected.clientId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 h-7 text-xs gap-1.5"
+                onClick={() => router.push(`/clients/${selected.clientId}`)}
+              >
+                <User className="h-3 w-3" />
+                Ver cliente
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+
+          {/* Mensagens */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+            style={{ background: "hsl(var(--muted)/0.2)" }}>
+            {loadingMessages ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : !messages || messages.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Nenhuma mensagem salva para este contato.</p>
+            ) : (
+              groupMessagesByDate(messages).map((group) => (
+                <div key={group.date} className="space-y-2">
+                  {/* Separador de data */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-[10px] text-muted-foreground px-2">{group.date}</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                  {group.msgs.map((msg) => {
+                    const isOutbound = msg.direction === "outbound"
+                    return (
+                      <div
+                        key={msg.id}
+                        className={cn("flex", isOutbound ? "justify-end" : "justify-start")}
+                      >
+                        <div className={cn(
+                          "max-w-[72%] rounded-2xl px-3.5 py-2 text-sm shadow-sm",
+                          isOutbound
+                            ? "bg-primary text-primary-foreground rounded-br-sm"
+                            : "bg-card border border-border rounded-bl-sm"
+                        )}>
+                          <p className="leading-relaxed whitespace-pre-wrap break-words">{msg.body}</p>
+                          <p className={cn(
+                            "text-[10px] mt-1 text-right",
+                            isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
+                          )}>
+                            {format(new Date(msg.timestamp), "HH:mm")}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))
+            )}
+            <div ref={bottomRef} />
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+          <MessageSquare className="h-10 w-10 opacity-30" />
+          <p className="text-sm">Selecione uma conversa para ver as mensagens</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Send template modal ─────────────────────────────────────────────────────
+
 function SendTemplateModal({ onClose }: { onClose: () => void }) {
   const { data: templates } = useSWR<Template[]>(API_CONFIG.ENDPOINTS.WHATSAPP_TEMPLATES, fetcher)
   const { data: clients } = useSWR<any[]>(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
@@ -112,22 +358,9 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
 
   const currentTemplate = templates?.find((t) => t.name === selectedTemplate)
 
-  // Detecta quais índices são auto-preenchíveis
   const isAutoParam = (label: string) => {
     const l = label.toLowerCase()
     return l.includes("estabelecimento") || l.includes("cliente")
-  }
-
-  const getAutoValue = (label: string): string => {
-    const l = label.toLowerCase()
-    if (l.includes("estabelecimento")) return tenant?.name ?? ""
-    if (l.includes("cliente")) {
-      if (selectedClientIds.length === 1) {
-        return clients?.find((c: any) => c.id === selectedClientIds[0])?.name ?? ""
-      }
-      return "" // múltiplos clientes: cada um recebe seu próprio nome
-    }
-    return ""
   }
 
   const handleTemplateChange = (name: string) => {
@@ -141,7 +374,6 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
     }))
   }
 
-  // Re-preenche nome do cliente quando a seleção muda para 1 cliente
   useEffect(() => {
     if (!currentTemplate) return
     setBodyParams((prev) =>
@@ -152,7 +384,7 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
           if (selectedClientIds.length === 1) {
             return clients?.find((c: any) => c.id === selectedClientIds[0])?.name ?? val
           }
-          return "" // limpa se múltiplos selecionados
+          return ""
         }
         return val
       })
@@ -171,8 +403,6 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
 
     setIsSending(true)
     try {
-      // Para params de "nome do cliente" com múltiplos destinatários,
-      // o backend substitui pelo nome real de cada cliente
       const finalParams = bodyParams.map((val, i) => {
         const label = (currentTemplate?.paramLabels?.[i] ?? "").toLowerCase()
         if (label.includes("cliente") && selectedClientIds.length > 1) return "__CLIENT_NAME__"
@@ -230,7 +460,6 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           <div className="flex flex-col gap-4 py-1">
-            {/* Template */}
             <div className="flex flex-col gap-1.5">
               <Label>Template *</Label>
               <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
@@ -245,7 +474,6 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
               </Select>
             </div>
 
-            {/* Parâmetros do template */}
             {(currentTemplate?.paramsCount ?? 0) > 0 && (
               <div className="flex flex-col gap-2">
                 <Label className="text-xs text-muted-foreground">Parâmetros do template</Label>
@@ -286,7 +514,6 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
               </div>
             )}
 
-            {/* Seleção de clientes */}
             <div className="flex flex-col gap-1.5">
               <Label>Clientes * <span className="text-muted-foreground font-normal">({selectedClientIds.length} selecionados)</span></Label>
               <div className="border rounded-lg max-h-44 overflow-y-auto divide-y">
@@ -334,8 +561,13 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+type ViewMode = "kanban" | "chat"
+
 export default function WhatsAppKanbanPage() {
   const [showSendModal, setShowSendModal] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban")
 
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
@@ -351,10 +583,38 @@ export default function WhatsAppKanbanPage() {
       <ModuleGuard moduleId={9}>
         <div className="flex flex-col gap-6 p-4 sm:p-6 h-full">
           <PageHeader
-            title="WhatsApp — Kanban de Atendimentos"
+            title="WhatsApp — Atendimentos"
             description="Acompanhe em qual etapa do agendamento cada contato está."
             action={
               <div className="flex items-center gap-2">
+                {/* Toggle de visualização */}
+                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
+                  <button
+                    onClick={() => setViewMode("kanban")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                      viewMode === "kanban"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    Kanban
+                  </button>
+                  <button
+                    onClick={() => setViewMode("chat")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
+                      viewMode === "chat"
+                        ? "bg-background shadow-sm text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Chat
+                  </button>
+                </div>
+
                 <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
                   <Send className="mr-2 h-4 w-4" />
                   Enviar Template
@@ -367,7 +627,11 @@ export default function WhatsAppKanbanPage() {
             }
           />
 
-          {isLoading ? (
+          {viewMode === "chat" ? (
+            <div className="flex-1 min-h-0" style={{ height: "calc(100vh - 200px)" }}>
+              <ChatView conversations={conversations ?? []} isLoading={isLoading} />
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-24 text-muted-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Carregando conversas...
@@ -392,13 +656,11 @@ export default function WhatsAppKanbanPage() {
                       key={col.state}
                       className={cn("flex flex-col gap-3 w-56 shrink-0 rounded-xl border-2 p-3", col.color)}
                     >
-                      {/* Cabeçalho da coluna */}
                       <div className={cn("flex items-center justify-between rounded-lg px-2.5 py-1.5", col.headerColor)}>
                         <span className="text-xs font-semibold">{col.label}</span>
                         <span className="text-xs font-bold tabular-nums">{items.length}</span>
                       </div>
 
-                      {/* Cards */}
                       <div className="flex flex-col gap-2 min-h-[60px]">
                         {items.length === 0 ? (
                           <p className="text-[11px] text-muted-foreground text-center py-4">Nenhum contato</p>
