@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "voro-salon-crm-api/**"
   workflow_dispatch:
 
 jobs:

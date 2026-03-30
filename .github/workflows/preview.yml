@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - "voro-salon-crm-api/**"
 
 jobs:
   deploy-preview:
