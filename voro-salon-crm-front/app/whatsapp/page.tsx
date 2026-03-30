@@ -16,7 +16,6 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 import { ModuleGuard } from "@/components/auth/module-guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -317,7 +316,7 @@ function ChatView({
                             ? "bg-primary text-primary-foreground rounded-br-sm"
                             : "bg-card border border-border rounded-bl-sm"
                         )}>
-                          <p className="leading-relaxed whitespace-pre-wrap break-words">{msg.body}</p>
+                          <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">{msg.body}</p>
                           <p className={cn(
                             "text-[10px] mt-1 text-right",
                             isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
@@ -569,6 +568,7 @@ type ViewMode = "kanban" | "chat"
 export default function WhatsAppKanbanPage() {
   const [showSendModal, setShowSendModal] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("kanban")
+  const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [chatHeight, setChatHeight] = useState(0)
 
@@ -737,7 +737,7 @@ export default function WhatsAppKanbanPage() {
                         <span className="text-xs font-bold tabular-nums">{items.length}</span>
                       </div>
 
-                      <div className="flex flex-col gap-2 min-h-[60px]">
+                      <div className="flex flex-col gap-2 min-h-15">
                         {items.length === 0 ? (
                           <p className="text-[11px] text-muted-foreground text-center py-4">Nenhum contato</p>
                         ) : (
