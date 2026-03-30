@@ -569,6 +569,15 @@ export default function WhatsAppKanbanPage() {
   const [showSendModal, setShowSendModal] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("kanban")
 
+  // Garante que mobile nunca fique preso na view de chat
+  useEffect(() => {
+    const check = () => {
+      if (window.innerWidth < 768) setViewMode("kanban")
+    }
+    window.addEventListener("resize", check)
+    return () => window.removeEventListener("resize", check)
+  }, [])
+
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
     fetcher,
@@ -581,14 +590,14 @@ export default function WhatsAppKanbanPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <ModuleGuard moduleId={9}>
-        <div className="flex flex-col gap-6 p-4 sm:p-6 h-full">
+        <div className={cn("flex flex-col p-4 sm:p-6 h-full", viewMode === "chat" ? "gap-4 overflow-hidden" : "gap-6")}>
           <PageHeader
             title="WhatsApp — Atendimentos"
             description="Acompanhe em qual etapa do agendamento cada contato está."
             action={
               <div className="flex items-center gap-2">
-                {/* Toggle de visualização */}
-                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
+                {/* Toggle de visualização — só tablet+ */}
+                <div className="hidden md:flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
                   <button
                     onClick={() => setViewMode("kanban")}
                     className={cn(
@@ -628,7 +637,7 @@ export default function WhatsAppKanbanPage() {
           />
 
           {viewMode === "chat" ? (
-            <div className="flex-1 min-h-0" style={{ height: "calc(100vh - 200px)" }}>
+            <div className="flex-1 min-h-0 overflow-hidden">
               <ChatView conversations={conversations ?? []} isLoading={isLoading} />
             </div>
           ) : isLoading ? (
