@@ -1153,6 +1153,19 @@ export default function PrecosPage() {
       }
       if (couponResult) body.couponCode = couponResult.code
 
+      try {
+        const tracking = localStorage.getItem("voro_tracking")
+        if (tracking) {
+          const parsed = JSON.parse(tracking)
+          if (parsed.utm_source) body.utm_source = parsed.utm_source
+          if (parsed.utm_medium) body.utm_medium = parsed.utm_medium
+          if (parsed.utm_campaign) body.utm_campaign = parsed.utm_campaign
+          if (parsed.utm_content) body.utm_content = parsed.utm_content
+          if (parsed.utm_term) body.utm_term = parsed.utm_term
+          if (parsed.fbclid) body.fbclid = parsed.fbclid
+        }
+      } catch { }
+
       const res = await apiCall<CheckoutResultDto>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT, {
         method: "POST",
         body: JSON.stringify(body),
@@ -1161,6 +1174,7 @@ export default function PrecosPage() {
         setError(res.message ?? "Erro ao iniciar checkout.")
         return
       }
+      try { localStorage.removeItem("voro_tracking") } catch { }
       if (res.data.isTrial) {
         router.push("/prices/feedback?trial=true")
       } else {

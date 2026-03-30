@@ -11,12 +11,14 @@ namespace VoroSalonCrm.Application.Services
         IClientRepository clientRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
-        ITenantSubscriptionRepository subscriptionRepository) : IClientService
+        ITenantSubscriptionRepository subscriptionRepository,
+        IUserNotificationService userNotificationService) : IClientService
     {
         private readonly IClientRepository _clientRepository = clientRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly ITenantSubscriptionRepository _subscriptionRepository = subscriptionRepository;
+        private readonly IUserNotificationService _userNotificationService = userNotificationService;
 
         public async Task<ClientDto> CreateAsync(CreateClientDto dto)
         {
@@ -90,6 +92,8 @@ namespace VoroSalonCrm.Application.Services
 
             _clientRepository.Update(client);
             await _unitOfWork.SaveChangesAsync();
+
+            await _userNotificationService.DeleteByRelatedEntityIdAsync(id);
 
             return true;
         }

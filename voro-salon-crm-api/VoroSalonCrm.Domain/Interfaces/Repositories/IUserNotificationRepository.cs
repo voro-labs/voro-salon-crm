@@ -8,5 +8,7 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories
         Task<IEnumerable<UserNotification>> GetByUserIdAsync(Guid userId, int page = 1, int pageSize = 20);
         Task<int> GetUnreadCountAsync(Guid userId);
         Task MarkAllAsReadAsync(Guid userId);
+        Task DeleteByRelatedEntityIdAsync(Guid relatedEntityId);
+        Task DeleteManyAsync(IEnumerable<Guid> ids, Guid userId);
     }
 }
