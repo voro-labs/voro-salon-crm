@@ -180,6 +180,21 @@ export default function VerifyTwoFactorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
 
+  if (success) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md">
+          <ShieldCheck className="h-8 w-8" />
+        </div>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <p className="text-lg font-semibold text-foreground">Verificado com sucesso!</p>
+          <p className="text-sm text-muted-foreground">Redirecionando...</p>
+        </div>
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-lg">
@@ -211,14 +226,6 @@ export default function VerifyTwoFactorPage() {
           <div className="mb-5 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <p className="text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Sucesso */}
-        {success && (
-          <div className="mb-5 flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-            <p className="text-sm font-medium">Verificado! Redirecionando...</p>
           </div>
         )}
 
