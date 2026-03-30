@@ -40,3 +40,71 @@
 
 ## Pendentes
 
+- [ ] **Deploy ambiente dev — configuração manual no Fly.io e Vercel**
+
+  **O que já foi criado:**
+  - `voro-salon-crm-api/fly.dev.toml` — config do Fly para `dev-voro-salon-crm-api` (512 MB RAM)
+  - `.github/workflows/deploy-dev.yml` — dispara no push para `dev`, só gerencia a API no Fly.io
+  - Vercel é gerenciado pela **integração nativa** (GitHub App já instalado), sem job extra no workflow
+
+  **Arquitetura de domínios:**
+  | Branch | Fly.io | Vercel (frontend) |
+  |--------|--------|-------------------|
+  | `main` | `voro-salon-crm-api` | `salon-crm.vorolabs.app` (production) |
+  | `dev`  | `dev-voro-salon-crm-api` | `dev-salon-crm.vorolabs.app` (preview com domínio fixo) |
+
+  ---
+
+  ### Passo 1 — Criar app no Fly.io
+  ```bash
+  fly apps create dev-voro-salon-crm-api --org <sua-org>
+  ```
+
+  ### Passo 2 — Adicionar domínios dev no Vercel (mesmo projeto, sem criar novo)
+  No projeto atual do Vercel → **Settings → Domains**:
+  1. Adicionar `dev-salon-crm.vorolabs.app`
+     - No campo **Git Branch** digitar: `dev`
+  2. Adicionar `dev-barber-crm.vorolabs.app`
+     - Git Branch: `dev`
+  3. Adicionar `dev-petshop-crm.vorolabs.app`
+     - Git Branch: `dev`
+
+  Assim toda vez que a branch `dev` for atualizada, o Vercel publica automaticamente nesses domínios como "preview com domínio fixo".
+
+  ### Passo 3 — Configurar environment variables no Vercel para preview
+  Em **Settings → Environment Variables**, adicionar/atualizar com scope **Preview**:
+  - `NEXT_PUBLIC_BASE_API_URL` = `https://dev-voro-salon-crm-api.fly.dev`
+  - `NEXT_PUBLIC_WEB_URL` = `https://dev-salon-crm.vorolabs.app`
+
+  > Importante: manter os valores de produção no scope **Production** (apontando para a API de prod).
+
+  ### Passo 4 — Configurar DNS
+  Adicionar CNAMEs no provedor de domínio (Cloudflare, etc.):
+  ```
+  dev-salon-crm.vorolabs.app   → cname.vercel-dns.com
+  dev-barber-crm.vorolabs.app  → cname.vercel-dns.com
+  dev-petshop-crm.vorolabs.app → cname.vercel-dns.com
+  ```
+
+  ### Passo 5 — Adicionar secrets ao GitHub
+  Acesse: repositório → Settings → Secrets and variables → Actions
+
+  | Secret | Valor |
+  |--------|-------|
+  | `MERCADOPAGOSETTINGS__BACKURL__DEV` | URL de retorno do MercadoPago para dev |
+
+  > Os demais secrets (`CONNECTIONSTRING__DEVELOPMENT__*`, `FLY_API_TOKEN`, etc.) já existem nos workflows de preview de PR.
+
+  ### Passo 6 — Criar branch `dev` e fazer primeiro push
+  ```bash
+  git checkout -b dev
+  git push origin dev
+  ```
+  - O workflow `deploy-dev.yml` fará o deploy da API automaticamente
+  - O Vercel detectará a branch `dev` e publicará o frontend nos domínios configurados
+
+  ### Fluxo de trabalho após setup
+  ```
+  feature/* → PR para dev → testa em dev → PR para main → deploy para prod
+  ```
+
