@@ -163,6 +163,7 @@ namespace VoroSalonCrm.Application.Services
                 Status = SubscriptionStatus.Inactive,
                 PaymentSource = PaymentSource.MercadoPago,
                 StartDate = DateTimeOffset.UtcNow,
+                CheckoutExpiresAt = DateTimeOffset.UtcNow.AddMinutes(10),
                 MercadoPagoSubscriptionId = result.Id,
                 MercadoPagoExternalReference = externalRef,
                 ContactEmail = dto.Email,

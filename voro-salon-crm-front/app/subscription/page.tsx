@@ -108,6 +108,12 @@ export default function SubscriptionPage() {
   const canResubscribe = subscription && !isActive && !isTrial
   const currentPlanInList = plans?.some((p) => p.id === subscription?.plan?.id)
 
+  // Exibe apenas planos com preço maior que o plano atual (evolução sem downgrade)
+  const currentPrice = subscription?.plan?.monthlyPrice ?? 0
+  const visiblePlans = (isActive || isTrial)
+    ? plans?.filter((p) => p.monthlyPrice > currentPrice)
+    : plans
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <div>
@@ -198,13 +204,17 @@ export default function SubscriptionPage() {
           {isActive ? "Trocar plano" : canResubscribe && currentPlanInList ? "Reassinar ou trocar plano" : "Escolher plano"}
         </h2>
 
-        {!plans ? (
+        {!visiblePlans ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        ) : visiblePlans.length === 0 ? (
+          <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm">
+            Você já está no plano mais completo disponível.
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {plans.map((plan) => {
+            {visiblePlans.map((plan) => {
               const isCurrent = plan.id === subscription?.plan?.id
               // Plano atual só fica bloqueado se a assinatura estiver ativa
               const isDisabled = isCurrent && isActive

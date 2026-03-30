@@ -15,6 +15,9 @@ namespace VoroSalonCrm.Domain.Entities
         public DateTimeOffset? EndDate { get; set; }
         public DateTimeOffset? TrialEndsAt { get; set; }
 
+        // Checkout pendente — expira em 10 min se não concluído
+        public DateTimeOffset? CheckoutExpiresAt { get; set; }
+
         // MercadoPago
         public string? MercadoPagoSubscriptionId { get; set; }
         public string? MercadoPagoPayerId { get; set; }

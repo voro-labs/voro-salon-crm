@@ -64,7 +64,7 @@ namespace VoroSalonCrm.Infrastructure.Repositories
             return await _context.TenantSubscriptions
                 .AsNoTracking()
                 .Include(s => s.Plan)
-                .Where(s => s.TenantId == tenantId)
+                .Where(s => s.TenantId == tenantId && s.Status != SubscriptionStatus.Cancelled)
                 .OrderByDescending(s => s.CreatedAt)
                 .FirstOrDefaultAsync();
         }

@@ -122,6 +122,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
 
             services.AddHostedService<AppointmentReminderBackgroundService>();
             services.AddHostedService<MembershipExpirationNotificationJob>();
+            services.AddHostedService<ExpiredCheckoutCleanupJob>();
 
             return services;
         }
