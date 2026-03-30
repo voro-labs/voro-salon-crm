@@ -13,7 +13,7 @@ jobs:
 
       - name: Delete Fly preview app
         run: |
-          APP_NAME="${{ github.event.repository.name }}-pr-${{ github.event.pull_request.number }}"
+          APP_NAME="dev-${{ github.event.repository.name }}-api"
           if flyctl apps list | grep -q "$APP_NAME"; then
             flyctl apps destroy $APP_NAME --yes
           else

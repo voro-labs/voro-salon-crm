@@ -28,7 +28,7 @@ jobs:
 
       - name: Define preview app name
         id: vars
-        run: echo "APP_NAME=${{ github.event.repository.name }}-pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+        run: echo "APP_NAME=dev-${{ github.event.repository.name }}-api" >> $GITHUB_OUTPUT
 
       - name: Create Fly app (if not exists)
         run: |
@@ -68,6 +68,9 @@ jobs:
             INTEGRATIONSETTINGS__WHATSAPP__PHONEID="${{ secrets.INTEGRATIONSETTINGS__WHATSAPP__PHONEID }}" \
             INTEGRATIONSETTINGS__WHATSAPP__BUSSINESSID="${{ secrets.INTEGRATIONSETTINGS__WHATSAPP__BUSSINESSID }}" \
             INTEGRATIONSETTINGS__WHATSAPP__VERIFYTOKEN="${{ secrets.INTEGRATIONSETTINGS__WHATSAPP__VERIFYTOKEN }}" \
+            CORSSETTINGS__ALLOWEDORIGINS__0="${{ secrets.CORSSETTINGS__ALLOWEDORIGINS__DEVELOPMENT__0 }}" \
+            CORSSETTINGS__ALLOWEDORIGINS__1="${{ secrets.CORSSETTINGS__ALLOWEDORIGINS__DEVELOPMENT__1 }}" \
+            CORSSETTINGS__ALLOWEDORIGINS__2="${{ secrets.CORSSETTINGS__ALLOWEDORIGINS__DEVELOPMENT__2 }}" \
             -a ${{ steps.vars.outputs.APP_NAME }}
         env:
           FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
@@ -92,4 +95,4 @@ jobs:
 
             | Project | Deployment | Preview | Updated (UTC) |
             |--------|------------|---------|---------------|
-            | `${{ github.event.repository.name }}` | 🟢 Deployed | [Preview](https://${{ steps.vars.outputs.APP_NAME }}.fly.dev) | ${{ github.event.pull_request.updated_at }} |
+            | `${{ github.event.repository.name }}` | 🟢 Deployed | [Preview](${{ secrets.CORSSETTINGS__ALLOWEDORIGINS__DEVELOPMENT__0 }}) | ${{ github.event.pull_request.updated_at }} |
