@@ -22,7 +22,8 @@ namespace VoroSalonCrm.Application.Services
         IWhatsappService whatsappService,
         IUserTenantRepository userTenantRepository,
         IExpoPushNotificationService expoPushNotificationService,
-        ITimeSlotBlockService timeSlotBlockService) : IAppointmentService
+        ITimeSlotBlockService timeSlotBlockService,
+        ITenantBusinessHoursRepository businessHoursRepository) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -36,6 +37,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
         private readonly ITimeSlotBlockService _timeSlotBlockService = timeSlotBlockService;
+        private readonly ITenantBusinessHoursRepository _businessHoursRepository = businessHoursRepository;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -346,8 +348,25 @@ namespace VoroSalonCrm.Application.Services
         public async Task<IEnumerable<AvailabilitySlotDto>> GetAvailableSlotsAsync(DateTime date, Guid? serviceId = null, Guid? employeeId = null)
         {
             var tenantId = _currentUserService.TenantId;
-            var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 8, 0, 0, TimeSpan.FromHours(-3)); // TODO: Get from tenant settings
-            var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 18, 0, 0, TimeSpan.FromHours(-3));
+
+            // Resolve business hours from tenant settings
+            var dayOfWeek = (int)date.DayOfWeek;
+            var allHours = await _businessHoursRepository.GetByTenantAsync(tenantId);
+            var dayHours = allHours.FirstOrDefault(h => h.DayOfWeek == dayOfWeek);
+
+            // If the day is explicitly closed, return empty
+            if (dayHours != null && !dayHours.IsOpen)
+                return [];
+
+            var openTimeParts = (dayHours?.OpenTime ?? "08:00").Split(':');
+            var closeTimeParts = (dayHours?.CloseTime ?? "18:00").Split(':');
+            int openHour = int.Parse(openTimeParts[0]);
+            int openMin = int.Parse(openTimeParts[1]);
+            int closeHour = int.Parse(closeTimeParts[0]);
+            int closeMin = int.Parse(closeTimeParts[1]);
+
+            var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, openHour, openMin, 0, TimeSpan.FromHours(-3));
+            var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, closeHour, closeMin, 0, TimeSpan.FromHours(-3));
 
             var startUtc = startOfDay.ToUniversalTime();
             var endUtc = endOfDay.ToUniversalTime();

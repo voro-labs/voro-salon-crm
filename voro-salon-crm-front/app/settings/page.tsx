@@ -46,6 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { getBrandingByType } from "@/lib/branding"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
+import { toast } from "sonner"
 
 interface TenantData {
   id: string
@@ -143,14 +144,30 @@ export default function ConfiguracoesPage() {
   }, [isSalonOwner]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveHours = async () => {
+    // Validação: para dias abertos, closeTime deve ser maior que openTime
+    for (const day of businessHours) {
+      if (!day.isOpen) continue
+      if (day.closeTime <= day.openTime) {
+        toast.error(`${DAY_NAMES[day.dayOfWeek]}: o horário de fechamento deve ser após o de abertura.`)
+        return
+      }
+    }
+
     setSavingHours(true)
     try {
       const { apiCall, API_CONFIG } = await import("@/lib/api")
-      await apiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {
+      const res = await apiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {
         method: "PUT",
         body: JSON.stringify({ days: businessHours }),
       })
-    } catch { } finally {
+      if (res.hasError) {
+        toast.error(res.message ?? "Erro ao salvar horários.")
+      } else {
+        toast.success("Horários salvos com sucesso!")
+      }
+    } catch {
+      toast.error("Erro de conexão ao salvar horários.")
+    } finally {
       setSavingHours(false)
     }
   }
@@ -635,9 +652,12 @@ export default function ConfiguracoesPage() {
                                   onChange={(e) =>
                                     setBusinessHours(prev => prev.map((d, i) => i === idx ? { ...d, closeTime: e.target.value } : d))
                                   }
-                                  className="w-28 h-8 text-sm"
+                                  className={`w-28 h-8 text-sm ${day.closeTime <= day.openTime ? "border-destructive focus-visible:ring-destructive" : ""}`}
                                 />
                               </div>
+                              {day.closeTime <= day.openTime && (
+                                <span className="text-xs text-destructive">Fechamento deve ser após abertura</span>
+                              )}
                             </>
                           )}
                         </div>
