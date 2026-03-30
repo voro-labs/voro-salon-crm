@@ -105,6 +105,8 @@ export default function SubscriptionPage() {
   if (!user?.token) return null
 
   const status = subscription ? statusLabel(subscription.status) : null
+  const canResubscribe = subscription && !isActive && !isTrial
+  const currentPlanInList = plans?.some((p) => p.id === subscription?.plan?.id)
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -166,6 +168,19 @@ export default function SubscriptionPage() {
                 </span>
               </p>
             )}
+
+            {canResubscribe && subscription.plan && (
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSelectPlan(subscription.plan as SubscriptionPlanDto)}
+                >
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  Reassinar este plano
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -180,7 +195,7 @@ export default function SubscriptionPage() {
       {/* Seleção de plano */}
       <div>
         <h2 className="text-lg font-bold mb-4">
-          {isActive ? "Trocar plano" : "Escolher plano"}
+          {isActive ? "Trocar plano" : canResubscribe && currentPlanInList ? "Reassinar ou trocar plano" : "Escolher plano"}
         </h2>
 
         {!plans ? (
@@ -191,20 +206,22 @@ export default function SubscriptionPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {plans.map((plan) => {
               const isCurrent = plan.id === subscription?.plan?.id
+              // Plano atual só fica bloqueado se a assinatura estiver ativa
+              const isDisabled = isCurrent && isActive
               return (
                 <button
                   key={plan.id}
-                  onClick={() => !isCurrent && handleSelectPlan(plan)}
-                  disabled={isCurrent}
+                  onClick={() => !isDisabled && handleSelectPlan(plan)}
+                  disabled={isDisabled}
                   className={`text-left rounded-xl border p-4 transition-all ${
-                    isCurrent
+                    isDisabled
                       ? "border-primary bg-primary/5 cursor-default"
                       : "border-border hover:border-primary/60 hover:bg-accent/50 cursor-pointer"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-bold text-sm">{plan.name}</span>
-                    {isCurrent && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                    {isCurrent && isActive && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
                   </div>
                   <p className="text-xl font-black mb-1">
                     {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
@@ -238,9 +255,9 @@ export default function SubscriptionPage() {
                       </div>
                     )}
                   </div>
-                  {!isCurrent && (
+                  {!isDisabled && (
                     <div className="mt-3 text-xs font-semibold text-primary flex items-center gap-1">
-                      {isActive ? "Fazer upgrade" : "Assinar"} <ArrowRight className="h-3 w-3" />
+                      {isCurrent && canResubscribe ? "Reassinar" : isActive ? "Fazer upgrade" : "Assinar"} <ArrowRight className="h-3 w-3" />
                     </div>
                   )}
                 </button>
