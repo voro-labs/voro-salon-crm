@@ -58,6 +58,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public string? SelectedTime { get; set; }
             public Guid? AppointmentId { get; set; }
             public string? ContactName { get; set; }
+            public int TimeSlotPage { get; set; } = 0;
+            public int DatePage { get; set; } = 0;
         }
 
         public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default)
@@ -300,6 +302,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     // No specific employees, skip to date
                     session.EmployeeId = null;
                     session.State = "AWAITING_DATE";
+                    session.DatePage = 0;
                     await AskForDateAsync(from, session, ct);
                     return;
                 }
@@ -339,6 +342,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
 
             session.State = "AWAITING_DATE";
+            session.DatePage = 0;
             await AskForDateAsync(from, session, ct);
         }
 
@@ -370,25 +374,58 @@ namespace VoroSalonCrm.Infrastructure.Integration
             session.State = "AWAITING_EMPLOYEE";
         }
 
+        private const int DatePageSize = 9; // reserva 1 row para "Ver mais" quando necessário
+
         private async Task AskForDateAsync(string from, BookingSession session, CancellationToken ct)
         {
-            var dates = Enumerable.Range(0, 5).Select(i => DateTime.Today.AddDays(i)).ToList();
+            var allDates = Enumerable.Range(0, 30).Select(i => DateTime.Today.AddDays(i)).ToList();
 
-            var buttons = dates.Take(3).Select(d => new
+            var page = session.DatePage;
+            var pageDates = allDates.Skip(page * DatePageSize).Take(DatePageSize).ToList();
+            var hasMore = allDates.Count > (page + 1) * DatePageSize;
+
+            var rows = pageDates.Select(d => new
             {
-                type = "reply",
-                reply = new
+                id = d.ToString("yyyy-MM-dd"),
+                title = d.ToString("dd/MM/yyyy"),
+                description = d == DateTime.Today ? "Hoje" : d.DayOfWeek switch
                 {
-                    id = d.ToString("yyyy-MM-dd"),
-                    title = d.ToString("dd/MM") + (d == DateTime.Today ? " (Hoje)" : "")
+                    DayOfWeek.Monday => "Segunda-feira",
+                    DayOfWeek.Tuesday => "Terça-feira",
+                    DayOfWeek.Wednesday => "Quarta-feira",
+                    DayOfWeek.Thursday => "Quinta-feira",
+                    DayOfWeek.Friday => "Sexta-feira",
+                    DayOfWeek.Saturday => "Sábado",
+                    DayOfWeek.Sunday => "Domingo",
+                    _ => ""
                 }
-            }).ToList();
+            }).Cast<object>().ToList();
+
+            if (hasMore)
+            {
+                rows.Add(new
+                {
+                    id = "more_dates",
+                    title = "Ver mais datas",
+                    description = "Próximas opções"
+                });
+            }
+
+            var pageLabel = page > 0 ? $" (página {page + 1})" : "";
+            var sections = new[]
+            {
+                new { title = $"Datas Disponíveis{pageLabel}", rows }
+            };
 
             var interactive = new
             {
-                type = "button",
+                type = "list",
                 body = new { text = "Para qual data você gostaria de agendar?" },
-                action = new { buttons }
+                action = new
+                {
+                    button = "Ver datas",
+                    sections
+                }
             };
 
             await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
@@ -397,12 +434,21 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private async Task HandleDateSelectionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
         {
             string? dateStr = null;
-            if (message.Type == "interactive" && message.Interactive?.ButtonReply != null)
-                dateStr = message.Interactive.ButtonReply.Id;
+            if (message.Type == "interactive" && message.Interactive?.ListReply != null)
+                dateStr = message.Interactive.ListReply.Id;
+
+            if (dateStr == "more_dates")
+            {
+                session.DatePage++;
+                await AskForDateAsync(from, session, ct);
+                return;
+            }
 
             if (DateTime.TryParseExact(dateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             {
                 session.SelectedDate = date;
+                session.DatePage = 0;
+                session.TimeSlotPage = 0;
                 await AskForTimeAsync(from, session, ct);
             }
             else
@@ -411,6 +457,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 await AskForDateAsync(from, session, ct);
             }
         }
+
+        private const int TimeSlotPageSize = 9; // reserva 1 row para "Ver mais" quando necessário
 
         private async Task AskForTimeAsync(string from, BookingSession session, CancellationToken ct)
         {
@@ -421,6 +469,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 await _whatsappService.SendTextMessageAsync(from, "Desculpe, não há horários disponíveis para esta data. Por favor, escolha outro dia.", session.WhatsappPhoneNumberId, ct);
                 session.SelectedDate = null;
+                session.TimeSlotPage = 0;
+                session.DatePage = 0;
                 await AskForDateAsync(from, session, ct);
                 return;
             }
@@ -429,30 +479,32 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var brasilia = TimeSpan.FromHours(-3);
             var slotsLocal = availableSlots.Select(s => s.StartTime.ToOffset(brasilia)).ToList();
 
-            // WhatsApp permite no máximo 10 rows no total entre todas as seções
-            var limitedSlots = slotsLocal.Take(10).ToList();
+            var page = session.TimeSlotPage;
+            var pageSlots = slotsLocal.Skip(page * TimeSlotPageSize).Take(TimeSlotPageSize).ToList();
+            var hasMore = slotsLocal.Count > (page + 1) * TimeSlotPageSize;
 
-            var morningRows = limitedSlots.Where(s => s.Hour < 12).Select(s => new
+            var rows = pageSlots.Select(s => new
             {
                 id = s.ToString("HH:mm"),
                 title = s.ToString("HH:mm"),
                 description = "Disponível"
-            }).ToList();
+            }).Cast<object>().ToList();
 
-            var afternoonRows = limitedSlots.Where(s => s.Hour >= 12).Select(s => new
+            if (hasMore)
             {
-                id = s.ToString("HH:mm"),
-                title = s.ToString("HH:mm"),
-                description = "Disponível"
-            }).ToList();
+                rows.Add(new
+                {
+                    id = "more_times",
+                    title = "Ver mais horários",
+                    description = "Próximas opções"
+                });
+            }
 
-            object[] sections;
-            if (morningRows.Count > 0 && afternoonRows.Count > 0)
-                sections = [new { title = "Manhã", rows = morningRows }, new { title = "Tarde", rows = afternoonRows }];
-            else if (morningRows.Count > 0)
-                sections = [new { title = "Horários Disponíveis", rows = morningRows }];
-            else
-                sections = [new { title = "Horários Disponíveis", rows = afternoonRows }];
+            var pageLabel = page > 0 ? $" (página {page + 1})" : "";
+            var sections = new[]
+            {
+                new { title = $"Horários Disponíveis{pageLabel}", rows }
+            };
 
             var interactive = new
             {
@@ -476,7 +528,12 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (message.Type == "interactive" && message.Interactive?.ListReply != null)
                 timeStr = message.Interactive.ListReply.Id;
 
-            if (!string.IsNullOrEmpty(timeStr))
+            if (timeStr == "more_times")
+            {
+                session.TimeSlotPage++;
+                await AskForTimeAsync(from, session, ct);
+            }
+            else if (!string.IsNullOrEmpty(timeStr))
             {
                 session.SelectedTime = timeStr;
                 await AskForConfirmationAsync(from, session, ct);
