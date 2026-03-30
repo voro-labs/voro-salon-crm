@@ -69,10 +69,10 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/clients/[id]` — aba Assinatura
 
-- [ ] Adicionar aba "Assinatura" na tela de detalhe do cliente (atualmente o app só tem Serviços e Anamnese)
-- [ ] Listar planos de fidelidade ativos e expirados do cliente com: nome do plano, badge de status (Ativo/Expirado/Cancelado), período (início → fim), sessões restantes, notas
-- [ ] Botão para associar plano: dropdown de planos + campo de notas
-- [ ] Botão para cancelar plano ativo com confirmação
+- [x] Adicionar aba "Assinatura" na tela de detalhe do cliente (atualmente o app só tem Serviços e Anamnese)
+- [x] Listar planos de fidelidade ativos e expirados do cliente com: nome do plano, badge de status (Ativo/Expirado/Cancelado), período (início → fim), sessões restantes, notas
+- [x] Botão para associar plano: dropdown de planos + campo de notas
+- [x] Botão para cancelar plano ativo com confirmação
 
 ---
 
@@ -84,3 +84,53 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 - [ ] Exibir seção "Top Clientes": ranking com número do cliente, nome, quantidade de serviços e total gasto
 - [ ] Botão para copiar link de agendamento público
 - [ ] Verificar se os cards de métricas estão alinhados com o web: Receita Mensal, Quantidade de Serviços do Mês, Total de Clientes / Limite
+
+---
+
+### 7. Importação de Extrato Bancário (PDF) no Financeiro
+
+**Rota web:** `/finance` (Botão Importar PDF)
+
+- [ ] Adicionar botão "Importar PDF" na listagem do financeiro
+- [ ] Utilizar `expo-document-picker` para selecionar arquivo PDF do dispositivo
+- [ ] Ler e processar o PDF (semelhante à web, extraindo transações, descrições e valores via RegEx base e classificações)
+- [ ] Tela/Modal de revisão local antes de despachar o `batchImport` para a API (exibindo entradas, saídas e a tabela de edição rápida)
+
+---
+
+### 8. Placeholders Dinâmicos e Novos Tipos de Estabelecimento
+
+**Rota web:** `/services/new` e onboarding/settings
+
+- [ ] Adicionar o **Seletor de Tipo de Estabelecimento** na tela de *Configurações do Salão* no App (atualmente essa aba no app não exibe o seletor `EstablishmentType` que tem na web, o que impede de escolher "Nails Design").
+- [ ] O app hoje tem placeholder fixo `"Nome do serviço"`. Implementar o utilitário `getServicePlaceholders(tenant.establishmentType)` no App.
+- [ ] Atualizar os placeholders dos inputs em `services/new.tsx` e `services/[id].tsx`.
+
+---
+
+### 9. Integrações da Agenda (Google Calendar e Apple Calendar)
+
+**Rota web:** `/settings/integrations` (Em desenvolvimento na web)
+
+- [ ] Na tela de "Configurações", adicionar o sub-menu "Integrações"
+- [ ] Botão "Conectar com Google" para fluxo de OAuth do Google Calendar (possivelmente usando Deep Linking / Expo AuthSession).
+- [ ] Quando um agendamento for criado com sucesso, exibir botões adicionais no App: "Adicionar à Agenda (Apple - baixar .ics)" e "Adicionar ao Google Calendar".
+
+---
+
+### 10. Upload Nativo de Imagens (Avatar / Logo)
+
+**Rota web:** Várias (Upload via `ImageUpload` component hospedado no Vercel Blob / S3)
+
+- [ ] Utilizar a biblioteca `expo-image-picker` para a seleção de fotos nativa (Galeria/Câmera).
+- [ ] Adicionar botão de "Trocar Logo" em `settings/salon.tsx` (hoje o app pede uma URL de texto bruto ao invés de fazer upload).
+- [ ] Adicionar campo de foto de perfil em Funcionários (`employees/new` e `employees/[id]`) e Clientes.
+
+---
+
+### 11. Gerenciamento de Templates do WhatsApp
+
+**Rota web:** `/whatsapp/templates`
+
+- [ ] Adicionar listagem de templates configuráveis de mensagens no App.
+- [ ] Criar/editar templates incluindo os placeholders visuais para autocompletar nome, serviço e data.
