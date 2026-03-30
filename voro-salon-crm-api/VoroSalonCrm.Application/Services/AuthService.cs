@@ -475,10 +475,11 @@ namespace VoroSalonCrm.Application.Services
         public async Task<AuthDto> RefreshTokenAsync(DTOs.Auth.RefreshTokenDto model)
         {
             User? user;
+            Guid? currentTenantId = null;
 
             if (!string.IsNullOrWhiteSpace(model.Token))
             {
-                // Caminho normal: extrai userId do JWT expirado
+                // Caminho normal: extrai userId e tenantId do JWT expirado
                 var principal = GetPrincipalFromExpiredToken(model.Token, configuration.Get<ConfigUtil>()?.JwtKey!);
                 if (principal == null)
                     throw new UnauthorizedAccessException("Invalid access token or refresh token");
@@ -496,6 +497,11 @@ namespace VoroSalonCrm.Application.Services
                 user = await _userService.GetByIdAsync(userId);
                 if (user == null)
                     throw new UnauthorizedAccessException("User not found.");
+
+                // Preservar o tenant que o usuário estava usando no token expirado
+                var tenantIdClaim = principal.Claims.FirstOrDefault(c => c.Type == "TenantId");
+                if (tenantIdClaim != null && Guid.TryParse(tenantIdClaim.Value, out Guid tenantId))
+                    currentTenantId = tenantId;
             }
             else
             {
@@ -516,7 +522,7 @@ namespace VoroSalonCrm.Application.Services
             }
 
             var roles = await _userService.GetRolesAsync(user);
-            return await GenerateAuthDtoAsync(user, roles);
+            return await GenerateAuthDtoAsync(user, roles, currentTenantId);
         }
 
         private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token, string key)
