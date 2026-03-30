@@ -26,15 +26,6 @@ import { fetcher } from "@/lib/fetcher"
 export default function AppointmentsPage() {
   const [periodFilter, setPeriodFilter] = useState("today")
 
-  // Se não houver agendamentos hoje, mostra a semana automaticamente
-  useEffect(() => {
-    if (isLoading) return
-    const hasToday = searchFiltered.some((a: any) => isToday(new Date(a.scheduledDateTime)))
-    if (!hasToday) setPeriodFilter("week")
-  }, [isLoading])
-  const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
-  const { plan } = useSubscription()
-
   const { filteredData: searchFiltered, isLoading, search, setSearch } = useDataList(
     API_CONFIG.ENDPOINTS.APPOINTMENTS,
     (a: any, q: string) =>
@@ -42,6 +33,16 @@ export default function AppointmentsPage() {
       (a.serviceName && a.serviceName.toLowerCase().includes(q)) ||
       (a.description && a.description.toLowerCase().includes(q))
   )
+
+  const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
+  const { plan } = useSubscription()
+
+  // Se não houver agendamentos hoje, mostra a semana automaticamente
+  useEffect(() => {
+    if (isLoading) return
+    const hasToday = searchFiltered.some((a: any) => isToday(new Date(a.scheduledDateTime)))
+    if (!hasToday) setPeriodFilter("week")
+  }, [isLoading])
 
   const isModuleEnabled = (moduleId: number) => {
     return modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
