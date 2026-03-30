@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban } from "lucide-react"
+import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X } from "lucide-react"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,7 +50,19 @@ export default function AppointmentsPage() {
     }).length
   }, [searchFiltered])
 
-  const showWhatsAppUpsell = plan !== undefined && plan.hasWhatsAppBot === false
+  const WHATSAPP_UPSELL_KEY = "whatsapp_upsell_dismissed"
+  const [upsellDismissed, setUpsellDismissed] = useState(true)
+
+  useEffect(() => {
+    setUpsellDismissed(localStorage.getItem(WHATSAPP_UPSELL_KEY) === "true")
+  }, [])
+
+  const dismissUpsell = () => {
+    localStorage.setItem(WHATSAPP_UPSELL_KEY, "true")
+    setUpsellDismissed(true)
+  }
+
+  const showWhatsAppUpsell = plan !== undefined && plan.hasWhatsAppBot === false && !upsellDismissed
 
   const finalFiltered = useMemo(() => {
     let result = searchFiltered
@@ -127,8 +139,15 @@ export default function AppointmentsPage() {
         />
 
         {showWhatsAppUpsell && (
-          <div className="border border-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="border border-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 relative">
+            <button
+              onClick={dismissUpsell}
+              className="absolute top-3 right-3 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-colors"
+              aria-label="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex items-start gap-3 flex-1 min-w-0 pr-6 sm:pr-0">
               <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                 <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <MessageCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
