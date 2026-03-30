@@ -39,7 +39,10 @@ namespace VoroSalonCrm.Infrastructure.Repositories
         {
             await _dbSet
                 .Where(n => n.RelatedEntityId == relatedEntityId)
-                .ExecuteDeleteAsync();
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(n => n.IsDeleted, true)
+                    .SetProperty(n => n.DeletedAt, DateTime.UtcNow)
+                );
         }
 
         public async Task DeleteManyAsync(IEnumerable<Guid> ids, Guid userId)
@@ -47,7 +50,10 @@ namespace VoroSalonCrm.Infrastructure.Repositories
             var idList = ids.ToList();
             await _dbSet
                 .Where(n => idList.Contains(n.Id) && n.UserId == userId)
-                .ExecuteDeleteAsync();
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(n => n.IsDeleted, true)
+                    .SetProperty(n => n.DeletedAt, DateTime.UtcNow)
+                );
         }
     }
 }
