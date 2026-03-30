@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useTransactions } from "@/hooks/use-transactions.hook"
 import { TransactionDto, TransactionType, TransactionStatus, PaymentMethod } from "@/types/DTOs/financial.interface"
 import { Button } from "@/components/ui/button"
-import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp } from "lucide-react"
+import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp, FileUp } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -23,6 +23,7 @@ import { ptBR } from "date-fns/locale"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
+import { PdfStatementImport } from "@/components/finance/pdf-statement-import"
 import {
   Dialog,
   DialogContent,
@@ -108,9 +109,10 @@ const getPaymentMethodName = (method: PaymentMethod) => {
 }
 
 export default function FinancialPage() {
-  const { transactions, isLoading, createTransaction, payTransaction, cancelTransaction, deleteTransaction } = useTransactions()
+  const { transactions, isLoading, createTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions()
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
+  const [isPdfImportOpen, setIsPdfImportOpen] = useState(false)
 
   // Form State
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -305,6 +307,14 @@ export default function FinancialPage() {
                   Categorias
                 </Button>
               </Link>
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none w-full h-10 text-xs sm:text-sm"
+                onClick={() => setIsPdfImportOpen(true)}
+              >
+                <FileUp className="mr-2 h-4 w-4" />
+                Importar PDF
+              </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild className="flex-1 sm:flex-none">
                   <Button onClick={handleOpenDialog} className="w-full h-10 text-xs sm:text-sm">
@@ -706,6 +716,13 @@ export default function FinancialPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PdfStatementImport
+        open={isPdfImportOpen}
+        onOpenChange={setIsPdfImportOpen}
+        categories={categories || []}
+        onImport={batchImport}
+      />
     </AuthGuard>
   )
 }

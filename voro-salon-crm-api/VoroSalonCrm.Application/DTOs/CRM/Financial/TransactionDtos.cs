@@ -59,4 +59,24 @@ namespace VoroSalonCrm.Application.DTOs.CRM.Financial
         public PaymentMethod PaymentMethod { get; set; }
         public string? Notes { get; set; }
     }
+
+    public class BatchImportTransactionItemDto
+    {
+        public string Description { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public TransactionType Type { get; set; }
+        public DateTimeOffset DueDate { get; set; }
+        public Guid? CategoryId { get; set; }
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Other;
+        public string? Notes { get; set; }
+        /// <summary>Client-generated dedup key: date+description+amount hash.</summary>
+        public string? DedupKey { get; set; }
+    }
+
+    public class BatchImportResultDto
+    {
+        public int Imported { get; set; }
+        public int Skipped { get; set; }
+        public List<TransactionDto> Transactions { get; set; } = [];
+    }
 }

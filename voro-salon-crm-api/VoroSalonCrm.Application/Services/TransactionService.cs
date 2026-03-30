@@ -209,5 +209,73 @@ namespace VoroSalonCrm.Application.Services
                 CreatedAt = t.CreatedAt
             };
         }
+        public async Task<BatchImportResultDto> BatchImportAsync(
+            IEnumerable<BatchImportTransactionItemDto> items,
+            CancellationToken ct = default)
+        {
+            var tenantId = _currentUser.TenantId;
+            var result = new BatchImportResultDto();
+
+            // Load recent transactions for dedup window (last 90 days + future)
+            var since = DateTimeOffset.UtcNow.AddDays(-90);
+            var existing = await _repository.GetAllAsync(
+                t => t.TenantId == tenantId && !t.IsDeleted && t.DueDate >= since,
+                asNoTracking: true);
+
+            // Build dedup signatures from existing: "date|description|amount"
+            var existingSigs = existing
+                .Select(t => BuildSig(t.DueDate, t.Description, t.Amount))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var toInsert = new List<Transaction>();
+
+            foreach (var item in items)
+            {
+                // Prefer client-provided dedupKey, fallback to auto-sig
+                var sig = !string.IsNullOrEmpty(item.DedupKey)
+                    ? item.DedupKey
+                    : BuildSig(item.DueDate, item.Description, item.Amount);
+
+                if (existingSigs.Contains(sig))
+                {
+                    result.Skipped++;
+                    continue;
+                }
+
+                existingSigs.Add(sig); // prevent intra-batch dupes
+
+                var tx = new Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CategoryId = item.CategoryId,
+                    Description = item.Description,
+                    Amount = item.Amount,
+                    PaidAmount = item.Amount, // extrato = já liquidado
+                    DueDate = item.DueDate,
+                    PaymentDate = item.DueDate,
+                    Type = item.Type,
+                    PaymentMethod = item.PaymentMethod,
+                    Status = TransactionStatus.Paid,
+                    Notes = item.Notes ?? "Importado via extrato bancário",
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+
+                toInsert.Add(tx);
+            }
+
+            if (toInsert.Count > 0)
+            {
+                await _repository.AddRangeAsync(toInsert);
+                await _unitOfWork.SaveChangesAsync();
+                result.Imported = toInsert.Count;
+                result.Transactions = toInsert.Select(MapToDto).ToList();
+            }
+
+            return result;
+        }
+
+        private static string BuildSig(DateTimeOffset date, string description, decimal amount)
+            => $"{date:yyyy-MM-dd}|{description.Trim().ToLowerInvariant()}|{amount:F2}";
     }
 }

@@ -91,5 +91,29 @@ namespace VoroSalonCrm.API.Controllers
             await _service.DeleteAsync(id, ct);
             return Ok(ResponseViewModel<object>.SuccessWithMessage("Lançamento deletado com sucesso.", null));
         }
+
+        [HttpPost("batch")]
+        public async Task<IActionResult> BatchImport(
+            [FromBody] List<BatchImportTransactionItemDto> items,
+            CancellationToken ct)
+        {
+            if (items == null || items.Count == 0)
+                return BadRequest(ResponseViewModel<object>.Fail("Nenhuma transação recebida."));
+
+            if (items.Count > 500)
+                return BadRequest(ResponseViewModel<object>.Fail("Máximo de 500 transações por importação."));
+
+            try
+            {
+                var result = await _service.BatchImportAsync(items, ct);
+                return Ok(ResponseViewModel<BatchImportResultDto>.SuccessWithMessage(
+                    $"Importação concluída: {result.Imported} importadas, {result.Skipped} duplicadas ignoradas.",
+                    result));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ResponseViewModel<object>.Fail(ex.Message));
+            }
+        }
     }
 }

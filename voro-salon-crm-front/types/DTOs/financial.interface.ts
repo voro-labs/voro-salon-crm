@@ -84,3 +84,21 @@ export interface PayTransactionDto {
   paymentMethod: PaymentMethod
   notes?: string
 }
+
+export interface BatchImportTransactionItemDto {
+  description: string
+  amount: number
+  type: TransactionType
+  dueDate: string
+  categoryId?: string
+  paymentMethod: PaymentMethod
+  notes?: string
+  /** Client-generated dedup key to prevent duplicates */
+  dedupKey?: string
+}
+
+export interface BatchImportResultDto {
+  imported: number
+  skipped: number
+  transactions: TransactionDto[]
+}

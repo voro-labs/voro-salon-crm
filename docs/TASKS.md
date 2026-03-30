@@ -5,18 +5,19 @@
 **Objetivo:** Permitir que o usuário faça upload de um extrato bancário em PDF, processe tudo no navegador (client-side) e envie apenas os dados estruturados para a API salvar.
 
 ### Frontend
-- [ ] Componente de upload de PDF na página `/finance`
-- [ ] Processar o PDF no navegador usando biblioteca como `pdf.js` ou `pdfjs-dist` (sem enviar o arquivo para o servidor)
-- [ ] Parser de extrato: extrair linhas de transação (data, descrição, valor, débito/crédito)
-- [ ] Suporte inicial aos formatos mais comuns (ex: Itaú, Bradesco, Nubank, Inter)
-- [ ] Tela de revisão: exibir as transações extraídas antes de confirmar
-- [ ] Sugestão automática de categoria com base na descrição (ex: "IFOOD" → Alimentação)
-- [ ] Permitir editar categoria, tipo e descrição antes de salvar
-- [ ] Enviar apenas o array de transações processadas para a API (não enviar o PDF)
+- [x] Componente de upload de PDF na página `/finance`
+- [x] Processar o PDF no navegador usando biblioteca como `pdf.js` ou `pdfjs-dist` (sem enviar o arquivo para o servidor)
+- [x] Parser de extrato: extrair linhas de transação (data, descrição, valor, débito/crédito)
+- [x] Suporte inicial aos formatos mais comuns (ex: Itaú, Bradesco, Nubank, Inter)
+- [x] Tela de revisão: exibir as transações extraídas antes de confirmar
+- [x] Sugestão automática de categoria com base na descrição (ex: "IFOOD" → Alimentação)
+- [x] Permitir editar categoria, tipo e descrição antes de salvar
+- [x] Enviar apenas o array de transações processadas para a API (não enviar o PDF)
+- [x] Deixe mais ou menos planejados para adicionar a IA no futuro para categorização
 
 ### Backend
-- [ ] Endpoint `POST /api/finance/transactions/batch` para receber e salvar múltiplas transações de uma vez
-- [ ] Validação e deduplicação básica (evitar duplicatas por data + valor + descrição)
+- [x] Endpoint `POST /api/v*/Transactions/batch` para receber e salvar múltiplas transações de uma vez
+- [x] Validação e deduplicação básica (evitar duplicatas por data + valor + descrição)
 
 ---
 
@@ -124,5 +125,5 @@
 | 2 | Novos tipos de estabelecimento | Baixo | Alto | ✅ Concluído |
 | 3 | WhatsApp — Descrição no agendamento | Médio | Alto | ✅ Concluído |
 | 4 | WhatsApp — Detectar agendamento existente | Médio | Alto | ✅ Concluído |
-| 5 | Importação de extrato PDF | Alto | Alto | 🔲 Pendente |
+| 5 | Importação de extrato PDF | Alto | Alto | ✅ Concluído |
 | 6 | Google / Apple Calendar | Alto | Médio | 🔲 Pendente |
