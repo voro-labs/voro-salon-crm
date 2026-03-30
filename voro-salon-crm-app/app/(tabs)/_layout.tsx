@@ -17,6 +17,7 @@ const TAB_ICONS: Record<string, { active: IconName; inactive: IconName; label: s
   services: { active: "cut", inactive: "cut-outline", label: "Serviços" },
   employees: { active: "person", inactive: "person-outline", label: "Equipe" },
   finance: { active: "wallet", inactive: "wallet-outline", label: "Finanças" },
+  whatsapp: { active: "chatbubbles", inactive: "chatbubbles-outline", label: "WhatsApp" },
   notifications: { active: "notifications", inactive: "notifications-outline", label: "Avisos" },
   settings: { active: "settings", inactive: "settings-outline", label: "Config." },
 }
@@ -28,6 +29,7 @@ const TAB_MODULE_IDS: Record<string, number> = {
   services: 3,
   employees: 4,
   finance: 5,
+  whatsapp: 9,
 }
 
 export default function TabsLayout() {
@@ -123,6 +125,13 @@ export default function TabsLayout() {
         options={{ href: isTabEnabled("finance") ? undefined : null }}
         listeners={({ navigation }) => ({
           tabPress: () => navigation.navigate("finance", { screen: "index" }),
+        })}
+      />
+      <Tabs.Screen
+        name="whatsapp"
+        options={{ href: isTabEnabled("whatsapp") ? undefined : null }}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.navigate("whatsapp", { screen: "index" }),
         })}
       />
       <Tabs.Screen

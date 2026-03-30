@@ -149,29 +149,41 @@ export default function AppointmentsScreen() {
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Agendamentos" />
 
-      <View className="bg-white px-5 pt-3 p-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-        <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
-          <Ionicons name="search" size={18} color="#a1a1aa" />
-          <TextInput
-            className="flex-1 text-zinc-900 font-medium text-sm py-1"
-            placeholder="Buscar agendamentos..."
-            placeholderTextColor="#a1a1aa"
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={18} color="#a1a1aa" />
-            </Pressable>
-          )}
+      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-col gap-3">
+        <View className="flex-row items-center gap-3">
+          <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
+            <Ionicons name="search" size={18} color="#a1a1aa" />
+            <TextInput
+              className="flex-1 text-zinc-900 font-medium text-sm py-1 h-8"
+              placeholder="Buscar agendamentos..."
+              placeholderTextColor="#a1a1aa"
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch("")}>
+                <Ionicons name="close-circle" size={18} color="#a1a1aa" />
+              </Pressable>
+            )}
+          </View>
+          <Pressable
+            onPress={() => router.push("/(tabs)/appointments/new" as any)}
+            className="h-11 w-11 rounded-2xl items-center justify-center shrink-0"
+            style={{ backgroundColor: primaryColor }}
+          >
+            <Ionicons name="add" size={24} color="white" />
+          </Pressable>
         </View>
-        <Pressable
-          onPress={() => router.push("/(tabs)/appointments/new" as any)}
-          className="h-11 w-11 rounded-2xl items-center justify-center"
-          style={{ backgroundColor: primaryColor }}
-        >
-          <Ionicons name="add" size={24} color="white" />
-        </Pressable>
+
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={() => router.push("/(tabs)/appointments/blocked" as any)}
+            className="flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl bg-red-50 border border-red-100 leading-none"
+          >
+            <Ionicons name="lock-closed" size={14} color="#ef4444" />
+            <Text className="text-red-700 font-bold text-sm">Horários Bloqueados</Text>
+          </Pressable>
+        </View>
       </View>
 
       {isLoading ? (

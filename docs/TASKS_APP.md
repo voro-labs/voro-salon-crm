@@ -10,16 +10,16 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/whatsapp`
 
-- [ ] Criar tela de WhatsApp no app com board Kanban de conversas
-- [ ] Exibir as 7 colunas de estágio: `START → AWAITING_SERVICE → AWAITING_EMPLOYEE → AWAITING_DATE → AWAITING_TIME → AWAITING_CONFIRMATION → COMPLETED`
-- [ ] Card de conversa com: nome/telefone do contato, prévia da última mensagem, tempo desde última mensagem, badge de agendamento vinculado
-- [ ] Botão de envio de template em massa:
+- [x] Criar tela de WhatsApp no app com board Kanban de conversas
+- [x] Exibir as 7 colunas de estágio: `START → AWAITING_SERVICE → AWAITING_EMPLOYEE → AWAITING_DATE → AWAITING_TIME → AWAITING_CONFIRMATION → COMPLETED`
+- [x] Card de conversa com: nome/telefone do contato, prévia da última mensagem, tempo desde última mensagem, badge de agendamento vinculado
+- [x] Botão de envio de template em massa:
   - Selecionar template predefinido
   - Preencher parâmetros (auto-preenche nome do estabelecimento e do cliente)
   - Seleção de múltiplos clientes
   - Exibir resultado de envio (sucesso/falha por cliente)
-- [ ] Auto-refresh a cada 30 segundos
-- [ ] Adicionar item "WhatsApp" na tab bar ou no menu de navegação
+- [x] Auto-refresh a cada 30 segundos
+- [x] Adicionar item "WhatsApp" na tab bar ou no menu de navegação
 
 ---
 
@@ -27,11 +27,11 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/appointments/blocked`
 
-- [ ] Criar tela de horários bloqueados acessível a partir da tela de agendamentos
-- [ ] Listar bloqueios ativos com: período (data + faixa de horário), motivo interno, mensagem para o cliente
-- [ ] Botão para criar novo bloqueio (formulário com data/hora início, data/hora fim, motivo, mensagem ao cliente)
-- [ ] Deletar bloqueio com confirmação
-- [ ] Empty state com ícone de calendário quando não há bloqueios
+- [x] Criar tela de horários bloqueados acessível a partir da tela de agendamentos
+- [x] Listar bloqueios ativos com: período (data + faixa de horário), motivo interno, mensagem para o cliente
+- [x] Botão para criar novo bloqueio (formulário com data/hora início, data/hora fim, motivo, mensagem ao cliente)
+- [x] Deletar bloqueio com confirmação
+- [x] Empty state com ícone de calendário quando não há bloqueios
 
 ---
 
@@ -80,10 +80,10 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/` (home)
 
-- [ ] Adicionar gráfico de receita dos últimos 6 meses em barras
-- [ ] Exibir seção "Top Clientes": ranking com número do cliente, nome, quantidade de serviços e total gasto
-- [ ] Botão para copiar link de agendamento público
-- [ ] Verificar se os cards de métricas estão alinhados com o web: Receita Mensal, Quantidade de Serviços do Mês, Total de Clientes / Limite
+- [x] Adicionar gráfico de receita dos últimos 6 meses em barras
+- [x] Exibir seção "Top Clientes": ranking com número do cliente, nome, quantidade de serviços e total gasto
+- [x] Botão para copiar link de agendamento público
+- [x] Verificar se os cards de métricas estão alinhados com o web: Receita Mensal, Quantidade de Serviços do Mês, Total de Clientes / Limite
 
 ---
 
