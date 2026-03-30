@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Eye, EyeOff, AlertCircle, Scissors, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth.context"
 import { useSignIn, SIGN_IN_ERROR_KEY } from "@/hooks/use-sign-in.hook"
@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label"
 import { getClientBranding } from "@/lib/branding"
 
 export default function SignInPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirect") || "/"
   const { user, loading: authLoading } = useAuth()
@@ -34,9 +33,9 @@ export default function SignInPage() {
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (!authLoading && user?.token) {
-      router.replace(redirectTo)
+      window.location.replace(redirectTo)
     }
-  }, [user, authLoading, router, redirectTo])
+  }, [user, authLoading, redirectTo])
 
   // Exibir erro vindo de outro fluxo (ex: 2FA com estabelecimento errado)
   useEffect(() => {
@@ -80,7 +79,7 @@ export default function SignInPage() {
     }
   }
 
-  if (authLoading || user?.token) return <LoadingSimple />
+  if (authLoading || loading) return <LoadingSimple />
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">

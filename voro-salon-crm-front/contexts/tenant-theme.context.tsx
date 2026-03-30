@@ -14,11 +14,10 @@ const TenantThemeContext = createContext<TenantTheme>({
 })
 
 /**
- * Converts a hex color string (e.g. "#8B4513") to an oklch() string
- * by going through sRGB → linear RGB → XYZ D65 → OKLab → OKLCH.
+ * Converts a hex color string (e.g. "#8B4513") to oklch components.
  * Returns null if the input is invalid.
  */
-function hexToOklch(hex: string): { str: string; l: number } | null {
+function hexToOklch(hex: string): { str: string; l: number; c: number; h: number } | null {
   const m = hex.match(/^#?([0-9a-f]{6})$/i)
   if (!m) return null
   const n = parseInt(m[1], 16)
@@ -48,39 +47,90 @@ function hexToOklch(hex: string): { str: string; l: number } | null {
   // OKLab → OKLCH
   const C = Math.sqrt(a * a + bOk * bOk)
   const H = (Math.atan2(bOk, a) * 180) / Math.PI
-  const deg = H < 0 ? H + 360 : H
+  const h = H < 0 ? H + 360 : H
 
   return {
-    str: `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${deg.toFixed(2)})`,
-    l: L
+    str: `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${h.toFixed(2)})`,
+    l: L,
+    c: C,
+    h,
   }
 }
 
+/** Lightness boost applied to the chosen color in dark mode */
+const DARK_L_BOOST = 0.30
+const DARK_L_MIN   = 0.65
+const DARK_L_MAX   = 0.85
+
+/**
+ * Injects a <style> tag that defines CSS variables for both :root (light) and .dark,
+ * ensuring the primary/accent colors remain visible in dark mode even if the
+ * tenant chose a very dark hex (e.g. #0f172a).
+ */
 function applyColors(primary: string | null, secondary: string | null) {
-  const root = document.documentElement
+  let styleEl = document.getElementById("tenant-theme-vars") as HTMLStyleElement | null
+  if (!styleEl) {
+    styleEl = document.createElement("style")
+    styleEl.id = "tenant-theme-vars"
+    document.head.appendChild(styleEl)
+  }
+
+  const LIGHT_FG = "oklch(0.985 0.002 75)"
+  const DARK_FG  = "oklch(0.10 0.01 285)"
+  const fg = (l: number) => (l > 0.6 ? DARK_FG : LIGHT_FG)
+
+  const blocks: string[] = []
+
   if (primary) {
     const ok = hexToOklch(primary)
     if (ok) {
-      root.style.setProperty("--primary", ok.str)
-      root.style.setProperty("--sidebar-primary", ok.str)
-      root.style.setProperty("--ring", ok.str)
-      
-      const fg = ok.l > 0.6 ? "oklch(0.10 0.01 285)" : "oklch(0.985 0.002 75)"
-      root.style.setProperty("--primary-foreground", fg)
-      root.style.setProperty("--sidebar-primary-foreground", fg)
+      // Dark mode: boost lightness so it stays visible on dark backgrounds
+      const darkL = Math.min(Math.max(ok.l + DARK_L_BOOST, DARK_L_MIN), DARK_L_MAX)
+      const darkStr = `oklch(${darkL.toFixed(4)} ${ok.c.toFixed(4)} ${ok.h.toFixed(2)})`
+
+      blocks.push(
+        `:root {\n` +
+        `  --primary: ${ok.str};\n` +
+        `  --primary-foreground: ${fg(ok.l)};\n` +
+        `  --sidebar-primary: ${ok.str};\n` +
+        `  --sidebar-primary-foreground: ${fg(ok.l)};\n` +
+        `  --ring: ${ok.str};\n` +
+        `}`,
+        `.dark {\n` +
+        `  --primary: ${darkStr};\n` +
+        `  --primary-foreground: ${fg(darkL)};\n` +
+        `  --sidebar-primary: ${darkStr};\n` +
+        `  --sidebar-primary-foreground: ${fg(darkL)};\n` +
+        `  --ring: ${darkStr};\n` +
+        `}`,
+      )
     }
   }
+
   if (secondary) {
     const ok = hexToOklch(secondary)
     if (ok) {
-      root.style.setProperty("--accent", ok.str)
-      root.style.setProperty("--sidebar-accent", ok.str)
-      
-      const fg = ok.l > 0.6 ? "oklch(0.10 0.01 285)" : "oklch(0.985 0.002 75)"
-      root.style.setProperty("--accent-foreground", fg)
-      root.style.setProperty("--sidebar-accent-foreground", fg)
+      const darkL = Math.min(Math.max(ok.l + DARK_L_BOOST, DARK_L_MIN), DARK_L_MAX)
+      const darkStr = `oklch(${darkL.toFixed(4)} ${ok.c.toFixed(4)} ${ok.h.toFixed(2)})`
+
+      blocks.push(
+        `:root {\n` +
+        `  --accent: ${ok.str};\n` +
+        `  --accent-foreground: ${fg(ok.l)};\n` +
+        `  --sidebar-accent: ${ok.str};\n` +
+        `  --sidebar-accent-foreground: ${fg(ok.l)};\n` +
+        `}`,
+        `.dark {\n` +
+        `  --accent: ${darkStr};\n` +
+        `  --accent-foreground: ${fg(darkL)};\n` +
+        `  --sidebar-accent: ${darkStr};\n` +
+        `  --sidebar-accent-foreground: ${fg(darkL)};\n` +
+        `}`,
+      )
     }
   }
+
+  styleEl.textContent = blocks.join("\n")
 }
 
 const LS_KEY = "voro:tenantTheme"

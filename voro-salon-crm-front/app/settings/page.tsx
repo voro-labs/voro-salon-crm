@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   ShieldOff,
   Clock,
+  MessageCircle,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
@@ -100,6 +101,11 @@ export default function ConfiguracoesPage() {
   const [tfaLoading, setTfaLoading] = useState(false)
   const [tfaError, setTfaError] = useState("")
 
+  // WhatsApp config state
+  const [wpPhoneNumberId, setWpPhoneNumberId] = useState("")
+  const [wpBusinessAccountId, setWpBusinessAccountId] = useState("")
+  const [savingWp, setSavingWp] = useState(false)
+
   useEffect(() => {
     setTwoFactorEnabled(user?.twoFactorEnabled ?? false)
   }, [user?.twoFactorEnabled])
@@ -173,6 +179,7 @@ export default function ConfiguracoesPage() {
   }
 
   const {
+    tenant,
     modules,
     form,
     setForm,
@@ -191,6 +198,36 @@ export default function ConfiguracoesPage() {
     exportData: handleExport,
     updateModule: handleModuleUpdate,
   } = useSettings()
+
+  useEffect(() => {
+    if (tenant && !wpPhoneNumberId && !wpBusinessAccountId) {
+      setWpPhoneNumberId(tenant.whatsappPhoneNumberId ?? "")
+      setWpBusinessAccountId(tenant.whatsappBusinessAccountId ?? "")
+    }
+  }, [tenant]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSaveWhatsapp = async () => {
+    setSavingWp(true)
+    try {
+      const { secureApiCall: call, API_CONFIG: cfg } = await import("@/lib/api")
+      const res = await call(cfg.ENDPOINTS.TENANT_ME, {
+        method: "PATCH",
+        body: JSON.stringify({
+          whatsappPhoneNumberId: wpPhoneNumberId || null,
+          whatsappBusinessAccountId: wpBusinessAccountId || null,
+        }),
+      })
+      if (res.hasError) {
+        toast.error(res.message ?? "Erro ao salvar configuração do WhatsApp.")
+      } else {
+        toast.success("Configuração do WhatsApp salva com sucesso!")
+      }
+    } catch {
+      toast.error("Erro de conexão.")
+    } finally {
+      setSavingWp(false)
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -311,6 +348,12 @@ export default function ConfiguracoesPage() {
                 <TabsTrigger value="assinaturas" className="shrink-0 py-2">
                   <CreditCard className="mr-2 h-4 w-4" />
                   Assinaturas
+                </TabsTrigger>
+              )}
+              {isSalonOwner && (
+                <TabsTrigger value="whatsapp" className="shrink-0 py-2">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp
                 </TabsTrigger>
               )}
               <TabsTrigger value="seguranca" className="shrink-0 py-2">
@@ -993,6 +1036,56 @@ export default function ConfiguracoesPage() {
               </DialogContent>
             </Dialog>
           </TabsContent>
+
+          {isSalonOwner && (
+            <TabsContent value="whatsapp">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5 text-primary" />
+                    <CardTitle>Integração WhatsApp Business</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Configure os IDs da sua conta WhatsApp Business para ativar o bot de agendamentos.
+                    Entre em contato com a equipe VoroLabs para obter esses dados.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="wp-phone-number-id">Phone Number ID</Label>
+                    <Input
+                      id="wp-phone-number-id"
+                      placeholder="Ex: 123456789012345"
+                      value={wpPhoneNumberId}
+                      onChange={(e) => setWpPhoneNumberId(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Encontrado no painel do Meta Business &gt; WhatsApp &gt; Configuração da API.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="wp-business-account-id">Business Account ID</Label>
+                    <Input
+                      id="wp-business-account-id"
+                      placeholder="Ex: 987654321098765"
+                      value={wpBusinessAccountId}
+                      onChange={(e) => setWpBusinessAccountId(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      ID da conta do WhatsApp Business no Meta Business Manager.
+                    </p>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={handleSaveWhatsapp} disabled={savingWp} className="gap-2">
+                      {savingWp && <Loader2 className="h-4 w-4 animate-spin" />}
+                      <Save className="h-4 w-4" />
+                      Salvar configuração
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </AuthGuard>

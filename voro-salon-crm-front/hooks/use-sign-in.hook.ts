@@ -24,7 +24,8 @@ export function useSignIn() {
   const signIn = async (data: SignInDto, redirectTo = "/") => {
     setLoading(true)
     setError(null)
-
+    let didRedirect = false
+    
     try {
       const expectedType = getEstablishmentTypeByHostname(window.location.hostname)
 
@@ -97,6 +98,8 @@ export function useSignIn() {
               ? "/admin/complete-profile"
               : redirectTo
         window.location.replace(dest)
+        didRedirect = true
+        return { success: true }
       }
 
       return { success: true }
@@ -105,7 +108,9 @@ export function useSignIn() {
       setError(errorMessage)
       return { success: false, error: errorMessage }
     } finally {
-      setLoading(false)
+      if (!didRedirect) {
+        setLoading(false)
+      }
     }
   }
 

@@ -55,5 +55,16 @@ namespace VoroSalonCrm.Application.Services
             var userId = _currentUserService.UserId;
             await _userNotificationRepository.MarkAllAsReadAsync(userId);
         }
+
+        public async Task DeleteByRelatedEntityIdAsync(Guid relatedEntityId)
+        {
+            await _userNotificationRepository.DeleteByRelatedEntityIdAsync(relatedEntityId);
+        }
+
+        public async Task DeleteManyAsync(IEnumerable<Guid> ids)
+        {
+            var userId = _currentUserService.UserId;
+            await _userNotificationRepository.DeleteManyAsync(ids, userId);
+        }
     }
 }

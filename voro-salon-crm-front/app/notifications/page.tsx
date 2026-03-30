@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, BellOff, Calendar, Wallet, Users, Info } from "lucide-react"
+import { Bell, BellOff, Calendar, Wallet, Users, Info, Trash2, CheckSquare, Square } from "lucide-react"
 import { useUserNotifications, type UserNotification } from "@/hooks/use-user-notifications.hook"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -48,21 +48,37 @@ function getRelativeTime(dateStr: string): string {
 
 function NotificationItem({
   item,
+  selectionMode,
+  selected,
   onPress,
+  onLongPress,
 }: {
   item: UserNotification
+  selectionMode: boolean
+  selected: boolean
   onPress: (item: UserNotification) => void
+  onLongPress: (item: UserNotification) => void
 }) {
   const Icon = getNotificationIcon(item.type)
 
   return (
     <button
       onClick={() => onPress(item)}
+      onContextMenu={(e) => { e.preventDefault(); onLongPress(item) }}
       className={cn(
         "w-full flex items-start gap-3 px-4 py-4 border-b border-zinc-100 dark:border-zinc-800 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50",
-        !item.isRead && "bg-blue-50/60 dark:bg-blue-950/20",
+        !item.isRead && !selectionMode && "bg-blue-50/60 dark:bg-blue-950/20",
+        selected && "bg-primary/10 dark:bg-primary/10",
       )}
     >
+      {selectionMode && (
+        <div className="shrink-0 mt-1">
+          {selected
+            ? <CheckSquare size={18} className="text-primary" />
+            : <Square size={18} className="text-zinc-400" />}
+        </div>
+      )}
+
       <div
         className={cn(
           "h-10 w-10 rounded-2xl flex items-center justify-center shrink-0",
@@ -89,7 +105,7 @@ function NotificationItem({
         <p className="text-[10px] text-zinc-400 mt-1 font-medium">{getRelativeTime(item.createdAt)}</p>
       </div>
 
-      {!item.isRead && <div className="h-2 w-2 rounded-full bg-blue-500 mt-2 shrink-0" />}
+      {!item.isRead && !selectionMode && <div className="h-2 w-2 rounded-full bg-blue-500 mt-2 shrink-0" />}
     </button>
   )
 }
@@ -97,8 +113,12 @@ function NotificationItem({
 export default function NotificationsPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
-  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteMany, isLoading } =
     useUserNotifications()
+
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!loading && !user?.token) {
@@ -106,28 +126,99 @@ export default function NotificationsPage() {
     }
   }, [loading, user, router])
 
+  // Exit selection mode when no notifications left
+  useEffect(() => {
+    if (notifications.length === 0) setSelectionMode(false)
+  }, [notifications.length])
+
   if (loading || !user?.token) return null
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    if (selectedIds.size === notifications.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(notifications.map((n) => n.id)))
+    }
+  }
+
+  const handleDelete = async () => {
+    if (selectedIds.size === 0) return
+    setDeleting(true)
+    await deleteMany(Array.from(selectedIds))
+    setSelectedIds(new Set())
+    setSelectionMode(false)
+    setDeleting(false)
+  }
 
   const handleItemPress = useCallback(
     async (item: UserNotification) => {
+      if (selectionMode) {
+        toggleSelect(item.id)
+        return
+      }
       if (!item.isRead) await markAsRead(item.id)
       if (item.relatedEntityId && item.type?.toLowerCase().includes("appointment")) {
         router.push(`/appointments/${item.relatedEntityId}`)
       }
     },
-    [markAsRead, router],
+    [selectionMode, markAsRead, router],
   )
+
+  const handleLongPress = useCallback((item: UserNotification) => {
+    setSelectionMode(true)
+    setSelectedIds(new Set([item.id]))
+  }, [])
 
   return (
     <div className="flex flex-col h-full w-full mx-auto">
       <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 min-w-0">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate">Notificações</h1>
-        {unreadCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-primary font-semibold shrink-0 text-xs sm:text-sm">
-            <span className="hidden sm:inline">Marcar todas como lidas</span>
-            <span className="sm:hidden">Marcar lidas</span>
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {selectionMode ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={selectAll} className="text-xs">
+                {selectedIds.size === notifications.length ? "Desmarcar todas" : "Selecionar todas"}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={selectedIds.size === 0 || deleting}
+                className="text-xs gap-1.5"
+              >
+                <Trash2 size={14} />
+                {deleting ? "Excluindo..." : `Excluir${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { setSelectionMode(false); setSelectedIds(new Set()) }} className="text-xs">
+                Cancelar
+              </Button>
+            </>
+          ) : (
+            <>
+              {notifications.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectionMode(true)} className="text-zinc-500 text-xs gap-1">
+                  <Trash2 size={14} />
+                  <span className="hidden sm:inline">Selecionar</span>
+                </Button>
+              )}
+              {unreadCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-primary font-semibold text-xs sm:text-sm">
+                  <span className="hidden sm:inline">Marcar todas como lidas</span>
+                  <span className="sm:hidden">Marcar lidas</span>
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -145,7 +236,14 @@ export default function NotificationsPage() {
       ) : (
         <div className="flex-1 overflow-y-auto">
           {notifications.map((item) => (
-            <NotificationItem key={item.id} item={item} onPress={handleItemPress} />
+            <NotificationItem
+              key={item.id}
+              item={item}
+              selectionMode={selectionMode}
+              selected={selectedIds.has(item.id)}
+              onPress={handleItemPress}
+              onLongPress={handleLongPress}
+            />
           ))}
           <div className="h-6" />
         </div>

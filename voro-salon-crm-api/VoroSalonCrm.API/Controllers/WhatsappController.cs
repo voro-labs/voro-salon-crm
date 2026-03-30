@@ -25,13 +25,15 @@ namespace VoroSalonCrm.API.Controllers
         ILogger<WhatsappController> logger,
         IPublicBookingService publicBookingService,
         ITenantRepository tenantRepository,
-        IWhatsAppMessageService whatsAppMessageService) : ControllerBase
+        IWhatsAppMessageService whatsAppMessageService,
+        IWhatsAppTemplateService whatsAppTemplateService) : ControllerBase
     {
         private readonly IntegrationUtil _integrationUtil = integrationUtil.Value;
         private readonly ILogger<WhatsappController> _logger = logger;
         private readonly IPublicBookingService _publicBookingService = publicBookingService;
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IWhatsAppMessageService _whatsAppMessageService = whatsAppMessageService;
+        private readonly IWhatsAppTemplateService _whatsAppTemplateService = whatsAppTemplateService;
 
         [HttpGet]
         public IActionResult VerifyWebhook(
@@ -194,30 +196,75 @@ namespace VoroSalonCrm.API.Controllers
 
         [HttpGet("templates")]
         [Authorize]
-        public IActionResult GetTemplates()
+        public async Task<IActionResult> GetTemplates()
         {
-            var templates = new[]
+            try
             {
-                new {
-                    name = "appointment_confirmation_1",
-                    label = "Confirmação de Agendamento",
-                    paramsCount = 5,
-                    paramLabels = new[] { "Nome do cliente", "Nome do serviço", "Data (dd/MM/yyyy)", "Horário (HH:mm)", "Nome do estabelecimento" }
-                },
-                new {
-                    name = "appointment_cancellation_1",
-                    label = "Cancelamento de Agendamento",
-                    paramsCount = 4,
-                    paramLabels = new[] { "Nome do cliente", "Nome do serviço", "Data (dd/MM/yyyy)", "Nome do estabelecimento" }
-                },
-                new {
-                    name = "membership_expiring_soon",
-                    label = "Créditos Próximos do Vencimento",
-                    paramsCount = 3,
-                    paramLabels = new[] { "Nome do cliente", "Sessões restantes", "Data de vencimento (dd/MM/yyyy)" }
-                },
-            };
-            return ResponseViewModel<object>.Success(templates).ToActionResult();
+                var templates = await _whatsAppTemplateService.GetMyTemplatesAsync();
+                return ResponseViewModel<IEnumerable<WhatsAppTemplateDto>>.Success(templates).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("templates")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> CreateTemplate([FromBody] CreateWhatsAppTemplateDto dto)
+        {
+            try
+            {
+                var template = await _whatsAppTemplateService.CreateAsync(dto);
+                return ResponseViewModel<WhatsAppTemplateDto>
+                    .SuccessWithMessage("Template created.", template)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPut("templates/{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> UpdateTemplate([FromRoute] Guid id, [FromBody] UpdateWhatsAppTemplateDto dto)
+        {
+            try
+            {
+                var template = await _whatsAppTemplateService.UpdateAsync(id, dto);
+                return ResponseViewModel<WhatsAppTemplateDto>
+                    .SuccessWithMessage("Template updated.", template)
+                    .ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("templates/{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> DeleteTemplate([FromRoute] Guid id)
+        {
+            try
+            {
+                var deleted = await _whatsAppTemplateService.DeleteAsync(id);
+                if (!deleted)
+                    return ResponseViewModel<object>.Fail("Template not found.").ToActionResult();
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Template deleted.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
         }
 
         [HttpPost("send-template")]

@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import useSWR from "swr"
 import {
   MessageCircle, RefreshCw, Loader2, User, CalendarCheck, Send, X,
-  CheckCircle, AlertCircle, LayoutGrid, MessageSquare, ExternalLink, ChevronRight,
+  CheckCircle, AlertCircle, LayoutGrid, MessageSquare, ExternalLink, ChevronRight, Settings2,
 } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -15,7 +16,6 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 import { ModuleGuard } from "@/components/auth/module-guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -316,7 +316,7 @@ function ChatView({
                             ? "bg-primary text-primary-foreground rounded-br-sm"
                             : "bg-card border border-border rounded-bl-sm"
                         )}>
-                          <p className="leading-relaxed whitespace-pre-wrap break-words">{msg.body}</p>
+                          <p className="leading-relaxed whitespace-pre-wrap wrap-break-word">{msg.body}</p>
                           <p className={cn(
                             "text-[10px] mt-1 text-right",
                             isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
@@ -568,6 +568,7 @@ type ViewMode = "kanban" | "chat"
 export default function WhatsAppKanbanPage() {
   const [showSendModal, setShowSendModal] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("kanban")
+  const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [chatHeight, setChatHeight] = useState(0)
 
@@ -646,6 +647,12 @@ export default function WhatsAppKanbanPage() {
                   </button>
                 </div>
 
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/whatsapp/templates">
+                    <Settings2 className="mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">Templates</span>
+                  </Link>
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
                   <Send className="mr-2 h-4 w-4" />
                   Enviar Template
@@ -657,6 +664,40 @@ export default function WhatsAppKanbanPage() {
               </div>
             }
           />
+
+          {/* Banner: configuração incompleta do WhatsApp */}
+          {tenant !== undefined && (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappBusinessAccountId) && (
+            <div className="border border-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-1 min-w-0">
+                  <p className="font-bold text-sm text-amber-900 dark:text-amber-200">
+                    Integração WhatsApp não configurada
+                  </p>
+                  <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                    Os IDs do WhatsApp Business ainda não foram configurados para este estabelecimento. O bot não está ativo.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                  asChild
+                >
+                  <a
+                    href={`mailto:suporte@vorolabs.com.br?subject=Solicitar%20configuração%20WhatsApp&body=Olá%2C%20preciso%20configurar%20o%20WhatsApp%20Bot%20para%20o%20estabelecimento%3A%20${encodeURIComponent(tenant?.name ?? "")}%20(${encodeURIComponent(tenant?.id ?? "")})`}
+                  >
+                    Solicitar configuração
+                  </a>
+                </Button>
+                <Button size="sm" variant="ghost" className="text-amber-700 dark:text-amber-300 text-xs" asChild>
+                  <a href="/settings?tab=whatsapp">Configurar agora</a>
+                </Button>
+              </div>
+            </div>
+          )}
 
           {viewMode === "chat" ? (
             <div
@@ -696,7 +737,7 @@ export default function WhatsAppKanbanPage() {
                         <span className="text-xs font-bold tabular-nums">{items.length}</span>
                       </div>
 
-                      <div className="flex flex-col gap-2 min-h-[60px]">
+                      <div className="flex flex-col gap-2 min-h-15">
                         {items.length === 0 ? (
                           <p className="text-[11px] text-muted-foreground text-center py-4">Nenhum contato</p>
                         ) : (

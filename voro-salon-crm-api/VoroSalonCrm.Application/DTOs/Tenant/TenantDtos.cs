@@ -19,7 +19,9 @@ namespace VoroSalonCrm.Application.DTOs.Tenant
         string? ContactPhone,
         string? ContactEmail,
         string? ThemeMode,
-        EstablishmentType? EstablishmentType
+        EstablishmentType? EstablishmentType,
+        string? WhatsappPhoneNumberId = null,
+        string? WhatsappBusinessAccountId = null
     );
 
     public record TenantDto(
@@ -34,6 +36,8 @@ namespace VoroSalonCrm.Application.DTOs.Tenant
         string? ContactPhone,
         string? ContactEmail,
         string? ThemeMode,
-        EstablishmentType EstablishmentType
+        EstablishmentType EstablishmentType,
+        string? WhatsappPhoneNumberId = null,
+        string? WhatsappBusinessAccountId = null
     );
 }

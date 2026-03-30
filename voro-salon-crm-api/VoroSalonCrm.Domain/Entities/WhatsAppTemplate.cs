@@ -1,0 +1,27 @@
+using VoroSalonCrm.Domain.Interfaces.Entities;
+
+namespace VoroSalonCrm.Domain.Entities
+{
+    public class WhatsAppTemplate : ITenantEntity
+    {
+        public Guid Id { get; set; }
+        public Guid TenantId { get; set; }
+        public Tenant Tenant { get; set; } = null!;
+
+        /// <summary>Nome técnico do template no Meta (ex: appointment_confirmation_1).</summary>
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>Rótulo legível exibido no front (ex: Confirmação de Agendamento).</summary>
+        public string Label { get; set; } = string.Empty;
+
+        public int ParamsCount { get; set; }
+
+        /// <summary>JSON serializado dos labels dos parâmetros.</summary>
+        public string? ParamLabelsJson { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset? UpdatedAt { get; set; }
+    }
+}
