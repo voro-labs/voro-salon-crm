@@ -57,8 +57,10 @@ function hexToOklch(hex: string): { str: string; l: number; c: number; h: number
   }
 }
 
-/** Minimum lightness for primary in dark mode — ensures visibility on dark backgrounds */
-const DARK_MIN_L = 0.62
+/** Lightness boost applied to the chosen color in dark mode */
+const DARK_L_BOOST = 0.30
+const DARK_L_MIN   = 0.65
+const DARK_L_MAX   = 0.85
 
 /**
  * Injects a <style> tag that defines CSS variables for both :root (light) and .dark,
@@ -83,7 +85,7 @@ function applyColors(primary: string | null, secondary: string | null) {
     const ok = hexToOklch(primary)
     if (ok) {
       // Dark mode: boost lightness so it stays visible on dark backgrounds
-      const darkL = Math.max(ok.l, DARK_MIN_L)
+      const darkL = Math.min(Math.max(ok.l + DARK_L_BOOST, DARK_L_MIN), DARK_L_MAX)
       const darkStr = `oklch(${darkL.toFixed(4)} ${ok.c.toFixed(4)} ${ok.h.toFixed(2)})`
 
       blocks.push(
@@ -108,7 +110,7 @@ function applyColors(primary: string | null, secondary: string | null) {
   if (secondary) {
     const ok = hexToOklch(secondary)
     if (ok) {
-      const darkL = Math.max(ok.l, DARK_MIN_L)
+      const darkL = Math.min(Math.max(ok.l + DARK_L_BOOST, DARK_L_MIN), DARK_L_MAX)
       const darkStr = `oklch(${darkL.toFixed(4)} ${ok.c.toFixed(4)} ${ok.h.toFixed(2)})`
 
       blocks.push(
