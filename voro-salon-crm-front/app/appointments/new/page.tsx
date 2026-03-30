@@ -28,6 +28,9 @@ import { QuickCreateEmployee } from "@/components/custom/quick-create-employee"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentForm } from "@/hooks/use-appointment-form.hook"
+import { useSettings } from "@/hooks/use-settings.hook"
+import { getServicePlaceholders } from "@/lib/branding"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 
@@ -53,6 +56,9 @@ export default function NovoAgendamentoPage() {
     mutateEmployees,
     activeMembership,
   } = useAppointmentForm()
+
+  const { tenant } = useSettings()
+  const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [isEncaixe, setIsEncaixe] = useState(false)
@@ -314,7 +320,7 @@ export default function NovoAgendamentoPage() {
                   <Label htmlFor="description">Descrição Curta *</Label>
                   <Input
                     id="description"
-                    placeholder="Ex: Corte e Barba"
+                    placeholder={placeholders.name}
                     value={form.description}
                     onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                   />

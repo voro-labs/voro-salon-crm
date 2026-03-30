@@ -29,6 +29,9 @@ import {
 import { CurrencyInput } from "@/components/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useServiceDetail } from "@/hooks/use-service-detail.hook"
+import { useSettings } from "@/hooks/use-settings.hook"
+import { getServicePlaceholders } from "@/lib/branding"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 
 export default function EditarServicoPage() {
   const params = useParams()
@@ -44,6 +47,9 @@ export default function EditarServicoPage() {
     updateService,
     deleteService,
   } = useServiceDetail(serviceId)
+
+  const { tenant } = useSettings()
+  const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
 
   if (isLoading) {
     return (
@@ -123,7 +129,7 @@ export default function EditarServicoPage() {
                 <Label htmlFor="name">Nome *</Label>
                 <Input
                   id="name"
-                  placeholder="Nome do serviço"
+                  placeholder={placeholders.name}
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 />

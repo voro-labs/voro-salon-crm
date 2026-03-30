@@ -414,6 +414,12 @@ export default function ConfiguracoesPage() {
                           <SelectItem value={String(EstablishmentType.Petshop)}>
                             {getBrandingByType(EstablishmentType.Petshop).productName}
                           </SelectItem>
+                          <SelectItem value={String(EstablishmentType.NailsDesign)}>
+                            {getBrandingByType(EstablishmentType.NailsDesign).productName}
+                          </SelectItem>
+                          <SelectItem value={String(EstablishmentType.FemaleEsthetics)}>
+                            {getBrandingByType(EstablishmentType.FemaleEsthetics).productName}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       </div>

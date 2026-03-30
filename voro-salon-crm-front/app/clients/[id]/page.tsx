@@ -74,6 +74,9 @@ import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ClipboardList, History } from "lucide-react"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
+import { useSettings } from "@/hooks/use-settings.hook"
+import { getServicePlaceholders } from "@/lib/branding"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 
 
 function formatCurrency(val: number) {
@@ -147,6 +150,9 @@ export default function ClienteDetailPage() {
     deleteService,
     addAnamnesis,
   } = useClientDetails(clientId)
+
+  const { tenant } = useSettings()
+  const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
 
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "" })
@@ -519,7 +525,7 @@ export default function ClienteDetailPage() {
                         <Label htmlFor="svc-desc">Descrição *</Label>
                         <Input
                           id="svc-desc"
-                          placeholder="Ex: Corte + Escova"
+                          placeholder={placeholders.name}
                           value={svcForm.description}
                           onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))}
                           required

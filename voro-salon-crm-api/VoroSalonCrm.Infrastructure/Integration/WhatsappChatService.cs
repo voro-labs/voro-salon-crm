@@ -7,6 +7,7 @@ using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
@@ -22,6 +23,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMemoryCache _cache;
         private readonly ILogger<WhatsappChatService> _logger;
+        private readonly IAppointmentRepository _appointmentRepository;
+        private readonly IClientRepository _clientRepository;
 
         private const string CACHE_PREFIX = "wa_booking_";
 
@@ -33,7 +36,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
             IWhatsAppMessageService messageService,
             IUnitOfWork unitOfWork,
             IMemoryCache cache,
-            ILogger<WhatsappChatService> logger)
+            ILogger<WhatsappChatService> logger,
+            IAppointmentRepository appointmentRepository,
+            IClientRepository clientRepository)
         {
             _whatsappService = whatsappService;
             _publicBookingService = publicBookingService;
@@ -43,6 +48,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             _unitOfWork = unitOfWork;
             _cache = cache;
             _logger = logger;
+            _appointmentRepository = appointmentRepository;
+            _clientRepository = clientRepository;
         }
 
         /// <summary>Salva mensagem enviada pelo bot no histórico da conversa.</summary>
@@ -77,12 +84,16 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public string? EmployeeName { get; set; }
             public DateTime? SelectedDate { get; set; }
             public string? SelectedTime { get; set; }
+            public string? AppointmentDescription { get; set; }
             public Guid? AppointmentId { get; set; }
             public string? ContactName { get; set; }
             public int TimeSlotPage { get; set; } = 0;
             public int DatePage { get; set; } = 0;
             public int ServicePage { get; set; } = 0;
             public int EmployeePage { get; set; } = 0;
+            // Task 4: existing appointment detected
+            public Guid? PendingAppointmentId { get; set; }
+            public string? PendingAppointmentSummary { get; set; }
         }
 
         public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default)
@@ -144,6 +155,10 @@ namespace VoroSalonCrm.Infrastructure.Integration
                         await StartBookingFlowAsync(from, contactName, session, ct);
                         break;
 
+                    case "AWAITING_APPOINTMENT_ACTION":
+                        await HandleAppointmentActionAsync(from, message, contactName, session, ct);
+                        break;
+
                     case "AWAITING_SERVICE":
                         await HandleServiceSelectionAsync(from, message, session, ct);
                         break;
@@ -158,6 +173,10 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                     case "AWAITING_TIME":
                         await HandleTimeSelectionAsync(from, message, session, ct);
+                        break;
+
+                    case "AWAITING_DESCRIPTION":
+                        await HandleDescriptionAsync(from, message, session, ct);
                         break;
 
                     case "AWAITING_CONFIRMATION":
@@ -278,8 +297,138 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private async Task StartBookingFlowAsync(string from, string contactName, BookingSession session, CancellationToken ct)
         {
             session.ContactName = contactName;
+
+            // Task 4: check if client already has a Pending or Confirmed appointment
+            if (session.TenantId != Guid.Empty)
+            {
+                try
+                {
+                    // Normalize phone to last 10 digits for matching
+                    var rawPhone = new string(from.Where(char.IsDigit).ToArray());
+                    var phoneSuffix = rawPhone.Length > 10 ? rawPhone[^10..] : rawPhone;
+
+                    // Find matching client by phone suffix
+                    var clients = await _clientRepository
+                        .Query(c => c.TenantId == session.TenantId && c.Phone != null)
+                        .ToListAsync(ct);
+
+                    var matchedClient = clients.FirstOrDefault(c =>
+                    {
+                        var digits = new string(c.Phone!.Where(char.IsDigit).ToArray());
+                        var suffix = digits.Length > 10 ? digits[^10..] : digits;
+                        return suffix.Length >= 8 && suffix == phoneSuffix;
+                    });
+
+                    if (matchedClient != null)
+                    {
+                        var appointment = await _appointmentRepository
+                            .Query(a =>
+                                a.TenantId == session.TenantId &&
+                                !a.IsDeleted &&
+                                a.ClientId == matchedClient.Id &&
+                                (a.Status == AppointmentStatus.Pending || a.Status == AppointmentStatus.Confirmed) &&
+                                a.ScheduledDateTime > DateTimeOffset.UtcNow)
+                            .Include(a => a.Service)
+                            .OrderBy(a => a.ScheduledDateTime)
+                            .FirstOrDefaultAsync(ct);
+
+                        if (appointment != null)
+                        {
+                            var local = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
+                            var serviceName = appointment.Service?.Name ?? "Serviço";
+                            session.PendingAppointmentId = appointment.Id;
+                            session.PendingAppointmentSummary =
+                                $"*Serviço:* {serviceName}\n*Data:* {local:dd/MM/yyyy}\n*Horário:* {local:HH:mm}";
+
+                            var detectionMsg =
+                                $"Olá {contactName}! Encontrei um agendamento ativo:\n\n" +
+                                session.PendingAppointmentSummary +
+                                "\n\nO que você gostaria de fazer?\n" +
+                                "1 - Cancelar agendamento\n" +
+                                "2 - Reagendar\n" +
+                                "3 - Continuar sem alterar";
+
+                            await _whatsappService.SendTextMessageAsync(from, detectionMsg, session.WhatsappPhoneNumberId, ct);
+                            await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, detectionMsg);
+                            session.State = "AWAITING_APPOINTMENT_ACTION";
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Falha ao verificar agendamento existente para {From}.", from);
+                }
+            }
+
             session.ServicePage = 0;
             await AskForServiceAsync(from, session, ct);
+        }
+
+        private async Task HandleAppointmentActionAsync(string from, WhatsappMessageDto message, string contactName, BookingSession session, CancellationToken ct)
+        {
+            var text = message.Type == "text" ? message.Text?.Body?.Trim() : null;
+            var interactiveId = message.Type == "interactive"
+                ? (message.Interactive?.ButtonReply?.Id ?? message.Interactive?.ListReply?.Id)
+                : null;
+            var choice = interactiveId ?? text;
+
+            if (choice == "1" || choice?.ToLower().Contains("cancel") == true)
+            {
+                // Cancel the existing appointment
+                if (session.PendingAppointmentId.HasValue)
+                {
+                    try
+                    {
+                        var appt = await _appointmentRepository.GetByIdAsync(false, session.PendingAppointmentId.Value);
+                        if (appt != null)
+                        {
+                            appt.Status = AppointmentStatus.Cancelled;
+                            appt.UpdatedAt = DateTimeOffset.UtcNow;
+                            _appointmentRepository.Update(appt);
+                            await _unitOfWork.SaveChangesAsync();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Falha ao cancelar agendamento {Id}.", session.PendingAppointmentId);
+                    }
+                }
+                const string cancelledMsg = "✅ Seu agendamento foi cancelado. Se precisar de algo mais, é só chamar!";
+                await _whatsappService.SendTextMessageAsync(from, cancelledMsg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelledMsg);
+                session.State = "COMPLETED";
+            }
+            else if (choice == "2" || choice?.ToLower().Contains("reaGend") == true || choice?.ToLower().Contains("reschedul") == true)
+            {
+                // Reschedule: start new booking flow
+                const string rescheduleMsg = "Certo! Vamos reagendar. Por favor, escolha o serviço desejado:";
+                await _whatsappService.SendTextMessageAsync(from, rescheduleMsg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, rescheduleMsg);
+                session.PendingAppointmentId = null;
+                session.PendingAppointmentSummary = null;
+                session.ServicePage = 0;
+                await AskForServiceAsync(from, session, ct);
+            }
+            else if (choice == "3" || choice?.ToLower().Contains("contin") == true)
+            {
+                // Continue without changes
+                const string continueMsg = "Tudo bem! Seu agendamento permanece confirmado. Até breve! 😊";
+                await _whatsappService.SendTextMessageAsync(from, continueMsg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, continueMsg);
+                session.State = "COMPLETED";
+            }
+            else
+            {
+                // Re-send options
+                var retryMsg =
+                    $"Por favor, escolha uma opção:\n\n{session.PendingAppointmentSummary}\n\n" +
+                    "1 - Cancelar agendamento\n" +
+                    "2 - Reagendar\n" +
+                    "3 - Continuar sem alterar";
+                await _whatsappService.SendTextMessageAsync(from, retryMsg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, retryMsg);
+            }
         }
 
         private async Task AskForServiceAsync(string from, BookingSession session, CancellationToken ct)
@@ -646,7 +795,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             else if (!string.IsNullOrEmpty(timeStr))
             {
                 session.SelectedTime = timeStr;
-                await AskForConfirmationAsync(from, session, ct);
+                // Task 5: ask for optional description before confirmation
+                await AskForDescriptionAsync(from, session, ct);
             }
             else
             {
@@ -655,14 +805,46 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
         }
 
+        private async Task AskForDescriptionAsync(string from, BookingSession session, CancellationToken ct)
+        {
+            const string descMsg = "Tem alguma observação para o profissional? ✍️\n\nExemplo: \"quero corte mais curto nas laterais\"\n\nOu responda *não* para pular.";
+            await _whatsappService.SendTextMessageAsync(from, descMsg, session.WhatsappPhoneNumberId, ct);
+            await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, descMsg);
+            session.State = "AWAITING_DESCRIPTION";
+        }
+
+        private async Task HandleDescriptionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
+        {
+            var text = message.Type == "text" ? message.Text?.Body?.Trim() : null;
+
+            if (!string.IsNullOrEmpty(text) &&
+                !text.Equals("nao", StringComparison.OrdinalIgnoreCase) &&
+                !text.Equals("não", StringComparison.OrdinalIgnoreCase) &&
+                !text.Equals("no", StringComparison.OrdinalIgnoreCase) &&
+                !text.Equals("n", StringComparison.OrdinalIgnoreCase))
+            {
+                session.AppointmentDescription = text;
+            }
+            else
+            {
+                session.AppointmentDescription = null;
+            }
+
+            await AskForConfirmationAsync(from, session, ct);
+        }
+
         private async Task AskForConfirmationAsync(string from, BookingSession session, CancellationToken ct)
         {
             var summary = $"*Resumo do Agendamento*\n\n" +
                           $"*Serviço:* {session.ServiceName}\n" +
                           $"*Profissional:* {session.EmployeeName ?? "Qualquer"}\n" +
                           $"*Data:* {session.SelectedDate:dd/MM/yyyy}\n" +
-                          $"*Horário:* {session.SelectedTime}\n\n" +
-                          $"Podemos confirmar este agendamento?";
+                          $"*Horário:* {session.SelectedTime}\n";
+
+            if (!string.IsNullOrEmpty(session.AppointmentDescription))
+                summary += $"*Observação:* {session.AppointmentDescription}\n";
+
+            summary += "\nPodemos confirmar este agendamento?";
 
             var buttons = new[]
             {
@@ -706,6 +888,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     ClientName = contactName,
                     ClientPhone = from,
                     Description = "Agendado via WhatsApp Bot",
+                    Notes = session.AppointmentDescription,
                     ServiceId = session.ServiceId!.Value,
                     EmployeeId = session.EmployeeId,
                     ScheduledDateTime = scheduledDateTimeOffset

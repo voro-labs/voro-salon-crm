@@ -17,9 +17,14 @@ import {
 } from "@/components/ui/select"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useServiceDetail } from "@/hooks/use-service-detail.hook"
+import { useSettings } from "@/hooks/use-settings.hook"
+import { getServicePlaceholders } from "@/lib/branding"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 
 export default function NovoServicoPage() {
   const { form, setForm, isSaving, createService } = useServiceDetail()
+  const { tenant } = useSettings()
+  const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
@@ -43,7 +48,7 @@ export default function NovoServicoPage() {
                 <Label htmlFor="name">Nome *</Label>
                 <Input
                   id="name"
-                  placeholder="Nome do serviço (ex: Corte Masculino)"
+                  placeholder={placeholders.name}
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 />
