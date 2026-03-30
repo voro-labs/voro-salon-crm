@@ -33,6 +33,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthDto | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Escuta o evento disparado por apiCall quando o refresh token falha.
+  // Isso garante que o estado React seja limpo imediatamente, sem depender
+  // do window.location.href (que pode não disparar no Fast Refresh ou em loops).
+  useEffect(() => {
+    const handleAuthClear = () => {
+      removeAuthToken()
+      removeRefreshToken()
+      setUser(null)
+      setLoading(false)
+    }
+    window.addEventListener("voro:auth:clear", handleAuthClear)
+    return () => window.removeEventListener("voro:auth:clear", handleAuthClear)
+  }, [])
+
   useEffect(() => {
     const checkAuth = async () => {
       const token = getAuthToken()

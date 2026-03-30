@@ -124,15 +124,27 @@ export function removeRefreshToken(): void {
 
 // Variáveis para controle da fila de refresh token
 let isRefreshing = false
-let refreshSubscribers: ((token: string) => void)[] = []
+let refreshSubscribers: ((token: string | null) => void)[] = []
 
-function subscribeTokenRefresh(cb: (token: string) => void) {
+function subscribeTokenRefresh(cb: (token: string | null) => void) {
   refreshSubscribers.push(cb)
 }
 
 function onRefreshed(token: string) {
-  refreshSubscribers.map((cb) => cb(token))
+  refreshSubscribers.forEach((cb) => cb(token))
   refreshSubscribers = []
+}
+
+function onRefreshFailed() {
+  refreshSubscribers.forEach((cb) => cb(null))
+  refreshSubscribers = []
+}
+
+// Notifica o AuthContext para limpar o estado sem precisar de full page reload
+function dispatchAuthClear() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("voro:auth:clear"))
+  }
 }
 
 // Função helper para fazer chamadas à API com ResponseViewModel
@@ -203,10 +215,12 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
                 }
               }
             } else {
-              // Refresh falhou — desloga e redireciona
+              // Refresh falhou — limpa estado e redireciona
               isRefreshing = false
+              onRefreshFailed()
               removeAuthToken()
               removeRefreshToken()
+              dispatchAuthClear()
               if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
               return {
                 status: 401,
@@ -217,8 +231,10 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
             }
           } catch {
             isRefreshing = false
+            onRefreshFailed()
             removeAuthToken()
             removeRefreshToken()
+            dispatchAuthClear()
             if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
             return {
               status: 401,
@@ -230,7 +246,17 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
         } else {
           // Já está renovando — coloca na fila e aguarda
           return new Promise((resolve) => {
-            subscribeTokenRefresh(async (newToken: string) => {
+            subscribeTokenRefresh(async (newToken: string | null) => {
+              // Se o refresh falhou (token null), retorna 401 imediatamente
+              if (!newToken) {
+                resolve({
+                  status: 401,
+                  message: "Sessão expirada. Faça login novamente.",
+                  data: null,
+                  hasError: true,
+                })
+                return
+              }
               try {
                 const retryResponse = await fetch(url, {
                   ...options,
@@ -265,8 +291,9 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
           })
         }
       } else {
-        // 401 sem refresh token — redireciona para login
+        // 401 sem refresh token — limpa estado e redireciona
         removeAuthToken()
+        dispatchAuthClear()
         if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
         return {
           status: 401,
