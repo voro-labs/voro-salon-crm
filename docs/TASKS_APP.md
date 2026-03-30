@@ -42,9 +42,9 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 - [x] Criar botão/acesso em Configurações
 - [x] Consumir novo endpoint de limites (`usePlanLimits()`)
 - [x] Exibir plano atual + Capacidade de Funcionários e Clientes, preço, status (Trial/Ativo/Inativo/Cancelado/PastDue), dias restantes de trial, data do próximo pagamento, data do último pagamento
-- [ ] Grid de planos disponíveis com: nome, preço, descrição, capacidade de funcionários/clientes, módulos incluídos (Financeiro, Anamnese, Agendamento Online, Bot WhatsApp) com ícones informativos
-- [ ] Botão de assinar/upgrade/reassinar com dialog de confirmação antes de redirecionar ao checkout
-- [ ] Botão "Reassinar plano" quando plano estiver inativo/expirado
+- [x] Grid de planos disponíveis
+- [x] Botão de assinar/upgrade/reassinar com dialog de confirmação antes de redirecionar ao checkout
+- [x] Botão "Reassinar plano" quando plano estiver inativo/expirado
 
 ---
 
@@ -122,9 +122,9 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** Várias (Upload via `ImageUpload` component hospedado no Vercel Blob / S3)
 
-- [ ] Utilizar a biblioteca `expo-image-picker` para a seleção de fotos nativa (Galeria/Câmera).
-- [ ] Adicionar botão de "Trocar Logo" em `settings/salon.tsx` (hoje o app pede uma URL de texto bruto ao invés de fazer upload).
-- [ ] Adicionar campo de foto de perfil em Funcionários (`employees/new` e `employees/[id]`) e Clientes.
+- [x] Utilizar a biblioteca `expo-image-picker` para a seleção de fotos nativa (Galeria/Câmera).
+- [x] Adicionar botão de "Trocar Logo" em `settings/salon.tsx` (hoje o app pede uma URL de texto bruto ao invés de fazer upload).
+- [x] Adicionar campo de foto de perfil em Funcionários (`employees/new` e `employees/[id]`) e Clientes.
 
 ---
 
@@ -132,5 +132,5 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/whatsapp/templates`
 
-- [ ] Adicionar listagem de templates configuráveis de mensagens no App.
-- [ ] Criar/editar templates incluindo os placeholders visuais para autocompletar nome, serviço e data.
+- [x] Adicionar listagem de templates configuráveis de mensagens no App.
+- [x] Criar/editar templates incluindo os placeholders visuais para autocompletar nome, serviço e data.

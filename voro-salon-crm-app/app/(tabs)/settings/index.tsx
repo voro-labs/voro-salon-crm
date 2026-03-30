@@ -142,6 +142,14 @@ export default function SettingsScreen() {
                 iconBg="#f0fdf4"
                 iconColor="#059669"
               />
+              <NavRow
+                icon="ribbon-outline"
+                label="Planos de Fidelidade"
+                subtitle="Pacotes e assinaturas recorrentes"
+                onPress={() => router.push("/(tabs)/settings/membership-plans" as any)}
+                iconBg="#fdf4ff"
+                iconColor="#c026d3"
+              />
               {isOwner && (
                 <NavRow
                   icon="clipboard-outline"
@@ -150,6 +158,16 @@ export default function SettingsScreen() {
                   onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
                   iconBg="#fff7ed"
                   iconColor="#d97706"
+                />
+              )}
+              {isOwner && (
+                <NavRow
+                  icon="chatbubble-ellipses-outline"
+                  label="Templates do WhatsApp"
+                  subtitle="Personalizar mensagens automáticas"
+                  onPress={() => router.push("/(tabs)/settings/whatsapp-templates" as any)}
+                  iconBg="#dcfce7"
+                  iconColor="#16a34a"
                 />
               )}
             </View>
