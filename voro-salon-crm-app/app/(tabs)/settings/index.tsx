@@ -116,6 +116,16 @@ export default function SettingsScreen() {
               )}
               {isOwner && (
                 <NavRow
+                  icon="card-outline"
+                  label="Assinatura"
+                  subtitle="Gerenciar plano e limites do salão"
+                  onPress={() => router.push("/(tabs)/settings/subscription" as any)}
+                  iconBg="#fef3c7"
+                  iconColor="#d97706"
+                />
+              )}
+              {isOwner && (
+                <NavRow
                   icon="grid-outline"
                   label="Módulos"
                   subtitle="Ativar/desativar funcionalidades"

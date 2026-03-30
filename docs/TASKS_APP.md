@@ -39,8 +39,9 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/subscription`
 
-- [ ] Criar tela de assinatura acessível via Settings ou menu principal
-- [ ] Card do plano atual com: nome do plano, preço, status (Trial/Ativo/Inativo/Cancelado/PastDue), dias restantes de trial, data do próximo pagamento, data do último pagamento
+- [x] Criar botão/acesso em Configurações
+- [x] Consumir novo endpoint de limites (`usePlanLimits()`)
+- [x] Exibir plano atual + Capacidade de Funcionários e Clientes, preço, status (Trial/Ativo/Inativo/Cancelado/PastDue), dias restantes de trial, data do próximo pagamento, data do último pagamento
 - [ ] Grid de planos disponíveis com: nome, preço, descrição, capacidade de funcionários/clientes, módulos incluídos (Financeiro, Anamnese, Agendamento Online, Bot WhatsApp) com ícones informativos
 - [ ] Botão de assinar/upgrade/reassinar com dialog de confirmação antes de redirecionar ao checkout
 - [ ] Botão "Reassinar plano" quando plano estiver inativo/expirado
@@ -102,9 +103,8 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/services/new` e onboarding/settings
 
-- [ ] Adicionar o **Seletor de Tipo de Estabelecimento** na tela de *Configurações do Salão* no App (atualmente essa aba no app não exibe o seletor `EstablishmentType` que tem na web, o que impede de escolher "Nails Design").
-- [ ] O app hoje tem placeholder fixo `"Nome do serviço"`. Implementar o utilitário `getServicePlaceholders(tenant.establishmentType)` no App.
-- [ ] Atualizar os placeholders dos inputs em `services/new.tsx` e `services/[id].tsx`.
+- [x] Campo "Tipo" no formulário de dados do salão.
+- [x] Condicionar Placeholders de "Cadastro de Serviço" dinamicamente.
 
 ---
 

@@ -14,6 +14,7 @@ export interface TenantForm {
   secondaryColor: string
   contactPhone: string
   contactEmail: string
+  establishmentType: number
 }
 
 const DEFAULT_FORM: TenantForm = {
@@ -24,6 +25,7 @@ const DEFAULT_FORM: TenantForm = {
   secondaryColor: "#A0522D",
   contactPhone: "",
   contactEmail: "",
+  establishmentType: 0,
 }
 
 export function useSettings() {
@@ -52,12 +54,23 @@ export function useSettings() {
         secondaryColor: tenant.secondaryColor ?? "#A0522D",
         contactPhone: phoneNumber,
         contactEmail: tenant.contactEmail ?? "",
+        establishmentType: tenant.establishmentType ?? 0,
       })
       setCountryCode(cCode)
     }
   }, [tenant, form])
 
-  const formData = form ?? DEFAULT_FORM
+  const [localEstablishmentType, setLocalEstablishmentType] = useState<number | null>(null)
+  const effectiveEstablishmentType = localEstablishmentType ?? tenant?.establishmentType ?? 0
+
+  const formData = {
+    ...(form ?? DEFAULT_FORM),
+    establishmentType: effectiveEstablishmentType,
+  }
+
+  const setEstablishmentType = useCallback((value: number) => {
+    setLocalEstablishmentType(value)
+  }, [])
 
   const handlePreset = useCallback((primary: string, secondary: string) => {
     setForm((p) => (p ? { ...p, primaryColor: primary, secondaryColor: secondary } : null))
@@ -87,6 +100,7 @@ export function useSettings() {
         return false
       }
       Toast.success("Configurações salvas com sucesso!")
+      setLocalEstablishmentType(null)
       mutate()
       refreshTenantTheme(f.primaryColor, f.secondaryColor)
       return true
@@ -98,14 +112,15 @@ export function useSettings() {
     }
   }
 
-  async function uploadLogo(file: File): Promise<string | null> {
+  async function uploadLogo(file: { uri: string; name: string; type: string }): Promise<string | null> {
     setIsUploadingLogo(true)
     try {
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("file", file as any)
+      const token = await getAuthToken()
       const response = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.TENANT_ME}/logo`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       })
       const res = await response.json()
@@ -127,17 +142,9 @@ export function useSettings() {
     }
   }
 
-  async function handleLogoUpload(e: any) { // e: React.ChangeEvent<HTMLInputElement>
-    const file = e.target?.files?.[0]
-    if (!file) return
-
+  async function handleLogoUpload(file: { uri: string; name: string; type: string }) {
     // Show preview immediately
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setForm((p) => (p ? { ...p, logoUrl: reader.result as string } : null))
-    }
-    reader.readAsDataURL(file)
-
+    setForm((p) => (p ? { ...p, logoUrl: file.uri } : null))
     const url = await uploadLogo(file)
     if (url) {
       setForm((p) => (p ? { ...p, logoUrl: url } : null))
@@ -206,6 +213,7 @@ export function useSettings() {
     isExportingClients,
     isExportingServices,
     handlePreset,
+    setEstablishmentType,
     saveTenant,
     handleLogoUpload,
     exportData,

@@ -9,7 +9,9 @@ import { useLocalSearchParams, router } from "expo-router"
 import { useEmployeeDetail } from "hooks/use-employee-detail.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { DatePickerInput } from "components/DatePickerInput"
+import { ImagePickerInput } from "components/ImagePickerInput"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { Image } from "react-native"
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return "—"
@@ -23,6 +25,7 @@ export default function EmployeeDetailScreen() {
     form,
     isLoading, isSaving, isDeleting,
     saveEmployee, deleteEmployee,
+    handlePhotoUpload, isUploadingPhoto
   } = useEmployeeDetail(id)
   const { primaryColor } = useTenantTheme()
 
@@ -103,12 +106,19 @@ export default function EmployeeDetailScreen() {
         {/* Profile card */}
         <View className="bg-white rounded-3xl p-4 border border-zinc-100 mb-4">
           <View className="flex-row items-center gap-4 mb-4">
-            <View
-              className="w-16 h-16 items-center justify-center rounded-2xl shrink-0"
-              style={{ backgroundColor: primaryColor + "20" }}
-            >
-              <Text className="font-black text-xl" style={{ color: primaryColor }}>{initials}</Text>
-            </View>
+            {form.photoUrl ? (
+              <Image
+                source={{ uri: form.photoUrl }}
+                className="w-16 h-16 rounded-2xl shrink-0 border border-zinc-100"
+              />
+            ) : (
+              <View
+                className="w-16 h-16 items-center justify-center rounded-2xl shrink-0"
+                style={{ backgroundColor: primaryColor + "20" }}
+              >
+                <Text className="font-black text-xl" style={{ color: primaryColor }}>{initials}</Text>
+              </View>
+            )}
             <View className="flex-1 min-w-0">
               <View className="flex-row items-center gap-2">
                 <Text className="text-lg font-black text-zinc-900 flex-1" numberOfLines={1}>{employee.name}</Text>
@@ -200,6 +210,19 @@ export default function EmployeeDetailScreen() {
           </View>
 
           <ScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false}>
+            {/* Foto de Perfil */}
+            <View className="mb-6">
+              <Text className="text-zinc-700 font-bold text-sm mb-3">Foto de Perfil</Text>
+              <ImagePickerInput
+                value={form.photoUrl}
+                onChange={handlePhotoUpload}
+                isUploading={isUploadingPhoto}
+                label="Atualizar Foto"
+                fallbackIcon="person-outline"
+                size={80}
+              />
+            </View>
+
             {/* Nome */}
             <View className="mb-4">
               <Text className="text-zinc-700 font-bold text-sm mb-1.5">Nome *</Text>

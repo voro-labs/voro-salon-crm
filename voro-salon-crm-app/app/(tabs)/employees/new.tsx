@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useEmployeeDetail } from "hooks/use-employee-detail.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { DatePickerInput } from "components/DatePickerInput"
+import { ImagePickerInput } from "components/ImagePickerInput"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
@@ -23,7 +24,7 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
 const inputClass = "bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base"
 
 export default function NewEmployeeScreen() {
-  const { form, setForm, isSaving, saveEmployee, toggleSpecialty, services } = useEmployeeDetail()
+  const { form, setForm, isSaving, saveEmployee, toggleSpecialty, services, handlePhotoUpload, isUploadingPhoto } = useEmployeeDetail()
   const { primaryColor } = useTenantTheme()
 
   return (
@@ -37,7 +38,19 @@ export default function NewEmployeeScreen() {
         >
           {/* Dados principais */}
           <View className="bg-white rounded-3xl border border-zinc-100 p-5 mb-4">
-            <Text className="text-base font-black text-zinc-900 mb-4">Dados do Funcionário</Text>
+            <Text className="text-base font-black text-zinc-900 mb-5">Dados do Funcionário</Text>
+
+            <View className="mb-6 items-center">
+              <ImagePickerInput
+                value={form.photoUrl}
+                onChange={handlePhotoUpload}
+                isUploading={isUploadingPhoto}
+                label="Adicionar Foto"
+                fallbackIcon="person-outline"
+                rounded="full"
+                size={96}
+              />
+            </View>
 
             <FormField label="Nome *">
               <TextInput
