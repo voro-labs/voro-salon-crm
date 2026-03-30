@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
   motion,
@@ -1030,6 +1030,7 @@ function PlanCard({ plan, popular, onSelect, onModuleInfo }: PlanCardProps) {
 
 export default function PrecosPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const shouldReduce = useReducedMotion()
   const branding = getClientBranding()
   const FAQ = buildFaq(branding.productName, branding.establishmentLabel)
@@ -1076,6 +1077,18 @@ export default function PrecosPage() {
   useEffect(() => {
     if (getAuthToken()) router.replace("/dashboard")
   }, [router])
+
+  useEffect(() => {
+    const trackingKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid"]
+    const tracked: Record<string, string> = {}
+    trackingKeys.forEach((key) => {
+      const value = searchParams.get(key)
+      if (value) tracked[key] = value
+    })
+    if (Object.keys(tracked).length > 0) {
+      localStorage.setItem("voro_tracking", JSON.stringify({ ...tracked, captured_at: new Date().toISOString() }))
+    }
+  }, [searchParams])
 
   useEffect(() => {
     apiCall<SubscriptionPlanDto[]>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_PLANS)
