@@ -80,5 +80,24 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteMany([FromBody] List<Guid> ids)
+        {
+            try
+            {
+                if (ids == null || ids.Count == 0)
+                    return ResponseViewModel<object>.Fail("No IDs provided.").ToActionResult();
+
+                await userNotificationService.DeleteManyAsync(ids);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Notifications deleted.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

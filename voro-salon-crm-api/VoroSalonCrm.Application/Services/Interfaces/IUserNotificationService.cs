@@ -8,5 +8,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<int> GetUnreadCountAsync();
         Task MarkAsReadAsync(Guid notificationId);
         Task MarkAllAsReadAsync();
+        Task DeleteByRelatedEntityIdAsync(Guid relatedEntityId);
+        Task DeleteManyAsync(IEnumerable<Guid> ids);
     }
 }

@@ -76,6 +76,24 @@ export function useUserNotifications() {
     }
   }, [mutateNotifications, mutateUnreadCount])
 
+  const deleteMany = useCallback(
+    async (ids: string[]) => {
+      try {
+        const result = await secureApiCall(API_CONFIG.ENDPOINTS.NOTIFICATIONS, {
+          method: "DELETE",
+          body: JSON.stringify(ids),
+        })
+        if (!result.hasError) {
+          mutateNotifications((prev) => prev?.filter((n) => !ids.includes(n.id)), false)
+          mutateUnreadCount()
+        }
+      } catch (err) {
+        console.error("Erro ao excluir notificações:", err)
+      }
+    },
+    [mutateNotifications, mutateUnreadCount],
+  )
+
   const refresh = useCallback(async () => {
     await Promise.all([mutateNotifications(), mutateUnreadCount()])
   }, [mutateNotifications, mutateUnreadCount])
@@ -85,6 +103,7 @@ export function useUserNotifications() {
     unreadCount,
     markAsRead,
     markAllAsRead,
+    deleteMany,
     isLoading,
     refresh,
   }
