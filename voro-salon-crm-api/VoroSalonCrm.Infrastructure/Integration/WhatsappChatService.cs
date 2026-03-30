@@ -429,15 +429,17 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var brasilia = TimeSpan.FromHours(-3);
             var slotsLocal = availableSlots.Select(s => s.StartTime.ToOffset(brasilia)).ToList();
 
-            // WhatsApp suporta até 10 linhas por seção — distribui os horários em seções de manhã/tarde
-            var morningRows = slotsLocal.Where(s => s.Hour < 12).Take(10).Select(s => new
+            // WhatsApp permite no máximo 10 rows no total entre todas as seções
+            var limitedSlots = slotsLocal.Take(10).ToList();
+
+            var morningRows = limitedSlots.Where(s => s.Hour < 12).Select(s => new
             {
                 id = s.ToString("HH:mm"),
                 title = s.ToString("HH:mm"),
                 description = "Disponível"
             }).ToList();
 
-            var afternoonRows = slotsLocal.Where(s => s.Hour >= 12).Take(10).Select(s => new
+            var afternoonRows = limitedSlots.Where(s => s.Hour >= 12).Select(s => new
             {
                 id = s.ToString("HH:mm"),
                 title = s.ToString("HH:mm"),
