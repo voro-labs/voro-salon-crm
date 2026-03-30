@@ -60,6 +60,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public string? ContactName { get; set; }
             public int TimeSlotPage { get; set; } = 0;
             public int DatePage { get; set; } = 0;
+            public int ServicePage { get; set; } = 0;
+            public int EmployeePage { get; set; } = 0;
         }
 
         public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default)
@@ -244,33 +246,66 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
         }
 
+        private const int ServicePageSize = 9;
+
         private async Task StartBookingFlowAsync(string from, string contactName, BookingSession session, CancellationToken ct)
         {
             session.ContactName = contactName;
-            var services = await _publicBookingService.GetServicesByTenantAsync(session.TenantSlug!);
+            session.ServicePage = 0;
+            await AskForServiceAsync(from, session, ct);
+        }
 
-            if (!services.Any())
+        private async Task AskForServiceAsync(string from, BookingSession session, CancellationToken ct)
+        {
+            var allServices = (await _publicBookingService.GetServicesByTenantAsync(session.TenantSlug!)).ToList();
+
+            if (allServices.Count == 0)
             {
-                await _whatsappService.SendTextMessageAsync(from, $"Olá {contactName}! No momento não temos serviços disponíveis para agendamento.", session.WhatsappPhoneNumberId, ct);
+                await _whatsappService.SendTextMessageAsync(from, $"Olá {session.ContactName}! No momento não temos serviços disponíveis para agendamento.", session.WhatsappPhoneNumberId, ct);
                 return;
             }
 
-            var buttons = services.Take(3).Select(s => new
+            var page = session.ServicePage;
+            var pageServices = allServices.Skip(page * ServicePageSize).Take(ServicePageSize).ToList();
+            var hasMore = allServices.Count > (page + 1) * ServicePageSize;
+
+            var rows = pageServices.Select(s => new
             {
-                type = "reply",
-                reply = new
+                id = s.Id.ToString(),
+                title = s.Name.Length > 24 ? $"{s.Name[..21]}..." : s.Name,
+                description = s.Price > 0 ? $"R$ {s.Price:N2}" : (string?)null
+            }).Cast<object>().ToList();
+
+            if (hasMore)
+            {
+                rows.Add(new
                 {
-                    id = s.Id.ToString(),
-                    title = s.Name.Length > 20 ? $"{s.Name[..17]}..." : s.Name
-                }
-            }).ToList();
+                    id = "more_services",
+                    title = "Ver mais serviços",
+                    description = "Próximas opções"
+                });
+            }
+
+            var isFirstPage = page == 0;
+            var bodyText = isFirstPage
+                ? $"Olá {session.ContactName}! Bem-vindo ao {session.TenantName}. Qual serviço você gostaria de agendar?"
+                : "Qual serviço você gostaria de agendar?";
+
+            var sections = new[]
+            {
+                new { title = "Serviços", rows }
+            };
 
             var interactive = new
             {
-                type = "button",
+                type = "list",
                 header = new { type = "text", text = session.TenantName },
-                body = new { text = $"Olá {contactName}! Bem-vindo ao {session.TenantName}. Qual serviço você gostaria de agendar?" },
-                action = new { buttons }
+                body = new { text = bodyText },
+                action = new
+                {
+                    button = "Ver serviços",
+                    sections
+                }
             };
 
             await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
@@ -280,12 +315,18 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private async Task HandleServiceSelectionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
         {
             string? serviceIdStr = null;
-            if (message.Type == "interactive" && message.Interactive?.ButtonReply != null)
-                serviceIdStr = message.Interactive.ButtonReply.Id;
+            if (message.Type == "interactive" && message.Interactive?.ListReply != null)
+                serviceIdStr = message.Interactive.ListReply.Id;
             else if (message.Type == "text")
             {
-                // Reenvia a seleção de serviço
-                await StartBookingFlowAsync(from, session.ContactName ?? "Cliente", session, ct);
+                await AskForServiceAsync(from, session, ct);
+                return;
+            }
+
+            if (serviceIdStr == "more_services")
+            {
+                session.ServicePage++;
+                await AskForServiceAsync(from, session, ct);
                 return;
             }
 
@@ -299,7 +340,6 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (!employees.Any())
                 {
-                    // No specific employees, skip to date
                     session.EmployeeId = null;
                     session.State = "AWAITING_DATE";
                     session.DatePage = 0;
@@ -307,20 +347,30 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     return;
                 }
 
+                session.EmployeePage = 0;
                 await AskForEmployeeAsync(from, session, employees, ct);
             }
             else
             {
-                // Input inválido: reenvia a seleção de serviço
-                await StartBookingFlowAsync(from, session.ContactName ?? "Cliente", session, ct);
+                await AskForServiceAsync(from, session, ct);
             }
         }
+
+        private const int EmployeePageSize = 8; // reserva 1 row para "Tanto faz" e 1 para "Ver mais"
 
         private async Task HandleEmployeeSelectionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
         {
             string? employeeIdStr = null;
-            if (message.Type == "interactive" && message.Interactive?.ButtonReply != null)
-                employeeIdStr = message.Interactive.ButtonReply.Id;
+            if (message.Type == "interactive" && message.Interactive?.ListReply != null)
+                employeeIdStr = message.Interactive.ListReply.Id;
+
+            if (employeeIdStr == "more_employees")
+            {
+                session.EmployeePage++;
+                var employees = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, session.ServiceId!.Value);
+                await AskForEmployeeAsync(from, session, employees, ct);
+                return;
+            }
 
             if (employeeIdStr == "any")
             {
@@ -335,7 +385,6 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
             else
             {
-                // Input inválido: reenvia a seleção de profissional
                 var employees = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, session.ServiceId!.Value);
                 await AskForEmployeeAsync(from, session, employees, ct);
                 return;
@@ -348,26 +397,54 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         private async Task AskForEmployeeAsync(string from, BookingSession session, IEnumerable<PublicEmployeeDto> employees, CancellationToken ct)
         {
-            var buttons = new List<object>
-            {
-                new { type = "reply", reply = new { id = "any", title = "Tanto faz" } }
-            };
+            var allEmployees = employees.ToList();
+            var page = session.EmployeePage;
+            var pageEmployees = allEmployees.Skip(page * EmployeePageSize).Take(EmployeePageSize).ToList();
+            var hasMore = allEmployees.Count > (page + 1) * EmployeePageSize;
 
-            buttons.AddRange(employees.Take(2).Select(e => new
+            var rows = new List<object>();
+
+            if (page == 0)
             {
-                type = "reply",
-                reply = new
+                rows.Add(new
                 {
-                    id = e.Id.ToString(),
-                    title = e.Name.Length > 20 ? $"{e.Name[..17]}..." : e.Name
-                }
-            }));
+                    id = "any",
+                    title = "Tanto faz",
+                    description = "Qualquer profissional disponível"
+                });
+            }
+
+            rows.AddRange(pageEmployees.Select(e => new
+            {
+                id = e.Id.ToString(),
+                title = e.Name.Length > 24 ? $"{e.Name[..21]}..." : e.Name,
+                description = (string?)null
+            }).Cast<object>());
+
+            if (hasMore)
+            {
+                rows.Add(new
+                {
+                    id = "more_employees",
+                    title = "Ver mais profissionais",
+                    description = (string?)"Próximas opções"
+                });
+            }
+
+            var sections = new[]
+            {
+                new { title = "Profissionais", rows }
+            };
 
             var interactive = new
             {
-                type = "button",
+                type = "list",
                 body = new { text = "Com qual profissional você prefere ser atendido?" },
-                action = new { buttons }
+                action = new
+                {
+                    button = "Ver profissionais",
+                    sections
+                }
             };
 
             await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
@@ -388,7 +465,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 id = d.ToString("yyyy-MM-dd"),
                 title = d.ToString("dd/MM/yyyy"),
-                description = d == DateTime.Today ? "Hoje" : d.DayOfWeek switch
+                description = (string?)(d == DateTime.Today ? "Hoje" : d.DayOfWeek switch
                 {
                     DayOfWeek.Monday => "Segunda-feira",
                     DayOfWeek.Tuesday => "Terça-feira",
@@ -397,8 +474,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     DayOfWeek.Friday => "Sexta-feira",
                     DayOfWeek.Saturday => "Sábado",
                     DayOfWeek.Sunday => "Domingo",
-                    _ => ""
-                }
+                    _ => null
+                })
             }).Cast<object>().ToList();
 
             if (hasMore)
@@ -407,14 +484,13 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 {
                     id = "more_dates",
                     title = "Ver mais datas",
-                    description = "Próximas opções"
+                    description = (string?)"Próximas opções"
                 });
             }
 
-            var pageLabel = page > 0 ? $" (página {page + 1})" : "";
             var sections = new[]
             {
-                new { title = $"Datas Disponíveis{pageLabel}", rows }
+                new { title = "Datas", rows }
             };
 
             var interactive = new
@@ -500,10 +576,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 });
             }
 
-            var pageLabel = page > 0 ? $" (página {page + 1})" : "";
             var sections = new[]
             {
-                new { title = $"Horários Disponíveis{pageLabel}", rows }
+                new { title = "Horários", rows }
             };
 
             var interactive = new
