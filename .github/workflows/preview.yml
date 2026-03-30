@@ -75,6 +75,12 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
 
+      - name: Scale up preview app (reativa se estava pausado)
+        run: |
+          flyctl scale count 1 -a ${{ steps.vars.outputs.APP_NAME }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
+
       - name: Deploy preview app
         run: |
           cd ${{ secrets.FOLDER__API }}
