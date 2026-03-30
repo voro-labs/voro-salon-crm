@@ -25,6 +25,13 @@ import { fetcher } from "@/lib/fetcher"
 
 export default function AppointmentsPage() {
   const [periodFilter, setPeriodFilter] = useState("today")
+
+  // Se não houver agendamentos hoje, mostra a semana automaticamente
+  useEffect(() => {
+    if (isLoading) return
+    const hasToday = searchFiltered.some((a: any) => isToday(new Date(a.scheduledDateTime)))
+    if (!hasToday) setPeriodFilter("week")
+  }, [isLoading])
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
   const { plan } = useSubscription()
 

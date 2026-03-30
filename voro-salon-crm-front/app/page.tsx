@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { MetricCard } from "@/components/metric-card"
@@ -83,6 +83,13 @@ export default function DashboardPage() {
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const [timeFilter, setTimeFilter] = useState("today")
+
+  // Se não houver agendamentos hoje, mostra a semana automaticamente
+  useEffect(() => {
+    if (!aptData) return
+    const hasToday = aptData.some((a: any) => isToday(new Date(a.scheduledDateTime)))
+    if (!hasToday) setTimeFilter("week")
+  }, [aptData])
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const { sendWhatsAppMessage } = useWhatsApp()
