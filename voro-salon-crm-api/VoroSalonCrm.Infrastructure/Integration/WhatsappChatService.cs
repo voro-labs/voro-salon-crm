@@ -57,6 +57,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public DateTime? SelectedDate { get; set; }
             public string? SelectedTime { get; set; }
             public Guid? AppointmentId { get; set; }
+            public string? ContactName { get; set; }
         }
 
         public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default)
@@ -243,6 +244,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         private async Task StartBookingFlowAsync(string from, string contactName, BookingSession session, CancellationToken ct)
         {
+            session.ContactName = contactName;
             var services = await _publicBookingService.GetServicesByTenantAsync(session.TenantSlug!);
 
             if (!services.Any())
@@ -280,8 +282,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 serviceIdStr = message.Interactive.ButtonReply.Id;
             else if (message.Type == "text")
             {
-                // Simple text matching fallback could be implemented here
-                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um dos serviços clicando nos botões acima.", session.WhatsappPhoneNumberId, ct);
+                // Reenvia a seleção de serviço
+                await StartBookingFlowAsync(from, session.ContactName ?? "Cliente", session, ct);
                 return;
             }
 
@@ -302,30 +304,12 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     return;
                 }
 
-                var buttons = new List<object>
-                {
-                    new { type = "reply", reply = new { id = "any", title = "Tanto faz" } }
-                };
-
-                buttons.AddRange(employees.Take(2).Select(e => new
-                {
-                    type = "reply",
-                    reply = new
-                    {
-                        id = e.Id.ToString(),
-                        title = e.Name.Length > 20 ? $"{e.Name[..17]}..." : e.Name
-                    }
-                }));
-
-                var interactive = new
-                {
-                    type = "button",
-                    body = new { text = $"Ótima escolha! Com qual profissional você prefere ser atendido?" },
-                    action = new { buttons }
-                };
-
-                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
-                session.State = "AWAITING_EMPLOYEE";
+                await AskForEmployeeAsync(from, session, employees, ct);
+            }
+            else
+            {
+                // Input inválido: reenvia a seleção de serviço
+                await StartBookingFlowAsync(from, session.ContactName ?? "Cliente", session, ct);
             }
         }
 
@@ -348,12 +332,42 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
             else
             {
-                await _whatsappService.SendTextMessageAsync(from, "Por favor, selecione um profissional nos botões.", session.WhatsappPhoneNumberId, ct);
+                // Input inválido: reenvia a seleção de profissional
+                var employees = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, session.ServiceId!.Value);
+                await AskForEmployeeAsync(from, session, employees, ct);
                 return;
             }
 
             session.State = "AWAITING_DATE";
             await AskForDateAsync(from, session, ct);
+        }
+
+        private async Task AskForEmployeeAsync(string from, BookingSession session, IEnumerable<PublicEmployeeDto> employees, CancellationToken ct)
+        {
+            var buttons = new List<object>
+            {
+                new { type = "reply", reply = new { id = "any", title = "Tanto faz" } }
+            };
+
+            buttons.AddRange(employees.Take(2).Select(e => new
+            {
+                type = "reply",
+                reply = new
+                {
+                    id = e.Id.ToString(),
+                    title = e.Name.Length > 20 ? $"{e.Name[..17]}..." : e.Name
+                }
+            }));
+
+            var interactive = new
+            {
+                type = "button",
+                body = new { text = "Com qual profissional você prefere ser atendido?" },
+                action = new { buttons }
+            };
+
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
+            session.State = "AWAITING_EMPLOYEE";
         }
 
         private async Task AskForDateAsync(string from, BookingSession session, CancellationToken ct)
@@ -389,63 +403,69 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (DateTime.TryParseExact(dateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             {
                 session.SelectedDate = date;
-
-                var slots = await _publicBookingService.GetAvailableSlotsAsync(session.TenantSlug!, date, session.ServiceId!.Value, session.EmployeeId);
-                var availableSlots = slots.Where(s => s.IsAvailable).ToList();
-
-                if (availableSlots.Count == 0)
-                {
-                    await _whatsappService.SendTextMessageAsync(from, "Desculpe, não há horários disponíveis para esta data. Por favor, escolha outro dia.", session.WhatsappPhoneNumberId, ct);
-                    await AskForDateAsync(from, session, ct);
-                    return;
-                }
-
-                // StartTime está em UTC — converte para Brasília (UTC-3) antes de exibir
-                var brasilia = TimeSpan.FromHours(-3);
-                var slotsLocal = availableSlots.Select(s => s.StartTime.ToOffset(brasilia)).ToList();
-
-                // WhatsApp suporta até 10 linhas por seção — distribui os horários em seções de manhã/tarde
-                var morningRows = slotsLocal.Where(s => s.Hour < 12).Take(10).Select(s => new
-                {
-                    id = s.ToString("HH:mm"),
-                    title = s.ToString("HH:mm"),
-                    description = "Disponível"
-                }).ToList();
-
-                var afternoonRows = slotsLocal.Where(s => s.Hour >= 12).Take(10).Select(s => new
-                {
-                    id = s.ToString("HH:mm"),
-                    title = s.ToString("HH:mm"),
-                    description = "Disponível"
-                }).ToList();
-
-                object[] sections;
-                if (morningRows.Count > 0 && afternoonRows.Count > 0)
-                    sections = [new { title = "Manhã", rows = morningRows }, new { title = "Tarde", rows = afternoonRows }];
-                else if (morningRows.Count > 0)
-                    sections = [new { title = "Horários Disponíveis", rows = morningRows }];
-                else
-                    sections = [new { title = "Horários Disponíveis", rows = afternoonRows }];
-
-                var interactive = new
-                {
-                    type = "list",
-                    header = new { type = "text", text = session.TenantName },
-                    body = new { text = "Selecione o melhor horário para você:" },
-                    action = new
-                    {
-                        button = "Ver horários",
-                        sections
-                    }
-                };
-
-                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
-                session.State = "AWAITING_TIME";
+                await AskForTimeAsync(from, session, ct);
             }
             else
             {
-                await _whatsappService.SendTextMessageAsync(from, "Por favor, escolha uma data válida clicando nos botões.", session.WhatsappPhoneNumberId, ct);
+                // Input inválido: reenvia a seleção de data
+                await AskForDateAsync(from, session, ct);
             }
+        }
+
+        private async Task AskForTimeAsync(string from, BookingSession session, CancellationToken ct)
+        {
+            var slots = await _publicBookingService.GetAvailableSlotsAsync(session.TenantSlug!, session.SelectedDate!.Value, session.ServiceId!.Value, session.EmployeeId);
+            var availableSlots = slots.Where(s => s.IsAvailable).ToList();
+
+            if (availableSlots.Count == 0)
+            {
+                await _whatsappService.SendTextMessageAsync(from, "Desculpe, não há horários disponíveis para esta data. Por favor, escolha outro dia.", session.WhatsappPhoneNumberId, ct);
+                session.SelectedDate = null;
+                await AskForDateAsync(from, session, ct);
+                return;
+            }
+
+            // StartTime está em UTC — converte para Brasília (UTC-3) antes de exibir
+            var brasilia = TimeSpan.FromHours(-3);
+            var slotsLocal = availableSlots.Select(s => s.StartTime.ToOffset(brasilia)).ToList();
+
+            // WhatsApp suporta até 10 linhas por seção — distribui os horários em seções de manhã/tarde
+            var morningRows = slotsLocal.Where(s => s.Hour < 12).Take(10).Select(s => new
+            {
+                id = s.ToString("HH:mm"),
+                title = s.ToString("HH:mm"),
+                description = "Disponível"
+            }).ToList();
+
+            var afternoonRows = slotsLocal.Where(s => s.Hour >= 12).Take(10).Select(s => new
+            {
+                id = s.ToString("HH:mm"),
+                title = s.ToString("HH:mm"),
+                description = "Disponível"
+            }).ToList();
+
+            object[] sections;
+            if (morningRows.Count > 0 && afternoonRows.Count > 0)
+                sections = [new { title = "Manhã", rows = morningRows }, new { title = "Tarde", rows = afternoonRows }];
+            else if (morningRows.Count > 0)
+                sections = [new { title = "Horários Disponíveis", rows = morningRows }];
+            else
+                sections = [new { title = "Horários Disponíveis", rows = afternoonRows }];
+
+            var interactive = new
+            {
+                type = "list",
+                header = new { type = "text", text = session.TenantName },
+                body = new { text = "Selecione o melhor horário para você:" },
+                action = new
+                {
+                    button = "Ver horários",
+                    sections
+                }
+            };
+
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
+            session.State = "AWAITING_TIME";
         }
 
         private async Task HandleTimeSelectionAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
@@ -457,30 +477,39 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (!string.IsNullOrEmpty(timeStr))
             {
                 session.SelectedTime = timeStr;
-
-                var summary = $"*Resumo do Agendamento*\n\n" +
-                              $"*Serviço:* {session.ServiceName}\n" +
-                              $"*Profissional:* {session.EmployeeName ?? "Qualquer"}\n" +
-                              $"*Data:* {session.SelectedDate:dd/MM/yyyy}\n" +
-                              $"*Horário:* {timeStr}\n\n" +
-                              $"Podemos confirmar este agendamento?";
-
-                var buttons = new[]
-                {
-                    new { type = "reply", reply = new { id = "confirm", title = "Confirmar ✅" } },
-                    new { type = "reply", reply = new { id = "cancel", title = "Cancelar ❌" } }
-                };
-
-                var interactive = new
-                {
-                    type = "button",
-                    body = new { text = summary },
-                    action = new { buttons }
-                };
-
-                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
-                session.State = "AWAITING_CONFIRMATION";
+                await AskForConfirmationAsync(from, session, ct);
             }
+            else
+            {
+                // Input inválido: reenvia a lista de horários
+                await AskForTimeAsync(from, session, ct);
+            }
+        }
+
+        private async Task AskForConfirmationAsync(string from, BookingSession session, CancellationToken ct)
+        {
+            var summary = $"*Resumo do Agendamento*\n\n" +
+                          $"*Serviço:* {session.ServiceName}\n" +
+                          $"*Profissional:* {session.EmployeeName ?? "Qualquer"}\n" +
+                          $"*Data:* {session.SelectedDate:dd/MM/yyyy}\n" +
+                          $"*Horário:* {session.SelectedTime}\n\n" +
+                          $"Podemos confirmar este agendamento?";
+
+            var buttons = new[]
+            {
+                new { type = "reply", reply = new { id = "confirm", title = "Confirmar ✅" } },
+                new { type = "reply", reply = new { id = "cancel", title = "Cancelar ❌" } }
+            };
+
+            var interactive = new
+            {
+                type = "button",
+                body = new { text = summary },
+                action = new { buttons }
+            };
+
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
+            session.State = "AWAITING_CONFIRMATION";
         }
 
         private async Task HandleConfirmationAsync(string from, WhatsappMessageDto message, string contactName, BookingSession session, CancellationToken ct)
@@ -488,6 +517,13 @@ namespace VoroSalonCrm.Infrastructure.Integration
             string? choice = null;
             if (message.Type == "interactive" && message.Interactive?.ButtonReply != null)
                 choice = message.Interactive.ButtonReply.Id;
+
+            if (choice == null)
+            {
+                // Input inválido: reenvia o resumo de confirmação
+                await AskForConfirmationAsync(from, session, ct);
+                return;
+            }
 
             if (choice == "confirm")
             {
