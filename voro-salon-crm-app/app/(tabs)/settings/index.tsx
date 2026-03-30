@@ -170,6 +170,16 @@ export default function SettingsScreen() {
                   iconColor="#16a34a"
                 />
               )}
+              {isOwner && (
+                <NavRow
+                  icon="extension-puzzle-outline"
+                  label="Integrações"
+                  subtitle="Google Calendar, Apple Calendar, etc."
+                  onPress={() => router.push("/(tabs)/settings/integrations" as any)}
+                  iconBg="#f3e8ff"
+                  iconColor="#9333ea"
+                />
+              )}
             </View>
           </>
         )}

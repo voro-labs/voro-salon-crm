@@ -52,17 +52,17 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/settings/membership-plans`
 
-- [ ] Criar tela de planos de fidelidade dentro de Settings
-- [ ] Listar planos com: ícone, nome, badge "Inativo" se desativado, preço, duração em dias, sessões
-- [ ] Criar/editar plano com campos:
+- [x] Criar tela de planos de fidelidade dentro de Settings
+- [x] Listar planos com: ícone, nome, badge "Inativo" se desativado, preço, duração em dias, sessões
+- [x] Criar/editar plano com campos:
   - Nome (obrigatório)
   - Descrição
   - Preço (R$)
   - Duração em dias (obrigatório)
   - Sessões: toggle ilimitado ou número específico
   - Toggle de status ativo/inativo
-- [ ] Deletar plano com confirmação
-- [ ] Empty state com ícone de cartão de crédito
+- [x] Deletar plano com confirmação
+- [x] Empty state com ícone de cartão de crédito
 
 ---
 
@@ -92,10 +92,10 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/finance` (Botão Importar PDF)
 
-- [ ] Adicionar botão "Importar PDF" na listagem do financeiro
-- [ ] Utilizar `expo-document-picker` para selecionar arquivo PDF do dispositivo
-- [ ] Ler e processar o PDF (semelhante à web, extraindo transações, descrições e valores via RegEx base e classificações)
-- [ ] Tela/Modal de revisão local antes de despachar o `batchImport` para a API (exibindo entradas, saídas e a tabela de edição rápida)
+- [x] Adicionar botão "Importar PDF" na listagem do financeiro
+- [x] Utilizar `expo-document-picker` para selecionar arquivo PDF do dispositivo
+- [x] Ler e processar o PDF (semelhante à web, extraindo transações, descrições e valores via RegEx base e classificações)
+- [x] Tela/Modal de revisão local antes de despachar o `batchImport` para a API (exibindo entradas, saídas e a tabela de edição rápida)
 
 ---
 
@@ -112,9 +112,9 @@ Funcionalidades presentes no **front web** que ainda não existem no **app mobil
 
 **Rota web:** `/settings/integrations` (Em desenvolvimento na web)
 
-- [ ] Na tela de "Configurações", adicionar o sub-menu "Integrações"
-- [ ] Botão "Conectar com Google" para fluxo de OAuth do Google Calendar (possivelmente usando Deep Linking / Expo AuthSession).
-- [ ] Quando um agendamento for criado com sucesso, exibir botões adicionais no App: "Adicionar à Agenda (Apple - baixar .ics)" e "Adicionar ao Google Calendar".
+- [x] Na tela de "Configurações", adicionar o sub-menu "Integrações"
+- [x] Botão "Conectar com Google" para fluxo de OAuth do Google Calendar (possivelmente usando Deep Linking / Expo AuthSession).
+- [x] Quando um agendamento for criado com sucesso, exibir botões adicionais no App: "Adicionar à Agenda (Apple - baixar .ics)" e "Adicionar ao Google Calendar".
 
 ---
 

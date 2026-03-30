@@ -60,13 +60,21 @@ export default function FinanceScreen() {
       <ScreenHeader
         title="Finanças"
         right={
-          <Pressable
-            onPress={() => router.push("/(tabs)/finance/categories" as any)}
-            className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-2 border border-zinc-200"
-          >
-            <Ionicons name="pricetags-outline" size={15} color="#52525b" />
-            <Text className="text-zinc-700 font-bold text-xs">Categorias</Text>
-          </Pressable>
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => router.push("/(tabs)/finance/import-pdf" as any)}
+              className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center border border-zinc-200"
+            >
+              <Ionicons name="document-text-outline" size={16} color="#52525b" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/finance/categories" as any)}
+              className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-2 border border-zinc-200"
+            >
+              <Ionicons name="pricetags-outline" size={15} color="#52525b" />
+              <Text className="text-zinc-700 font-bold text-xs">Categorias</Text>
+            </Pressable>
+          </View>
         }
       />
 

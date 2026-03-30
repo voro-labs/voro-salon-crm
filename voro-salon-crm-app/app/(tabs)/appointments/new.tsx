@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import { View, Text, TextInput, Pressable, ActivityIndicator, Switch } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
+import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useAppointmentForm } from "hooks/use-appointment-form.hook"
 import { DatePickerInput } from "components/DatePickerInput"
@@ -13,6 +14,9 @@ import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { API_CONFIG, secureApiCall } from "lib/api"
+import * as FileSystem from "expo-file-system"
+import * as Sharing from "expo-sharing"
+import { mutate } from "swr"
 
 export default function NewAppointmentScreen() {
   const router = useRouter()
@@ -27,6 +31,54 @@ export default function NewAppointmentScreen() {
   const [time, setTime] = useState("")
   const [availableSlots, setAvailableSlots] = useState<string[] | undefined>(undefined)
   const [loadingSlots, setLoadingSlots] = useState(false)
+  const [successModalOpen, setSuccessModalOpen] = useState(false)
+
+  const handleCreate = async () => {
+    const success = await createAppointment(form)
+    if (success) {
+      mutate(API_CONFIG.ENDPOINTS.APPOINTMENTS)
+      setSuccessModalOpen(true)
+    }
+  }
+
+  const exportIcs = async () => {
+    try {
+      const start = new Date(form.scheduledDateTime)
+      const end = new Date(start.getTime() + (form.durationMinutes * 60000))
+
+      const formatDateForIcs = (date: Date) => {
+        return date.toISOString().replace(/[:-]/g, "").split(".")[0] + "Z"
+      }
+
+      const clientName = clients?.find((c: any) => c.id === form.clientId)?.name || "Cliente"
+      const serviceName = form.serviceId !== "none" ? (services?.find((s: any) => s.id === form.serviceId)?.name || "Serviço") : "Serviço"
+      
+      const icsString = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Voro Salon CRM//PT",
+        "BEGIN:VEVENT",
+        `UID:${Date.now()}@voro`,
+        `DTSTAMP:${formatDateForIcs(new Date())}`,
+        `DTSTART:${formatDateForIcs(start)}`,
+        `DTEND:${formatDateForIcs(end)}`,
+        `SUMMARY:Agendamento: ${clientName} - ${serviceName}`,
+        `DESCRIPTION:${form.description || ""}\\n\\n${form.notes || ""}`,
+        "END:VEVENT",
+        "END:VCALENDAR"
+      ].join("\\r\\n")
+
+      const fileUri = (FileSystem as any).documentDirectory + "voro-agendamento.ics"
+      await FileSystem.writeAsStringAsync(fileUri, icsString, { encoding: "utf8" as any })
+      
+      const isAvailable = await Sharing.isAvailableAsync()
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri)
+      }
+    } catch {
+      // Ignore if sharing fails
+    }
+  }
 
   const fetchAvailability = useCallback(async (d: string, serviceId: string, employeeId: string) => {
     if (!d) return
@@ -227,7 +279,7 @@ export default function NewAppointmentScreen() {
             </View>
 
             <Pressable
-              onPress={() => createAppointment(form)}
+              onPress={handleCreate}
               disabled={isCreating}
               className="h-14 rounded-2xl items-center justify-center"
               style={{ backgroundColor: isCreating ? primaryColor + "99" : primaryColor }}
@@ -237,6 +289,38 @@ export default function NewAppointmentScreen() {
 
           </KeyboardAwareScrollView>
         )}
+
+      {/* SUCCESS MODAL */}
+      {successModalOpen && (
+        <View className="absolute inset-0 bg-white z-50 flex-1 items-center justify-center px-6">
+          <View className="h-24 w-24 rounded-full bg-green-100 items-center justify-center mb-6">
+            <Ionicons name="checkmark-circle" size={48} color="#16a34a" />
+          </View>
+          <Text className="text-2xl font-black text-zinc-900 text-center mb-2">
+            Agendamento Criado!
+          </Text>
+          <Text className="text-zinc-600 text-center font-medium mb-10 px-4">
+            Você pode adicionar este evento diretamente ao seu calendário para não esquecer.
+          </Text>
+
+          <View className="w-full gap-3">
+            <Pressable
+              onPress={exportIcs}
+              className="h-14 rounded-2xl items-center justify-center flex-row bg-slate-900 w-full px-4 gap-2 active:bg-slate-800"
+            >
+              <Ionicons name="calendar-outline" size={20} color="white" />
+              <Text className="text-white font-bold text-center">Exportar para o Calendário (.ics)</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.replace("/(tabs)/appointments" as any)}
+              className="h-14 mt-2 rounded-2xl items-center justify-center flex-row w-full border border-zinc-200 bg-white"
+            >
+              <Text className="text-zinc-900 font-bold">Voltar para a Agenda</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   )
 }
