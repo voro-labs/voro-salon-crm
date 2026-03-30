@@ -132,7 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null)
           }
         } else {
-          // Token ainda válido — usa normalmente
+          // Token ainda válido — garante cookie sincronizado e usa normalmente
+          setAuthToken(token)
           applyToken(token, getRefreshToken() || undefined)
         }
       } catch (err) {
