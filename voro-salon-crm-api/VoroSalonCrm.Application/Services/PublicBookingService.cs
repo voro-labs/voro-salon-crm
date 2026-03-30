@@ -19,7 +19,8 @@ namespace VoroSalonCrm.Application.Services
         IUserTenantRepository userTenantRepository,
         IExpoPushNotificationService expoPushNotificationService,
         ITimeSlotBlockRepository timeSlotBlockRepository,
-        ITenantModuleRepository tenantModuleRepository) : IPublicBookingService
+        ITenantModuleRepository tenantModuleRepository,
+        ITenantBusinessHoursRepository businessHoursRepository) : IPublicBookingService
     {
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
@@ -110,7 +111,7 @@ namespace VoroSalonCrm.Application.Services
                 ScheduledDateTime = dto.ScheduledDateTime.ToUniversalTime(),
                 DurationMinutes = service.DurationMinutes,
                 Amount = service.Price,
-                Status = AppointmentStatus.Pending,
+                Status = AppointmentStatus.Confirmed,
                 CreatedAt = DateTimeOffset.UtcNow,
                 Description = dto.Description,
                 ReminderMinutes = dto.ReminderMinutes,
@@ -166,8 +167,26 @@ namespace VoroSalonCrm.Application.Services
             }
 
             var nowBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3));
-            var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 8, 0, 0, TimeSpan.FromHours(-3));
-            var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, 18, 0, 0, TimeSpan.FromHours(-3));
+
+            // Fetch configured business hours for this tenant and day
+            var dayOfWeek = (int)date.DayOfWeek;
+            var allHours = await businessHoursRepository.GetByTenantAsync(tenant.Id);
+            var dayHours = allHours.FirstOrDefault(h => h.DayOfWeek == dayOfWeek);
+
+            // If day is configured and marked as closed, return no slots
+            if (dayHours != null && !dayHours.IsOpen)
+                return [];
+
+            // Parse open/close times, fall back to defaults if not configured
+            var openTimeParts = (dayHours?.OpenTime ?? "08:00").Split(':');
+            var closeTimeParts = (dayHours?.CloseTime ?? "18:00").Split(':');
+            int openHour = int.Parse(openTimeParts[0]);
+            int openMin = int.Parse(openTimeParts[1]);
+            int closeHour = int.Parse(closeTimeParts[0]);
+            int closeMin = int.Parse(closeTimeParts[1]);
+
+            var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, openHour, openMin, 0, TimeSpan.FromHours(-3));
+            var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, closeHour, closeMin, 0, TimeSpan.FromHours(-3));
 
             // Início dos slots gerados: para o dia atual filtra horários já passados
             var slotStart = startOfDay;

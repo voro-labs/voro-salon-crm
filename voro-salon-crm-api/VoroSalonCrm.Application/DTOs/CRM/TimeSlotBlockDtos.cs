@@ -15,6 +15,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         DateTimeOffset EndDateTime,
         string? Reason,
         string? ClientMessage,
-        DateTimeOffset CreatedAt
+        DateTimeOffset CreatedAt,
+        int NotifiedClientsCount = 0
     );
 }

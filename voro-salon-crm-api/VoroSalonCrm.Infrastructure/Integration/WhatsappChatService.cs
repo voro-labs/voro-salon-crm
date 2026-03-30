@@ -391,7 +391,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 session.SelectedDate = date;
 
                 var slots = await _publicBookingService.GetAvailableSlotsAsync(session.TenantSlug!, date, session.ServiceId!.Value, session.EmployeeId);
-                var availableSlots = slots.Where(s => s.IsAvailable).Take(10).ToList();
+                var availableSlots = slots.Where(s => s.IsAvailable).ToList();
 
                 if (availableSlots.Count == 0)
                 {
@@ -400,12 +400,32 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     return;
                 }
 
-                var rows = availableSlots.Select(s => new
+                // StartTime está em UTC — converte para Brasília (UTC-3) antes de exibir
+                var brasilia = TimeSpan.FromHours(-3);
+                var slotsLocal = availableSlots.Select(s => s.StartTime.ToOffset(brasilia)).ToList();
+
+                // WhatsApp suporta até 10 linhas por seção — distribui os horários em seções de manhã/tarde
+                var morningRows = slotsLocal.Where(s => s.Hour < 12).Take(10).Select(s => new
                 {
-                    id = s.StartTime.ToString("HH:mm"),
-                    title = s.StartTime.ToString("HH:mm"),
-                    description = "Horário disponível"
+                    id = s.ToString("HH:mm"),
+                    title = s.ToString("HH:mm"),
+                    description = "Disponível"
                 }).ToList();
+
+                var afternoonRows = slotsLocal.Where(s => s.Hour >= 12).Take(10).Select(s => new
+                {
+                    id = s.ToString("HH:mm"),
+                    title = s.ToString("HH:mm"),
+                    description = "Disponível"
+                }).ToList();
+
+                object[] sections;
+                if (morningRows.Count > 0 && afternoonRows.Count > 0)
+                    sections = [new { title = "Manhã", rows = morningRows }, new { title = "Tarde", rows = afternoonRows }];
+                else if (morningRows.Count > 0)
+                    sections = [new { title = "Horários Disponíveis", rows = morningRows }];
+                else
+                    sections = [new { title = "Horários Disponíveis", rows = afternoonRows }];
 
                 var interactive = new
                 {
@@ -415,10 +435,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     action = new
                     {
                         button = "Ver horários",
-                        sections = new[]
-                        {
-                            new { title = "Horários Disponíveis", rows }
-                        }
+                        sections
                     }
                 };
 

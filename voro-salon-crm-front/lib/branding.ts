@@ -11,27 +11,27 @@ export interface BrandingConfig {
 
 const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
   [EstablishmentType.Salon]: {
-    productName: "Voro Salon CRM",
-    shortName: "Salon CRM",
+    productName: "Voro Salon",
+    shortName: "Voro Salon",
     establishmentLabel: "salão",
     establishmentLabelPlural: "salões",
-    description: "Sistema de gerenciamento de clientes e serviços para salões de beleza",
+    description: "Gerencie agenda, clientes e financeiro do seu salão de beleza. WhatsApp integrado, pagamentos e relatórios. Teste grátis por 14 dias.",
     hostname: "salon-crm.vorolabs.app"
   },
   [EstablishmentType.Barber]: {
-    productName: "Voro Barber CRM",
-    shortName: "Barber CRM",
+    productName: "Voro Barber",
+    shortName: "Voro Barber",
     establishmentLabel: "barbearia",
     establishmentLabelPlural: "barbearias",
-    description: "Sistema de gerenciamento de clientes e serviços para barbearias",
+    description: "Sistema completo para barbearia: agendamento online, controle de clientes e financeiro. WhatsApp Bot integrado. Teste grátis 14 dias.",
     hostname: "barber-crm.vorolabs.app"
   },
   [EstablishmentType.Petshop]: {
-    productName: "Voro Petshop CRM",
-    shortName: "Petshop CRM",
+    productName: "Voro PetShop",
+    shortName: "Voro PetShop",
     establishmentLabel: "petshop",
     establishmentLabelPlural: "petshops",
-    description: "Sistema de gerenciamento de clientes e serviços para petshops",
+    description: "Gerencie seu pet shop com agendamento, prontuários e financeiro em um só lugar. WhatsApp integrado. Teste grátis por 14 dias.",
     hostname: "petshop-crm.vorolabs.app"
   },
 }

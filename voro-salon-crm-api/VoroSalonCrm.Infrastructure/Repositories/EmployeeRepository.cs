@@ -54,11 +54,23 @@ namespace VoroSalonCrm.Infrastructure.Repositories
 
         public async Task<IEnumerable<Employee>> GetPublicEmployeesByServiceAsync(Guid tenantId, Guid serviceId)
         {
-            return await context.Employees
+            var employees = await context.Employees
                 .IgnoreQueryFilters()
                 .Include(e => e.Specialties)
                 .Where(e => e.TenantId == tenantId && e.IsActive && !e.IsDeleted && e.Specialties.Any(es => es.ServiceId == serviceId))
                 .ToListAsync();
+
+            // Se nenhum funcionário está vinculado especificamente a este serviço,
+            // retorna todos os funcionários ativos do tenant
+            if (employees.Count == 0)
+            {
+                employees = await context.Employees
+                    .IgnoreQueryFilters()
+                    .Where(e => e.TenantId == tenantId && e.IsActive && !e.IsDeleted)
+                    .ToListAsync();
+            }
+
+            return employees;
         }
     }
 }
