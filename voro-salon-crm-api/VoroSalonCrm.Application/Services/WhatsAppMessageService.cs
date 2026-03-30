@@ -89,7 +89,7 @@ namespace VoroSalonCrm.Application.Services
                 .OrderByDescending(c => c.LastMessageAt)
                 .Select(c => new WhatsAppConversationDto(
                     c.Id, c.PhoneNumber, c.ContactName, c.State,
-                    c.LastMessageBody, c.LastMessageAt, c.AppointmentId))
+                    c.LastMessageBody, c.LastMessageAt, c.AppointmentId, null))
                 .ToListAsync();
 
             return conversations;

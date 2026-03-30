@@ -568,6 +568,8 @@ type ViewMode = "kanban" | "chat"
 export default function WhatsAppKanbanPage() {
   const [showSendModal, setShowSendModal] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("kanban")
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const [chatHeight, setChatHeight] = useState(0)
 
   // Garante que mobile nunca fique preso na view de chat
   useEffect(() => {
@@ -577,6 +579,26 @@ export default function WhatsAppKanbanPage() {
     window.addEventListener("resize", check)
     return () => window.removeEventListener("resize", check)
   }, [])
+
+  // Calcula a altura disponível para o chat com base na posição real do container no DOM
+  useEffect(() => {
+    if (viewMode !== "chat") return
+
+    const updateHeight = () => {
+      if (chatContainerRef.current) {
+        const top = chatContainerRef.current.getBoundingClientRect().top
+        setChatHeight(window.innerHeight - top - 24)
+      }
+    }
+
+    // Pequeno delay para aguardar o render do PageHeader
+    const id = requestAnimationFrame(updateHeight)
+    window.addEventListener("resize", updateHeight)
+    return () => {
+      cancelAnimationFrame(id)
+      window.removeEventListener("resize", updateHeight)
+    }
+  }, [viewMode])
 
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
@@ -590,7 +612,7 @@ export default function WhatsAppKanbanPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <ModuleGuard moduleId={9}>
-        <div className={cn("flex flex-col p-4 sm:p-6 h-full", viewMode === "chat" ? "gap-4 overflow-hidden" : "gap-6")}>
+        <div className={cn("flex flex-col p-4 sm:p-6", viewMode === "chat" ? "gap-4" : "gap-6 h-full")}>
           <PageHeader
             title="WhatsApp — Atendimentos"
             description="Acompanhe em qual etapa do agendamento cada contato está."
@@ -637,7 +659,11 @@ export default function WhatsAppKanbanPage() {
           />
 
           {viewMode === "chat" ? (
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div
+              ref={chatContainerRef}
+              className="overflow-hidden"
+              style={chatHeight > 0 ? { height: chatHeight } : { height: "60vh" }}
+            >
               <ChatView conversations={conversations ?? []} isLoading={isLoading} />
             </div>
           ) : isLoading ? (
