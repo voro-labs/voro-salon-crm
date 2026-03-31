@@ -102,7 +102,7 @@ export function Main({ children }: MainProps) {
 
   const isPublicRoute = routesAllowed.some(item => pathname === item || (item !== "/" && pathname.startsWith(item)))
   const isOnboardingRoute = ONBOARDING_PATHS.some(p => pathname.startsWith(p))
-  const isAuthRoute = ["/prices", "/admin/sign-in", "/admin/forgot-password", "/admin/reset-password", "/admin/verify-2fa"].some(p => pathname.startsWith(p))
+  const isAuthRoute = ["/admin/sign-in", "/admin/forgot-password", "/admin/reset-password", "/admin/verify-2fa"].some(p => pathname.startsWith(p))
 
   // Se não estiver logado, ou se estiver logado mas em uma página de autenticação (Sign-in, etc.)
   // Renderiza o shell minimalista sem sidebar/navbar.
