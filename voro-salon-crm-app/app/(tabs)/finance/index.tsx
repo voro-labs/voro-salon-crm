@@ -3,6 +3,7 @@ import { View, Text, FlatList, Pressable, ActivityIndicator, TextInput } from "r
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import { useAuth } from "contexts/auth.context"
 import { useTransactions } from "hooks/use-transactions.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { TransactionType, TransactionStatus } from "types/DTOs/financial.interface"
@@ -11,12 +12,16 @@ import { useModuleGuard } from "hooks/use-module-guard.hook"
 
 type FilterType = "all" | "income" | "expense"
 
-const STATUS_CONFIG: Record<number, { label: string; bg: string; text: string; border: string }> = {
-  1: { label: "Pendente",  bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
-  2: { label: "Parcial",   bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
-  3: { label: "Pago",      bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" },
-  4: { label: "Vencido",   bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+const STATUS_CONFIG: Record<number | string, { label: string; bg: string; text: string; border: string }> = {
+  1: { label: "Pendente", bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
+  Pending: { label: "Pendente", bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
+  2: { label: "Parcial", bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+  3: { label: "Pago", bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" },
+  Paid: { label: "Pago", bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" },
+  4: { label: "Vencido", bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+  Overdue: { label: "Vencido", bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
   5: { label: "Cancelado", bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
+  Cancelled: { label: "Cancelado", bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
 }
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
@@ -32,13 +37,42 @@ function fmtCurrency(v: number) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+const TODAY = new Date().toISOString().split("T")[0]
+const MONTH_START = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0]
+
 export default function FinanceScreen() {
   useModuleGuard("finance")
   const router = useRouter()
+  const { primaryColor } = useTenantTheme()
+  const { user } = useAuth()
+  
+  const roleNames = user?.roles?.map((r: any) => r.name) ?? []
+  const isSalonOwner = roleNames.includes("SalonOwner") || roleNames.includes("Owner")
+
+  const txOptions = React.useMemo(() => ({
+    startDate: MONTH_START,
+    endDate: TODAY
+  }), [])
+
+  const { transactions, isLoading } = useTransactions(txOptions)
+
   const [filter, setFilter] = useState<FilterType>("all")
   const [search, setSearch] = useState("")
-  const { transactions, isLoading } = useTransactions()
-  const { primaryColor } = useTenantTheme()
+
+  const pendingPayments = (transactions || [])
+    .filter((t: any) => t.status === 0 || t.status === "Pending")
+    .reduce((acc: number, t: any) => acc + (t.amount || 0), 0)
+
+
+  if (!router) return null // Safety for early renders
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-zinc-50">
+        <ActivityIndicator color={primaryColor} />
+      </View>
+    )
+  }
 
   const isIncome = (t: any) => t.type === TransactionType.Income || t.type === 1
   const isExpense = (t: any) => t.type === TransactionType.Expense || t.type === 2
@@ -51,43 +85,81 @@ export default function FinanceScreen() {
     return matchFilter && matchSearch
   })
 
-  const totalIncome  = (transactions ?? []).filter(isIncome).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
+  const totalIncome = (transactions ?? []).filter(isIncome).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
   const totalExpense = (transactions ?? []).filter(isExpense).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
   const balance = totalIncome - totalExpense
+
+  const now = new Date()
+  const monthlyRevenue = (transactions ?? []).filter(t => {
+    if (!isIncome(t) || !t.dueDate) return false
+    const d = new Date(t.dueDate)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader
         title="Finanças"
         right={
-          <Pressable
-            onPress={() => router.push("/(tabs)/finance/categories" as any)}
-            className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-2 border border-zinc-200"
-          >
-            <Ionicons name="pricetags-outline" size={15} color="#52525b" />
-            <Text className="text-zinc-700 font-bold text-xs">Categorias</Text>
-          </Pressable>
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => router.push("/(tabs)/finance/import-pdf" as any)}
+              className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center border border-zinc-200"
+            >
+              <Ionicons name="document-text-outline" size={16} color="#52525b" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/finance/categories" as any)}
+              className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-2 border border-zinc-200"
+            >
+              <Ionicons name="pricetags-outline" size={15} color="#52525b" />
+              <Text className="text-zinc-700 font-bold text-xs">Categorias</Text>
+            </Pressable>
+          </View>
         }
       />
 
-      {/* Summary */}
-      <View className="bg-white px-5 pt-3 p-4 pb-4 border-b border-zinc-100">
-        <View className="flex-row gap-3 mb-3">
-          <View className="flex-1 bg-green-50 rounded-2xl p-4 border border-green-100">
-            <Text className="text-xs text-green-600 font-semibold mb-0.5">Receitas</Text>
+      {/* Summary Section */}
+      <View className="bg-white px-4 pt-4 pb-2 border-b border-zinc-100">
+        {/* Main Revenue Card */}
+        <View className="bg-zinc-900 rounded-[32px] p-5 mb-4 shadow-lg overflow-hidden">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Faturamento mensal</Text>
+            <View className="h-8 w-8 rounded-full bg-white/10 items-center justify-center">
+              <Ionicons name="trending-up" size={16} color="white" />
+            </View>
+          </View>
+          <Text className="text-white text-3xl font-black mb-1">
+            R$ {fmtCurrency(monthlyRevenue)}
+          </Text>
+          <Text className="text-zinc-500 text-[10px] font-medium">
+             Período: 01 a {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} de {new Date().getFullYear()}
+          </Text>
+        </View>
+
+        <View className="flex-row gap-3 mb-4">
+          {/* Card: Receitas */}
+          <View className="flex-1 bg-green-50 rounded-2xl p-3.5 border border-green-100">
+            <Text className="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-0.5">Entradas</Text>
             <Text className="text-base font-black text-green-700" numberOfLines={1}>R$ {fmtCurrency(totalIncome)}</Text>
           </View>
-          <View className="flex-1 bg-red-50 rounded-2xl p-4 border border-red-100">
-            <Text className="text-xs text-red-600 font-semibold mb-0.5">Despesas</Text>
+
+          {/* Card: Despesas */}
+          <View className="flex-1 bg-red-50 rounded-2xl p-3.5 border border-red-100">
+            <Text className="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-0.5">Saídas</Text>
             <Text className="text-base font-black text-red-700" numberOfLines={1}>R$ {fmtCurrency(totalExpense)}</Text>
           </View>
+        </View>
+
+        <View className="flex-row gap-3 mb-4">
+          {/* Card: Saldo Total */}
           <View
-            className="flex-1 rounded-2xl p-4 border"
+            className="flex-1 rounded-2xl p-3.5 border"
             style={balance >= 0
-              ? { backgroundColor: primaryColor + "15", borderColor: primaryColor + "25" }
+              ? { backgroundColor: primaryColor + "10", borderColor: primaryColor + "20" }
               : { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }}
           >
-            <Text className="text-xs font-semibold mb-0.5" style={balance >= 0 ? { color: primaryColor } : { color: "#ea580c" }}>Saldo</Text>
+            <Text className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={balance >= 0 ? { color: primaryColor } : { color: "#ea580c" }}>Saldo Geral</Text>
             <Text className="text-base font-black" style={balance >= 0 ? { color: primaryColor } : { color: "#c2410c" }} numberOfLines={1}>R$ {fmtCurrency(balance)}</Text>
           </View>
         </View>

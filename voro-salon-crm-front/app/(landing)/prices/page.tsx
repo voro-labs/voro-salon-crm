@@ -2384,9 +2384,11 @@ export default function PrecosPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={String(EstablishmentType.Salon)}>Salão de beleza</SelectItem>
+                  <SelectItem value={String(EstablishmentType.Salon)}>Cabeleireiro / Salão</SelectItem>
                   <SelectItem value={String(EstablishmentType.Barber)}>Barbearia</SelectItem>
-                  <SelectItem value={String(EstablishmentType.Petshop)}>Petshop</SelectItem>
+                  <SelectItem value={String(EstablishmentType.NailsLashes)}>Unhas e Cílios (Lashes)</SelectItem>
+                  <SelectItem value={String(EstablishmentType.EstheticsClinic)}>Estética e Clínica</SelectItem>
+                  <SelectItem value={String(EstablishmentType.SpaMassage)}>Spa e Massagem</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -56,9 +56,9 @@ export function useEmployeeDetail(employeeId?: string) {
     }))
   }
 
-  async function uploadPhoto(file: File, targetId: string): Promise<string | null> {
+  async function uploadPhoto(file: { uri: string; name: string; type: string }, targetId: string): Promise<string | null> {
     const formData = new FormData()
-    formData.append("file", file)
+    formData.append("file", file as any)
     try {
       const token = await getAuthToken()
       const response = await fetch(
@@ -81,17 +81,10 @@ export function useEmployeeDetail(employeeId?: string) {
     }
   }
 
-  async function handlePhotoUpload(e: any) { // React.ChangeEvent<HTMLInputElement> replaced by any for React Native wrapper compatibility
-    const file = e.target?.files?.[0]
-    if (!file) return
-
+  async function handlePhotoUpload(file: { uri: string; name: string; type: string }) {
     if (isNew) {
       // Just store preview for now; actual upload happens after creation
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setForm((p) => ({ ...p, photoUrl: reader.result as string }))
-      }
-      reader.readAsDataURL(file)
+      setForm((p) => ({ ...p, photoUrl: file.uri }))
     } else {
       setIsUploadingPhoto(true)
       const url = await uploadPhoto(file, employeeId!)
@@ -125,11 +118,10 @@ export function useEmployeeDetail(employeeId?: string) {
         return false
       }
 
-      // If new employee with a data: photo, upload it now
-      if (isNew && f.photoUrl.startsWith("data:")) {
+      // If new employee with a local photo, upload it now
+      if (isNew && !f.photoUrl.startsWith("http")) {
         try {
-          const blob = await (await fetch(f.photoUrl)).blob()
-          const file = new File([blob], "photo.jpg", { type: "image/jpeg" })
+          const file = { uri: f.photoUrl, name: "photo.jpg", type: "image/jpeg" }
           await uploadPhoto(file, res.data.id)
         } catch (err) {
           console.error("Erro no upload pós-criação:", err)

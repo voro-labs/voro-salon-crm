@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
+import { getServicePlaceholders } from "@/lib/branding"
 import { format } from "date-fns"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
@@ -641,7 +642,7 @@ export default function PublicBookingPage() {
               <div className="flex flex-col gap-1">
                 <Label className="text-[10px] text-muted-foreground ml-1">Observações (opcional)</Label>
                 <Textarea
-                  placeholder="Ex: Cabelo curto, barba desenhada..."
+                  placeholder={getServicePlaceholders(tenant?.establishmentType).observations}
                   rows={2}
                   value={form.description}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}

@@ -175,6 +175,24 @@ export default function SubscriptionPage() {
               </p>
             )}
 
+            <div className="pt-4 border-t border-border flex flex-col gap-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Limites do plano atual</span>
+              <div className="flex items-center gap-8">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Clientes</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {subscription.plan?.maxClients === -1 || !subscription.plan ? "Ilimitado" : subscription.plan.maxClients}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Funcionários</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {subscription.plan?.maxEmployees === -1 || !subscription.plan ? "Ilimitado" : subscription.plan.maxEmployees}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {canResubscribe && subscription.plan && (
               <div className="pt-2">
                 <Button

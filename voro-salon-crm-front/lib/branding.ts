@@ -26,20 +26,38 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     description: "Sistema completo para barbearia: agendamento online, controle de clientes e financeiro. WhatsApp Bot integrado. Teste grátis 14 dias.",
     hostname: "barber-crm.vorolabs.app"
   },
-  [EstablishmentType.Petshop]: {
-    productName: "Voro PetShop",
-    shortName: "Voro PetShop",
-    establishmentLabel: "petshop",
-    establishmentLabelPlural: "petshops",
-    description: "Gerencie seu pet shop com agendamento, prontuários e financeiro em um só lugar. WhatsApp integrado. Teste grátis por 14 dias.",
-    hostname: "petshop-crm.vorolabs.app"
+  [EstablishmentType.NailsLashes]: {
+    productName: "Voro Nails",
+    shortName: "Voro Nails",
+    establishmentLabel: "nails & cílios",
+    establishmentLabelPlural: "nails & cílios",
+    description: "Gerencie seu estúdio de unhas e cílios com agendamento online, controle de clientes e financeiro. WhatsApp integrado. Teste grátis por 14 dias.",
+    hostname: "nails-crm.vorolabs.app"
+  },
+  [EstablishmentType.EstheticsClinic]: {
+    productName: "Voro Estética",
+    shortName: "Voro Estética",
+    establishmentLabel: "estética & clínica",
+    establishmentLabelPlural: "estética & clínica",
+    description: "Gerencie sua clínica de estética com agendamento, clientes e financeiro em um só lugar. WhatsApp integrado. Teste grátis por 14 dias.",
+    hostname: "estetica-crm.vorolabs.app"
+  },
+  [EstablishmentType.SpaMassage]: {
+    productName: "Voro SPA",
+    shortName: "Voro SPA",
+    establishmentLabel: "spa & massagem",
+    establishmentLabelPlural: "spas & massagem",
+    description: "Gerencie seu SPA ou clínica de massagem com agendamento online e financeiro. WhatsApp integrado. Teste grátis por 14 dias.",
+    hostname: "spa-crm.vorolabs.app"
   },
 }
 
 const HOSTNAME_MAP: Record<string, EstablishmentType> = {
   "salon-crm.vorolabs.app": EstablishmentType.Salon,
   "barber-crm.vorolabs.app": EstablishmentType.Barber,
-  "petshop-crm.vorolabs.app": EstablishmentType.Petshop,
+  "nails-crm.vorolabs.app": EstablishmentType.NailsLashes,
+  "estetica-crm.vorolabs.app": EstablishmentType.EstheticsClinic,
+  "spa-crm.vorolabs.app": EstablishmentType.SpaMassage,
 }
 
 export function getBrandingByType(type: EstablishmentType): BrandingConfig {
@@ -59,4 +77,31 @@ export function getEstablishmentTypeByHostname(hostname: string): EstablishmentT
 export function getClientBranding(): BrandingConfig {
   if (typeof window === "undefined") return BRANDING_MAP[EstablishmentType.Salon]
   return getBrandingByHostname(window.location.hostname)
+}
+
+const SERVICE_PLACEHOLDERS: Record<EstablishmentType, { name: string; observations: string }> = {
+  [EstablishmentType.Salon]: {
+    name: "Ex: Corte Feminino, Coloração, Escova",
+    observations: "Ex: Franja mais curta, mechas douradas...",
+  },
+  [EstablishmentType.Barber]: {
+    name: "Ex: Corte Masculino, Barba, Pigmentação",
+    observations: "Ex: Cabelo curto nas laterais, barba desenhada...",
+  },
+  [EstablishmentType.NailsLashes]: {
+    name: "Ex: Manicure, Pedicure, Alongamento, Cílios",
+    observations: "Ex: Unhas em gel, lashes natural...",
+  },
+  [EstablishmentType.EstheticsClinic]: {
+    name: "Ex: Limpeza de Pele, Depilação, Botox",
+    observations: "Ex: Pele sensível, evitar cera quente...",
+  },
+  [EstablishmentType.SpaMassage]: {
+    name: "Ex: Massagem Relaxante, Drenagem",
+    observations: "Ex: Foco em relaxamento, óleos aromáticos...",
+  },
+}
+
+export function getServicePlaceholders(type: EstablishmentType | number) {
+  return SERVICE_PLACEHOLDERS[type as EstablishmentType] ?? SERVICE_PLACEHOLDERS[EstablishmentType.Salon]
 }

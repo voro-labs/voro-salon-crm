@@ -23,7 +23,10 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<IEnumerable<TimeSlotBlockDto>> GetAllAsync()
         {
-            var blocks = await _repository.Query(_ => true).OrderBy(b => b.StartDateTime).ToListAsync();
+            var blocks = await _repository.Query(_ => true)
+                .Include(b => b.Employee)
+                .OrderBy(b => b.StartDateTime)
+                .ToListAsync();
             return blocks.Select(b => MapToDto(b, 0));
         }
 
@@ -41,6 +44,7 @@ namespace VoroSalonCrm.Application.Services
                 .Query(a =>
                     a.Status != AppointmentStatus.Cancelled &&
                     a.Status != AppointmentStatus.Completed &&
+                    (dto.EmployeeId == null || a.EmployeeId == dto.EmployeeId) &&
                     a.ScheduledDateTime < dto.EndDateTime &&
                     a.ScheduledDateTime.AddMinutes(a.DurationMinutes) > dto.StartDateTime)
                 .Include(a => a.Client)
@@ -63,6 +67,7 @@ namespace VoroSalonCrm.Application.Services
                 EndDateTime = dto.EndDateTime,
                 Reason = dto.Reason,
                 ClientMessage = dto.ClientMessage,
+                EmployeeId = dto.EmployeeId,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -127,6 +132,6 @@ namespace VoroSalonCrm.Application.Services
         }
 
         private static TimeSlotBlockDto MapToDto(TimeSlotBlock b, int notifiedCount) =>
-            new(b.Id, b.StartDateTime, b.EndDateTime, b.Reason, b.ClientMessage, b.CreatedAt, notifiedCount);
+            new(b.Id, b.StartDateTime, b.EndDateTime, b.Reason, b.ClientMessage, b.CreatedAt, b.EmployeeId, b.Employee?.Name, notifiedCount);
     }
 }

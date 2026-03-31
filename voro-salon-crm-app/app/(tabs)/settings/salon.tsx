@@ -18,6 +18,17 @@ import { useSettings } from "hooks/use-settings.hook"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { PhoneInput } from "components/PhoneInput"
 import { CountrySelector } from "components/CountrySelector"
+import { ImagePickerInput } from "components/ImagePickerInput"
+import { SelectPickerInput } from "components/SelectPickerInput"
+import { useAuth } from "@/contexts/auth.context"
+
+const ESTABLISHMENT_OPTIONS = [
+  { label: "Cabeleireiro / Salão", value: 0 },
+  { label: "Barbearia", value: 1 },
+  { label: "Unhas e Cílios (Lashes)", value: 2 },
+  { label: "Estética e Clínica", value: 3 },
+  { label: "Spa e Massagem", value: 4 },
+]
 
 // ── Color palette for the picker ──────────────────────────────────────────────
 const COLOR_PALETTE: { label: string; hex: string }[] = [
@@ -195,7 +206,14 @@ export default function SalonSettingsScreen() {
     isSaving,
     isLoading,
     saveTenant,
+    handleLogoUpload,
+    isUploadingLogo,
+    setEstablishmentType,
   } = useSettings()
+  const { user } = useAuth()
+
+  const roleNames = user?.roles?.map((r) => r.name) ?? []
+  const isOwner = roleNames.includes("Owner")
   const { primaryColor } = useTenantTheme()
 
   const [primaryPickerOpen, setPrimaryPickerOpen] = useState(false)
@@ -324,20 +342,33 @@ export default function SalonSettingsScreen() {
                 />
               </View>
             </View>
+            { isOwner && (
+              <View className="px-4 pt-4 pb-5 border-b border-zinc-50 z-10">
+                <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+                  Tipo do Negócio *
+                </Text>
+                <SelectPickerInput
+                  placeholder="Selecione o nicho do salão"
+                  value={formData.establishmentType?.toString()}
+                  onChange={(val) => setEstablishmentType(Number(val))}
+                  options={ESTABLISHMENT_OPTIONS.map((o) => ({ label: o.label, id: o.value.toString() }))}
+                />
+              </View>
+            )}
 
             {/* Logo URL */}
-            <View className="px-4 pt-3 p-4 pb-4">
-              <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">
-                Logo (URL)
+            <View className="px-4 pt-4 pb-5">
+              <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+                Logo do Estabelecimento
               </Text>
-              <TextInput
-                className="text-zinc-900 font-semibold text-sm"
-                placeholder="https://exemplo.com/logo.png"
-                placeholderTextColor="#d4d4d8"
-                autoCapitalize="none"
-                keyboardType="url"
+              <ImagePickerInput
                 value={formData.logoUrl}
-                onChangeText={(v) => setForm((p) => (p ? { ...p, logoUrl: v } : null))}
+                onChange={handleLogoUpload}
+                isUploading={isUploadingLogo}
+                label="Trocar Logo"
+                fallbackIcon="image-outline"
+                rounded="2xl"
+                size={80}
               />
             </View>
           </View>

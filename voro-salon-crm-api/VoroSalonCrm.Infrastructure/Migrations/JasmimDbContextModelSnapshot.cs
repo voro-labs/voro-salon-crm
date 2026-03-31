@@ -1454,6 +1454,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("TIMEZONE('utc', NOW())");
 
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -1468,6 +1471,8 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
 
                     b.HasIndex("TenantId");
 
@@ -2203,11 +2208,18 @@ namespace VoroSalonCrm.Infrastructure.Migrations
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TimeSlotBlock", b =>
                 {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Employee");
 
                     b.Navigation("Tenant");
                 });

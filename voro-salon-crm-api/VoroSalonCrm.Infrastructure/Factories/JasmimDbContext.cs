@@ -667,6 +667,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(tsb => tsb.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(tsb => tsb.Employee)
+                 .WithMany()
+                 .HasForeignKey(tsb => tsb.EmployeeId)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ---------------------------

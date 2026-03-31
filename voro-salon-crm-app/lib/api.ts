@@ -47,6 +47,12 @@ export const API_CONFIG = {
     NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
     CLIENT_MEMBERSHIP_PLANS: "/clientmemberships/plans",
     CLIENT_MEMBERSHIPS: "/clientmemberships",
+    WHATSAPP_CONVERSATIONS: "/whatsapp/conversations",
+    WHATSAPP_MESSAGES: "/whatsapp/messages",
+    WHATSAPP_TEMPLATES: "/whatsapp/templates",
+    WHATSAPP_SEND_TEMPLATE: "/whatsapp/templates/send",
+    TIME_SLOT_BLOCKS: "/timeslotblocks",
+    BUSINESS_HOURS: "/business-hours",
   },
   HEADERS: {
     "Content-Type": "application/json",

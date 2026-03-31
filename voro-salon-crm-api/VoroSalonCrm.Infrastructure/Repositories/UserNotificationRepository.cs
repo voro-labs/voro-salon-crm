@@ -55,5 +55,15 @@ namespace VoroSalonCrm.Infrastructure.Repositories
                     .SetProperty(n => n.DeletedAt, DateTime.UtcNow)
                 );
         }
+
+        public async Task DeleteAllAsync(Guid userId)
+        {
+            await _dbSet
+                .Where(n => n.UserId == userId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(n => n.IsDeleted, true)
+                    .SetProperty(n => n.DeletedAt, DateTime.UtcNow)
+                );
+        }
     }
 }

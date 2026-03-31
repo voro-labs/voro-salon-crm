@@ -344,6 +344,35 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpPost("messages")]
+        [Authorize]
+        public async Task<IActionResult> SendMessage(
+            [FromServices] ICurrentUserService currentUserService,
+            [FromServices] IWhatsappService whatsappService,
+            [FromBody] SendWhatsAppMessageDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.To) || string.IsNullOrWhiteSpace(dto.Body))
+                return ResponseViewModel<object>.Fail("Destinatário e mensagem são obrigatórios.").ToActionResult();
+
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var tenant = await _tenantRepository.GetByIdAsync(true, tenantId);
+                var phoneNumberId = tenant?.WhatsappPhoneNumberId;
+
+                var success = await whatsappService.SendTextMessageAsync(dto.To, dto.Body, phoneNumberId);
+                
+                if (success)
+                    return ResponseViewModel<object>.SuccessWithMessage("Mensagem enviada.", null).ToActionResult();
+                
+                return ResponseViewModel<object>.Fail("Falha ao enviar mensagem via WhatsApp.").ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
         [HttpPost("flow")]
         public async Task<IActionResult> ReceiveFlow([FromBody] FlowRequestDto request)
         {

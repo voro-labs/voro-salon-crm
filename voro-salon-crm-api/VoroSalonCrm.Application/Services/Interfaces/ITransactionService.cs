@@ -20,5 +20,8 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<TransactionDto> CancelAsync(Guid id, CancellationToken ct = default);
         
         Task DeleteAsync(Guid id, CancellationToken ct = default);
+
+        /// <summary>Importa múltiplas transações de um extrato bancário, deduplica por chave.</summary>
+        Task<BatchImportResultDto> BatchImportAsync(IEnumerable<BatchImportTransactionItemDto> items, CancellationToken ct = default);
     }
 }

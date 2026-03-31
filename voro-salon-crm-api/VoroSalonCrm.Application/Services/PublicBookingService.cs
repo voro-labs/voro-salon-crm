@@ -114,6 +114,7 @@ namespace VoroSalonCrm.Application.Services
                 Status = AppointmentStatus.Confirmed,
                 CreatedAt = DateTimeOffset.UtcNow,
                 Description = dto.Description,
+                Notes = dto.Notes,
                 ReminderMinutes = dto.ReminderMinutes,
             };
 

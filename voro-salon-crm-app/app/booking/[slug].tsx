@@ -86,7 +86,9 @@ function formatDate(iso: string): string {
 }
 
 function formatTime(iso: string): string {
-  return iso?.slice(11, 16) ?? ""
+  if (!iso) return ""
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
 function generateCalendarDates(count = 30): string[] {
@@ -102,6 +104,26 @@ function generateCalendarDates(count = 30): string[] {
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+const MONTHS_FULL = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+]
+
+function toISODate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+function buildCalendarDays(year: number, month: number): (number | null)[] {
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: (number | null)[] = Array(firstDay).fill(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+  return cells
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -125,6 +147,10 @@ export default function BookingScreen() {
   const [countryModalOpen, setCountryModalOpen] = useState(false)
   const [countrySearch, setCountrySearch] = useState("")
 
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [viewYear, setViewYear] = useState(new Date().getFullYear())
+  const [viewMonth, setViewMonth] = useState(new Date().getMonth())
+
   const [form, setForm] = useState<FormState>({
     serviceId: "",
     serviceName: "",
@@ -141,9 +167,9 @@ export default function BookingScreen() {
   const COUNTRIES = Object.entries(flags).map(([code, data]) => ({ code, ...data }))
   const filteredCountries = countrySearch.trim()
     ? COUNTRIES.filter((c) =>
-        c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
-        c.dialCode.includes(countrySearch)
-      )
+      c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.dialCode.includes(countrySearch)
+    )
     : COUNTRIES
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -184,12 +210,22 @@ export default function BookingScreen() {
       setLoadingSlots(true)
       try {
         const params = new URLSearchParams({ tenantSlug: slug, date: form.date })
-        if (form.serviceId) params.set("serviceId", form.serviceId)
         if (form.employeeId && form.employeeId !== "none") params.set("employeeId", form.employeeId)
         const data = await publicFetch<Slot[]>(
           `${API_CONFIG.ENDPOINTS.PUBLIC_AVAILABILITY}?${params.toString()}`
         )
-        setSlots(data.filter((s) => s.isAvailable))
+        // Check if today and filter past slots
+        const todayStr = new Date().toLocaleDateString('en-CA')
+        const isToday = form.date === todayStr
+        const now = new Date()
+
+        const availableSlots = data.filter((s) => {
+          if (!s.isAvailable) return false
+          if (isToday && new Date(s.startTime) < now) return false
+          return true
+        })
+
+        setSlots(availableSlots)
       } catch {
         setSlots([])
       } finally {
@@ -488,55 +524,47 @@ export default function BookingScreen() {
       {/* ── DATE ────────────────────────────────────────────────────────── */}
       {step === "DATE" && (
         <View className="flex-1">
-          <View className="px-5 pt-5 pb-3">
-            <Text className="text-2xl font-black text-zinc-900 mb-1">Escolha o dia</Text>
-            <Text className="text-zinc-500 font-medium">
-              Quando você quer agendar?
-            </Text>
+          <View className="px-5 py-8 items-center justify-center">
+            <Pressable
+              onPress={() => {
+                const base = form.date ? new Date(form.date + "T12:00:00") : new Date()
+                setViewYear(base.getFullYear())
+                setViewMonth(base.getMonth())
+                setCalendarOpen(true)
+              }}
+              className="w-full bg-white border border-zinc-200 rounded-3xl p-6 items-center shadow-sm active:bg-zinc-50"
+            >
+              <View className="h-16 w-16 rounded-full bg-zinc-50 items-center justify-center mb-4 border border-zinc-100">
+                <Ionicons name="calendar-outline" size={32} color={primary} />
+              </View>
+
+              <Text className="text-zinc-400 font-bold text-xs uppercase tracking-widest mb-1">
+                Data selecionada
+              </Text>
+
+              <Text className="text-2xl font-black text-zinc-900 text-center">
+                {form.date ? formatDate(form.date) : "Nenhuma data selecionada"}
+              </Text>
+
+              <View className="mt-4 px-4 py-2 bg-zinc-100 rounded-xl flex-row items-center gap-2">
+                <Text className="text-zinc-600 font-bold text-sm">Alterar data</Text>
+                <Ionicons name="chevron-down" size={14} color="#71717a" />
+              </View>
+            </Pressable>
           </View>
 
-          <FlatList
-            data={generateCalendarDates(60)}
-            keyExtractor={(item) => item}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ padding: 16, gap: 8 }}
-            numColumns={4}
-            columnWrapperStyle={{ gap: 8 }}
-            renderItem={({ item }) => {
-              const isSelected = form.date === item
-              const d = new Date(item + "T12:00:00")
-              const isToday = item === new Date().toISOString().slice(0, 10)
-              return (
-                <Pressable
-                  onPress={() => handleDateSelect(item)}
-                  className="flex-1 py-3 rounded-2xl items-center border"
-                  style={{
-                    backgroundColor: isSelected ? primary : "white",
-                    borderColor: isSelected ? primary : "#f4f4f5",
-                  }}
-                >
-                  <Text
-                    className="text-xs font-bold uppercase"
-                    style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "#a1a1aa" }}
-                  >
-                    {WEEKDAYS[d.getDay()]}
-                  </Text>
-                  <Text
-                    className="text-lg font-black"
-                    style={{ color: isSelected ? "white" : "#18181b" }}
-                  >
-                    {d.getDate()}
-                  </Text>
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "#a1a1aa" }}
-                  >
-                    {isToday ? "Hoje" : MONTHS[d.getMonth()]}
-                  </Text>
-                </Pressable>
-              )
-            }}
-          />
+          {form.date ? (
+            <View className="px-5 mt-auto pb-10">
+              <Pressable
+                onPress={() => setStep("TIME")}
+                className="h-14 rounded-2xl items-center justify-center flex-row gap-2"
+                style={{ backgroundColor: primary }}
+              >
+                <Text className="text-white font-black text-base">Ver horários disponíveis</Text>
+                <Ionicons name="arrow-forward" size={18} color="white" />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       )}
 
@@ -571,7 +599,7 @@ export default function BookingScreen() {
               </Pressable>
             </View>
           ) : (
-            <View className="flex-row flex-wrap gap-3">
+            <View className="flex-row flex-wrap justify-center gap-3">
               {slots.map((slot) => {
                 const time = formatTime(slot.startTime)
                 const isSelected = form.time === time
@@ -868,6 +896,99 @@ export default function BookingScreen() {
               )
             }}
           />
+        </View>
+      </Modal>
+
+      {/* ── Month Calendar Modal ───────────────────────────────────────── */}
+      <Modal
+        visible={calendarOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setCalendarOpen(false)}
+      >
+        <View className="flex-1 bg-white">
+          <View className="flex-row items-center justify-between px-5 pt-6 pb-3 border-b border-zinc-100">
+            <Text className="text-lg font-black text-zinc-900">Selecionar Data</Text>
+            <Pressable
+              onPress={() => setCalendarOpen(false)}
+              className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center"
+            >
+              <Ionicons name="close" size={20} color="#71717a" />
+            </Pressable>
+          </View>
+
+          <View className="px-5 py-6">
+            <View className="flex-row items-center justify-between mb-8">
+              <Pressable
+                onPress={() => {
+                  if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
+                  else setViewMonth(m => m - 1)
+                }}
+                className="h-10 w-10 bg-zinc-50 rounded-2xl items-center justify-center border border-zinc-100"
+              >
+                <Ionicons name="chevron-back" size={20} color="#18181b" />
+              </Pressable>
+              <Text className="text-lg font-black text-zinc-900">
+                {MONTHS_FULL[viewMonth]} {viewYear}
+              </Text>
+              <Pressable
+                onPress={() => {
+                  if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
+                  else setViewMonth(m => m + 1)
+                }}
+                className="h-10 w-10 bg-zinc-50 rounded-2xl items-center justify-center border border-zinc-100"
+              >
+                <Ionicons name="chevron-forward" size={20} color="#18181b" />
+              </Pressable>
+            </View>
+
+            <View className="flex-row mb-4">
+              {WEEKDAYS.map((d) => (
+                <View key={d} className="flex-1 items-center">
+                  <Text className="text-xs font-bold text-zinc-400">{d}</Text>
+                </View>
+              ))}
+            </View>
+
+            {Array.from({ length: Math.ceil(buildCalendarDays(viewYear, viewMonth).length / 7) }, (_, row) => (
+              <View key={row} className="flex-row mb-2">
+                {buildCalendarDays(viewYear, viewMonth).slice(row * 7, row * 7 + 7).map((day, col) => {
+                  const dObj = day ? new Date(viewYear, viewMonth, day) : null
+                  const iso = dObj ? toISODate(dObj) : null
+                  const isSelected = iso === form.date
+                  const isPast = dObj ? dObj < new Date(new Date().setHours(0, 0, 0, 0)) : false
+
+                  return (
+                    <View key={col} className="flex-1 items-center">
+                      {day ? (
+                        <Pressable
+                          onPress={() => {
+                            if (isPast) return
+                            handleDateSelect(iso!)
+                            setCalendarOpen(false)
+                          }}
+                          className="h-11 w-11 rounded-2xl items-center justify-center"
+                          style={[
+                            isSelected ? { backgroundColor: primary } : {},
+                            isPast ? { opacity: 0.2 } : {}
+                          ]}
+                        >
+                          <Text
+                            className="text-sm font-bold"
+                            style={{ color: isSelected ? "white" : "#18181b" }}
+                          >
+                            {day}
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <View className="h-11 w-11" />
+                      )}
+                    </View>
+                  )
+                })}
+              </View>
+            ))}
+          </View>
         </View>
       </Modal>
     </SafeAreaView>

@@ -27,6 +27,7 @@ import {
   ShieldOff,
   Clock,
   MessageCircle,
+  MessageSquare,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
@@ -406,13 +407,19 @@ export default function ConfiguracoesPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={String(EstablishmentType.Salon)}>
-                            {getBrandingByType(EstablishmentType.Salon).productName}
+                            Cabeleireiro / Salão
                           </SelectItem>
                           <SelectItem value={String(EstablishmentType.Barber)}>
-                            {getBrandingByType(EstablishmentType.Barber).productName}
+                            Barbearia
                           </SelectItem>
-                          <SelectItem value={String(EstablishmentType.Petshop)}>
-                            {getBrandingByType(EstablishmentType.Petshop).productName}
+                          <SelectItem value={String(EstablishmentType.NailsLashes)}>
+                            Unhas e Cílios (Lashes)
+                          </SelectItem>
+                          <SelectItem value={String(EstablishmentType.EstheticsClinic)}>
+                            Estética e Clínica
+                          </SelectItem>
+                          <SelectItem value={String(EstablishmentType.SpaMassage)}>
+                            Spa e Massagem
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -1075,6 +1082,19 @@ export default function ConfiguracoesPage() {
                       ID da conta do WhatsApp Business no Meta Business Manager.
                     </p>
                   </div>
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold">Templates de Mensagem</span>
+                      <p className="text-xs text-muted-foreground">Configurar e gerenciar modelos de mensagens do WhatsApp</p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/settings/whatsapp">
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Gerenciar Templates
+                      </Link>
+                    </Button>
+                  </div>
+
                   <div className="flex justify-end pt-2">
                     <Button onClick={handleSaveWhatsapp} disabled={savingWp} className="gap-2">
                       {savingWp && <Loader2 className="h-4 w-4 animate-spin" />}

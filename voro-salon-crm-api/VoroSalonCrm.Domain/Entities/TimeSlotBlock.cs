@@ -17,6 +17,9 @@ namespace VoroSalonCrm.Domain.Entities
         /// <summary>Mensagem exibida aos clientes na tela de agendamento online.</summary>
         public string? ClientMessage { get; set; }
 
+        public Guid? EmployeeId { get; set; }
+        public Employee? Employee { get; set; }
+
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 }

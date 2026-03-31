@@ -99,5 +99,20 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+        [HttpDelete("delete-all")]
+        public async Task<IActionResult> DeleteAll()
+        {
+            try
+            {
+                await userNotificationService.DeleteAllAsync();
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("All notifications deleted.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

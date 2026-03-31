@@ -6,7 +6,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         [Required] DateTimeOffset StartDateTime,
         [Required] DateTimeOffset EndDateTime,
         string? Reason,
-        string? ClientMessage
+        string? ClientMessage,
+        Guid? EmployeeId = null
     );
 
     public record TimeSlotBlockDto(
@@ -16,6 +17,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Reason,
         string? ClientMessage,
         DateTimeOffset CreatedAt,
+        Guid? EmployeeId = null,
+        string? EmployeeName = null,
         int NotifiedClientsCount = 0
     );
 }

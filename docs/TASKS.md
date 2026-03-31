@@ -1,110 +1,129 @@
-# Tasks
+# Tasks - Voro Salon CRM
 
-## Concluídas
+## 1. Financeiro — Importação de Extrato Bancário (PDF)
 
-- [x] **Enviar dados de rastreamento UTM/fbclid ao checkout**
-  - Em `app/(landing)/prices/page.tsx`, `handleCheckout` agora lê `localStorage.getItem("voro_tracking")` e inclui os campos `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `fbclid` no payload.
-  - Após envio bem-sucedido, remove a chave do localStorage.
+**Objetivo:** Permitir que o usuário faça upload de um extrato bancário em PDF, processe tudo no navegador (client-side) e envie apenas os dados estruturados para a API salvar.
 
-- [x] **Apagar notificações ao excluir cliente**
-  - `ClientService.DeleteAsync` agora chama `_userNotificationService.DeleteByRelatedEntityIdAsync(id)` após o soft-delete.
-  - Novos métodos adicionados: `IUserNotificationRepository.DeleteByRelatedEntityIdAsync`, `IUserNotificationService.DeleteByRelatedEntityIdAsync`.
+### Frontend
+- [x] Componente de upload de PDF na página `/finance`
+- [x] Processar o PDF no navegador usando biblioteca como `pdf.js` ou `pdfjs-dist` (sem enviar o arquivo para o servidor)
+- [x] Parser de extrato: extrair linhas de transação (data, descrição, valor, débito/crédito)
+- [x] Suporte inicial aos formatos mais comuns (ex: Itaú, Bradesco, Nubank, Inter)
+- [x] Tela de revisão: exibir as transações extraídas antes de confirmar
+- [x] Sugestão automática de categoria com base na descrição (ex: "IFOOD" → Alimentação)
+- [x] Permitir editar categoria, tipo e descrição antes de salvar
+- [x] Enviar apenas o array de transações processadas para a API (não enviar o PDF)
+- [x] Deixe mais ou menos planejados para adicionar a IA no futuro para categorização
 
-- [x] **Deletar notificações selecionadas na tela de notificações**
-  - `app/notifications/page.tsx` reescrita com suporte a seleção múltipla (clique longo ativa modo seleção), botão "Selecionar todas" e "Excluir selecionadas".
-  - Hook `use-user-notifications.hook.ts` com novo método `deleteMany(ids)`.
-  - Backend: endpoint `DELETE /notifications` aceita array de IDs (`IUserNotificationRepository.DeleteManyAsync`).
+### Backend
+- [x] Endpoint `POST /api/v*/Transactions/batch` para receber e salvar múltiplas transações de uma vez
+- [x] Validação e deduplicação básica (evitar duplicatas por data + valor + descrição)
 
-- [x] **Área de configuração do WhatsApp Bot (Owner)**
-  - Nova aba "WhatsApp" em `app/settings/page.tsx` (visível para SalonOwner/Owner).
-  - `TenantDto` e `UpdateTenantDto` agora expõem `WhatsappPhoneNumberId` e `WhatsappBusinessAccountId`.
-  - `TenantService.UpdateAsync` e `TenantController` atualizados para persistir esses campos.
+---
 
-- [x] **Aviso de configuração incompleta do WhatsApp na tela do bot**
-  - Em `app/whatsapp/page.tsx`, banner de alerta exibido se `tenant?.whatsappPhoneNumberId` ou `whatsappBusinessAccountId` estiverem vazios.
-  - Botão "Solicitar configuração" abre mailto para suporte@vorolabs.com.br.
-  - Botão "Configurar agora" redireciona para `/settings?tab=whatsapp`.
+## 2. Novos Tipos de Estabelecimento ✅
 
-- [x] **Corrigir loading infinito na tela de sign-in após refresh token**
-  - `app/admin/sign-in/page.tsx`: substituído `router.replace` por `window.location.replace` no useEffect de redirecionamento.
-  - Guard na linha 83 simplificado para `if (authLoading) return <LoadingSimple />` (não bloqueia mais quando `user?.token` já está presente e o redirect já foi disparado).
+**Objetivo:** Adicionar suporte a _Nails Design_ e _Estética Feminina_ como tipos de estabelecimento.
 
-- [x] **Tabela de templates do WhatsApp**
-  - Entidade `WhatsAppTemplate` criada (`Domain/Entities/WhatsAppTemplate.cs`).
-  - Migration EF Core `AddWhatsAppTemplates` gerada.
-  - Repositório `IWhatsAppTemplateRepository` + `WhatsAppTemplateRepository`.
-  - Serviço `IWhatsAppTemplateService` + `WhatsAppTemplateService` (serializa `ParamLabels` como JSON).
-  - Endpoints CRUD substituem lista hardcoded: `GET/POST /whatsapp/templates`, `PUT/DELETE /whatsapp/templates/{id}`.
-  - Tela de gerenciamento em `app/whatsapp/templates/page.tsx` (listagem, criar, editar, excluir).
-  - Botão "Templates" adicionado na `app/whatsapp/page.tsx`.
+### Backend
+- [x] Adicionar `NailsDesign = 3` e `FemaleEsthetics = 4` ao enum `EstablishmentType`
+- [x] Criar migration `AddEstablishmentTypeTenant` para atualizar o banco
+- [x] Seed/defaults não requerido (sem tabela de serviços por tipo)
 
-## Pendentes
+### Frontend
+- [x] Adicionar as opções no seletor de tipo de estabelecimento (settings)
+- [x] Exibir label amigável: "Nails Design" e "Estética Feminina"
+- [x] Tipos mapeados em `lib/branding.ts`
 
-- [ ] **Deploy ambiente dev — configuração manual no Fly.io e Vercel**
+---
 
-  **O que já foi criado:**
-  - `voro-salon-crm-api/fly.dev.toml` — config do Fly para `dev-voro-salon-crm-api` (512 MB RAM)
-  - `.github/workflows/deploy-dev.yml` — dispara no push para `dev`, só gerencia a API no Fly.io
-  - Vercel é gerenciado pela **integração nativa** (GitHub App já instalado), sem job extra no workflow
+## 3. Vínculo de Agendamento com Google Calendar / Apple Calendar
 
-  **Arquitetura de domínios:**
-  | Branch | Fly.io | Vercel (frontend) |
-  |--------|--------|-------------------|
-  | `main` | `voro-salon-crm-api` | `salon-crm.vorolabs.app` (production) |
-  | `dev`  | `dev-voro-salon-crm-api` | `dev-salon-crm.vorolabs.app` (preview com domínio fixo) |
+**Objetivo:** Ao confirmar um agendamento, criar automaticamente um evento no Google Calendar ou Apple Calendar do cliente/salão.
 
-  ---
+### Backend
+- [ ] Integração com Google Calendar API (OAuth 2.0 para o tenant)
+  - [ ] Endpoint de autorização OAuth (`/api/integrations/google-calendar/auth`)
+  - [ ] Salvar tokens de acesso por tenant (`GoogleCalendarToken` na entidade de settings)
+  - [ ] Criar evento ao confirmar agendamento
+  - [ ] Atualizar evento ao reagendar
+  - [ ] Deletar evento ao cancelar
+- [ ] Geração de arquivo `.ics` (iCalendar) para Apple Calendar
+  - [ ] Endpoint `GET /api/appointments/{id}/ical` retorna arquivo `.ics`
+  - [ ] Enviar link de download por WhatsApp/notificação ao confirmar agendamento
 
-  ### Passo 1 — Criar app no Fly.io
-  ```bash
-  fly apps create dev-voro-salon-crm-api --org <sua-org>
-  ```
+### Frontend
+- [ ] Página de configurações `/settings/integrations` com botão "Conectar Google Calendar"
+- [ ] Exibir status da conexão (conectado / desconectado)
+- [ ] Na confirmação do agendamento, exibir botão "Adicionar ao Google Calendar" e "Adicionar ao Apple Calendar"
 
-  ### Passo 2 — Adicionar domínios dev no Vercel (mesmo projeto, sem criar novo)
-  No projeto atual do Vercel → **Settings → Domains**:
-  1. Adicionar `dev-salon-crm.vorolabs.app`
-     - No campo **Git Branch** digitar: `dev`
-  2. Adicionar `dev-barber-crm.vorolabs.app`
-     - Git Branch: `dev`
-  3. Adicionar `dev-petshop-crm.vorolabs.app`
-     - Git Branch: `dev`
+---
 
-  Assim toda vez que a branch `dev` for atualizada, o Vercel publica automaticamente nesses domínios como "preview com domínio fixo".
+## 4. WhatsApp — Detectar Agendamento Pendente ao Entrar em Contato ✅
 
-  ### Passo 3 — Configurar environment variables no Vercel para preview
-  Em **Settings → Environment Variables**, adicionar/atualizar com scope **Preview**:
-  - `NEXT_PUBLIC_BASE_API_URL` = `https://dev-voro-salon-crm-api.fly.dev`
-  - `NEXT_PUBLIC_WEB_URL` = `https://dev-salon-crm.vorolabs.app`
+**Objetivo:** Quando um cliente envia mensagem pelo WhatsApp e já possui um agendamento `Pending` ou `Confirmed`, oferecer as opções de cancelar ou reagendar antes de seguir o fluxo normal.
 
-  > Importante: manter os valores de produção no scope **Production** (apontando para a API de prod).
+### Backend
+- [x] No início do fluxo WhatsApp, verificar se o cliente (pelo número de telefone) possui agendamento `Pending` ou `Confirmed`
+- [x] Novo estado de conversa: `AWAITING_APPOINTMENT_ACTION`
+- [x] Enviar mensagem com opções numeradas:
+  - "1 - Cancelar agendamento"
+  - "2 - Reagendar agendamento"
+  - "3 - Continuar sem alterar"
+- [x] Fluxo de cancelamento: confirmar e atualizar status para `Cancelled`
+- [x] Fluxo de reagendamento: inicia novo fluxo de agendamento
+- [x] Exibir resumo do agendamento atual (serviço, data, horário) na mensagem de detecção
 
-  ### Passo 4 — Configurar DNS
-  Adicionar CNAMEs no provedor de domínio (Cloudflare, etc.):
-  ```
-  dev-salon-crm.vorolabs.app   → cname.vercel-dns.com
-  dev-barber-crm.vorolabs.app  → cname.vercel-dns.com
-  dev-petshop-crm.vorolabs.app → cname.vercel-dns.com
-  ```
+### Frontend
+- [ ] Na tela de conversa WhatsApp (`/whatsapp`), indicar visualmente quando a conversa está no estado `AWAITING_APPOINTMENT_ACTION`
 
-  ### Passo 5 — Adicionar secrets ao GitHub
-  Acesse: repositório → Settings → Secrets and variables → Actions
+---
 
-  | Secret | Valor |
-  |--------|-------|
-  | `MERCADOPAGOSETTINGS__BACKURL__DEV` | URL de retorno do MercadoPago para dev |
+## 5. WhatsApp — Adicionar Descrição ao Agendamento ✅
 
-  > Os demais secrets (`CONNECTIONSTRING__DEVELOPMENT__*`, `FLY_API_TOKEN`, etc.) já existem nos workflows de preview de PR.
+**Objetivo:** Durante o fluxo de agendamento via WhatsApp, permitir que o cliente adicione uma descrição/observação (ex: "quero corte mais curto nas laterais").
 
-  ### Passo 6 — Criar branch `dev` e fazer primeiro push
-  ```bash
-  git checkout -b dev
-  git push origin dev
-  ```
-  - O workflow `deploy-dev.yml` fará o deploy da API automaticamente
-  - O Vercel detectará a branch `dev` e publicará o frontend nos domínios configurados
+### Backend
+- [x] Adicionar novo estado ao fluxo: `AWAITING_DESCRIPTION` (após seleção do horário, antes de confirmar)
+- [x] Mensagem: "Tem alguma observação para o profissional? Responda ou digite 'não' para pular."
+- [x] Salvar a descrição no campo `Notes` do `Appointment` (campo já existia)
+- [x] Incluir a descrição no resumo final enviado ao cliente
+- [x] Campo `Notes` adicionado ao `PublicBookingCreateDto` e mapeado em `PublicBookingService`
 
-  ### Fluxo de trabalho após setup
-  ```
-  feature/* → PR para dev → testa em dev → PR para main → deploy para prod
-  ```
+---
 
+## 6. Placeholders Dinâmicos por Tipo de Estabelecimento ✅
+
+**Objetivo:** Substituir os exemplos genéricos (ex: "corte de cabelo, corte de barba, unha") por exemplos condizentes com o tipo do estabelecimento.
+
+### Mapeamento de placeholders por tipo
+
+| Tipo                | Exemplos de Serviço                          |
+|---------------------|----------------------------------------------|
+| Salão de Beleza     | corte feminino, coloração, escova progressiva |
+| Barbearia           | corte masculino, barba, pigmentação           |
+| Pet Shop            | banho, tosa, corte de unhas                  |
+| Nails Design        | manicure, pedicure, alongamento de unhas     |
+| Estética Feminina   | limpeza de pele, depilação, massagem         |
+
+### Frontend
+- [x] Criar utilitário `getServicePlaceholders(establishmentType)` em `lib/branding.ts`
+- [x] Aplicar em `app/services/new/page.tsx`
+- [x] Aplicar em `app/services/[id]/page.tsx`
+- [x] Aplicar em `app/appointments/new/page.tsx`
+- [x] Aplicar em `app/appointments/[id]/page.tsx`
+- [x] Aplicar em `app/clients/[id]/page.tsx`
+- [x] Aplicar em `app/booking/[slug]/page.tsx`
+
+---
+
+## Prioridade Sugerida
+
+| # | Task | Esforço | Impacto | Status |
+|---|------|---------|---------|--------|
+| 1 | Placeholders dinâmicos | Baixo | Médio | ✅ Concluído |
+| 2 | Novos tipos de estabelecimento | Baixo | Alto | ✅ Concluído |
+| 3 | WhatsApp — Descrição no agendamento | Médio | Alto | ✅ Concluído |
+| 4 | WhatsApp — Detectar agendamento existente | Médio | Alto | ✅ Concluído |
+| 5 | Importação de extrato PDF | Alto | Alto | ✅ Concluído |
+| 6 | Google / Apple Calendar | Alto | Médio | 🔲 Pendente |

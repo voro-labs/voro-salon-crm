@@ -10,5 +10,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task MarkAllAsReadAsync();
         Task DeleteByRelatedEntityIdAsync(Guid relatedEntityId);
         Task DeleteManyAsync(IEnumerable<Guid> ids);
+        Task DeleteAllAsync();
     }
 }

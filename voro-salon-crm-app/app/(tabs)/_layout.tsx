@@ -1,6 +1,5 @@
-import { useEffect } from "react"
+import React, { useEffect } from "react"
 import { AppState } from "react-native"
-import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import useSWR, { useSWRConfig } from "swr"
 import { useTenantTheme } from "contexts/tenant-theme.context"
@@ -17,6 +16,7 @@ const TAB_ICONS: Record<string, { active: IconName; inactive: IconName; label: s
   services: { active: "cut", inactive: "cut-outline", label: "Serviços" },
   employees: { active: "person", inactive: "person-outline", label: "Equipe" },
   finance: { active: "wallet", inactive: "wallet-outline", label: "Finanças" },
+  whatsapp: { active: "chatbubbles", inactive: "chatbubbles-outline", label: "WhatsApp" },
   notifications: { active: "notifications", inactive: "notifications-outline", label: "Avisos" },
   settings: { active: "settings", inactive: "settings-outline", label: "Config." },
 }
@@ -28,11 +28,22 @@ const TAB_MODULE_IDS: Record<string, number> = {
   services: 3,
   employees: 4,
   finance: 5,
+  whatsapp: 9,
 }
+
+import { MaterialTopTabs } from "components/MaterialTopTabs"
+
+import { useAuth } from "contexts/auth.context"
 
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
+  const { user } = useAuth()
+  
+  const roleNames = user?.roles?.map((r) => r.name) ?? []
+  const isOwner = roleNames.includes("Owner")
+  const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
+
   const { data: modules } = useSWR(
     API_CONFIG.ENDPOINTS.TENANT_MODULES,
     fetcher,
@@ -50,10 +61,9 @@ export default function TabsLayout() {
   }, [mutate])
 
   function isTabEnabled(name: string): boolean {
+    if (isSalonOwner) return true
     const moduleId = TAB_MODULE_IDS[name]
     if (!moduleId) return true
-    // Enquanto não há dados ainda (carga inicial), mantém todas as tabs visíveis
-    // para não redirecionar indevidamente durante revalidações do SWR
     if (!modules) return true
     const mod = (modules as any[]).find((m) => m.module === moduleId)
     return mod ? mod.isEnabled : true
@@ -68,70 +78,55 @@ export default function TabsLayout() {
       try {
         const config = JSON.parse(mod.configuration)
         if (config.displayName) return config.displayName
-      } catch {}
+      } catch { }
     }
     return defaultLabel
   }
 
   return (
-    <Tabs
-      tabBar={(props) => <ScrollableTabBar {...props} />}
+    <MaterialTopTabs
+      tabBarPosition="bottom"
+      tabBar={ScrollableTabBar}
       screenOptions={({ route }) => {
         const icon = TAB_ICONS[route.name] ?? TAB_ICONS["index"]
         return {
-          headerShown: false,
           tabBarActiveTintColor: primaryColor,
           tabBarInactiveTintColor: "#9ca3af",
           tabBarLabel: getTabLabel(route.name),
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? icon.active : icon.inactive} size={size} color={color} />
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
+          swipeEnabled: route.name !== "whatsapp",
         }
       }}
     >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen
-        name="clients"
-        options={{ href: isTabEnabled("clients") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("clients", { screen: "index" }),
-        })}
-      />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen name="index" />
+      <MaterialTopTabs.Screen
         name="appointments"
-        options={{ href: isTabEnabled("appointments") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("appointments", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("appointments") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
+        name="clients"
+        options={{ href: isTabEnabled("clients") ? undefined : null } as any}
+      />
+      <MaterialTopTabs.Screen
         name="services"
-        options={{ href: isTabEnabled("services") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("services", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("services") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="employees"
-        options={{ href: isTabEnabled("employees") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("employees", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("employees") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="finance"
-        options={{ href: isTabEnabled("finance") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("finance", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("finance") ? undefined : null } as any}
       />
-      <Tabs.Screen
-        name="notifications"
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("notifications", { screen: "index" }),
-        })}
+      <MaterialTopTabs.Screen
+        name="whatsapp"
+        options={{ href: isTabEnabled("whatsapp") ? undefined : null } as any}
       />
-      <Tabs.Screen name="settings" />
-    </Tabs>
+      <MaterialTopTabs.Screen name="notifications" />
+      <MaterialTopTabs.Screen name="settings" />
+    </MaterialTopTabs>
   )
 }

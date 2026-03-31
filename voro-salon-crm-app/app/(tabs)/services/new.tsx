@@ -7,11 +7,18 @@ import { useServiceDetail } from "hooks/use-service-detail.hook"
 import { CurrencyInput } from "components/CurrencyInput"
 import { DurationInput } from "components/DurationInput"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import useSWR from "swr"
+import { API_CONFIG } from "lib/api"
+import { fetcher } from "lib/fetcher"
+import { getServicePlaceholders } from "lib/branding"
 
 export default function NewServiceScreen() {
   const router = useRouter()
   const { form, setForm, isSaving, createService } = useServiceDetail()
   const { primaryColor } = useTenantTheme()
+
+  const { data: tenant } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
+  const placeholders = getServicePlaceholders(tenant?.establishmentType)
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
@@ -23,7 +30,7 @@ export default function NewServiceScreen() {
             <Text className="text-zinc-700 font-bold text-sm mb-1.5">Nome *</Text>
             <TextInput
               className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base"
-              placeholder="Nome do serviço"
+              placeholder={placeholders.name}
               placeholderTextColor="#a1a1aa"
               value={form.name}
               onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
@@ -34,7 +41,7 @@ export default function NewServiceScreen() {
             <Text className="text-zinc-700 font-bold text-sm mb-1.5">Descrição</Text>
             <TextInput
               className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base h-20"
-              placeholder="Descrição do serviço"
+              placeholder={placeholders.observations}
               placeholderTextColor="#a1a1aa"
               value={form.description}
               onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}

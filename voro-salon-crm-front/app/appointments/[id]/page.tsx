@@ -47,6 +47,9 @@ import { ptBR } from "date-fns/locale"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentDetail } from "@/hooks/use-appointment-detail.hook"
+import { useSettings } from "@/hooks/use-settings.hook"
+import { getServicePlaceholders } from "@/lib/branding"
+import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { appointmentStatusConfig } from "@/components/ui/custom/status-badge"
 
 const slotFetcher = async (url: string) => {
@@ -80,6 +83,9 @@ export default function AppointmentDetailPage() {
     updateStatus,
     deleteAppointment,
   } = useAppointmentDetail(appointmentId)
+
+  const { tenant } = useSettings()
+  const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
 
   // Initialize selectedDate from loaded appointment
   useEffect(() => {
@@ -374,7 +380,7 @@ export default function AppointmentDetailPage() {
                       <Label htmlFor="description">Descrição Curta</Label>
                       <Input
                         id="description"
-                        placeholder="Ex: Corte e Barba"
+                        placeholder={placeholders.name}
                         value={form.description}
                         onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                       />

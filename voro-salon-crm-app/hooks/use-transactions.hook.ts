@@ -1,5 +1,6 @@
 import useSWR from "swr"
-import { API_CONFIG, secureApiCall } from "lib/api"
+import { API_CONFIG, secureApiCall } from "../lib/api"
+import { fetcher } from "../lib/fetcher"
 import {
   TransactionDto,
   CreateTransactionDto,
@@ -23,11 +24,10 @@ export function useTransactions(options?: UseTransactionsOptions) {
     url += `?${params.toString()}`
   }
 
-  const { data, error, isLoading, mutate } = useSWR(url, async (url) => {
-    const res = await secureApiCall<TransactionDto[]>(url, { method: "GET" })
-    if (res.hasError) throw new Error(res.message || "Erro ao buscar transações")
-    return res.data || []
-  })
+  const { data, error, isLoading, mutate } = useSWR<TransactionDto[]>(
+    url,
+    fetcher
+  )
 
   const createTransaction = async (dto: CreateTransactionDto) => {
     const res = await secureApiCall<TransactionDto>(API_CONFIG.ENDPOINTS.TRANSACTIONS, {

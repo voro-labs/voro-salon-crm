@@ -89,7 +89,6 @@ export function useAppointmentForm() {
         return false
       }
       Toast.success("Agendamento criado com sucesso!")
-      router.push("/appointments")
       return true
     } catch {
       Toast.error("Erro de conexão. Tente novamente.")
