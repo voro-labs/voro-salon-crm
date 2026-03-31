@@ -20,6 +20,7 @@ import { PhoneInput } from "components/PhoneInput"
 import { CountrySelector } from "components/CountrySelector"
 import { ImagePickerInput } from "components/ImagePickerInput"
 import { SelectPickerInput } from "components/SelectPickerInput"
+import { useAuth } from "@/contexts/auth.context"
 
 const ESTABLISHMENT_OPTIONS = [
   { label: "Cabeleireiro / Salão", value: 0 },
@@ -209,6 +210,10 @@ export default function SalonSettingsScreen() {
     isUploadingLogo,
     setEstablishmentType,
   } = useSettings()
+  const { user } = useAuth()
+
+  const roleNames = user?.roles?.map((r) => r.name) ?? []
+  const isOwner = roleNames.includes("Owner")
   const { primaryColor } = useTenantTheme()
 
   const [primaryPickerOpen, setPrimaryPickerOpen] = useState(false)
@@ -337,19 +342,19 @@ export default function SalonSettingsScreen() {
                 />
               </View>
             </View>
-
-            {/* Business Type */}
-            <View className="px-4 pt-4 pb-5 border-b border-zinc-50 z-10">
-              <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
-                Tipo do Negócio *
-              </Text>
-              <SelectPickerInput
-                placeholder="Selecione o nicho do salão"
-                value={formData.establishmentType?.toString()}
-                onChange={(val) => setEstablishmentType(Number(val))}
-                options={ESTABLISHMENT_OPTIONS.map((o) => ({ label: o.label, id: o.value.toString() }))}
-              />
-            </View>
+            { isOwner && (
+              <View className="px-4 pt-4 pb-5 border-b border-zinc-50 z-10">
+                <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
+                  Tipo do Negócio *
+                </Text>
+                <SelectPickerInput
+                  placeholder="Selecione o nicho do salão"
+                  value={formData.establishmentType?.toString()}
+                  onChange={(val) => setEstablishmentType(Number(val))}
+                  options={ESTABLISHMENT_OPTIONS.map((o) => ({ label: o.label, id: o.value.toString() }))}
+                />
+              </View>
+            )}
 
             {/* Logo URL */}
             <View className="px-4 pt-4 pb-5">

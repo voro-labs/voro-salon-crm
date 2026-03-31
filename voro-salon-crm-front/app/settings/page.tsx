@@ -407,19 +407,19 @@ export default function ConfiguracoesPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={String(EstablishmentType.Salon)}>
-                            {getBrandingByType(EstablishmentType.Salon).productName}
+                            Cabeleireiro / Salão
                           </SelectItem>
                           <SelectItem value={String(EstablishmentType.Barber)}>
-                            {getBrandingByType(EstablishmentType.Barber).productName}
+                            Barbearia
                           </SelectItem>
                           <SelectItem value={String(EstablishmentType.NailsLashes)}>
-                            {getBrandingByType(EstablishmentType.NailsLashes).productName}
+                            Unhas e Cílios (Lashes)
                           </SelectItem>
                           <SelectItem value={String(EstablishmentType.EstheticsClinic)}>
-                            {getBrandingByType(EstablishmentType.EstheticsClinic).productName}
+                            Estética e Clínica
                           </SelectItem>
                           <SelectItem value={String(EstablishmentType.SpaMassage)}>
-                            {getBrandingByType(EstablishmentType.SpaMassage).productName}
+                            Spa e Massagem
                           </SelectItem>
                         </SelectContent>
                       </Select>

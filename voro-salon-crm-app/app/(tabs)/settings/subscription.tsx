@@ -51,7 +51,7 @@ export default function SubscriptionScreen() {
   if (isTrial) {
     statusColor = "#0284c7"
     statusBg = "#e0f2fe"
-    statusLabel = "Em Teste"
+    statusLabel = "Trial"
   } else if (isPastDue) {
     statusColor = "#dc2626"
     statusBg = "#fee2e2"
@@ -97,7 +97,7 @@ export default function SubscriptionScreen() {
 
             {isTrial && sub?.trialEndsAt && (
               <Text className="text-zinc-500 text-sm mt-2 font-medium">
-                Teste acaba em {fmtDate(sub.trialEndsAt)}
+                Trial acaba em {fmtDate(sub.trialEndsAt)}
               </Text>
             )}
 

@@ -20,10 +20,13 @@ namespace VoroSalonCrm.Application.Services
             DateTimeOffset? endDate = null, 
             CancellationToken ct = default)
         {
+            var start = startDate?.ToUniversalTime();
+            var end = endDate?.ToUniversalTime();
+
             var transactions = await _repository.GetAllAsync(
                 t => t.TenantId == _currentUser.TenantId && !t.IsDeleted && 
-                     (!startDate.HasValue || t.DueDate >= startDate.Value) && 
-                     (!endDate.HasValue || t.DueDate <= endDate.Value),
+                     (!start.HasValue || t.DueDate >= start.Value) && 
+                     (!end.HasValue || t.DueDate <= end.Value),
                 true,
                 q => q.Include(t => t.Category)
             );
