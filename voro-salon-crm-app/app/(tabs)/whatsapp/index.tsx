@@ -91,7 +91,7 @@ export default function WhatsAppKanbanScreen() {
         <View className="mx-4 mt-2 mb-2 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex-row items-center gap-3">
           <Ionicons name="warning-outline" size={24} color="#b45309" />
           <View className="flex-1">
-            <Text className="text-amber-900 font-bold text-sm">Integração Ppendente</Text>
+            <Text className="text-amber-900 font-bold text-sm">Integração Pendente</Text>
             <Text className="text-amber-800 text-xs mt-0.5">O WhatsApp Bot não está configurado para este estabelecimento.</Text>
           </View>
         </View>
