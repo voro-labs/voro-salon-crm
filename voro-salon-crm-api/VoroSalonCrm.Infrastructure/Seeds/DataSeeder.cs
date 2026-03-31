@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Domain.Entities;
@@ -34,11 +34,6 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             await context.SaveChangesAsync();
 
-            // SEED: Tenant
-            SeedTenants(context);
-
-            await context.SaveChangesAsync();
-
             // SEED: Tenant Demo
             SeedDemoTenant(context);
 
@@ -56,6 +51,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             // SEED: Subscription Plans
             SeedSubscriptionPlans(context);
+
+            await context.SaveChangesAsync();
+
+            // SEED: Subscription for Demo Tenants
+            SeedDemoSubscriptions(context);
 
             await context.SaveChangesAsync();
         }
@@ -356,26 +356,6 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             }
         }
 
-        private static void SeedTenants(JasmimDbContext context)
-        {
-            if (!context.Tenants.Any())
-            {
-                var tenant = new Tenant
-                {
-                    Name = "VoroLabs",
-                    Slug = "vorolabs",
-                    ContactEmail = "voro@vorolabs.app",
-                    ContactPhone = "(11) 99999-0000",
-                    IsActive = true,
-                    PrimaryColor = "#0f172a",
-                    SecondaryColor = "#6366f1",
-                    ThemeMode = "light",
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                context.Tenants.Add(tenant);
-            }
-        }
 
         // GUIDs estáveis para upsert idempotente
         private static readonly Guid StarterPlanId = Guid.Parse("a1b2c3d4-0001-4000-8000-ef1234560001");
@@ -494,21 +474,53 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedDemoTenant(JasmimDbContext context)
         {
-            if (context.Tenants.IgnoreQueryFilters().Any(t => t.Slug == "vorodemo"))
-                return;
-
-            context.Tenants.Add(new Tenant
+            var demos = new List<Tenant>
             {
-                Name = "Salão Demo",
-                Slug = "vorodemo",
-                ContactEmail = "demo@vorolabs.app",
-                IsDemo = true,
-                IsActive = true,
-                PrimaryColor = "#0f172a",
-                SecondaryColor = "#6366f1",
-                ThemeMode = "light",
-                CreatedAt = DateTime.UtcNow
-            });
+                new() { Name = "Demo Starter", Slug = "vorostarter", ContactEmail = "starter@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#0f172a", SecondaryColor = "#6366f1", ThemeMode = "light" },
+                new() { Name = "Demo Pro", Slug = "voropro", ContactEmail = "pro@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#0f172a", SecondaryColor = "#6366f1", ThemeMode = "light" },
+                new() { Name = "Demo Premium", Slug = "voropremium", ContactEmail = "premium@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#0f172a", SecondaryColor = "#6366f1", ThemeMode = "light" }
+            };
+
+            foreach (var demo in demos)
+            {
+                if (!context.Tenants.IgnoreQueryFilters().Any(t => t.Slug == demo.Slug))
+                {
+                    context.Tenants.Add(demo);
+                }
+            }
+        }
+
+        private static void SeedDemoSubscriptions(JasmimDbContext context)
+        {
+            var demoPlans = new Dictionary<string, Guid>
+            {
+                { "vorostarter", StarterPlanId },
+                { "voropro", ProPlanId },
+                { "voropremium", PremiumPlanId }
+            };
+
+            foreach (var (slug, planId) in demoPlans)
+            {
+                var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == slug);
+                if (tenant != null)
+                {
+                    var existing = context.TenantSubscriptions.IgnoreQueryFilters().Any(s => s.TenantId == tenant.Id);
+                    if (!existing)
+                    {
+                        context.TenantSubscriptions.Add(new TenantSubscription
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenant.Id,
+                            PlanId = planId,
+                            Status = SubscriptionStatus.Active,
+                            PaymentSource = PaymentSource.Manual,
+                            StartDate = DateTimeOffset.UtcNow,
+                            TrialEndsAt = DateTimeOffset.UtcNow.AddDays(30),
+                            CreatedAt = DateTimeOffset.UtcNow
+                        });
+                    }
+                }
+            }
         }
 
         private async Task SeedReviewerUserAsync(JasmimDbContext context)
@@ -519,10 +531,12 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 return;
 
             var ownerRole = context.Roles.FirstOrDefault(r => r.Name == "SalonOwner");
-            var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == "vorodemo");
+            var demoTenants = context.Tenants.IgnoreQueryFilters().Where(t => t.IsDemo).ToList();
 
-            if (tenant == null || ownerRole == null)
+            if (!demoTenants.Any() || ownerRole == null)
                 return;
+
+            var mainTenant = demoTenants.FirstOrDefault(t => t.Slug == "voropremium") ?? demoTenants.First();
 
             var reviewer = new User
             {
@@ -539,14 +553,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 BirthDate = DateTime.UtcNow,
                 SecurityStamp = Guid.NewGuid().ToString(),
                 TwoFactorEnabled = true,
-                UserTenants =
-                [
-                    new UserTenant
-                    {
-                        TenantId = tenant.Id,
-                        IsDefault = true
-                    }
-                ],
+                UserTenants = demoTenants.Select((t, index) => new UserTenant
+                {
+                    TenantId = t.Id,
+                    IsDefault = t.Id == mainTenant.Id || (index == 0 && mainTenant == null)
+                }).ToList(),
                 UserRoles =
                 [
                     new UserRole
@@ -567,11 +578,13 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedUsers(JasmimDbContext context)
         {
-            if (!context.Users.IgnoreQueryFilters().Any())
+            if (!context.Users.IgnoreQueryFilters().Any(u => u.Email == "jordan@vorolabs.app"))
             {
                 var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
-                var tenant = context.Tenants.FirstOrDefault(t => t.Slug == "vorolabs");
+                var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == "voropremium");
 
+                if (tenant == null || adminRole == null) return;
+                
                 var admin = new User
                 {
                     UserName = "jordan.silva",
@@ -588,7 +601,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     UserTenants = [
                         new UserTenant
                         {
-                            TenantId = tenant!.Id,
+                            TenantId = tenant.Id,
                             IsDefault = true
                         }
                     ],
