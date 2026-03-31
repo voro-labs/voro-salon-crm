@@ -311,7 +311,9 @@ export default function AppointmentDetailPage() {
                     const isToday = selectedDate.toDateString() === now.toDateString()
                     const visibleSlots = (availability ?? []).filter((slot: any) => {
                       if (!isToday) return true
-                      return new Date(slot.startTime) > now
+                      // Always show the slot that is currently scheduled for this appointment
+                      const isCurrentTime = form.scheduledDateTime && new Date(slot.startTime).getTime() === new Date(form.scheduledDateTime).getTime()
+                      return new Date(slot.startTime) > now || isCurrentTime
                     })
                     return (
                       <div className="flex flex-col gap-2">
@@ -324,8 +326,9 @@ export default function AppointmentDetailPage() {
                         ) : (
                           <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
                             {visibleSlots.map((slot: any) => {
-                              const isSelected = form.scheduledDateTime === slot.startTime
-                              const canSelect = slot.isAvailable || (isEncaixe && !slot.isBlocked)
+                              const isSelected = form.scheduledDateTime && new Date(slot.startTime).getTime() === new Date(form.scheduledDateTime).getTime()
+                              // Can select if it's available, if it's the current selection, or if it's an encaixe (manual override)
+                              const canSelect = isSelected || slot.isAvailable || (isEncaixe && !slot.isBlocked)
                               return (
                                 <Button
                                   key={slot.startTime}
