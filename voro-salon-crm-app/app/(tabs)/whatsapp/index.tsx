@@ -64,8 +64,6 @@ export default function WhatsAppKanbanScreen() {
   const { primaryColor } = useTenantTheme()
   const [search, setSearch] = useState("")
   const [showSendModal, setShowSendModal] = useState(false)
-  const [showNewChatModal, setShowNewChatModal] = useState(false)
-  const [newChatForm, setNewChatForm] = useState({ phone: "", name: "" })
 
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
@@ -117,14 +115,6 @@ export default function WhatsAppKanbanScreen() {
           ) : null}
         </View>
 
-        <Pressable
-          className="h-10 px-3 flex-row items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50"
-          onPress={() => setShowNewChatModal(true)}
-        >
-          <Ionicons name="add-circle" size={16} color="#059669" />
-          <Text className="font-bold text-sm text-emerald-700">Chat</Text>
-        </Pressable>
-        
         <Pressable
           className="h-10 px-3 flex-row items-center justify-center gap-1.5 rounded-xl border"
           style={{ borderColor: primaryColor + "40", backgroundColor: primaryColor + "10" }}
@@ -248,81 +238,6 @@ export default function WhatsAppKanbanScreen() {
         />
       )}
 
-      {/* New Chat Modal */}
-      <Modal 
-        visible={showNewChatModal} 
-        animationType="slide" 
-        transparent 
-        onRequestClose={() => setShowNewChatModal(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setShowNewChatModal(false)}>
-          <View className="flex-1 bg-black/40 justify-end">
-            <TouchableWithoutFeedback>
-              <View className="bg-white rounded-t-[32px] p-6 pb-12">
-                <View className="flex-row items-center justify-between mb-6">
-                  <Text className="text-xl font-black text-zinc-900">Novo Chat</Text>
-                  <Pressable 
-                    onPress={() => setShowNewChatModal(false)}
-                    className="h-8 w-8 bg-zinc-100 rounded-full items-center justify-center"
-                  >
-                    <Ionicons name="close" size={18} color="#71717a" />
-                  </Pressable>
-                </View>
-
-                <View className="gap-4">
-                  <View className="gap-1.5">
-                    <Text className="text-sm font-bold text-zinc-500 ml-1">WhatsApp (com DDD)</Text>
-                    <View className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 flex-row items-center gap-2">
-                      <Ionicons name="logo-whatsapp" size={18} color="#71717a" />
-                      <TextInput 
-                        className="flex-1 text-zinc-900 font-semibold text-base py-0"
-                        placeholder="Ex: 11999999999"
-                        placeholderTextColor="#a1a1aa"
-                        keyboardType="phone-pad"
-                        value={newChatForm.phone}
-                        onChangeText={(t) => setNewChatForm(p => ({ ...p, phone: t.replace(/\D/g, "") }))}
-                      />
-                    </View>
-                  </View>
-
-                  <View className="gap-1.5">
-                    <Text className="text-sm font-bold text-zinc-500 ml-1">Nome do Contato (Opcional)</Text>
-                    <View className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 flex-row items-center gap-2">
-                      <Ionicons name="person-outline" size={18} color="#71717a" />
-                      <TextInput 
-                        className="flex-1 text-zinc-900 font-semibold text-base py-0"
-                        placeholder="Ex: Maria Oliveira"
-                        placeholderTextColor="#a1a1aa"
-                        value={newChatForm.name}
-                        onChangeText={(t) => setNewChatForm(p => ({ ...p, name: t }))}
-                      />
-                    </View>
-                  </View>
-
-                  <Pressable
-                    className="h-14 rounded-2xl items-center justify-center mt-4"
-                    style={{ backgroundColor: primaryColor }}
-                    onPress={() => {
-                      if (!newChatForm.phone) return
-                      setShowNewChatModal(false)
-                      router.push({
-                        pathname: "/(tabs)/whatsapp/[phone]",
-                        params: { 
-                          phone: newChatForm.phone, 
-                          contactName: newChatForm.name || "Cliente"
-                        }
-                      })
-                      setNewChatForm({ phone: "", name: "" })
-                    }}
-                  >
-                    <Text className="text-white font-black text-lg">Iniciar Conversa</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </SafeAreaView>
   )
 }
