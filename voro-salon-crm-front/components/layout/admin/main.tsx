@@ -100,16 +100,20 @@ export function Main({ children }: MainProps) {
     return <LoadingSimple />
   }
 
-  if (!user?.token) {
-    const isPublicRoute = routesAllowed.some(item => pathname.startsWith(item))
+  const isPublicRoute = routesAllowed.some(item => pathname.startsWith(item))
+  const isOnboardingRoute = ONBOARDING_PATHS.some(p => pathname.startsWith(p))
 
-    if (!isPublicRoute) {
+  if (!user?.token || (isPublicRoute && !isOnboardingRoute)) {
+    if (!user?.token && !isPublicRoute) {
       // Rota protegida sem usuário: redireciona para login com redirect de volta
       router.replace(`/admin/sign-in?redirect=${encodeURIComponent(pathname)}`)
+      return <LoadingSimple />
     }
 
-    // Layout público (sign-in, forgot-password, etc.) — nunca mostra loading aqui
+    // Layout público (sign-in, forgot-password, etc.) — nunca mostra sidebar/navbar aqui,
+    // mesmo que o usuário esteja logado (mas ainda na página de login aguardando redirect)
     const hasOwnNavbar = LANDING_PATHS.some((p) => pathname === p)
+    
     return (
       <div className="min-h-screen bg-background text-foreground">
         {!hasOwnNavbar && (
