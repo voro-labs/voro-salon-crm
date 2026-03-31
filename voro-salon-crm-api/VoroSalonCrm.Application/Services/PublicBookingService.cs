@@ -307,5 +307,41 @@ namespace VoroSalonCrm.Application.Services
 
             return slots;
         }
+
+        public async Task<PublicReceiptDto?> GetAppointmentReceiptAsync(Guid id)
+        {
+            var appointment = await appointmentRepository.Query(a => a.Id == id)
+                .Include(a => a.Client)
+                .Include(a => a.Service)
+                .Include(a => a.Employee)
+                .Include(a => a.Tenant)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (appointment == null) return null;
+
+            var tenantDto = await GetTenantBySlugAsync(appointment.Tenant.Slug);
+            if (tenantDto == null) return null;
+
+            // Agenda do dia para o cliente ver o contexto (mostra slots ocupados/livres)
+            var dayAgenda = await GetAvailableSlotsAsync(
+                appointment.Tenant.Slug, 
+                appointment.ScheduledDateTime.Date, 
+                appointment.ServiceId, 
+                appointment.EmployeeId);
+
+            return new PublicReceiptDto(
+                appointment.Id,
+                appointment.Client.Name,
+                appointment.Service?.Name ?? "Serviço",
+                appointment.Employee?.Name,
+                appointment.ScheduledDateTime,
+                appointment.DurationMinutes,
+                appointment.Amount,
+                appointment.Status.ToString(),
+                tenantDto,
+                dayAgenda
+            );
+        }
     }
 }

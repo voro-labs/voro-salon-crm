@@ -21,7 +21,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task<IEnumerable<WhatsAppTemplateDto>> GetMyTemplatesAsync()
         {
             var tenantId = currentUserService.TenantId;
-            var templates = await templateRepository.GetByTenantIdAsync(tenantId);
+            var templates = await templateRepository.GetAllAsync(t => t.TenantId == tenantId || t.TenantId == Guid.Empty);
             return templates.Select(ToDto);
         }
 

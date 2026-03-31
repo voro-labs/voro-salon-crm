@@ -51,6 +51,7 @@ export default function PublicBookingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [availability, setAvailability] = useState<any[]>([])
   const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [appointmentId, setAppointmentId] = useState<string | null>(null)
   const [countryCode, setCountryCode] = useState("BR")
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -272,6 +273,9 @@ export default function PublicBookingPage() {
         return
       }
 
+      if (res.data?.appointmentId) {
+        setAppointmentId(res.data.appointmentId)
+      }
       setStep('SUCCESS')
       addBotMessage("Tudo certo! Seu agendamento foi solicitado e o estabelecimento foi notificado. Você receberá uma confirmação em breve.")
     } catch {
@@ -695,14 +699,21 @@ export default function PublicBookingPage() {
               </div>
               <Button asChild className="bg-[#25D366] hover:bg-[#128C7E] border-none font-bold">
                 <a
-                  href={`https://wa.me/${tenant.contactPhone?.replace(/\D/g, '')}?text=Olá, acabei de solicitar um agendamento no ${tenant.name} para o dia ${format(new Date(`${form.date}T00:00:00`), "dd/MM")} às ${form.time}.`}
+                  href={`https://wa.me/${tenant.contactPhone?.replace(/\D/g, '')}?text=Olá, acabei de solicitar um agendamento no ${tenant.name} para o dia ${format(new Date(`${form.date}T00:00:00`), "dd/MM")} às ${form.time}.${appointmentId ? ` Veja o comprovante: ${window.location.origin}/receipt/${appointmentId}` : ''}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <MessageCircle className="mr-2 h-5 w-5" />
-                  Enviar comprovante por WhatsApp
+                  Enviar por WhatsApp
                 </a>
               </Button>
+
+              {appointmentId && (
+                <Button variant="outline" onClick={() => router.push(`/receipt/${appointmentId}`)} className="font-semibold">
+                  <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
+                  Ver Comprovante Detalhado
+                </Button>
+              )}
             </div>
           )}
         </div>

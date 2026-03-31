@@ -118,9 +118,12 @@ async function extractTextFromPdf(file: File): Promise<string> {
   // Dynamically import pdfjs-dist to avoid SSR issues
   const pdfjsLib = await import("pdfjs-dist")
 
-  // Set worker — use unpkg as it handles CORS and ESM (.mjs) more reliably than cdnjs for this package
+  // Set worker — use a more reliable strategy for Next.js
   const version = pdfjsLib.version || "5.6.205"
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`
+  // If we are in a browser environment, set the worker
+  if (typeof window !== "undefined") {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`
+  }
 
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise

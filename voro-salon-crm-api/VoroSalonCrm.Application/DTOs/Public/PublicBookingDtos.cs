@@ -43,4 +43,17 @@ namespace VoroSalonCrm.Application.DTOs.Public
         public DateTimeOffset ScheduledDateTime { get; init; }
         public int? ReminderMinutes { get; init; }
     }
+
+    public record PublicReceiptDto(
+        Guid Id,
+        string ClientName,
+        string ServiceName,
+        string? EmployeeName,
+        DateTimeOffset ScheduledDateTime,
+        int DurationMinutes,
+        decimal Amount,
+        string Status,
+        PublicTenantDto Tenant,
+        IEnumerable<CRM.AvailabilitySlotDto> DayAgenda
+    );
 }

@@ -26,6 +26,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/prices",
   "/booking",
+  "/receipt",
   "/api/auth/login",
   "/api/auth/logout",
   "/api/blob/proxy",
