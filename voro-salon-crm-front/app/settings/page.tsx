@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import {
   Save,
@@ -111,10 +112,15 @@ export default function ConfiguracoesPage() {
     setTwoFactorEnabled(user?.twoFactorEnabled ?? false)
   }, [user?.twoFactorEnabled])
 
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get("tab")
+
   const roleNames = user?.roles?.map((r) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
+  
   const defaultTab = isSalonOwner ? "geral" : "aparencia"
+  const activeTab = tabParam || defaultTab
 
   // Business Hours state
   const DAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
@@ -314,7 +320,7 @@ export default function ConfiguracoesPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Configurações</h1>
         </div>
 
-        <Tabs defaultValue={defaultTab} className="w-full">
+        <Tabs defaultValue={activeTab} key={activeTab} className="w-full">
           <div className="relative overflow-hidden">
             <TabsList className="w-full justify-start overflow-x-auto no-scrollbar flex-nowrap h-auto p-1 bg-muted/50">
               {isSalonOwner && (
