@@ -1,16 +1,25 @@
+using Microsoft.AspNetCore.Identity;
 using VoroSalonCrm.Application.DTOs.Tenant;
 using VoroSalonCrm.Application.Services.Base;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Entities.Identity;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Shared.Constants;
 
 namespace VoroSalonCrm.Application.Services
 {
-    public class TenantService(ITenantRepository tenantRepository, IUnitOfWork unitOfWork) : ServiceBase<Tenant>(tenantRepository), ITenantService
+    public class TenantService(
+        ITenantRepository tenantRepository, 
+        IUnitOfWork unitOfWork,
+        UserManager<User> userManager,
+        IUserTenantRepository userTenantRepository) : ServiceBase<Tenant>(tenantRepository), ITenantService
     {
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly UserManager<User> _userManager = userManager;
+        private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
 
         public async Task<Tenant> CreateAsync(CreateTenantDto dto)
         {
@@ -31,7 +40,26 @@ namespace VoroSalonCrm.Application.Services
             await _tenantRepository.AddAsync(tenant);
             await _unitOfWork.SaveChangesAsync();
 
+            // Automatic association with Master Owners
+            await AssociateSystemOwnersAsync(tenant.Id);
+
             return tenant;
+        }
+
+        private async Task AssociateSystemOwnersAsync(Guid tenantId)
+        {
+            var owners = await _userManager.GetUsersInRoleAsync("Owner");
+            foreach (var owner in owners)
+            {
+                var userTenant = new UserTenant
+                {
+                    UserId = owner.Id,
+                    TenantId = tenantId,
+                    IsDefault = false
+                };
+                await _userTenantRepository.AddAsync(userTenant);
+            }
+            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task<Tenant?> GetByIdAsync(Guid id)

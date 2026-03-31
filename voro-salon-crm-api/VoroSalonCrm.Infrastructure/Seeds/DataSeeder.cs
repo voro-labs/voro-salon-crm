@@ -58,6 +58,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             SeedDemoSubscriptions(context);
 
             await context.SaveChangesAsync();
+
+            // SEED: Modules for Demo Tenants
+            SeedDemoModules(context);
+
+            await context.SaveChangesAsync();
         }
 
         private static void SeedNotifications(JasmimDbContext context)
@@ -476,9 +481,9 @@ namespace VoroSalonCrm.Infrastructure.Seeds
         {
             var demos = new List<Tenant>
             {
-                new() { Name = "Demo Starter", Slug = "vorostarter", ContactEmail = "starter@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#0f172a", SecondaryColor = "#6366f1", ThemeMode = "light" },
-                new() { Name = "Demo Pro", Slug = "voropro", ContactEmail = "pro@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#0f172a", SecondaryColor = "#6366f1", ThemeMode = "light" },
-                new() { Name = "Demo Premium", Slug = "voropremium", ContactEmail = "premium@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#0f172a", SecondaryColor = "#6366f1", ThemeMode = "light" }
+                new() { Name = "Demo Starter", Slug = "vorostarter", ContactEmail = "starter@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#059669", SecondaryColor = "#10b981", ThemeMode = "light" },
+                new() { Name = "Demo Pro", Slug = "voropro", ContactEmail = "pro@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#1d4ed8", SecondaryColor = "#3b82f6", ThemeMode = "light" },
+                new() { Name = "Demo Premium", Slug = "voropremium", ContactEmail = "premium@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#b45309", SecondaryColor = "#d97706", ThemeMode = "light" }
             };
 
             foreach (var demo in demos)
@@ -518,6 +523,43 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                             TrialEndsAt = DateTimeOffset.UtcNow.AddDays(30),
                             CreatedAt = DateTimeOffset.UtcNow
                         });
+                    }
+                }
+            }
+        }
+
+        private static void SeedDemoModules(JasmimDbContext context)
+        {
+            var starterModules = new[] { AppModule.Clients, AppModule.Scheduling, AppModule.Services, AppModule.Employees, AppModule.Settings };
+            var proModules = Enum.GetValues<AppModule>();
+            var premiumModules = Enum.GetValues<AppModule>();
+
+            var mapping = new Dictionary<string, AppModule[]>
+            {
+                { "vorostarter", starterModules },
+                { "voropro", proModules },
+                { "voropremium", premiumModules }
+            };
+
+            foreach (var (slug, modules) in mapping)
+            {
+                var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == slug);
+                if (tenant != null)
+                {
+                    foreach (var module in modules)
+                    {
+                        var existing = context.TenantModules.IgnoreQueryFilters().Any(tm => tm.TenantId == tenant.Id && tm.Module == module);
+                        if (!existing)
+                        {
+                            context.TenantModules.Add(new TenantModule
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = tenant.Id,
+                                Module = module,
+                                IsEnabled = true,
+                                CreatedAt = DateTimeOffset.UtcNow
+                            });
+                        }
                     }
                 }
             }
@@ -578,13 +620,16 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedUsers(JasmimDbContext context)
         {
-            if (!context.Users.IgnoreQueryFilters().Any(u => u.Email == "jordan@vorolabs.app"))
-            {
-                var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
-                var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == "voropremium");
+            var adminUser = context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == "jordan@vorolabs.app");
+            var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
+            var allTenants = context.Tenants.IgnoreQueryFilters().ToList();
 
-                if (tenant == null || adminRole == null) return;
+            if (adminUser == null)
+            {
+                if (allTenants.Count == 0 || adminRole == null) return;
                 
+                var mainTenant = allTenants.FirstOrDefault(t => t.Slug == "voropremium") ?? allTenants.First();
+
                 var admin = new User
                 {
                     UserName = "jordan.silva",
@@ -598,13 +643,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     CreatedAt = DateTime.UtcNow,
                     BirthDate = DateTime.UtcNow,
                     SecurityStamp = "f87c07d8-3b68-4e35-b1e9-97c9021cf4e8",
-                    UserTenants = [
-                        new UserTenant
-                        {
-                            TenantId = tenant.Id,
-                            IsDefault = true
-                        }
-                    ],
+                    UserTenants = allTenants.Select(t => new UserTenant
+                    {
+                        TenantId = t.Id,
+                        IsDefault = t.Id == mainTenant.Id
+                    }).ToList(),
                     UserRoles = [
                         new UserRole()
                         {
@@ -615,6 +658,23 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 };
 
                 context.Users.Add(admin);
+            }
+            else
+            {
+                // Garante que o administrador mestre tenha acesso a todos os novos tenants
+                foreach (var t in allTenants)
+                {
+                    var hasAccess = context.UserTenants.IgnoreQueryFilters().Any(ut => ut.UserId == adminUser.Id && ut.TenantId == t.Id);
+                    if (!hasAccess)
+                    {
+                        context.UserTenants.Add(new UserTenant
+                        {
+                            UserId = adminUser.Id,
+                            TenantId = t.Id,
+                            IsDefault = false
+                        });
+                    }
+                }
             }
         }
     }
