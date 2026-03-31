@@ -743,12 +743,6 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(wt => wt.Id).ValueGeneratedOnAdd();
                 b.Property(wt => wt.Name).IsRequired();
                 b.Property(wt => wt.Label).IsRequired();
-
-                // To allow Guid.Empty without FK error, we configure it as optional here
-                b.HasOne(wt => wt.Tenant)
-                 .WithMany()
-                 .HasForeignKey(wt => wt.TenantId)
-                 .IsRequired(false); // Permite Guid.Empty / Null no banco se a constraint for removida
             });
         }
     }
