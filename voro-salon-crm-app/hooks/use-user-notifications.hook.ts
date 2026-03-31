@@ -114,6 +114,25 @@ export function useUserNotifications() {
     }
   }, [mutateNotifications, mutateUnreadCount])
 
+  const deleteMultipleNotifications = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return
+      try {
+        const result = await secureApiCall(API_CONFIG.ENDPOINTS.NOTIFICATIONS, {
+          method: "DELETE",
+          body: JSON.stringify(ids),
+        })
+        if (!result.hasError) {
+          mutateNotifications((prev) => prev?.filter((n) => !ids.includes(n.id)), false)
+          mutateUnreadCount()
+        }
+      } catch (err) {
+        console.error("Erro ao deletar notificações:", err)
+      }
+    },
+    [mutateNotifications, mutateUnreadCount],
+  )
+
   const refresh = useCallback(async () => {
     await Promise.all([mutateNotifications(), mutateUnreadCount()])
   }, [mutateNotifications, mutateUnreadCount])
@@ -124,6 +143,7 @@ export function useUserNotifications() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    deleteMultipleNotifications,
     deleteAllNotifications,
     isLoading,
     refresh,

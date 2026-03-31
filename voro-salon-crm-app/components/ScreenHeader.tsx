@@ -20,7 +20,7 @@ export function ScreenHeader({ title, showBack = false, onBack, right }: ScreenH
       className="bg-white border-b border-zinc-100"
       style={{ paddingTop: insets.top }}
     >
-      <View className="flex-row items-center px-5 h-14">
+      <View className="flex-row items-center px-5 h-12">
         {showBack ? (
           <Pressable onPress={onBack} className="h-9 w-9 items-center justify-center -ml-1 mr-2">
             <Ionicons name="chevron-back" size={24} color={primaryColor} />

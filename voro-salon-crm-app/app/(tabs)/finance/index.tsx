@@ -55,6 +55,13 @@ export default function FinanceScreen() {
   const totalExpense = (transactions ?? []).filter(isExpense).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
   const balance = totalIncome - totalExpense
 
+  const now = new Date()
+  const monthlyRevenue = (transactions ?? []).filter(t => {
+    if (!isIncome(t) || !t.dueDate) return false
+    const d = new Date(t.dueDate)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
+
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader
@@ -78,25 +85,38 @@ export default function FinanceScreen() {
         }
       />
 
-      {/* Summary */}
-      <View className="bg-white px-5 pt-3 p-4 pb-4 border-b border-zinc-100">
-        <View className="flex-row gap-3 mb-3">
-          <View className="flex-1 bg-green-50 rounded-2xl p-4 border border-green-100">
-            <Text className="text-xs text-green-600 font-semibold mb-0.5">Receitas</Text>
-            <Text className="text-base font-black text-green-700" numberOfLines={1}>R$ {fmtCurrency(totalIncome)}</Text>
+      {/* Summary 2x2 Grid */}
+      <View className="bg-white px-4 pt-3 pb-4 border-b border-zinc-100">
+        <View className="flex-row gap-3">
+          {/* Card: Faturamento Mês */}
+          <View className="flex-1 bg-blue-50 rounded-2xl p-3.5 border border-blue-100 mb-3">
+            <Text className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-0.5">Faturamento Mês</Text>
+            <Text className="text-base font-black text-blue-700" numberOfLines={1}>R$ {fmtCurrency(monthlyRevenue)}</Text>
           </View>
-          <View className="flex-1 bg-red-50 rounded-2xl p-4 border border-red-100">
-            <Text className="text-xs text-red-600 font-semibold mb-0.5">Despesas</Text>
-            <Text className="text-base font-black text-red-700" numberOfLines={1}>R$ {fmtCurrency(totalExpense)}</Text>
-          </View>
+          
+          {/* Card: Saldo Total */}
           <View
-            className="flex-1 rounded-2xl p-4 border"
+            className="flex-1 rounded-2xl p-3.5 border mb-3"
             style={balance >= 0
-              ? { backgroundColor: primaryColor + "15", borderColor: primaryColor + "25" }
+              ? { backgroundColor: primaryColor + "10", borderColor: primaryColor + "20" }
               : { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }}
           >
-            <Text className="text-xs font-semibold mb-0.5" style={balance >= 0 ? { color: primaryColor } : { color: "#ea580c" }}>Saldo</Text>
+            <Text className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={balance >= 0 ? { color: primaryColor } : { color: "#ea580c" }}>Saldo Geral</Text>
             <Text className="text-base font-black" style={balance >= 0 ? { color: primaryColor } : { color: "#c2410c" }} numberOfLines={1}>R$ {fmtCurrency(balance)}</Text>
+          </View>
+        </View>
+
+        <View className="flex-row gap-3 mb-1">
+          {/* Card: Receitas */}
+          <View className="flex-1 bg-green-50 rounded-2xl p-3.5 border border-green-100">
+            <Text className="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-0.5">Total Receitas</Text>
+            <Text className="text-base font-black text-green-700" numberOfLines={1}>R$ {fmtCurrency(totalIncome)}</Text>
+          </View>
+
+          {/* Card: Despesas */}
+          <View className="flex-1 bg-red-50 rounded-2xl p-3.5 border border-red-100">
+            <Text className="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-0.5">Total Despesas</Text>
+            <Text className="text-base font-black text-red-700" numberOfLines={1}>R$ {fmtCurrency(totalExpense)}</Text>
           </View>
         </View>
 

@@ -86,7 +86,7 @@ export default function WhatsAppKanbanScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="WhatsApp" />
 
       {!isConfigured && tenant !== undefined && (

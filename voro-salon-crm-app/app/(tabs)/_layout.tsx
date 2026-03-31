@@ -87,7 +87,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
-          swipeEnabled: true,
+          swipeEnabled: route.name !== "whatsapp",
         }
       }}
     >

@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from "expo-router"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "lib/api"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { ScreenHeader } from "components/ScreenHeader"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface WhatsAppMessage {
@@ -109,35 +110,28 @@ export default function WhatsAppChatScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
         
         {/* Header */}
-        <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-zinc-100 flex-none gap-3">
-          <Pressable onPress={() => router.back()} className="h-10 w-10 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
-            <Ionicons name="chevron-back" size={20} color="#18181b" />
-          </Pressable>
-          <View className="flex-1 flex-row items-center gap-3 min-w-0">
-            <View className="h-10 w-10 rounded-full bg-zinc-100 flex items-center justify-center shrink-0">
-              <Text className="text-sm font-bold text-zinc-500">
-                {displayName ? displayName.charAt(0).toUpperCase() : "?"}
-              </Text>
+        <ScreenHeader
+          title={displayName}
+          showBack
+          onBack={() => router.back()}
+          right={
+            <View className="flex-row items-center gap-2">
+              {clientId && (
+                <Pressable
+                  onPress={() => router.push(`/(tabs)/clients/${clientId}` as any)}
+                  className="px-2.5 h-8 rounded-lg bg-zinc-100 flex-row items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Ionicons name="person" size={12} color="#52525b" />
+                  <Text className="text-[10px] font-bold text-zinc-700">Ficha</Text>
+                </Pressable>
+              )}
             </View>
-            <View className="min-w-0 flex-1">
-              <Text className="text-base font-black text-zinc-900 truncate" numberOfLines={1}>{displayName}</Text>
-              <Text className="text-[11px] text-zinc-500 font-mono tracking-tight">{phone}</Text>
-            </View>
-          </View>
-          {clientId && (
-            <Pressable
-              onPress={() => router.push(`/(tabs)/clients/${clientId}` as any)}
-              className="px-3 h-9 rounded-xl border border-zinc-200 bg-white flex-row items-center justify-center gap-1.5 shrink-0 shadow-sm"
-            >
-              <Ionicons name="person" size={12} color="#52525b" />
-              <Text className="text-xs font-bold text-zinc-700">Ficha</Text>
-            </Pressable>
-          )}
-        </View>
+          }
+        />
 
         {/* Messages */}
         <ScrollView

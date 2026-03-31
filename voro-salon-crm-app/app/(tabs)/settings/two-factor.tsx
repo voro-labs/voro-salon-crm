@@ -148,10 +148,10 @@ export default function TwoFactorScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
-      <ScreenHeader title="Autenticação de dois fatores" showBack onBack={() => router.back()} />
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
+      <ScreenHeader title="2FA - Segurança" showBack onBack={() => router.back()} />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 12 }}>
         {/* Status Card */}
         <View className="bg-white rounded-3xl p-4 border border-zinc-100">
           <View className="flex-row items-center gap-3">
