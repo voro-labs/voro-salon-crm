@@ -3,7 +3,17 @@
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useState, useEffect } from "react"
-import { ArrowLeft, Loader2, Trash2, UserCheck, CreditCard, Calendar as CalendarIcon, Zap } from "lucide-react"
+import { 
+  ArrowLeft, 
+  Loader2, 
+  Trash2, 
+  UserCheck, 
+  CreditCard, 
+  Calendar as CalendarIcon, 
+  Zap,
+  MessageCircle,
+  MessageSquare
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -48,6 +58,7 @@ import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentDetail } from "@/hooks/use-appointment-detail.hook"
 import { useSettings } from "@/hooks/use-settings.hook"
+import { useWhatsApp } from "@/hooks/use-whatsapp.hook"
 import { getServicePlaceholders } from "@/lib/branding"
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { appointmentStatusConfig } from "@/components/ui/custom/status-badge"
@@ -66,6 +77,7 @@ export default function AppointmentDetailPage() {
   const [selectedEmployeeForCompletion, setSelectedEmployeeForCompletion] = useState<string>("none")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [isEncaixe, setIsEncaixe] = useState(false)
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false)
 
   const {
     appointment,
@@ -83,6 +95,8 @@ export default function AppointmentDetailPage() {
     updateStatus,
     deleteAppointment,
   } = useAppointmentDetail(appointmentId)
+
+  const { sendWhatsAppMessage } = useWhatsApp()
 
   const { tenant } = useSettings()
   const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
@@ -193,7 +207,21 @@ export default function AppointmentDetailPage() {
                 <CardTitle className="text-foreground">Editar Registros</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={(e) => { e.preventDefault(); updateAppointment(form) }} className="flex flex-col gap-5">
+                <form 
+                  onSubmit={async (e) => { 
+                    e.preventDefault(); 
+                    const originalTime = new Date(appointment.scheduledDateTime).getTime();
+                    const newTime = new Date(form.scheduledDateTime).getTime();
+                    const isRescheduling = originalTime !== newTime;
+
+                    const success = await updateAppointment(form);
+                    
+                    if (success && isRescheduling && !tenant?.useWhatsappBooking) {
+                      setRescheduleDialogOpen(true);
+                    }
+                  }} 
+                  className="flex flex-col gap-5"
+                >
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="clientId">Cliente *</Label>
@@ -470,6 +498,34 @@ export default function AppointmentDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Dialog: confirmar envio de WhatsApp após reagendamento */}
+      <AlertDialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              Notificar Reagendamento
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A data ou horário do agendamento foi alterado. Deseja enviar uma mensagem para o WhatsApp do cliente informando sobre a mudança?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRescheduleDialogOpen(false)}>Agora não</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => {
+                // Pass status 5 (Rescheduled) for the hook to generate the message
+                sendWhatsAppMessage(appointment, 5, false);
+                setRescheduleDialogOpen(false);
+              }}
+            >
+              Enviar Mensagem
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialog: selecionar funcionário ao concluir agendamento sem profissional */}
       <Dialog open={employeeDialogOpen} onOpenChange={(o) => { if (!o) { setEmployeeDialogOpen(false); setPendingStatus(null) } }}>

@@ -7,7 +7,7 @@ export function useWhatsApp() {
   // Alternatively, we could fetch tenant from SWR if they use useWhatsApp independently
 
   const sendWhatsAppMessage = (apt: any, newStatus: number, tenantHasWhatsappBooking: boolean) => {
-    const supportedStatuses = [0, 1, 2, 3, 4]
+    const supportedStatuses = [0, 1, 2, 3, 4, 5]
     if (!supportedStatuses.includes(newStatus)) return
 
     if (tenantHasWhatsappBooking) {
@@ -42,6 +42,9 @@ export function useWhatsApp() {
         break
       case 4: // NoShow
         message = `Olá ${clientName}, sentimos sua falta hoje no agendamento de ${serviceName}. Aconteceu algum imprevisto? Se quiser agendar uma nova data, estamos por aqui! 👋`
+        break
+      case 5: // Rescheduled
+        message = `Olá ${clientName}! Seu agendamento de ${serviceName} foi alterado para ${dateStr} às ${timeStr}. Caso tenha alguma dúvida, entre em contato! 😊`
         break
       default:
         return
