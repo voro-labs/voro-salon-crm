@@ -27,6 +27,7 @@ interface WhatsAppConversation {
 
 const KANBAN_COLUMNS = [
   { state: "START",                  label: "Novo Contato",            borderColor: "border-slate-300",  bgColor: "bg-slate-100",    textColor: "text-slate-700" },
+  { state: "AWAITING_TENANT",        label: "Escolhendo Unidade",      borderColor: "border-zinc-300",   bgColor: "bg-zinc-100",     textColor: "text-zinc-700" },
   { state: "AWAITING_SERVICE",       label: "Escolhendo Serviço",      borderColor: "border-cyan-300",   bgColor: "bg-cyan-100",     textColor: "text-cyan-700" },
   { state: "AWAITING_EMPLOYEE",      label: "Escolhendo Profissional", borderColor: "border-violet-300", bgColor: "bg-violet-100",   textColor: "text-violet-700" },
   { state: "AWAITING_DATE",          label: "Escolhendo Data",         borderColor: "border-amber-300",  bgColor: "bg-amber-100",    textColor: "text-amber-700" },

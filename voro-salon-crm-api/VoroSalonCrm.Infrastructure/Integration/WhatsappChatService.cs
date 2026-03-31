@@ -105,8 +105,12 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 session = new BookingSession();
 
-                // Try to find tenant by receiving phone number
-                var tenant = await _tenantRepository.Query(t => t.IsActive && t.ContactPhone == displayPhoneNumber).FirstOrDefaultAsync(ct);
+                // Try to find tenant by receiving phone number (ignoring masks)
+                var allActiveTenants = await _tenantRepository.Query(t => t.IsActive && t.ContactPhone != null).ToListAsync(ct);
+                var targetNumber = new string(displayPhoneNumber.Where(char.IsDigit).ToArray());
+                
+                var tenant = allActiveTenants.FirstOrDefault(t => 
+                    new string(t.ContactPhone!.Where(char.IsDigit).ToArray()) == targetNumber);
 
                 if (tenant != null)
                 {

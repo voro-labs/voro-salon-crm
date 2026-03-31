@@ -83,10 +83,12 @@ namespace VoroSalonCrm.API.Controllers
                     var contact = change.Value.Contacts?.FirstOrDefault();
                     var contactName = contact?.Profile?.Name ?? "Cliente";
 
-                    // Resolve tenant pelo número de telefone exibido
-                    var tenant = await _tenantRepository
-                        .Query(t => t.IsActive && t.ContactPhone != null && t.ContactPhone == metadata.DisplayPhoneNumber)
-                        .FirstOrDefaultAsync();
+                    // Resolve tenant pelo número de telefone exibido (normalizando para ignorar máscaras)
+                    var allActiveTenants = await _tenantRepository.Query(t => t.IsActive && t.ContactPhone != null).ToListAsync();
+                    var targetNumber = new string(metadata.DisplayPhoneNumber.Where(char.IsDigit).ToArray());
+                    
+                    var tenant = allActiveTenants.FirstOrDefault(t => 
+                        new string(t.ContactPhone!.Where(char.IsDigit).ToArray()) == targetNumber);
 
                     foreach (var message in change.Value.Messages)
                     {
