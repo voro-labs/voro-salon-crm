@@ -511,9 +511,20 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
             if (Guid.TryParse(serviceIdStr, out var serviceId))
             {
+                var services = (await _publicBookingService.GetServicesByTenantAsync(session.TenantSlug!)).ToList();
+                var selectedService = services.FirstOrDefault(s => s.Id == serviceId);
+
+                if (selectedService == null)
+                {
+                    // Se não encontrou o serviço, talvez seja um ID de outro step
+                    const string invalidMsg = "Por favor, selecione um serviço da lista atual.";
+                    await _whatsappService.SendTextMessageAsync(from, invalidMsg, session.WhatsappPhoneNumberId, ct);
+                    await AskForServiceAsync(from, session, ct);
+                    return;
+                }
+
                 session.ServiceId = serviceId;
-                var services = await _publicBookingService.GetServicesByTenantAsync(session.TenantSlug!);
-                session.ServiceName = services.FirstOrDefault(s => s.Id == serviceId)?.Name ?? "Serviço";
+                session.ServiceName = selectedService.Name;
 
                 var employees = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, serviceId);
 
@@ -543,6 +554,16 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (message.Type == "interactive" && message.Interactive?.ListReply != null)
                 employeeIdStr = message.Interactive.ListReply.Id;
 
+            // Validação: Se mandou uma data no lugar de funcionário
+            if (DateTime.TryParseExact(employeeIdStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+            {
+                const string msg = "Você ainda não escolheu o profissional. Por favor, selecione um profissional da lista acima antes de escolher a data.";
+                await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
+                var employeesList = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, session.ServiceId!.Value);
+                await AskForEmployeeAsync(from, session, employeesList, ct);
+                return;
+            }
+
             if (employeeIdStr == "more_employees")
             {
                 session.EmployeePage++;
@@ -558,9 +579,19 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
             else if (Guid.TryParse(employeeIdStr, out var employeeId))
             {
+                var employees = (await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, session.ServiceId!.Value)).ToList();
+                var selectedEmployee = employees.FirstOrDefault(e => e.Id == employeeId);
+
+                if (selectedEmployee == null)
+                {
+                    const string invalidMsg = "Por favor, selecione um profissional da lista atual.";
+                    await _whatsappService.SendTextMessageAsync(from, invalidMsg, session.WhatsappPhoneNumberId, ct);
+                    await AskForEmployeeAsync(from, session, employees, ct);
+                    return;
+                }
+
                 session.EmployeeId = employeeId;
-                var employees = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, session.ServiceId!.Value);
-                session.EmployeeName = employees.FirstOrDefault(e => e.Id == employeeId)?.Name ?? "Profissional";
+                session.EmployeeName = selectedEmployee.Name;
             }
             else
             {
@@ -694,6 +725,15 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (message.Type == "interactive" && message.Interactive?.ListReply != null)
                 dateStr = message.Interactive.ListReply.Id;
 
+            // Validação: Se mandou um ID (GUID) no lugar da data (clicou em serviço/prof anterior)
+            if (Guid.TryParse(dateStr, out _))
+            {
+                const string msg = "Você já selecionou o serviço/profissional. Por favor, selecione uma data da lista acima.";
+                await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
+                await AskForDateAsync(from, session, ct);
+                return;
+            }
+
             if (dateStr == "more_dates")
             {
                 session.DatePage++;
@@ -787,12 +827,21 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (message.Type == "interactive" && message.Interactive?.ListReply != null)
                 timeStr = message.Interactive.ListReply.Id;
 
+            // Validação: Se mandou uma data ou GUID no lugar do horário
+            if (DateTime.TryParseExact(timeStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _) || Guid.TryParse(timeStr, out _))
+            {
+                const string msg = "Você já selecionou a data. Por favor, escolha um horário da lista acima.";
+                await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
+                await AskForTimeAsync(from, session, ct);
+                return;
+            }
+
             if (timeStr == "more_times")
             {
                 session.TimeSlotPage++;
                 await AskForTimeAsync(from, session, ct);
             }
-            else if (!string.IsNullOrEmpty(timeStr))
+            else if (!string.IsNullOrEmpty(timeStr) && timeStr.Contains(':'))
             {
                 session.SelectedTime = timeStr;
                 // Task 5: ask for optional description before confirmation
