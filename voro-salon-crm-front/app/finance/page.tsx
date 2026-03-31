@@ -300,26 +300,49 @@ export default function FinancialPage() {
           title="Financeiro"
           description="Fluxo de caixa, despesas e receitas."
           action={
-            <>
-              <Link href="/finance/categories" className="w-full flex-1 sm:flex-none">
-                <Button variant="outline" className="w-full h-10 text-xs sm:text-sm">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Categorias
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              {/* Secundários */}
+              <div className="flex items-center gap-2 w-full sm:w-auto order-2 sm:order-1">
+                <Button variant="outline" size="sm" asChild className="flex-1 sm:flex-none h-9">
+                  <Link href="/finance/categories">
+                    <Settings className="mr-1.5 h-3.5 w-3.5" />
+                    Categorias
+                  </Link>
                 </Button>
-              </Link>
-              <Button
-                variant="outline"
-                className="flex-1 sm:flex-none w-full h-10 text-xs sm:text-sm"
-                onClick={() => setIsPdfImportOpen(true)}
-              >
-                <FileUp className="mr-2 h-4 w-4" />
-                Importar PDF
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none h-9"
+                  onClick={() => setIsPdfImportOpen(true)}
+                >
+                  <FileUp className="mr-1.5 h-3.5 w-3.5" />
+                  Importar PDF
+                </Button>
+                <ExportMenu
+                  size="sm"
+                  rows={filteredTransactions}
+                  filename="financeiro"
+                  className="flex-1 sm:flex-none h-9"
+                  columns={[
+                    { header: "Descrição", value: (t: any) => t.description },
+                    { header: "Tipo", value: (t: any) => t.type === 1 ? "Receita" : "Despesa" },
+                    { header: "Valor (R$)", value: (t: any) => Number(t.amount ?? 0).toFixed(2) },
+                    { header: "Valor Pago (R$)", value: (t: any) => Number(t.paidAmount ?? 0).toFixed(2) },
+                    { header: "Vencimento", value: (t: any) => format(new Date(t.dueDate), "dd/MM/yyyy") },
+                    { header: "Pagamento", value: (t: any) => t.paymentDate ? format(new Date(t.paymentDate), "dd/MM/yyyy") : "" },
+                    { header: "Status", value: (t: any) => ({ 1: "Pago", 2: "Pendente", 3: "Atrasado", 4: "Parcial", 5: "Cancelado" }[t.status as number] ?? "") },
+                    { header: "Categoria", value: (t: any) => t.category?.name ?? "" },
+                    { header: "Observações", value: (t: any) => t.notes ?? "" },
+                  ]}
+                />
+              </div>
+
+              {/* Primário */}
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild className="flex-1 sm:flex-none">
-                  <Button onClick={handleOpenDialog} className="w-full h-10 text-xs sm:text-sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Novo
+                <DialogTrigger asChild>
+                  <Button onClick={handleOpenDialog} size="sm" className="w-full sm:w-auto h-9 order-1 sm:order-2 bg-primary hover:bg-primary/90">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Novo Lançamento
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
@@ -415,23 +438,7 @@ export default function FinancialPage() {
                   </form>
                 </DialogContent>
               </Dialog>
-              <ExportMenu
-                className="w-full"
-                rows={filteredTransactions}
-                filename="financeiro"
-                columns={[
-                  { header: "Descrição", value: (t: any) => t.description },
-                  { header: "Tipo", value: (t: any) => t.type === 1 ? "Receita" : "Despesa" },
-                  { header: "Valor (R$)", value: (t: any) => Number(t.amount ?? 0).toFixed(2) },
-                  { header: "Valor Pago (R$)", value: (t: any) => Number(t.paidAmount ?? 0).toFixed(2) },
-                  { header: "Vencimento", value: (t: any) => format(new Date(t.dueDate), "dd/MM/yyyy") },
-                  { header: "Pagamento", value: (t: any) => t.paymentDate ? format(new Date(t.paymentDate), "dd/MM/yyyy") : "" },
-                  { header: "Status", value: (t: any) => ({ 1: "Pago", 2: "Pendente", 3: "Atrasado", 4: "Parcial", 5: "Cancelado" }[t.status as number] ?? "") },
-                  { header: "Categoria", value: (t: any) => t.category?.name ?? "" },
-                  { header: "Observações", value: (t: any) => t.notes ?? "" },
-                ]}
-              />
-            </>
+            </div>
           }
         />
 

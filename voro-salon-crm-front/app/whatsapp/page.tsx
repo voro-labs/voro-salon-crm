@@ -648,7 +648,7 @@ export default function WhatsAppKanbanPage() {
                 </div>
 
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/whatsapp/templates">
+                  <Link href="/settings/whatsapp">
                     <Settings2 className="mr-2 h-4 w-4" />
                     <span className="hidden sm:inline">Templates</span>
                   </Link>

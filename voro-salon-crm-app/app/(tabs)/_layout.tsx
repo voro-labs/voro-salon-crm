@@ -1,6 +1,5 @@
-import { useEffect } from "react"
+import React, { useEffect } from "react"
 import { AppState } from "react-native"
-import { Tabs } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import useSWR, { useSWRConfig } from "swr"
 import { useTenantTheme } from "contexts/tenant-theme.context"
@@ -32,6 +31,8 @@ const TAB_MODULE_IDS: Record<string, number> = {
   whatsapp: 9,
 }
 
+import { MaterialTopTabs } from "components/MaterialTopTabs"
+
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
@@ -54,8 +55,6 @@ export default function TabsLayout() {
   function isTabEnabled(name: string): boolean {
     const moduleId = TAB_MODULE_IDS[name]
     if (!moduleId) return true
-    // Enquanto não há dados ainda (carga inicial), mantém todas as tabs visíveis
-    // para não redirecionar indevidamente durante revalidações do SWR
     if (!modules) return true
     const mod = (modules as any[]).find((m) => m.module === moduleId)
     return mod ? mod.isEnabled : true
@@ -76,71 +75,49 @@ export default function TabsLayout() {
   }
 
   return (
-    <Tabs
+    <MaterialTopTabs
+      tabBarPosition="bottom"
       tabBar={(props) => <ScrollableTabBar {...props} />}
       screenOptions={({ route }) => {
         const icon = TAB_ICONS[route.name] ?? TAB_ICONS["index"]
         return {
-          headerShown: false,
           tabBarActiveTintColor: primaryColor,
           tabBarInactiveTintColor: "#9ca3af",
           tabBarLabel: getTabLabel(route.name),
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? icon.active : icon.inactive} size={size} color={color} />
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
+          swipeEnabled: true,
         }
       }}
     >
-      <Tabs.Screen name="index" />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen name="index" />
+      <MaterialTopTabs.Screen
         name="clients"
-        options={{ href: isTabEnabled("clients") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("clients", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("clients") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="appointments"
-        options={{ href: isTabEnabled("appointments") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("appointments", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("appointments") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="services"
-        options={{ href: isTabEnabled("services") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("services", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("services") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="employees"
-        options={{ href: isTabEnabled("employees") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("employees", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("employees") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="finance"
-        options={{ href: isTabEnabled("finance") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("finance", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("finance") ? undefined : null } as any}
       />
-      <Tabs.Screen
+      <MaterialTopTabs.Screen
         name="whatsapp"
-        options={{ href: isTabEnabled("whatsapp") ? undefined : null }}
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("whatsapp", { screen: "index" }),
-        })}
+        options={{ href: isTabEnabled("whatsapp") ? undefined : null } as any}
       />
-      <Tabs.Screen
-        name="notifications"
-        listeners={({ navigation }) => ({
-          tabPress: () => navigation.navigate("notifications", { screen: "index" }),
-        })}
-      />
-      <Tabs.Screen name="settings" />
-    </Tabs>
+      <MaterialTopTabs.Screen name="notifications" />
+      <MaterialTopTabs.Screen name="settings" />
+    </MaterialTopTabs>
   )
 }

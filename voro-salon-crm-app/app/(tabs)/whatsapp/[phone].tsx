@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react"
 import {
   View, Text, ScrollView, ActivityIndicator, Pressable, KeyboardAvoidingView,
-  Platform
+  Platform, TextInput
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -32,6 +32,8 @@ export default function WhatsAppChatScreen() {
   }>()
   const { primaryColor } = useTenantTheme()
   const scrollRef = useRef<ScrollView>(null)
+  const [message, setMessage] = React.useState("")
+  const [isSending, setIsSending] = React.useState(false)
 
   const { data: messages, isLoading } = useSWR<WhatsAppMessage[]>(
     phone ? `${API_CONFIG.ENDPOINTS.WHATSAPP_MESSAGES}?phone=${encodeURIComponent(phone)}` : null,
@@ -68,6 +70,43 @@ export default function WhatsAppChatScreen() {
   }
 
   const groups = messages ? groupMessagesByDate(messages) : []
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !phone || isSending) return
+
+    setIsSending(true)
+    try {
+      const res = await secureApiCall(API_CONFIG.ENDPOINTS.WHATSAPP_MESSAGES, {
+        method: "POST",
+        body: JSON.stringify({
+          to: phone,
+          body: message.trim()
+        })
+      })
+
+      if (res.hasError) {
+        alert(res.message || "Erro ao enviar mensagem")
+      } else {
+        setMessage("")
+        // Forçar atualização do SWR para mostrar a mensagem enviada
+        messages?.push({
+          id: Math.random().toString(),
+          tenantId: "",
+          direction: "outbound",
+          from: "",
+          to: phone,
+          body: message.trim(),
+          whatsAppMessageId: null,
+          status: "sent",
+          timestamp: new Date().toISOString()
+        })
+      }
+    } catch (err) {
+      alert("Erro de conexão ao enviar mensagem")
+    } finally {
+      setIsSending(false)
+    }
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={["top", "bottom"]}>
@@ -171,6 +210,35 @@ export default function WhatsAppChatScreen() {
             ))
           )}
         </ScrollView>
+
+        {/* Input Area */}
+        <View className="bg-white border-t border-zinc-200 px-4 py-3 pb-8">
+          <View className="flex-row items-end gap-2 bg-zinc-50 border border-zinc-200 rounded-3xl p-2 pl-4">
+            <TextInput
+              className="flex-1 min-h-[40px] max-h-[120px] text-zinc-900 text-[15px] py-2"
+              placeholder="Digite sua mensagem..."
+              placeholderTextColor="#a1a1aa"
+              multiline
+              value={message}
+              onChangeText={setMessage}
+              editable={!isSending}
+            />
+            <Pressable
+              onPress={handleSendMessage}
+              disabled={!message.trim() || isSending}
+              className={`h-10 w-10 rounded-full items-center justify-center ${
+                !message.trim() || isSending ? "bg-zinc-200" : ""
+              }`}
+              style={message.trim() && !isSending ? { backgroundColor: primaryColor } : {}}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons name="send" size={18} color="white" />
+              )}
+            </Pressable>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )

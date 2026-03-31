@@ -1,7 +1,7 @@
 export enum EstablishmentType {
   Salon = 0,
   Barber = 1,
-  Petshop = 2,
-  NailsDesign = 3,
-  FemaleEsthetics = 4,
+  NailsLashes = 2,
+  EstheticsClinic = 3,
+  SpaMassage = 4,
 }

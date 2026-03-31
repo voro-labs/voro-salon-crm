@@ -79,6 +79,41 @@ export function useUserNotifications() {
     }
   }, [mutateNotifications, mutateUnreadCount])
 
+  const deleteNotification = useCallback(
+    async (id: string) => {
+      try {
+        const result = await secureApiCall(API_CONFIG.ENDPOINTS.NOTIFICATIONS, {
+          method: "DELETE",
+          body: JSON.stringify([id]),
+        })
+        if (!result.hasError) {
+          mutateNotifications((prev) => prev?.filter((n) => n.id !== id), false)
+          mutateUnreadCount()
+        }
+      } catch (err) {
+        console.error("Erro ao deletar notificação:", err)
+      }
+    },
+    [mutateNotifications, mutateUnreadCount],
+  )
+
+  const deleteAllNotifications = useCallback(async () => {
+    try {
+      const result = await secureApiCall(`${API_CONFIG.ENDPOINTS.NOTIFICATIONS}/delete-all`, {
+        method: "DELETE",
+      })
+      if (!result.hasError) {
+        mutateNotifications([], false)
+        mutateUnreadCount((prev: any) =>
+          typeof prev === "number" ? 0 : { ...prev, count: 0 },
+          false,
+        )
+      }
+    } catch (err) {
+      console.error("Erro ao deletar todas as notificações:", err)
+    }
+  }, [mutateNotifications, mutateUnreadCount])
+
   const refresh = useCallback(async () => {
     await Promise.all([mutateNotifications(), mutateUnreadCount()])
   }, [mutateNotifications, mutateUnreadCount])
@@ -88,6 +123,8 @@ export function useUserNotifications() {
     unreadCount,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
+    deleteAllNotifications,
     isLoading,
     refresh,
   }

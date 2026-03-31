@@ -15,7 +15,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { fetcher } from "@/lib/fetcher"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface BlockTimeSlotDialogProps {
   onSuccess?: () => void
@@ -33,11 +42,15 @@ export function BlockTimeSlotDialog({ onSuccess }: BlockTimeSlotDialogProps) {
   const now = new Date()
   const later = new Date(now.getTime() + 60 * 60 * 1000)
 
+  const { data: employees } = useSWR<any[]>(API_CONFIG.ENDPOINTS.EMPLOYEES, fetcher)
+  const isEmployeeMode = employees && employees.length > 0
+
   const [form, setForm] = useState({
     startDateTime: toLocalInputValue(now),
     endDateTime: toLocalInputValue(later),
     reason: "",
     clientMessage: "",
+    employeeId: "none",
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -57,6 +70,7 @@ export function BlockTimeSlotDialog({ onSuccess }: BlockTimeSlotDialogProps) {
           endDateTime: new Date(form.endDateTime).toISOString(),
           reason: form.reason || null,
           clientMessage: form.clientMessage || null,
+          employeeId: form.employeeId !== "none" ? form.employeeId : null,
         }),
       })
 
@@ -72,6 +86,7 @@ export function BlockTimeSlotDialog({ onSuccess }: BlockTimeSlotDialogProps) {
         endDateTime: toLocalInputValue(new Date(Date.now() + 60 * 60 * 1000)),
         reason: "",
         clientMessage: "",
+        employeeId: "none",
       })
       onSuccess?.()
     } catch {
@@ -121,6 +136,31 @@ export function BlockTimeSlotDialog({ onSuccess }: BlockTimeSlotDialogProps) {
               />
             </div>
           </div>
+
+          {isEmployeeMode && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="employeeId">Profissional (Opcional)</Label>
+              <Select
+                value={form.employeeId}
+                onValueChange={(val) => setForm((p) => ({ ...p, employeeId: val }))}
+              >
+                <SelectTrigger id="employeeId">
+                  <SelectValue placeholder="Selecione um profissional" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Todos os profissionais (Salão fechado)</SelectItem>
+                  {employees?.map((e: any) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Selecione um profissional específico ou deixe "Todos" para bloquear a agenda inteira.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="reason">Motivo (uso interno)</Label>

@@ -27,9 +27,6 @@ const ESTABLISHMENT_OPTIONS = [
   { label: "Unhas e Cílios (Lashes)", value: 2 },
   { label: "Estética e Clínica", value: 3 },
   { label: "Spa e Massagem", value: 4 },
-  { label: "Saúde / Médico", value: 5 },
-  { label: "Dentista", value: 6 },
-  { label: "Outros", value: 99 },
 ]
 
 // ── Color palette for the picker ──────────────────────────────────────────────

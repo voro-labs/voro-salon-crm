@@ -1,10 +1,10 @@
 import React, { useRef, useEffect } from "react"
 import { View, TouchableOpacity, ScrollView, Text, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
-import { BottomTabBarProps } from "@react-navigation/bottom-tabs"
+import { MaterialTopTabBarProps } from "@react-navigation/material-top-tabs"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-export function ScrollableTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function ScrollableTabBar({ state, descriptors, navigation }: MaterialTopTabBarProps) {
   const insets = useSafeAreaInsets()
   const scrollRef = useRef<ScrollView>(null)
 
@@ -58,7 +58,7 @@ export function ScrollableTabBar({ state, descriptors, navigation }: BottomTabBa
               activeOpacity={0.7}
               style={[styles.tab, isFocused && styles.tabActive]}
             >
-              {options.tabBarIcon?.({ focused: isFocused, color, size: 22 })}
+              {options.tabBarIcon?.({ focused: isFocused, color })}
               <Text style={[styles.label, { color }]} numberOfLines={1}>
                 {label}
               </Text>

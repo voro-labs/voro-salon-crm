@@ -57,7 +57,7 @@ export default function SubscriptionScreen() {
     statusLabel = "Cancelado"
   }
 
-  const planName = sub?.plan?.name ?? "Plano Gratuito"
+  const planName = sub?.plan?.name
   const price = sub?.plan?.price ?? 0
   const maxClients = sub?.plan?.maxClients ?? -1
   const maxEmployees = sub?.plan?.maxEmployees ?? -1
@@ -72,35 +72,45 @@ export default function SubscriptionScreen() {
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
 
         {/* Hero Card */}
-        <View className="bg-white rounded-3xl p-6 border border-zinc-100 items-center mb-6">
-          <View className="h-20 w-20 rounded-3xl items-center justify-center mb-4" style={{ backgroundColor: primaryColor + "15" }}>
-            <Ionicons name="ribbon-outline" size={36} color={primaryColor} />
+        {planName ? (
+          <View className="bg-white rounded-3xl p-6 border border-zinc-100 items-center mb-6">
+            <View className="h-20 w-20 rounded-3xl items-center justify-center mb-4" style={{ backgroundColor: primaryColor + "15" }}>
+              <Ionicons name="ribbon-outline" size={36} color={primaryColor} />
+            </View>
+            <Text className="text-2xl font-black text-zinc-900 mb-2">{planName}</Text>
+            
+            <View className="rounded-xl px-3 py-1 mb-4" style={{ backgroundColor: statusBg }}>
+              <Text className="text-xs font-bold uppercase tracking-wider" style={{ color: statusColor }}>
+                {statusLabel}
+              </Text>
+            </View>
+
+            <Text className="text-4xl font-black text-zinc-900 mb-1">
+              R$ {price.toFixed(2).replace(".", ",")}
+              <Text className="text-lg text-zinc-400 font-semibold">/mês</Text>
+            </Text>
+
+            {isTrial && sub?.trialEnd && (
+              <Text className="text-zinc-500 text-sm mt-2 font-medium">
+                Teste acaba em {fmtDate(sub.trialEnd)}
+              </Text>
+            )}
+
+            {isActive && sub?.currentPeriodEnd && !isTrial && (
+              <Text className="text-zinc-500 text-sm mt-2 font-medium">
+                Próxima cobrança em {fmtDate(sub.currentPeriodEnd)}
+              </Text>
+            )}
           </View>
-          <Text className="text-2xl font-black text-zinc-900 mb-2">{planName}</Text>
-          
-          <View className="rounded-xl px-3 py-1 mb-4" style={{ backgroundColor: statusBg }}>
-            <Text className="text-xs font-bold uppercase tracking-wider" style={{ color: statusColor }}>
-              {statusLabel}
+        ) : (
+          <View className="bg-white rounded-3xl p-8 border border-zinc-100 border-dashed items-center mb-6">
+            <Ionicons name="alert-circle-outline" size={48} color="#d4d4d8" />
+            <Text className="text-zinc-500 font-bold mt-3 text-center">Nenhuma assinatura ativa</Text>
+            <Text className="text-zinc-400 text-xs text-center mt-1 px-4">
+              Escolha um plano no site para liberar todos os recursos.
             </Text>
           </View>
-
-          <Text className="text-4xl font-black text-zinc-900 mb-1">
-            R$ {price.toFixed(2).replace(".", ",")}
-            <Text className="text-lg text-zinc-400 font-semibold">/mês</Text>
-          </Text>
-
-          {isTrial && sub?.trialEnd && (
-            <Text className="text-zinc-500 text-sm mt-2 font-medium">
-              Teste acaba em {fmtDate(sub.trialEnd)}
-            </Text>
-          )}
-
-          {isActive && sub?.currentPeriodEnd && !isTrial && (
-            <Text className="text-zinc-500 text-sm mt-2 font-medium">
-              Próxima cobrança em {fmtDate(sub.currentPeriodEnd)}
-            </Text>
-          )}
-        </View>
+        )}
 
         {/* Limites da Conta */}
         <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">

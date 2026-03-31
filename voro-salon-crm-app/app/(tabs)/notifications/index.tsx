@@ -1,5 +1,5 @@
 import React, { useCallback } from "react"
-import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native"
+import { View, Text, FlatList, Pressable, ActivityIndicator, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -45,16 +45,17 @@ function getRelativeTime(dateStr: string): string {
 interface NotificationItemProps {
   item: UserNotification
   onPress: (item: UserNotification) => void
+  onDelete: (id: string) => void
   primaryColor: string
 }
 
-function NotificationItem({ item, onPress, primaryColor }: NotificationItemProps) {
+function NotificationItem({ item, onPress, onDelete, primaryColor }: NotificationItemProps) {
   const icon = getNotificationIcon(item.type)
 
   return (
     <Pressable
       onPress={() => onPress(item)}
-      className={`flex-row items-start px-4 py-4 border-b border-zinc-100 active:bg-zinc-50 ${
+      className={`flex-row items-center px-4 py-4 border-b border-zinc-100 active:bg-zinc-50 ${
         item.isRead ? "bg-white" : "bg-blue-50"
       }`}
     >
@@ -86,10 +87,19 @@ function NotificationItem({ item, onPress, primaryColor }: NotificationItemProps
         </Text>
       </View>
 
-      {/* Unread dot */}
-      {!item.isRead && (
-        <View className="h-2 w-2 rounded-full bg-blue-500 mt-1 ml-2 shrink-0" />
-      )}
+      {/* Actions */}
+      <View className="flex-row items-center ml-2">
+        {!item.isRead && (
+          <View className="h-2 w-2 rounded-full bg-blue-500 mr-2 shrink-0" />
+        )}
+        <Pressable
+          onPress={() => onDelete(item.id)}
+          hitSlop={10}
+          className="h-8 w-8 items-center justify-center rounded-full active:bg-zinc-100"
+        >
+          <Ionicons name="trash-outline" size={16} color="#ef4444" />
+        </Pressable>
+      </View>
     </Pressable>
   )
 }
@@ -97,7 +107,7 @@ function NotificationItem({ item, onPress, primaryColor }: NotificationItemProps
 export default function NotificationsScreen() {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
-  const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading, refresh } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications, isLoading, refresh } =
     useUserNotifications()
 
   const handleItemPress = useCallback(
@@ -112,18 +122,39 @@ export default function NotificationsScreen() {
     [markAsRead, router],
   )
 
+  const handleDelete = (id: string) => {
+    Alert.alert("Remover Notificação", "Deseja remover esta notificação?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Remover", style: "destructive", onPress: () => deleteNotification(id) },
+    ])
+  }
+
+  const handleDeleteAll = () => {
+    Alert.alert("Limpar Notificações", "Deseja remover todas as notificações?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Limpar tudo", style: "destructive", onPress: () => deleteAllNotifications() },
+    ])
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={[]}>
       <ScreenHeader
         title="Notificações"
         right={
-          unreadCount > 0 ? (
-            <Pressable onPress={markAllAsRead} className="px-2 py-1">
-              <Text className="text-sm font-semibold" style={{ color: primaryColor }}>
-                Marcar todas
-              </Text>
-            </Pressable>
-          ) : undefined
+          <View className="flex-row items-center gap-1">
+            {unreadCount > 0 && (
+              <Pressable onPress={markAllAsRead} className="px-2 py-1">
+                <Text className="text-sm font-semibold" style={{ color: primaryColor }}>
+                  Lidas
+                </Text>
+              </Pressable>
+            )}
+            {notifications.length > 0 && (
+              <Pressable onPress={handleDeleteAll} className="px-2 py-1">
+                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+              </Pressable>
+            )}
+          </View>
         }
       />
 
@@ -136,7 +167,12 @@ export default function NotificationsScreen() {
           data={notifications}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <NotificationItem item={item} onPress={handleItemPress} primaryColor={primaryColor} />
+            <NotificationItem
+              item={item}
+              onPress={handleItemPress}
+              onDelete={handleDelete}
+              primaryColor={primaryColor}
+            />
           )}
           onRefresh={refresh}
           refreshing={false}

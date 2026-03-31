@@ -12,6 +12,7 @@ import {
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
+import { useRouter } from "expo-router"
 import { useAuth } from "contexts/auth.context"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
@@ -21,6 +22,7 @@ const CODE_LENGTH = 6
 type Step = "idle" | "request" | "confirm"
 
 export default function TwoFactorScreen() {
+  const router = useRouter()
   const { user } = useAuth()
   const { primaryColor } = useTenantTheme()
 
@@ -146,8 +148,8 @@ export default function TwoFactorScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
-      <ScreenHeader title="Autenticação de dois fatores" />
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
+      <ScreenHeader title="Autenticação de dois fatores" showBack onBack={() => router.back()} />
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 16 }}>
         {/* Status Card */}
