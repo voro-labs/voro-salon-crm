@@ -144,7 +144,7 @@ export function BlockTimeSlotDialog({ onSuccess }: BlockTimeSlotDialogProps) {
                 value={form.employeeId}
                 onValueChange={(val) => setForm((p) => ({ ...p, employeeId: val }))}
               >
-                <SelectTrigger id="employeeId">
+                <SelectTrigger id="employeeId" className="w-full">
                   <SelectValue placeholder="Selecione um profissional" />
                 </SelectTrigger>
                 <SelectContent>

@@ -647,12 +647,6 @@ export default function WhatsAppKanbanPage() {
                   </button>
                 </div>
 
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/settings/whatsapp">
-                    <Settings2 className="mr-2 h-4 w-4" />
-                    <span className="hidden sm:inline">Templates</span>
-                  </Link>
-                </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
                   <Send className="mr-2 h-4 w-4" />
                   Enviar Template
