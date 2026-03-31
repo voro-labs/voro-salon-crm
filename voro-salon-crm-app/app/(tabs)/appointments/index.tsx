@@ -39,6 +39,22 @@ const STATUS_MAP: Record<string | number, { label: string; bg: string; text: str
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
+const TODAY_STR = new Date().toISOString().split("T")[0]
+
+function isToday(iso?: string): boolean {
+  if (!iso) return false
+  return iso.split("T")[0] === TODAY_STR
+}
+
+function isWithinNext7Days(iso?: string): boolean {
+  if (!iso) return false
+  const d = new Date(iso.split("T")[0])
+  const today = new Date(TODAY_STR)
+  const next7 = new Date(today)
+  next7.setDate(next7.getDate() + 7)
+  return d >= today && d <= next7
+}
+
 function parseDateInfo(item: Appointment): { day: string; month: string; time: string } | null {
   if (item.scheduledDateTime) {
     const d = new Date(item.scheduledDateTime)
@@ -139,11 +155,22 @@ export default function AppointmentsScreen() {
   useModuleGuard("appointments")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
+  const [filterPeriod, setFilterPeriod] = React.useState<"today" | "week" | "all">("all")
   const { filteredData, isLoading, search, setSearch } = useDataList<Appointment>(
     API_CONFIG.ENDPOINTS.APPOINTMENTS,
     (a, q) =>
       `${a.clientName ?? ""} ${a.client?.name ?? ""} ${a.client?.firstName ?? ""} ${a.serviceName ?? ""} ${a.service?.name ?? ""}`.toLowerCase().includes(q)
   )
+
+  const finalData = React.useMemo(() => {
+    return (filteredData ?? []).filter((a) => {
+      const date = a.scheduledDateTime ?? a.date
+      if (filterPeriod === "all") return true
+      if (filterPeriod === "today") return isToday(date)
+      if (filterPeriod === "week") return isWithinNext7Days(date)
+      return true
+    })
+  }, [filteredData, filterPeriod])
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -178,10 +205,32 @@ export default function AppointmentsScreen() {
         <View className="flex-row items-center gap-2">
           <Pressable
             onPress={() => router.push("/(tabs)/appointments/blocked" as any)}
-            className="flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl bg-red-50 border border-red-100 leading-none"
+            className="flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl bg-red-50 border border-red-100"
           >
             <Ionicons name="lock-closed" size={14} color="#ef4444" />
             <Text className="text-red-700 font-bold text-sm">Horários Bloqueados</Text>
+          </Pressable>
+        </View>
+
+        {/* Period Filter */}
+        <View className="flex-row bg-zinc-100 rounded-2xl p-1 mt-1">
+          <Pressable
+            onPress={() => setFilterPeriod("today")}
+            className={`flex-1 py-2.5 rounded-xl items-center ${filterPeriod === "today" ? "bg-white shadow-sm" : ""}`}
+          >
+            <Text className={`text-xs font-black ${filterPeriod === "today" ? "text-zinc-900" : "text-zinc-400"}`}>HOJE</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setFilterPeriod("week")}
+            className={`flex-1 py-2.5 rounded-xl items-center ${filterPeriod === "week" ? "bg-white shadow-sm" : ""}`}
+          >
+            <Text className={`text-xs font-black ${filterPeriod === "week" ? "text-zinc-900" : "text-zinc-400"}`}>SEMANA</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setFilterPeriod("all")}
+            className={`flex-1 py-2.5 rounded-xl items-center ${filterPeriod === "all" ? "bg-white shadow-sm" : ""}`}
+          >
+            <Text className={`text-xs font-black ${filterPeriod === "all" ? "text-zinc-900" : "text-zinc-400"}`}>TUDO</Text>
           </Pressable>
         </View>
       </View>
@@ -192,7 +241,7 @@ export default function AppointmentsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredData}
+          data={finalData}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <AppointmentCard

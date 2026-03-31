@@ -54,6 +54,15 @@ function isToday(iso?: string): boolean {
   return iso.split("T")[0] === TODAY_STR
 }
 
+function isWithinNext7Days(iso?: string): boolean {
+  if (!iso) return false
+  const d = new Date(iso.split("T")[0])
+  const today = new Date(TODAY_STR)
+  const next7 = new Date(today)
+  next7.setDate(next7.getDate() + 7)
+  return d >= today && d <= next7
+}
+
 // ─── Summary Card ─────────────────────────────────────────────────────────────
 
 function SummaryCard({
@@ -332,6 +341,8 @@ export default function DashboardScreen() {
   )
   const [switchingTenant, setSwitchingTenant] = useState(false)
 
+  const [period, setPeriod] = useState<"today" | "week">("today")
+
   // Sincroniza quando o user é restaurado do token (ex: app reaberto)
   React.useEffect(() => {
     if (user?.currentTenantId) {
@@ -385,11 +396,14 @@ export default function DashboardScreen() {
     }
   }
 
-  const todayAppointments = (appointments ?? [])
-    .filter((a: any) => isToday(a.scheduledDateTime ?? a.date))
+  const dashboardAppointments = (appointments ?? [])
+    .filter((a: any) => {
+      const date = a.scheduledDateTime ?? a.date
+      return period === "today" ? isToday(date) : isWithinNext7Days(date)
+    })
     .sort((a: any, b: any) => {
-      const ta = a.scheduledDateTime ?? ""
-      const tb = b.scheduledDateTime ?? ""
+      const ta = a.scheduledDateTime ?? a.date ?? ""
+      const tb = b.scheduledDateTime ?? b.date ?? ""
       return ta.localeCompare(tb)
     })
 
@@ -504,23 +518,35 @@ export default function DashboardScreen() {
                 </View>
               )}
 
-              {/* ── Today's Appointments ── */}
+              {/* ── Dashboard Appointments ── */}
               <View className="bg-white rounded-3xl p-4 mt-2 border border-zinc-100">
-                <View className="flex-row items-center justify-between mb-1">
-                  <Text className="text-base font-black text-zinc-900">Agendamentos de hoje</Text>
-                  <View className="rounded-2xl p-2" style={{ backgroundColor: primaryColor + "15" }}>
-                    <Text className="text-xs font-black" style={{ color: primaryColor }}>{todayAppointments.length}</Text>
+                <View className="flex-row items-center justify-between mb-4">
+                  <Text className="text-base font-black text-zinc-900">Agendamentos</Text>
+                  <View className="flex-row bg-zinc-100 rounded-xl p-1">
+                    <Pressable
+                      onPress={() => setPeriod("today")}
+                      className={`px-3 py-1.5 rounded-lg ${period === "today" ? "bg-white shadow-sm" : ""}`}
+                    >
+                      <Text className={`text-xs font-bold ${period === "today" ? "text-zinc-900" : "text-zinc-500"}`}>Hoje</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setPeriod("week")}
+                      className={`px-3 py-1.5 rounded-lg ${period === "week" ? "bg-white shadow-sm" : ""}`}
+                    >
+                      <Text className={`text-xs font-bold ${period === "week" ? "text-zinc-900" : "text-zinc-500"}`}>Semana</Text>
+                    </Pressable>
                   </View>
                 </View>
-                <Text className="text-xs text-zinc-400 font-semibold mb-3">Toque no status para alterar</Text>
 
-                {todayAppointments.length === 0 ? (
+                {dashboardAppointments.length === 0 ? (
                   <View className="items-center py-8">
                     <Ionicons name="calendar-outline" size={36} color="#d4d4d8" />
-                    <Text className="text-zinc-400 font-semibold text-sm mt-2">Nenhum agendamento hoje</Text>
+                    <Text className="text-zinc-400 font-semibold text-sm mt-2">
+                      Nenhum agendamento {period === "today" ? "hoje" : "esta semana"}
+                    </Text>
                   </View>
                 ) : (
-                  todayAppointments.map((appt: any) => (
+                  dashboardAppointments.map((appt: any) => (
                     <AppointmentCard
                       key={appt.id}
                       appointment={appt}

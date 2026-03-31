@@ -163,10 +163,10 @@ export default function SettingsScreen() {
                 iconColor="#d97706"
               />
               <NavRow
-                icon="chatbubble-ellipses-outline"
-                label="Templates do WhatsApp"
-                subtitle="Personalizar mensagens automáticas"
-                onPress={() => router.push("/(tabs)/settings/whatsapp-templates" as any)}
+                icon="logo-whatsapp"
+                label="Configurações do WhatsApp"
+                subtitle="Ativar bot e gerenciar templates"
+                onPress={() => router.push("/(tabs)/settings/whatsapp" as any)}
                 iconBg="#dcfce7"
                 iconColor="#16a34a"
               />
