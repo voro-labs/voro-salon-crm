@@ -431,7 +431,20 @@ export default function ConfiguracoesPage() {
                       </Select>
                       </div>
                     )}
-                  </div>
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="whatsapp-booking">Agendamento pelo WhatsApp</Label>
+                        <div className="flex items-center gap-4 h-10">
+                          <Switch
+                            id="whatsapp-booking"
+                            checked={formData.useWhatsappBooking}
+                            onCheckedChange={(v) => setForm(p => p ? { ...p, useWhatsappBooking: v } : null)}
+                          />
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {formData.useWhatsappBooking ? "Ativado" : "Desativado"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="flex flex-col gap-4">
                       <Label>Logotipo do Estabelecimento</Label>
