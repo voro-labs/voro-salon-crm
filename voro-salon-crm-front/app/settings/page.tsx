@@ -106,6 +106,7 @@ export default function ConfiguracoesPage() {
   // WhatsApp config state
   const [wpPhoneNumberId, setWpPhoneNumberId] = useState("")
   const [wpBusinessAccountId, setWpBusinessAccountId] = useState("")
+  const [useWhatsappBooking, setUseWhatsappBooking] = useState(false)
   const [savingWp, setSavingWp] = useState(false)
 
   useEffect(() => {
@@ -210,6 +211,7 @@ export default function ConfiguracoesPage() {
     if (tenant && !wpPhoneNumberId && !wpBusinessAccountId) {
       setWpPhoneNumberId(tenant.whatsappPhoneNumberId ?? "")
       setWpBusinessAccountId(tenant.whatsappBusinessAccountId ?? "")
+      setUseWhatsappBooking(tenant.useWhatsappBooking ?? false)
     }
   }, [tenant]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -222,6 +224,7 @@ export default function ConfiguracoesPage() {
         body: JSON.stringify({
           whatsappPhoneNumberId: wpPhoneNumberId || null,
           whatsappBusinessAccountId: wpBusinessAccountId || null,
+          useWhatsappBooking: useWhatsappBooking
         }),
       })
       if (res.hasError) {
@@ -431,20 +434,7 @@ export default function ConfiguracoesPage() {
                       </Select>
                       </div>
                     )}
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="whatsapp-booking">Agendamento pelo WhatsApp</Label>
-                        <div className="flex items-center gap-4 h-10">
-                          <Switch
-                            id="whatsapp-booking"
-                            checked={formData.useWhatsappBooking}
-                            onCheckedChange={(v) => setForm(p => p ? { ...p, useWhatsappBooking: v } : null)}
-                          />
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {formData.useWhatsappBooking ? "Ativado" : "Desativado"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                  </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="flex flex-col gap-4">
                       <Label>Logotipo do Estabelecimento</Label>
@@ -1101,6 +1091,25 @@ export default function ConfiguracoesPage() {
                       ID da conta do WhatsApp Business no Meta Business Manager.
                     </p>
                   </div>
+                  <div className="flex flex-col gap-3 py-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor="whatsapp-booking-toggle" className="font-semibold">Ativar Agendamento pelo WhatsApp</Label>
+                        <p className="text-xs text-muted-foreground">Permite que clientes agendem via Bot. Requer configuração acima.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {useWhatsappBooking ? "Ativado" : "Desativado"}
+                        </span>
+                        <Switch
+                          id="whatsapp-booking-toggle"
+                          checked={useWhatsappBooking}
+                          onCheckedChange={setUseWhatsappBooking}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex justify-between items-center pt-4 border-t">
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-semibold">Templates de Mensagem</span>
