@@ -620,7 +620,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedUsers(JasmimDbContext context)
         {
-            var adminUser = context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == "jordan@vorolabs.app");
+            var adminUser = context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.UserName == "jordan.silva");
             var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
             var allTenants = context.Tenants.IgnoreQueryFilters().ToList();
 
