@@ -190,7 +190,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 }
 
                 // Save or clear session
-                if (session.State == "COMPLETED")
+                if (session.State == "COMPLETED" || session.State == "CANCELLED")
                 {
                     _cache.Remove(sessionKey);
                 }
@@ -397,7 +397,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 const string cancelledMsg = "✅ Seu agendamento foi cancelado. Se precisar de algo mais, é só chamar!";
                 await _whatsappService.SendTextMessageAsync(from, cancelledMsg, session.WhatsappPhoneNumberId, ct);
                 await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelledMsg);
-                session.State = "COMPLETED";
+                session.State = "CANCELLED";
             }
             else if (choice == "2" || choice?.ToLower().Contains("reaGend") == true || choice?.ToLower().Contains("reschedul") == true)
             {
@@ -965,7 +965,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 const string cancelledMsg = "Agendamento cancelado. Se precisar de algo mais, é só chamar!";
                 await _whatsappService.SendTextMessageAsync(from, cancelledMsg, session.WhatsappPhoneNumberId, ct);
                 await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelledMsg);
-                session.State = "COMPLETED";
+                session.State = "CANCELLED";
             }
         }
 
