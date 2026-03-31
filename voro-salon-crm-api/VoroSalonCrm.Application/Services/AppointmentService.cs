@@ -374,7 +374,7 @@ namespace VoroSalonCrm.Application.Services
                 To = phone,
                 Template = new()
                 {
-                    Name = "appointment_reschedule_1",
+                    Name = "appointment_reminder_2",
                     Components =
                     [
                         new() {

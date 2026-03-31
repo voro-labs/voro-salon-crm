@@ -139,9 +139,9 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             var clients = new List<Client>
             {
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Maria Silva", Phone = "(11) 98765-4321", Email = "maria@demo.com", CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "João Santos", Phone = "(11) 91234-5678", Email = "joao@demo.com", CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Fernanda Rocha", Phone = "(11) 99876-5432", Email = "fernanda@demo.com", CreatedAt = DateTimeOffset.UtcNow },
+                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Maria Silva", Phone = "551187654321", Email = "maria@demo.com", CreatedAt = DateTimeOffset.UtcNow },
+                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "João Santos", Phone = "551112345678", Email = "joao@demo.com", CreatedAt = DateTimeOffset.UtcNow },
+                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Fernanda Rocha", Phone = "551198765432", Email = "fernanda@demo.com", CreatedAt = DateTimeOffset.UtcNow },
             };
 
             await context.Clients.AddRangeAsync(clients);

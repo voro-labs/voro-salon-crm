@@ -71,8 +71,22 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 {
                     var phoneNumberId = membership.Tenant?.WhatsappPhoneNumberId;
                     var phone = membership.Client.Phone!.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", "");
-                    var sessionsText = membership.RemainingSessions?.ToString() ?? "ilimitadas";
                     var expiryDate = membership.EndDate.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM/yyyy");
+
+                    string sessionsText;
+
+                    if (membership.RemainingSessions == null)
+                    {
+                        sessionsText = "Seu plano possui sessões ilimitadas";
+                    }
+                    else if (membership.RemainingSessions > 0)
+                    {
+                        sessionsText = $"Restam {membership.RemainingSessions} sessões no seu plano";
+                    }
+                    else
+                    {
+                        sessionsText = "Você já utilizou todas as sessões do plano";
+                    }
 
                     var templateMsg = new WhatsappTemplateMessageDto
                     {
