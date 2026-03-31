@@ -71,8 +71,10 @@ const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor
   { state: "AWAITING_EMPLOYEE",      label: "Escolhendo Profissional", color: "border-violet-300",  headerColor: "bg-violet-100 text-violet-700" },
   { state: "AWAITING_DATE",          label: "Escolhendo Data",         color: "border-amber-300",   headerColor: "bg-amber-100 text-amber-700" },
   { state: "AWAITING_TIME",          label: "Escolhendo Horário",      color: "border-orange-300",  headerColor: "bg-orange-100 text-orange-700" },
+  { state: "AWAITING_DESCRIPTION",   label: "Aguardando Descrição",    color: "border-purple-300",  headerColor: "bg-purple-100 text-purple-700" },
   { state: "AWAITING_CONFIRMATION",  label: "Aguardando Confirmação",  color: "border-rose-300",    headerColor: "bg-rose-100 text-rose-700" },
   { state: "COMPLETED",              label: "Agendado",                color: "border-emerald-300", headerColor: "bg-emerald-100 text-emerald-700" },
+  { state: "CANCELLED",              label: "Cancelado",               color: "border-gray-300",    headerColor: "bg-gray-100 text-gray-700" },
 ]
 
 // ─── Kanban card ─────────────────────────────────────────────────────────────

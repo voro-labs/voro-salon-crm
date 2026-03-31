@@ -31,8 +31,10 @@ const KANBAN_COLUMNS = [
   { state: "AWAITING_EMPLOYEE",      label: "Escolhendo Profissional", borderColor: "border-violet-300", bgColor: "bg-violet-100",   textColor: "text-violet-700" },
   { state: "AWAITING_DATE",          label: "Escolhendo Data",         borderColor: "border-amber-300",  bgColor: "bg-amber-100",    textColor: "text-amber-700" },
   { state: "AWAITING_TIME",          label: "Escolhendo Horário",      borderColor: "border-orange-300", bgColor: "bg-orange-100",   textColor: "text-orange-700" },
+  { state: "AWAITING_DESCRIPTION",   label: "Aguardando Descrição",    borderColor: "border-purple-300", bgColor: "bg-purple-100",   textColor: "text-purple-700" },
   { state: "AWAITING_CONFIRMATION",  label: "Aguardando Cont.",        borderColor: "border-rose-300",   bgColor: "bg-rose-100",     textColor: "text-rose-700" },
   { state: "COMPLETED",              label: "Agendado",                borderColor: "border-emerald-300",bgColor: "bg-emerald-100",  textColor: "text-emerald-700" },
+  { state: "CANCELLED",              label: "Cancelado",               borderColor: "border-gray-300",   bgColor: "bg-gray-100",     textColor: "text-gray-700" },  
 ]
 
 // Calculate a reasonable column width (e.g., 85% of screen width)
