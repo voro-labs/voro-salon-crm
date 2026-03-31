@@ -7,6 +7,7 @@ using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Infrastructure.Factories;
 using VoroSalonCrm.Shared.Constants;
 using VoroSalonCrm.Shared.Extensions;
+using System.Text.Json;
 
 namespace VoroSalonCrm.Infrastructure.Seeds
 {
@@ -61,6 +62,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             // SEED: Modules for Demo Tenants
             SeedDemoModules(context);
+            
+            await context.SaveChangesAsync();
+
+            // SEED: WhatsApp Templates for all tenants
+            SeedWhatsAppTemplates(context);
 
             await context.SaveChangesAsync();
         }
@@ -675,6 +681,41 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                         });
                     }
                 }
+            }
+        }
+
+        private static void SeedWhatsAppTemplates(JasmimDbContext context)
+        {
+            var template1Name = "cupom_1";
+            if (!context.WhatsAppTemplates.IgnoreQueryFilters().Any(t => t.TenantId == Guid.Empty && t.Name == template1Name))
+            {
+                context.WhatsAppTemplates.Add(new WhatsAppTemplate
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = Guid.Empty,
+                    Name = template1Name,
+                    Label = "Cupom de Desconto",
+                    ParamsCount = 3,
+                    ParamLabelsJson = JsonSerializer.Serialize(new[] { "Nome do Cliente", "Nome do Estabelecimento", "Data de Validade" }),
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
+
+            var template2Name = "cupom_service_1";
+            if (!context.WhatsAppTemplates.IgnoreQueryFilters().Any(t => t.TenantId == Guid.Empty && t.Name == template2Name))
+            {
+                context.WhatsAppTemplates.Add(new WhatsAppTemplate
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = Guid.Empty,
+                    Name = template2Name,
+                    Label = "Cupom de Desconto (Serviço)",
+                    ParamsCount = 4,
+                    ParamLabelsJson = JsonSerializer.Serialize(new[] { "Nome do Cliente", "Nome do Estabelecimento", "Nome do Serviço", "Data de Validade" }),
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
             }
         }
     }
