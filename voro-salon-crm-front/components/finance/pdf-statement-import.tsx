@@ -119,10 +119,12 @@ async function extractTextFromPdf(file: File): Promise<string> {
   const pdfjsLib = await import("pdfjs-dist")
 
   // Set worker — use a more reliable strategy for Next.js
-  const version = pdfjsLib.version || "5.6.205"
-  // If we are in a browser environment, set the worker
   if (typeof window !== "undefined") {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      new URL(
+        "pdfjs-dist/build/pdf.worker.min.mjs",
+        import.meta.url
+      ).toString()
   }
 
   const arrayBuffer = await file.arrayBuffer()
