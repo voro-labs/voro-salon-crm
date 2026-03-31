@@ -347,7 +347,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     .Select(fi => new Role
                     {
                         Id = Guid.Parse((string)fi.GetRawConstantValue()!),
-                        Name = fi.Name.ToTitleCase(),
+                        Name = fi.Name,
                         NormalizedName = fi.Name.ToUpper()
                     })
                     .ToList();
