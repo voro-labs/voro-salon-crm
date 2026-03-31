@@ -41,6 +41,7 @@ export const API_CONFIG = {
     PUBLIC_EMPLOYEES: "/public/PublicBooking/employees",
     PUBLIC_BOOKING: "/public/PublicBooking/booking",
     PUBLIC_AVAILABILITY: "/public/PublicBooking/availability",
+    PUBLIC_RECEIPT: "/public/PublicBooking/receipt",
     SUBSCRIPTION_PLANS: "/subscription/plans",
     SUBSCRIPTION_ME: "/subscription/me",
     SUBSCRIPTION_CHECKOUT: "/subscription/checkout",
@@ -291,13 +292,18 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
           })
         }
       } else {
-        // 401 sem refresh token — limpa estado e redireciona
-        removeAuthToken()
-        dispatchAuthClear()
-        if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
+        // 401 sem refresh token — limpa estado e redireciona (exceto para rotas públicas)
+        const isPublicEndpoint = endpoint.startsWith("/public/") || endpoint.includes("/api/auth/login")
+        
+        if (!isPublicEndpoint) {
+          removeAuthToken()
+          dispatchAuthClear()
+          if (typeof window !== "undefined") window.location.href = "/admin/sign-in"
+        }
+        
         return {
           status: 401,
-          message: "Sessão expirada. Faça login novamente.",
+          message: isPublicEndpoint ? "Sessão não autorizada." : "Sessão expirada. Faça login novamente.",
           data: null,
           hasError: true,
         }

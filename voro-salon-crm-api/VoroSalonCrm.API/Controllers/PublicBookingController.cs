@@ -104,5 +104,22 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpGet("receipt/{id:guid}")]
+        public async Task<IActionResult> GetReceipt([FromRoute] Guid id)
+        {
+            try
+            {
+                var result = await _service.GetAppointmentReceiptAsync(id);
+                if (result == null)
+                    return ResponseViewModel<object>.Fail("Agendamento não encontrado.").ToActionResult();
+
+                return ResponseViewModel<PublicReceiptDto>.Success(result).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

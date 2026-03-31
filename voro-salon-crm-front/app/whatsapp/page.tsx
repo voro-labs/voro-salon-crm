@@ -12,6 +12,7 @@ import { formatDistanceToNow, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
+import { formatPhone } from "@/lib/mask-utils"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { ModuleGuard } from "@/components/auth/module-guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
@@ -532,7 +533,9 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
                   >
                     <div className="min-w-0">
                       <p className="font-medium truncate">{c.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{c.phone}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {formatPhone(c.phone)}
+                      </p>
                     </div>
                     {selectedClientIds.includes(c.id) && (
                       <CheckCircle className="h-4 w-4 text-primary shrink-0" />
