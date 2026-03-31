@@ -100,10 +100,13 @@ export function Main({ children }: MainProps) {
     return <LoadingSimple />
   }
 
-  const isPublicRoute = routesAllowed.some(item => pathname.startsWith(item))
+  const isPublicRoute = routesAllowed.some(item => pathname === item || (item !== "/" && pathname.startsWith(item)))
   const isOnboardingRoute = ONBOARDING_PATHS.some(p => pathname.startsWith(p))
+  const isAuthRoute = ["/admin/sign-in", "/admin/forgot-password", "/admin/reset-password", "/admin/verify-2fa"].some(p => pathname.startsWith(p))
 
-  if (!user?.token || (isPublicRoute && !isOnboardingRoute)) {
+  // Se não estiver logado, ou se estiver logado mas em uma página de autenticação (Sign-in, etc.)
+  // Renderiza o shell minimalista sem sidebar/navbar.
+  if (!user?.token || (isAuthRoute && !isOnboardingRoute)) {
     if (!user?.token && !isPublicRoute) {
       // Rota protegida sem usuário: redireciona para login com redirect de volta
       router.replace(`/admin/sign-in?redirect=${encodeURIComponent(pathname)}`)
