@@ -148,31 +148,35 @@ export default function TwoFactorScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
-      <ScreenHeader title="2FA - Segurança" showBack onBack={() => router.back()} />
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
+      <ScreenHeader 
+        title="Segurança 2FA" 
+        showBack 
+        onBack={() => router.back()} 
+      />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, gap: 16 }}>
         {/* Status Card */}
-        <View className="bg-white rounded-3xl p-4 border border-zinc-100">
-          <View className="flex-row items-center gap-3">
+        <View className="bg-white rounded-3xl p-5 border border-zinc-100 shadow-sm">
+          <View className="flex-row items-center gap-4">
             <View
-              className="h-10 w-10 rounded-2xl items-center justify-center"
+              className="h-12 w-12 rounded-2xl items-center justify-center"
               style={{ backgroundColor: twoFactorEnabled ? "#f0fdf4" : "#f4f4f5" }}
             >
               <Ionicons
                 name={twoFactorEnabled ? "shield-checkmark" : "shield-outline"}
-                size={20}
+                size={24}
                 color={twoFactorEnabled ? "#16a34a" : "#71717a"}
               />
             </View>
             <View className="flex-1">
-              <Text className="font-bold text-zinc-900 text-base">
-                {twoFactorEnabled ? "2FA ativado" : "2FA desativado"}
+              <Text className="font-black text-zinc-900 text-lg">
+                {twoFactorEnabled ? "Proteção Ativa" : "Proteção Desativada"}
               </Text>
-              <Text className="text-zinc-500 text-xs mt-0.5">
+              <Text className="text-zinc-500 text-sm mt-0.5 leading-relaxed">
                 {twoFactorEnabled
-                  ? "Um código será enviado por e-mail a cada login."
-                  : "Ative para aumentar a segurança da sua conta."}
+                  ? "Sua conta está protegida com verificação em duas etapas."
+                  : "Ative para garantir que apenas você acesse sua conta."}
               </Text>
             </View>
           </View>

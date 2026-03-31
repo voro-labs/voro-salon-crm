@@ -8,6 +8,7 @@ import { fetcher } from "lib/fetcher"
 import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { useAuth } from "contexts/auth.context"
 
 function fmtDate(iso?: string) {
   if (!iso) return "—"
@@ -17,6 +18,7 @@ function fmtDate(iso?: string) {
 export default function SubscriptionScreen() {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
+  const { user } = useAuth()
 
   const { data: sub, isLoading } = useSWR<any>(
     API_CONFIG.ENDPOINTS.SUBSCRIPTION_ME,
@@ -26,6 +28,9 @@ export default function SubscriptionScreen() {
   const { data: clientsData } = useSWR<any[]>(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
   const { data: employeesData } = useSWR<any[]>(API_CONFIG.ENDPOINTS.EMPLOYEES, fetcher)
 
+  const roleNames = user?.roles?.map((r: any) => r.name) ?? []
+  const isSalonOwner = roleNames.includes("SalonOwner") || roleNames.includes("Owner")
+
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
@@ -34,10 +39,10 @@ export default function SubscriptionScreen() {
     )
   }
 
-  const isTrial = sub?.status === "trialing"
-  const isPastDue = sub?.status === "past_due"
-  const isCanceled = sub?.status === "canceled"
-  const isActive = sub?.status === "active" || isTrial
+  const isTrial = sub?.status === "Trial" || sub?.status === 1
+  const isPastDue = sub?.status === "PastDue" || sub?.status === 4
+  const isCanceled = sub?.status === "Cancelled" || sub?.status === 3
+  const isActive = sub?.status === "Active" || sub?.status === 0 || isTrial
 
   let statusColor = "#16a34a" // green
   let statusBg = "#dcfce7"
@@ -57,10 +62,10 @@ export default function SubscriptionScreen() {
     statusLabel = "Cancelado"
   }
 
-  const planName = sub?.plan?.name
-  const price = sub?.plan?.price ?? 0
-  const maxClients = sub?.plan?.maxClients ?? -1
-  const maxEmployees = sub?.plan?.maxEmployees ?? -1
+  const planName = sub?.name || sub?.plan?.name
+  const price = sub?.monthlyPrice || sub?.plan?.monthlyPrice || sub?.price || 0
+  const maxClients = sub?.maxClients || sub?.plan?.maxClients || -1
+  const maxEmployees = sub?.maxEmployees || sub?.plan?.maxEmployees || -1
 
   const currentClients = clientsData?.length ?? 0
   const currentEmployees = employeesData?.length ?? 0
@@ -90,15 +95,15 @@ export default function SubscriptionScreen() {
               <Text className="text-lg text-zinc-400 font-semibold">/mês</Text>
             </Text>
 
-            {isTrial && sub?.trialEnd && (
+            {isTrial && sub?.trialEndsAt && (
               <Text className="text-zinc-500 text-sm mt-2 font-medium">
-                Teste acaba em {fmtDate(sub.trialEnd)}
+                Teste acaba em {fmtDate(sub.trialEndsAt)}
               </Text>
             )}
 
-            {isActive && sub?.currentPeriodEnd && !isTrial && (
+            {isActive && sub?.nextPaymentAt && !isTrial && (
               <Text className="text-zinc-500 text-sm mt-2 font-medium">
-                Próxima cobrança em {fmtDate(sub.currentPeriodEnd)}
+                Próxima cobrança em {fmtDate(sub.nextPaymentAt)}
               </Text>
             )}
           </View>

@@ -100,30 +100,34 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Estabelecimento — visível apenas para Owner e SalonOwner */}
-        {isSalonOwner && (
+        {/* Estabelecimento */}
+        {(isSalonOwner || isOwner) && (
           <>
             <SectionLabel title="Estabelecimento" />
             <View className="bg-white mx-4 rounded-3xl px-4 border border-zinc-100">
-              {isOwner && (
-                <NavRow
-                  icon="business-outline"
-                  label="Dados do Salão"
-                  subtitle="Nome, slug, logo, contato e cores"
-                  onPress={() => router.push("/(tabs)/settings/salon" as any)}
-                  iconColor={primaryColor}
-                />
-              )}
-              {isOwner && (
-                <NavRow
-                  icon="card-outline"
-                  label="Assinatura"
-                  subtitle="Gerenciar plano e limites do salão"
-                  onPress={() => router.push("/(tabs)/settings/subscription" as any)}
-                  iconBg="#fef3c7"
-                  iconColor="#d97706"
-                />
-              )}
+              <NavRow
+                icon="business-outline"
+                label="Dados do Salão"
+                subtitle="Nome, slug, logo, contato e cores"
+                onPress={() => router.push("/(tabs)/settings/salon" as any)}
+                iconColor={primaryColor}
+              />
+              <NavRow
+                icon="time-outline"
+                label="Horários de Funcionamento"
+                subtitle="Configurar dias e horários de abertura"
+                onPress={() => router.push("/(tabs)/settings/business-hours" as any)}
+                iconBg="#fff1f2"
+                iconColor="#e11d48"
+              />
+              <NavRow
+                icon="card-outline"
+                label="Assinatura"
+                subtitle="Gerenciar plano e limites do salão"
+                onPress={() => router.push("/(tabs)/settings/subscription" as any)}
+                iconBg="#fef3c7"
+                iconColor="#d97706"
+              />
               {isOwner && (
                 <NavRow
                   icon="grid-outline"
@@ -150,26 +154,22 @@ export default function SettingsScreen() {
                 iconBg="#fdf4ff"
                 iconColor="#c026d3"
               />
-              {isOwner && (
-                <NavRow
-                  icon="clipboard-outline"
-                  label="Anamnese"
-                  subtitle="Configurar ficha de avaliação"
-                  onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
-                  iconBg="#fff7ed"
-                  iconColor="#d97706"
-                />
-              )}
-              {isOwner && (
-                <NavRow
-                  icon="chatbubble-ellipses-outline"
-                  label="Templates do WhatsApp"
-                  subtitle="Personalizar mensagens automáticas"
-                  onPress={() => router.push("/(tabs)/settings/whatsapp-templates" as any)}
-                  iconBg="#dcfce7"
-                  iconColor="#16a34a"
-                />
-              )}
+              <NavRow
+                icon="clipboard-outline"
+                label="Anamnese"
+                subtitle="Configurar ficha de avaliação"
+                onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
+                iconBg="#fff7ed"
+                iconColor="#d97706"
+              />
+              <NavRow
+                icon="chatbubble-ellipses-outline"
+                label="Templates do WhatsApp"
+                subtitle="Personalizar mensagens automáticas"
+                onPress={() => router.push("/(tabs)/settings/whatsapp-templates" as any)}
+                iconBg="#dcfce7"
+                iconColor="#16a34a"
+              />
               {isOwner && (
                 <NavRow
                   icon="extension-puzzle-outline"

@@ -52,6 +52,7 @@ export const API_CONFIG = {
     WHATSAPP_TEMPLATES: "/whatsapp/templates",
     WHATSAPP_SEND_TEMPLATE: "/whatsapp/templates/send",
     TIME_SLOT_BLOCKS: "/timeslotblocks",
+    BUSINESS_HOURS: "/business-hours",
   },
   HEADERS: {
     "Content-Type": "application/json",

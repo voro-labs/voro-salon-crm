@@ -155,20 +155,20 @@ export default function NotificationsScreen() {
       />
 
       {selectionMode && (
-        <View className="bg-zinc-50 px-4 py-2 flex-row items-center justify-between border-b border-zinc-100">
-          <Pressable onPress={toggleSelectAll} className="flex-row items-center gap-2">
-            <Ionicons
-              name={selectedIds.size === notifications.length ? "checkbox" : "square-outline"}
-              size={20}
-              color={primaryColor}
-            />
-            <Text className="text-xs font-bold text-zinc-600">
-              Selecionar todas ({notifications.length})
+        <View className="bg-white px-5 py-3 flex-row items-center justify-between border-b border-zinc-100 shadow-sm z-10">
+          <Pressable onPress={toggleSelectAll} className="flex-row items-center gap-3 active:opacity-60">
+            <View className={`h-6 w-6 rounded-lg items-center justify-center border-2 ${selectedIds.size === notifications.length ? "bg-zinc-900 border-zinc-900" : "border-zinc-200"}`}>
+              {selectedIds.size === notifications.length && <Ionicons name="checkmark" size={14} color="white" />}
+            </View>
+            <Text className="text-sm font-black text-zinc-900">
+              {selectedIds.size === notifications.length ? "Desmarcar Todos" : "Selecionar Todos"}
             </Text>
           </Pressable>
-          <Text className="text-xs font-medium text-zinc-400">
-            {selectedIds.size} selecionadas
-          </Text>
+          <View className="bg-zinc-100 px-3 py-1 rounded-full">
+            <Text className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+              {selectedIds.size} selecionados
+            </Text>
+          </View>
         </View>
       )}
 
@@ -181,54 +181,56 @@ export default function NotificationsScreen() {
           <FlatList
             data={notifications}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View className="flex-row items-center">
-                {selectionMode && (
-                  <Pressable 
-                    onPress={() => handleItemPress(item)}
-                    className="pl-4 pr-1 h-full justify-center"
-                  >
-                    <Ionicons
-                      name={selectedIds.has(item.id) ? "checkbox" : "square-outline"}
-                      size={24}
-                      color={selectedIds.has(item.id) ? primaryColor : "#d4d4d8"}
+            renderItem={({ item }) => {
+              const isSelected = selectedIds.has(item.id)
+              return (
+                <View className={`flex-row items-center ${isSelected ? "bg-zinc-50" : "bg-white"}`}>
+                  {selectionMode && (
+                    <Pressable 
+                      onPress={() => handleItemPress(item)}
+                      className="pl-5 pr-2 h-full justify-center"
+                    >
+                      <View className={`h-6 w-6 rounded-lg items-center justify-center border-2 ${isSelected ? "bg-zinc-900 border-zinc-900" : "border-zinc-200"}`}>
+                        {isSelected && <Ionicons name="checkmark" size={14} color="white" />}
+                      </View>
+                    </Pressable>
+                  )}
+                  <View className="flex-1">
+                    <NotificationItem
+                      item={item}
+                      onPress={handleItemPress}
+                      onDelete={handleDelete}
+                      primaryColor={primaryColor}
+                      disabledActions={selectionMode}
                     />
-                  </Pressable>
-                )}
-                <View className="flex-1">
-                  <NotificationItem
-                    item={item}
-                    onPress={handleItemPress}
-                    onDelete={handleDelete}
-                    primaryColor={primaryColor}
-                    disabledActions={selectionMode}
-                  />
+                  </View>
                 </View>
-              </View>
-            )}
+              )
+            }}
             onRefresh={refresh}
             refreshing={false}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={notifications.length === 0 ? { flex: 1 } : { paddingBottom: 120 }}
+            contentContainerStyle={notifications.length === 0 ? { flex: 1 } : { paddingBottom: 140 }}
             ListEmptyComponent={
               <View className="flex-1 items-center justify-center py-20">
-                <Ionicons name="notifications-off-outline" size={48} color="#d4d4d8" />
-                <Text className="text-zinc-400 font-semibold mt-3 text-base">
-                  Nenhuma notificação ainda
-                </Text>
+                <View className="h-20 w-20 bg-zinc-50 rounded-full items-center justify-center mb-4">
+                  <Ionicons name="notifications-off-outline" size={32} color="#d4d4d8" />
+                </View>
+                <Text className="text-zinc-600 font-black text-lg">Sem avisos por aqui</Text>
+                <Text className="text-zinc-400 text-sm mt-1">Suas notificações aparecerão aqui.</Text>
               </View>
             }
           />
 
           {selectionMode && selectedIds.size > 0 && (
-            <View className="absolute bottom-10 left-6 right-6">
+            <View className="absolute bottom-8 left-6 right-6">
               <Pressable
                 onPress={handleBatchDelete}
-                className="bg-red-500 h-14 rounded-2xl flex-row items-center justify-center gap-2 shadow-lg"
+                className="bg-zinc-900 h-16 rounded-[24px] flex-row items-center justify-center gap-3 shadow-xl active:opacity-90"
               >
                 <Ionicons name="trash" size={20} color="white" />
-                <Text className="text-white font-black text-lg">
-                  Remover selecionadas ({selectedIds.size})
+                <Text className="text-white font-black text-base">
+                  Excluir {selectedIds.size} {selectedIds.size === 1 ? "notificação" : "notificações"}
                 </Text>
               </Pressable>
             </View>

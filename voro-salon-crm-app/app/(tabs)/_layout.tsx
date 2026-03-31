@@ -33,9 +33,17 @@ const TAB_MODULE_IDS: Record<string, number> = {
 
 import { MaterialTopTabs } from "components/MaterialTopTabs"
 
+import { useAuth } from "contexts/auth.context"
+
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
+  const { user } = useAuth()
+  
+  const roleNames = user?.roles?.map((r) => r.name) ?? []
+  const isOwner = roleNames.includes("Owner")
+  const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
+
   const { data: modules } = useSWR(
     API_CONFIG.ENDPOINTS.TENANT_MODULES,
     fetcher,
@@ -53,6 +61,7 @@ export default function TabsLayout() {
   }, [mutate])
 
   function isTabEnabled(name: string): boolean {
+    if (isSalonOwner) return true
     const moduleId = TAB_MODULE_IDS[name]
     if (!moduleId) return true
     if (!modules) return true
@@ -77,7 +86,7 @@ export default function TabsLayout() {
   return (
     <MaterialTopTabs
       tabBarPosition="bottom"
-      tabBar={(props) => <ScrollableTabBar {...props} />}
+      tabBar={ScrollableTabBar}
       screenOptions={({ route }) => {
         const icon = TAB_ICONS[route.name] ?? TAB_ICONS["index"]
         return {

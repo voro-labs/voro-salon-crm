@@ -110,23 +110,25 @@ export default function WhatsAppChatScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-
+    <SafeAreaView className="flex-1 bg-[#efe7de]" edges={["bottom"]}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : undefined} 
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        className="flex-1"
+      >
         {/* Header */}
         <ScreenHeader
           title={displayName}
           showBack
           onBack={() => router.back()}
           right={
-            <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center gap-3">
               {clientId && (
                 <Pressable
                   onPress={() => router.push(`/(tabs)/clients/${clientId}` as any)}
-                  className="px-2.5 h-8 rounded-lg bg-zinc-100 flex-row items-center justify-center gap-1.5 shrink-0"
+                  className="h-9 w-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
                 >
-                  <Ionicons name="person" size={12} color="#52525b" />
-                  <Text className="text-[10px] font-bold text-zinc-700">Ficha</Text>
+                  <Ionicons name="person" size={18} color="#52525b" />
                 </Pressable>
               )}
             </View>
@@ -137,26 +139,28 @@ export default function WhatsAppChatScreen() {
         <ScrollView
           ref={scrollRef}
           className="flex-1"
-          style={{ backgroundColor: "#f4f4f5" }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 20, gap: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 16, gap: 8 }}
+          showsVerticalScrollIndicator={false}
         >
           {isLoading ? (
             <View className="flex-1 items-center justify-center py-20">
-              <ActivityIndicator size="large" color={primaryColor} />
+              <ActivityIndicator size="small" color={primaryColor} />
             </View>
           ) : !messages || messages.length === 0 ? (
-            <View className="flex-1 items-center justify-center py-20 gap-3">
-              <Ionicons name="chatbubbles-outline" size={48} color="#d4d4d8" />
-              <Text className="text-zinc-500 font-medium">Nenhuma mensagem salva.</Text>
+            <View className="bg-white/60 mx-10 p-4 rounded-2xl items-center gap-2">
+              <Ionicons name="lock-closed" size={14} color="#a1a1aa" />
+              <Text className="text-zinc-500 text-[11px] text-center leading-relaxed">
+                As mensagens são protegidas pela Meta.{"\n"}Inicie uma conversa enviando um template.
+              </Text>
             </View>
           ) : (
             groups.map((group) => (
-              <View key={group.date} className="gap-3">
+              <View key={group.date} className="gap-2">
                 {/* Date Header */}
-                <View className="flex-row items-center justify-center gap-3 my-2">
-                  <View className="flex-1 h-[1px] bg-zinc-200" />
-                  <Text className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{group.date}</Text>
-                  <View className="flex-1 h-[1px] bg-zinc-200" />
+                <View className="items-center my-3">
+                  <View className="bg-[#d1eaef] px-3 py-1 rounded-lg">
+                    <Text className="text-[10px] text-[#5c7278] font-bold uppercase tracking-wider">{group.date}</Text>
+                  </View>
                 </View>
 
                 {/* Msg Bubbles */}
@@ -165,34 +169,29 @@ export default function WhatsAppChatScreen() {
                   return (
                     <View
                       key={msg.id}
-                      className={`flex-row ${isOutbound ? "justify-end" : "justify-start"}`}
+                      className={`flex-row mb-1 ${isOutbound ? "justify-end" : "justify-start"}`}
                     >
                       <View
-                        className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 shadow-sm ${isOutbound
-                          ? "rounded-br-sm"
-                          : "bg-white border border-zinc-100 rounded-bl-sm"
+                        className={`max-w-[85%] rounded-xl px-3 py-1.5 shadow-sm ${isOutbound
+                          ? "bg-[#dcf8c6] rounded-tr-none"
+                          : "bg-white rounded-tl-none"
                           }`}
-                        style={isOutbound ? { backgroundColor: primaryColor } : {}}
                       >
                         <Text
-                          className={`text-[15px] leading-relaxed ${isOutbound ? "text-white" : "text-zinc-800"}`}
+                          className="text-[15px] leading-snug text-zinc-800"
                         >
                           {msg.body}
                         </Text>
                         <View className="flex-row items-center justify-end gap-1 mt-1">
-                          <Text
-                            className={`text-[10px] ${isOutbound ? "text-white/70" : "text-zinc-400"}`}
-                          >
+                          <Text className="text-[10px] text-zinc-400">
                             {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                           </Text>
-                          {isOutbound && msg.status === "read" && (
-                            <Ionicons name="checkmark-done" size={14} color="#60a5fa" />
-                          )}
-                          {isOutbound && msg.status === "delivered" && (
-                            <Ionicons name="checkmark-done" size={14} color="rgba(255,255,255,0.7)" />
-                          )}
-                          {isOutbound && msg.status === "sent" && (
-                            <Ionicons name="checkmark" size={14} color="rgba(255,255,255,0.7)" />
+                          {isOutbound && (
+                            <Ionicons 
+                              name={msg.status === "read" ? "checkmark-done" : msg.status === "delivered" ? "checkmark-done" : "checkmark"} 
+                              size={15} 
+                              color={msg.status === "read" ? "#34b7f1" : "#919191"} 
+                            />
                           )}
                         </View>
                       </View>
@@ -203,6 +202,34 @@ export default function WhatsAppChatScreen() {
             ))
           )}
         </ScrollView>
+
+        {/* Input Area */}
+        <View className="bg-white px-3 py-3 border-t border-zinc-200 flex-row items-center gap-2">
+          <View className="flex-1 bg-zinc-50 border border-zinc-200 rounded-[24px] px-4 py-2 min-h-[44px] flex-row items-center gap-2">
+            <TextInput
+              className="flex-1 text-zinc-900 text-base py-1"
+              placeholder="Mensagem"
+              placeholderTextColor="#a1a1aa"
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              style={{ maxHeight: 100 }}
+            />
+          </View>
+          <Pressable
+            onPress={handleSendMessage}
+            disabled={!message.trim() || isSending}
+            className={`h-11 w-11 rounded-full items-center justify-center ${message.trim() ? "" : "opacity-50"}`}
+            style={{ backgroundColor: primaryColor }}
+          >
+            {isSending ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Ionicons name="send" size={20} color="white" style={{ marginLeft: 3 }} />
+            )}
+          </Pressable>
+        </View>
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
