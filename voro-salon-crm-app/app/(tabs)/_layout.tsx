@@ -69,7 +69,7 @@ export default function TabsLayout() {
       try {
         const config = JSON.parse(mod.configuration)
         if (config.displayName) return config.displayName
-      } catch {}
+      } catch { }
     }
     return defaultLabel
   }
@@ -93,12 +93,12 @@ export default function TabsLayout() {
     >
       <MaterialTopTabs.Screen name="index" />
       <MaterialTopTabs.Screen
-        name="clients"
-        options={{ href: isTabEnabled("clients") ? undefined : null } as any}
-      />
-      <MaterialTopTabs.Screen
         name="appointments"
         options={{ href: isTabEnabled("appointments") ? undefined : null } as any}
+      />
+      <MaterialTopTabs.Screen
+        name="clients"
+        options={{ href: isTabEnabled("clients") ? undefined : null } as any}
       />
       <MaterialTopTabs.Screen
         name="services"

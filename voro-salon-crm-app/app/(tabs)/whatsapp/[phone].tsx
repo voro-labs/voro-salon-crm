@@ -112,7 +112,7 @@ export default function WhatsAppChatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        
+
         {/* Header */}
         <ScreenHeader
           title={displayName}
@@ -168,11 +168,10 @@ export default function WhatsAppChatScreen() {
                       className={`flex-row ${isOutbound ? "justify-end" : "justify-start"}`}
                     >
                       <View
-                        className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
-                          isOutbound
-                            ? "rounded-br-sm"
-                            : "bg-white border border-zinc-100 rounded-bl-sm"
-                        }`}
+                        className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 shadow-sm ${isOutbound
+                          ? "rounded-br-sm"
+                          : "bg-white border border-zinc-100 rounded-bl-sm"
+                          }`}
                         style={isOutbound ? { backgroundColor: primaryColor } : {}}
                       >
                         <Text
@@ -204,35 +203,6 @@ export default function WhatsAppChatScreen() {
             ))
           )}
         </ScrollView>
-
-        {/* Input Area */}
-        <View className="bg-white border-t border-zinc-200 px-4 py-3 pb-8">
-          <View className="flex-row items-end gap-2 bg-zinc-50 border border-zinc-200 rounded-3xl p-2 pl-4">
-            <TextInput
-              className="flex-1 min-h-[40px] max-h-[120px] text-zinc-900 text-[15px] py-2"
-              placeholder="Digite sua mensagem..."
-              placeholderTextColor="#a1a1aa"
-              multiline
-              value={message}
-              onChangeText={setMessage}
-              editable={!isSending}
-            />
-            <Pressable
-              onPress={handleSendMessage}
-              disabled={!message.trim() || isSending}
-              className={`h-10 w-10 rounded-full items-center justify-center ${
-                !message.trim() || isSending ? "bg-zinc-200" : ""
-              }`}
-              style={message.trim() && !isSending ? { backgroundColor: primaryColor } : {}}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Ionicons name="send" size={18} color="white" />
-              )}
-            </Pressable>
-          </View>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )

@@ -12,10 +12,10 @@ import { useModuleGuard } from "hooks/use-module-guard.hook"
 type FilterType = "all" | "income" | "expense"
 
 const STATUS_CONFIG: Record<number, { label: string; bg: string; text: string; border: string }> = {
-  1: { label: "Pendente",  bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
-  2: { label: "Parcial",   bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
-  3: { label: "Pago",      bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" },
-  4: { label: "Vencido",   bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
+  1: { label: "Pendente", bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
+  2: { label: "Parcial", bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+  3: { label: "Pago", bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" },
+  4: { label: "Vencido", bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
   5: { label: "Cancelado", bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
 }
 
@@ -51,7 +51,7 @@ export default function FinanceScreen() {
     return matchFilter && matchSearch
   })
 
-  const totalIncome  = (transactions ?? []).filter(isIncome).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
+  const totalIncome = (transactions ?? []).filter(isIncome).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
   const totalExpense = (transactions ?? []).filter(isExpense).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
   const balance = totalIncome - totalExpense
 
@@ -87,13 +87,21 @@ export default function FinanceScreen() {
 
       {/* Summary 2x2 Grid */}
       <View className="bg-white px-4 pt-3 pb-4 border-b border-zinc-100">
-        <View className="flex-row gap-3">
-          {/* Card: Faturamento Mês */}
-          <View className="flex-1 bg-blue-50 rounded-2xl p-3.5 border border-blue-100 mb-3">
-            <Text className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-0.5">Faturamento Mês</Text>
-            <Text className="text-base font-black text-blue-700" numberOfLines={1}>R$ {fmtCurrency(monthlyRevenue)}</Text>
+        <View className="flex-row gap-3 mb-1">
+          {/* Card: Receitas */}
+          <View className="flex-1 bg-green-50 rounded-2xl p-3.5 border border-green-100">
+            <Text className="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-0.5">Receitas</Text>
+            <Text className="text-base font-black text-green-700" numberOfLines={1}>R$ {fmtCurrency(totalIncome)}</Text>
           </View>
-          
+
+          {/* Card: Despesas */}
+          <View className="flex-1 bg-red-50 rounded-2xl p-3.5 border border-red-100">
+            <Text className="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-0.5">Despesas</Text>
+            <Text className="text-base font-black text-red-700" numberOfLines={1}>R$ {fmtCurrency(totalExpense)}</Text>
+          </View>
+        </View>
+
+        <View className="flex-row gap-3">
           {/* Card: Saldo Total */}
           <View
             className="flex-1 rounded-2xl p-3.5 border mb-3"
@@ -101,22 +109,14 @@ export default function FinanceScreen() {
               ? { backgroundColor: primaryColor + "10", borderColor: primaryColor + "20" }
               : { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }}
           >
-            <Text className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={balance >= 0 ? { color: primaryColor } : { color: "#ea580c" }}>Saldo Geral</Text>
+            <Text className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={balance >= 0 ? { color: primaryColor } : { color: "#ea580c" }}>Saldo Previsto</Text>
             <Text className="text-base font-black" style={balance >= 0 ? { color: primaryColor } : { color: "#c2410c" }} numberOfLines={1}>R$ {fmtCurrency(balance)}</Text>
           </View>
-        </View>
 
-        <View className="flex-row gap-3 mb-1">
-          {/* Card: Receitas */}
-          <View className="flex-1 bg-green-50 rounded-2xl p-3.5 border border-green-100">
-            <Text className="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-0.5">Total Receitas</Text>
-            <Text className="text-base font-black text-green-700" numberOfLines={1}>R$ {fmtCurrency(totalIncome)}</Text>
-          </View>
-
-          {/* Card: Despesas */}
-          <View className="flex-1 bg-red-50 rounded-2xl p-3.5 border border-red-100">
-            <Text className="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-0.5">Total Despesas</Text>
-            <Text className="text-base font-black text-red-700" numberOfLines={1}>R$ {fmtCurrency(totalExpense)}</Text>
+          {/* Card: Faturamento Mês */}
+          <View className="flex-1 bg-blue-50 rounded-2xl p-3.5 border border-blue-100 mb-3">
+            <Text className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-0.5">Receita do Mês</Text>
+            <Text className="text-base font-black text-blue-700" numberOfLines={1}>R$ {fmtCurrency(monthlyRevenue)}</Text>
           </View>
         </View>
 
