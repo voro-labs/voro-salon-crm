@@ -2,6 +2,8 @@ export const rolesAllowed = ['Owner', 'SalonOwner', 'SalonEmployee', 'SalonClien
 export const routesAllowed = [
   '/',
   '/prices',
+  '/booking',
+  '/receipt',
   '/admin/sign-in',
   '/admin/forgot-password',
   '/admin/reset-password',
