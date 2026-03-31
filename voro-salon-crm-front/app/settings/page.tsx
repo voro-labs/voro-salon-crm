@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import {
   Save,
@@ -105,16 +106,22 @@ export default function ConfiguracoesPage() {
   // WhatsApp config state
   const [wpPhoneNumberId, setWpPhoneNumberId] = useState("")
   const [wpBusinessAccountId, setWpBusinessAccountId] = useState("")
+  const [useWhatsappBooking, setUseWhatsappBooking] = useState(false)
   const [savingWp, setSavingWp] = useState(false)
 
   useEffect(() => {
     setTwoFactorEnabled(user?.twoFactorEnabled ?? false)
   }, [user?.twoFactorEnabled])
 
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get("tab")
+
   const roleNames = user?.roles?.map((r) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
+  
   const defaultTab = isSalonOwner ? "geral" : "aparencia"
+  const activeTab = tabParam || defaultTab
 
   // Business Hours state
   const DAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
@@ -204,6 +211,7 @@ export default function ConfiguracoesPage() {
     if (tenant && !wpPhoneNumberId && !wpBusinessAccountId) {
       setWpPhoneNumberId(tenant.whatsappPhoneNumberId ?? "")
       setWpBusinessAccountId(tenant.whatsappBusinessAccountId ?? "")
+      setUseWhatsappBooking(tenant.useWhatsappBooking ?? false)
     }
   }, [tenant]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -216,6 +224,7 @@ export default function ConfiguracoesPage() {
         body: JSON.stringify({
           whatsappPhoneNumberId: wpPhoneNumberId || null,
           whatsappBusinessAccountId: wpBusinessAccountId || null,
+          useWhatsappBooking: useWhatsappBooking
         }),
       })
       if (res.hasError) {
@@ -314,7 +323,7 @@ export default function ConfiguracoesPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground text-balance">Configurações</h1>
         </div>
 
-        <Tabs defaultValue={defaultTab} className="w-full">
+        <Tabs defaultValue={activeTab} key={activeTab} className="w-full">
           <div className="relative overflow-hidden">
             <TabsList className="w-full justify-start overflow-x-auto no-scrollbar flex-nowrap h-auto p-1 bg-muted/50">
               {isSalonOwner && (
@@ -1082,6 +1091,25 @@ export default function ConfiguracoesPage() {
                       ID da conta do WhatsApp Business no Meta Business Manager.
                     </p>
                   </div>
+                  <div className="flex flex-col gap-3 py-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <Label htmlFor="whatsapp-booking-toggle" className="font-semibold">Ativar Agendamento pelo WhatsApp</Label>
+                        <p className="text-xs text-muted-foreground">Permite que clientes agendem via Bot. Requer configuração acima.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {useWhatsappBooking ? "Ativado" : "Desativado"}
+                        </span>
+                        <Switch
+                          id="whatsapp-booking-toggle"
+                          checked={useWhatsappBooking}
+                          onCheckedChange={setUseWhatsappBooking}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex justify-between items-center pt-4 border-t">
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-semibold">Templates de Mensagem</span>

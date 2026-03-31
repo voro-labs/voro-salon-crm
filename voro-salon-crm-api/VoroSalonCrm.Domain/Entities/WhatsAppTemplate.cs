@@ -6,7 +6,6 @@ namespace VoroSalonCrm.Domain.Entities
     {
         public Guid Id { get; set; }
         public Guid TenantId { get; set; }
-        public Tenant Tenant { get; set; } = null!;
 
         /// <summary>Nome técnico do template no Meta (ex: appointment_confirmation_1).</summary>
         public string Name { get; set; } = string.Empty;

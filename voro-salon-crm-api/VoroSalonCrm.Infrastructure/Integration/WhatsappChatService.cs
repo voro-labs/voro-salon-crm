@@ -96,7 +96,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             public string? PendingAppointmentSummary { get; set; }
         }
 
-        public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, CancellationToken ct = default)
+        public async Task HandleMessageAsync(WhatsappMessageDto message, string contactName, string displayPhoneNumber, string phoneNumberId, CancellationToken ct = default)
         {
             var from = message.From;
             var sessionKey = $"{CACHE_PREFIX}{from}";
@@ -105,8 +105,13 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 session = new BookingSession();
 
-                // Try to find tenant by receiving phone number
-                var tenant = await _tenantRepository.Query(t => t.IsActive && t.ContactPhone == displayPhoneNumber).FirstOrDefaultAsync(ct);
+                // Try to find tenant by Meta's technical ID (priority) or receiving phone number (fallback)
+                var allActiveTenants = await _tenantRepository.Query(t => t.IsActive).ToListAsync(ct);
+                var targetNumber = new string(displayPhoneNumber.Where(char.IsDigit).ToArray());
+                
+                var tenant = allActiveTenants.FirstOrDefault(t => 
+                    t.WhatsappPhoneNumberId == phoneNumberId || 
+                    (t.ContactPhone != null && new string(t.ContactPhone.Where(char.IsDigit).ToArray()) == targetNumber));
 
                 if (tenant != null)
                 {
@@ -181,6 +186,18 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                     case "AWAITING_CONFIRMATION":
                         await HandleConfirmationAsync(from, message, contactName, session, ct);
+                        break;
+
+                    case "AWAITING_REMINDER_TIME":
+                        await HandleReminderTimeAsync(from, message, session, ct);
+                        break;
+
+                    case "AWAITING_CANCEL_CONFIRMATION":
+                        await HandleCancelConfirmationAsync(from, message, session, ct);
+                        break;
+
+                    case "AWAITING_RESCHEDULE_CONFIRMATION":
+                        await HandleRescheduleConfirmationAsync(from, message, session, ct);
                         break;
 
                     default:
@@ -375,40 +392,29 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
             if (choice == "1" || choice?.ToLower().Contains("cancel") == true)
             {
-                // Cancel the existing appointment
-                if (session.PendingAppointmentId.HasValue)
+                var cancelMsg = $"Tem certeza que deseja cancelar seu agendamento de {session.SelectedTime}?\n\n1 - Sim, cancelar\n2 - Não, manter";
+                var buttons = new[]
                 {
-                    try
-                    {
-                        var appt = await _appointmentRepository.GetByIdAsync(false, session.PendingAppointmentId.Value);
-                        if (appt != null)
-                        {
-                            appt.Status = AppointmentStatus.Cancelled;
-                            appt.UpdatedAt = DateTimeOffset.UtcNow;
-                            _appointmentRepository.Update(appt);
-                            await _unitOfWork.SaveChangesAsync();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Falha ao cancelar agendamento {Id}.", session.PendingAppointmentId);
-                    }
-                }
-                const string cancelledMsg = "✅ Seu agendamento foi cancelado. Se precisar de algo mais, é só chamar!";
-                await _whatsappService.SendTextMessageAsync(from, cancelledMsg, session.WhatsappPhoneNumberId, ct);
-                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelledMsg);
-                session.State = "CANCELLED";
+                    new { type = "reply", reply = new { id = "yes", title = "Sim, cancelar" } },
+                    new { type = "reply", reply = new { id = "no", title = "Não, manter" } }
+                };
+                var interactive = new { type = "button", body = new { text = cancelMsg }, action = new { buttons } };
+                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelMsg);
+                session.State = "AWAITING_CANCEL_CONFIRMATION";
             }
             else if (choice == "2" || choice?.ToLower().Contains("reaGend") == true || choice?.ToLower().Contains("reschedul") == true)
             {
-                // Reschedule: start new booking flow
-                const string rescheduleMsg = "Certo! Vamos reagendar. Por favor, escolha o serviço desejado:";
-                await _whatsappService.SendTextMessageAsync(from, rescheduleMsg, session.WhatsappPhoneNumberId, ct);
+                var rescheduleMsg = "Deseja realmente trocar o horário do seu agendamento?\n\n1 - Sim, reagendar\n2 - Não, manter";
+                var buttons = new[]
+                {
+                    new { type = "reply", reply = new { id = "yes", title = "Sim, reagendar" } },
+                    new { type = "reply", reply = new { id = "no", title = "Não, manter" } }
+                };
+                var interactive = new { type = "button", body = new { text = rescheduleMsg }, action = new { buttons } };
+                await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
                 await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, rescheduleMsg);
-                session.PendingAppointmentId = null;
-                session.PendingAppointmentSummary = null;
-                session.ServicePage = 0;
-                await AskForServiceAsync(from, session, ct);
+                session.State = "AWAITING_RESCHEDULE_CONFIRMATION";
             }
             else if (choice == "3" || choice?.ToLower().Contains("contin") == true)
             {
@@ -951,14 +957,17 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     var confirmedMsg = $"✅ *Agendamento Confirmado!*\n\n{contactName}, seu horário para {session.ServiceName} em *{session.TenantName}* foi marcado para o dia {session.SelectedDate:dd/MM} às {session.SelectedTime}. Esperamos por você!";
                     await _whatsappService.SendTextMessageAsync(from, confirmedMsg, session.WhatsappPhoneNumberId, ct);
                     await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, confirmedMsg);
+                    
+                    // Task 2: ask for reminder time
+                    await AskForReminderTimeAsync(from, session, ct);
                 }
                 else
                 {
                     const string failedMsg = "Desculpe, não conseguimos concluir seu agendamento. Por favor, tente novamente.";
                     await _whatsappService.SendTextMessageAsync(from, failedMsg, session.WhatsappPhoneNumberId, ct);
                     await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, failedMsg);
+                    session.State = "CANCELLED";
                 }
-                session.State = "COMPLETED";
             }
             else
             {
@@ -966,6 +975,123 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 await _whatsappService.SendTextMessageAsync(from, cancelledMsg, session.WhatsappPhoneNumberId, ct);
                 await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelledMsg);
                 session.State = "CANCELLED";
+            }
+        }
+
+        private async Task AskForReminderTimeAsync(string from, BookingSession session, CancellationToken ct)
+        {
+            var body = "Quando você deseja receber um lembrete no WhatsApp antes do seu agendamento? ⏰";
+            var rows = new[]
+            {
+                new { id = "15", title = "15 minutos antes", description = "" },
+                new { id = "30", title = "30 minutos antes", description = "" },
+                new { id = "60", title = "1 hora antes", description = "" },
+                new { id = "120", title = "2 horas antes", description = "" },
+                new { id = "240", title = "4 horas antes", description = "" },
+                new { id = "480", title = "8 horas antes", description = "" },
+                new { id = "1440", title = "24 horas antes", description = "" },
+                new { id = "2880", title = "48 horas antes", description = "" },
+                new { id = "0", title = "Não receber", description = "" }
+            };
+
+            var interactive = new
+            {
+                type = "list",
+                header = new { type = "text", text = "Lembrete" },
+                body = new { text = body },
+                action = new
+                {
+                    button = "Escolher lembrete",
+                    sections = new[] { new { title = "Opções", rows } }
+                }
+            };
+
+            await _whatsappService.SendInteractiveMessageAsync(from, interactive, session.WhatsappPhoneNumberId, ct);
+            await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, body);
+            session.State = "AWAITING_REMINDER_TIME";
+        }
+
+        private async Task HandleReminderTimeAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
+        {
+            string? choice = null;
+            if (message.Type == "interactive" && message.Interactive?.ListReply != null)
+                choice = message.Interactive.ListReply.Id;
+
+            if (choice != null && int.TryParse(choice, out var minutes))
+            {
+                if (session.AppointmentId.HasValue)
+                {
+                    var appt = await _appointmentRepository.GetByIdAsync(false, session.AppointmentId.Value);
+                    if (appt != null)
+                    {
+                        appt.ReminderMinutes = minutes > 0 ? minutes : null;
+                        _appointmentRepository.Update(appt);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+
+                var msg = minutes > 0
+                    ? $"Perfeito! Avisaremos você {message.Interactive!.ListReply!.Title.ToLower()}."
+                    : "Tudo bem! Não enviaremos lembretes para este agendamento.";
+
+                await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, msg);
+                session.State = "COMPLETED";
+            }
+            else
+            {
+                await AskForReminderTimeAsync(from, session, ct);
+            }
+        }
+
+        private async Task HandleCancelConfirmationAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
+        {
+            var choice = message.Type == "interactive" ? message.Interactive?.ButtonReply?.Id : message.Text?.Body?.Trim();
+
+            if (choice == "yes" || choice == "1")
+            {
+                if (session.PendingAppointmentId.HasValue)
+                {
+                    var appt = await _appointmentRepository.GetByIdAsync(false, session.PendingAppointmentId.Value);
+                    if (appt != null)
+                    {
+                        appt.Status = AppointmentStatus.Cancelled;
+                        appt.UpdatedAt = DateTimeOffset.UtcNow;
+                        _appointmentRepository.Update(appt);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+                const string msg = "✅ Seu agendamento foi cancelado com sucesso. Se precisar de algo, é só chamar!";
+                await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, msg);
+                session.State = "CANCELLED";
+            }
+            else
+            {
+                const string msg = "Tudo bem! Mantivemos seu agendamento. Se precisar de outra coisa, estou à disposição.";
+                await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, msg);
+                session.State = "COMPLETED";
+            }
+        }
+
+        private async Task HandleRescheduleConfirmationAsync(string from, WhatsappMessageDto message, BookingSession session, CancellationToken ct)
+        {
+            var choice = message.Type == "interactive" ? message.Interactive?.ButtonReply?.Id : message.Text?.Body?.Trim();
+
+            if (choice == "yes" || choice == "1")
+            {
+                session.PendingAppointmentId = null;
+                session.PendingAppointmentSummary = null;
+                session.ServicePage = 0;
+                await AskForServiceAsync(from, session, ct);
+            }
+            else
+            {
+                const string msg = "Tudo bem! Mantivemos seu agendamento atual. Até breve!";
+                await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
+                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, msg);
+                session.State = "COMPLETED";
             }
         }
 

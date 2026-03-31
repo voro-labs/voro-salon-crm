@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Domain.Entities;
@@ -7,6 +7,7 @@ using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Infrastructure.Factories;
 using VoroSalonCrm.Shared.Constants;
 using VoroSalonCrm.Shared.Extensions;
+using System.Text.Json;
 
 namespace VoroSalonCrm.Infrastructure.Seeds
 {
@@ -34,11 +35,6 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             await context.SaveChangesAsync();
 
-            // SEED: Tenant
-            SeedTenants(context);
-
-            await context.SaveChangesAsync();
-
             // SEED: Tenant Demo
             SeedDemoTenant(context);
 
@@ -56,6 +52,21 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             // SEED: Subscription Plans
             SeedSubscriptionPlans(context);
+
+            await context.SaveChangesAsync();
+
+            // SEED: Subscription for Demo Tenants
+            SeedDemoSubscriptions(context);
+
+            await context.SaveChangesAsync();
+
+            // SEED: Modules for Demo Tenants
+            SeedDemoModules(context);
+            
+            await context.SaveChangesAsync();
+
+            // SEED: WhatsApp Templates for all tenants
+            SeedWhatsAppTemplates(context);
 
             await context.SaveChangesAsync();
         }
@@ -347,7 +358,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     .Select(fi => new Role
                     {
                         Id = Guid.Parse((string)fi.GetRawConstantValue()!),
-                        Name = fi.Name.ToTitleCase(),
+                        Name = fi.Name,
                         NormalizedName = fi.Name.ToUpper()
                     })
                     .ToList();
@@ -356,26 +367,6 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             }
         }
 
-        private static void SeedTenants(JasmimDbContext context)
-        {
-            if (!context.Tenants.Any())
-            {
-                var tenant = new Tenant
-                {
-                    Name = "VoroLabs",
-                    Slug = "vorolabs",
-                    ContactEmail = "voro@vorolabs.app",
-                    ContactPhone = "(11) 99999-0000",
-                    IsActive = true,
-                    PrimaryColor = "#0f172a",
-                    SecondaryColor = "#6366f1",
-                    ThemeMode = "light",
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                context.Tenants.Add(tenant);
-            }
-        }
 
         // GUIDs estáveis para upsert idempotente
         private static readonly Guid StarterPlanId = Guid.Parse("a1b2c3d4-0001-4000-8000-ef1234560001");
@@ -494,21 +485,90 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedDemoTenant(JasmimDbContext context)
         {
-            if (context.Tenants.IgnoreQueryFilters().Any(t => t.Slug == "vorodemo"))
-                return;
-
-            context.Tenants.Add(new Tenant
+            var demos = new List<Tenant>
             {
-                Name = "Salão Demo",
-                Slug = "vorodemo",
-                ContactEmail = "demo@vorolabs.app",
-                IsDemo = true,
-                IsActive = true,
-                PrimaryColor = "#0f172a",
-                SecondaryColor = "#6366f1",
-                ThemeMode = "light",
-                CreatedAt = DateTime.UtcNow
-            });
+                new() { Name = "Demo Starter", Slug = "vorostarter", ContactEmail = "starter@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#059669", SecondaryColor = "#10b981", ThemeMode = "light" },
+                new() { Name = "Demo Pro", Slug = "voropro", ContactEmail = "pro@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#1d4ed8", SecondaryColor = "#3b82f6", ThemeMode = "light" },
+                new() { Name = "Demo Premium", Slug = "voropremium", ContactEmail = "premium@demo.com", IsDemo = true, IsActive = true, CreatedAt = DateTime.UtcNow, PrimaryColor = "#b45309", SecondaryColor = "#d97706", ThemeMode = "light" }
+            };
+
+            foreach (var demo in demos)
+            {
+                if (!context.Tenants.IgnoreQueryFilters().Any(t => t.Slug == demo.Slug))
+                {
+                    context.Tenants.Add(demo);
+                }
+            }
+        }
+
+        private static void SeedDemoSubscriptions(JasmimDbContext context)
+        {
+            var demoPlans = new Dictionary<string, Guid>
+            {
+                { "vorostarter", StarterPlanId },
+                { "voropro", ProPlanId },
+                { "voropremium", PremiumPlanId }
+            };
+
+            foreach (var (slug, planId) in demoPlans)
+            {
+                var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == slug);
+                if (tenant != null)
+                {
+                    var existing = context.TenantSubscriptions.IgnoreQueryFilters().Any(s => s.TenantId == tenant.Id);
+                    if (!existing)
+                    {
+                        context.TenantSubscriptions.Add(new TenantSubscription
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenant.Id,
+                            PlanId = planId,
+                            Status = SubscriptionStatus.Active,
+                            PaymentSource = PaymentSource.Manual,
+                            StartDate = DateTimeOffset.UtcNow,
+                            TrialEndsAt = DateTimeOffset.UtcNow.AddDays(30),
+                            CreatedAt = DateTimeOffset.UtcNow
+                        });
+                    }
+                }
+            }
+        }
+
+        private static void SeedDemoModules(JasmimDbContext context)
+        {
+            var starterModules = new[] { AppModule.Clients, AppModule.Scheduling, AppModule.Services, AppModule.Employees, AppModule.Settings };
+            var proModules = Enum.GetValues<AppModule>();
+            var premiumModules = Enum.GetValues<AppModule>();
+
+            var mapping = new Dictionary<string, AppModule[]>
+            {
+                { "vorostarter", starterModules },
+                { "voropro", proModules },
+                { "voropremium", premiumModules }
+            };
+
+            foreach (var (slug, modules) in mapping)
+            {
+                var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == slug);
+                if (tenant != null)
+                {
+                    foreach (var module in modules)
+                    {
+                        var existing = context.TenantModules.IgnoreQueryFilters().Any(tm => tm.TenantId == tenant.Id && tm.Module == module);
+                        if (!existing)
+                        {
+                            context.TenantModules.Add(new TenantModule
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = tenant.Id,
+                                Module = module,
+                                IsEnabled = true,
+                                CreatedAt = DateTimeOffset.UtcNow
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         private async Task SeedReviewerUserAsync(JasmimDbContext context)
@@ -519,10 +579,12 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 return;
 
             var ownerRole = context.Roles.FirstOrDefault(r => r.Name == "SalonOwner");
-            var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == "vorodemo");
+            var demoTenants = context.Tenants.IgnoreQueryFilters().Where(t => t.IsDemo).ToList();
 
-            if (tenant == null || ownerRole == null)
+            if (!demoTenants.Any() || ownerRole == null)
                 return;
+
+            var mainTenant = demoTenants.FirstOrDefault(t => t.Slug == "voropremium") ?? demoTenants.First();
 
             var reviewer = new User
             {
@@ -539,14 +601,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 BirthDate = DateTime.UtcNow,
                 SecurityStamp = Guid.NewGuid().ToString(),
                 TwoFactorEnabled = true,
-                UserTenants =
-                [
-                    new UserTenant
-                    {
-                        TenantId = tenant.Id,
-                        IsDefault = true
-                    }
-                ],
+                UserTenants = demoTenants.Select((t, index) => new UserTenant
+                {
+                    TenantId = t.Id,
+                    IsDefault = t.Id == mainTenant.Id || (index == 0 && mainTenant == null)
+                }).ToList(),
                 UserRoles =
                 [
                     new UserRole
@@ -567,10 +626,15 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static void SeedUsers(JasmimDbContext context)
         {
-            if (!context.Users.IgnoreQueryFilters().Any())
+            var adminUser = context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.UserName == "jordan.silva");
+            var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
+            var allTenants = context.Tenants.IgnoreQueryFilters().ToList();
+
+            if (adminUser == null)
             {
-                var adminRole = context.Roles.FirstOrDefault(r => r.Name == "Owner");
-                var tenant = context.Tenants.FirstOrDefault(t => t.Slug == "vorolabs");
+                if (allTenants.Count == 0 || adminRole == null) return;
+                
+                var mainTenant = allTenants.FirstOrDefault(t => t.Slug == "voropremium") ?? allTenants.First();
 
                 var admin = new User
                 {
@@ -585,13 +649,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     CreatedAt = DateTime.UtcNow,
                     BirthDate = DateTime.UtcNow,
                     SecurityStamp = "f87c07d8-3b68-4e35-b1e9-97c9021cf4e8",
-                    UserTenants = [
-                        new UserTenant
-                        {
-                            TenantId = tenant!.Id,
-                            IsDefault = true
-                        }
-                    ],
+                    UserTenants = allTenants.Select(t => new UserTenant
+                    {
+                        TenantId = t.Id,
+                        IsDefault = t.Id == mainTenant.Id
+                    }).ToList(),
                     UserRoles = [
                         new UserRole()
                         {
@@ -602,6 +664,58 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 };
 
                 context.Users.Add(admin);
+            }
+            else
+            {
+                // Garante que o administrador mestre tenha acesso a todos os novos tenants
+                foreach (var t in allTenants)
+                {
+                    var hasAccess = context.UserTenants.IgnoreQueryFilters().Any(ut => ut.UserId == adminUser.Id && ut.TenantId == t.Id);
+                    if (!hasAccess)
+                    {
+                        context.UserTenants.Add(new UserTenant
+                        {
+                            UserId = adminUser.Id,
+                            TenantId = t.Id,
+                            IsDefault = false
+                        });
+                    }
+                }
+            }
+        }
+
+        private static void SeedWhatsAppTemplates(JasmimDbContext context)
+        {
+            var template1Name = "cupom_1";
+            if (!context.WhatsAppTemplates.IgnoreQueryFilters().Any(t => t.TenantId == Guid.Empty && t.Name == template1Name))
+            {
+                context.WhatsAppTemplates.Add(new WhatsAppTemplate
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = Guid.Empty,
+                    Name = template1Name,
+                    Label = "Cupom de Desconto",
+                    ParamsCount = 3,
+                    ParamLabelsJson = JsonSerializer.Serialize(new[] { "Nome do Cliente", "Nome do Estabelecimento", "Data de Validade" }),
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
+
+            var template2Name = "cupom_service_1";
+            if (!context.WhatsAppTemplates.IgnoreQueryFilters().Any(t => t.TenantId == Guid.Empty && t.Name == template2Name))
+            {
+                context.WhatsAppTemplates.Add(new WhatsAppTemplate
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = Guid.Empty,
+                    Name = template2Name,
+                    Label = "Cupom de Desconto (Serviço)",
+                    ParamsCount = 4,
+                    ParamLabelsJson = JsonSerializer.Serialize(new[] { "Nome do Cliente", "Nome do Estabelecimento", "Nome do Serviço", "Data de Validade" }),
+                    IsActive = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
             }
         }
     }

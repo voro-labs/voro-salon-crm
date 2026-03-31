@@ -132,10 +132,11 @@ namespace VoroSalonCrm.Application.Services
             var appointment = await _appointmentRepository.GetByIdAsync(false, id)
                 ?? throw new KeyNotFoundException($"Appointment '{id}' not found.");
 
+            var oldDateTime = appointment.ScheduledDateTime;
             var oldStatus = appointment.Status;
 
             if (dto.ClientId.HasValue) appointment.ClientId = dto.ClientId.Value;
-            if (dto.ServiceId.HasValue) appointment.ServiceId = dto.ServiceId;
+            if (dto.ServiceId.HasValue) appointment.ServiceId = dto.ServiceId.Value;
             if (dto.ScheduledDateTime.HasValue) appointment.ScheduledDateTime = dto.ScheduledDateTime.Value;
             if (dto.DurationMinutes.HasValue) appointment.DurationMinutes = dto.DurationMinutes.Value;
             if (dto.Status.HasValue) appointment.Status = dto.Status.Value;
@@ -161,6 +162,16 @@ namespace VoroSalonCrm.Application.Services
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            // Se mudou data/hora, notifica o reagendamento (se bot ativo)
+            if (dto.ScheduledDateTime.HasValue && dto.ScheduledDateTime.Value != oldDateTime)
+            {
+                try
+                {
+                    await NotifyReschedulingAsync(appointment);
+                }
+                catch (Exception) { /* Ignora falha na notificação */ }
+            }
 
             return await GetByIdAsync(id)
                 ?? throw new Exception("Error retrieving updated appointment.");
@@ -342,6 +353,54 @@ namespace VoroSalonCrm.Application.Services
                 }
             }
 
+            return true;
+        }
+
+        public async Task<bool> NotifyReschedulingAsync(Appointment appointment)
+        {
+            if (appointment.Client == null) return false;
+
+            var tenant = await _tenantRepository.GetByIdAsync(false, appointment.TenantId);
+            if (tenant == null || !tenant.UseWhatsappBooking) return false;
+
+            var tenantName = tenant.Name;
+            var phone = appointment.Client.Phone;
+            if (string.IsNullOrWhiteSpace(phone)) return false;
+
+            var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
+
+            var templateMsg = new WhatsappTemplateMessageDto
+            {
+                To = phone,
+                Template = new()
+                {
+                    Name = "appointment_reminder_2",
+                    Components =
+                    [
+                        new() {
+                            Type = "body",
+                            Parameters =
+                            [
+                                new() { Type = "text", Text = appointment.Client.Name },
+                                new() { Type = "text", Text = tenantName },
+                                new() { Type = "text", Text = appointment.Service?.Name ?? "Serviço" },
+                                new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") },
+                                new() { Type = "text", Text = localTime.ToString("HH:mm") }
+                            ]
+                        },
+                        new() {
+                            Type = "button",
+                            SubType = "url",
+                            Index = "0",
+                            Parameters = [
+                                new() { Type = "text", Text = appointment.Id.ToString() }
+                            ]
+                        }
+                    ]
+                }
+            };
+
+            await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
             return true;
         }
 

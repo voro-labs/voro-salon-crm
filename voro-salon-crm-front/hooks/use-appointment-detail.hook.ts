@@ -118,7 +118,6 @@ export function useAppointmentDetail(appointmentId: string) {
       }
       toast.success("Agendamento atualizado com sucesso!")
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
-      router.push("/appointments")
       return true
     } catch {
       toast.error("Erro de conexão. Tente novamente.")

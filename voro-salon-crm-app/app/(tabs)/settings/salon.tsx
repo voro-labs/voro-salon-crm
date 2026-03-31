@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Switch,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -234,7 +235,8 @@ export default function SalonSettingsScreen() {
     formData.primaryColor !== originalFormRef.current.primaryColor ||
     formData.secondaryColor !== originalFormRef.current.secondaryColor ||
     formData.contactPhone !== originalFormRef.current.contactPhone ||
-    formData.contactEmail !== originalFormRef.current.contactEmail
+    formData.contactEmail !== originalFormRef.current.contactEmail ||
+    formData.useWhatsappBooking !== originalFormRef.current.useWhatsappBooking
   ))
 
   // Intercepta navegação de saída quando há alterações não salvas
@@ -471,10 +473,34 @@ export default function SalonSettingsScreen() {
               </View>
             </Pressable>
 
-            {/* Theme preview bar */}
             <View className="mx-4 mb-4 mt-1 rounded-2xl overflow-hidden h-3 flex-row">
               <View className="flex-1" style={{ backgroundColor: formData.primaryColor || "#7c3aed" }} />
               <View className="flex-1" style={{ backgroundColor: formData.secondaryColor || "#a855f7" }} />
+            </View>
+          </View>
+          
+          {/* ── Agendamento ────────────────────────────────────────── */}
+          <View className="flex-row items-center gap-2 mb-3">
+            <View className="h-7 w-7 bg-green-100 rounded-lg items-center justify-center">
+              <Ionicons name="chatbubbles-outline" size={14} color="#16a34a" />
+            </View>
+            <Text className="text-zinc-700 font-black text-sm">Agendamento</Text>
+          </View>
+
+          <View className="bg-white rounded-3xl border border-zinc-100 overflow-hidden mb-6 p-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 mr-4">
+                <Text className="text-zinc-900 font-black text-sm">Agendamento pelo WhatsApp</Text>
+                <Text className="text-zinc-400 text-xs mt-0.5">
+                  Permite que o cliente realize o agendamento completo pelo Bot do WhatsApp.
+                </Text>
+              </View>
+              <Switch
+                value={formData.useWhatsappBooking}
+                onValueChange={(v) => setForm(p => p ? { ...p, useWhatsappBooking: v } : null)}
+                trackColor={{ false: "#e4e4e7", true: primaryColor + "50" }}
+                thumbColor={formData.useWhatsappBooking ? primaryColor : "#a1a1aa"}
+              />
             </View>
           </View>
 

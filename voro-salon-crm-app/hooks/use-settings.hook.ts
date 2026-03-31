@@ -15,6 +15,7 @@ export interface TenantForm {
   contactPhone: string
   contactEmail: string
   establishmentType: number
+  useWhatsappBooking: boolean
 }
 
 const DEFAULT_FORM: TenantForm = {
@@ -26,6 +27,7 @@ const DEFAULT_FORM: TenantForm = {
   contactPhone: "",
   contactEmail: "",
   establishmentType: 0,
+  useWhatsappBooking: false,
 }
 
 export function useSettings() {
@@ -55,6 +57,7 @@ export function useSettings() {
         contactPhone: phoneNumber,
         contactEmail: tenant.contactEmail ?? "",
         establishmentType: tenant.establishmentType ?? 0,
+        useWhatsappBooking: tenant.useWhatsappBooking ?? false,
       })
       setCountryCode(cCode)
     }

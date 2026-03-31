@@ -67,6 +67,7 @@ interface WhatsAppMessage {
 
 const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor: string }[] = [
   { state: "START",                  label: "Novo Contato",            color: "border-slate-300",   headerColor: "bg-slate-100 text-slate-700" },
+  { state: "AWAITING_TENANT",        label: "Escolhendo Unidade",      color: "border-zinc-300",    headerColor: "bg-zinc-100 text-zinc-700" },
   { state: "AWAITING_SERVICE",       label: "Escolhendo Serviço",      color: "border-blue-300",    headerColor: "bg-blue-100 text-blue-700" },
   { state: "AWAITING_EMPLOYEE",      label: "Escolhendo Profissional", color: "border-violet-300",  headerColor: "bg-violet-100 text-violet-700" },
   { state: "AWAITING_DATE",          label: "Escolhendo Data",         color: "border-amber-300",   headerColor: "bg-amber-100 text-amber-700" },
@@ -615,7 +616,29 @@ export default function WhatsAppKanbanPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <ModuleGuard moduleId={9}>
-        <div className={cn("flex flex-col p-4 sm:p-6", viewMode === "chat" ? "gap-4" : "gap-6 h-full")}>
+        {tenant !== undefined && !tenant?.useWhatsappBooking ? (
+          <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center gap-6">
+            <div className="h-20 w-20 rounded-full bg-rose-100 flex items-center justify-center">
+              <MessageCircle className="h-10 w-10 text-rose-600" />
+            </div>
+            <div className="flex flex-col gap-2 max-w-sm">
+              <h1 className="text-2xl font-bold text-foreground">Funcionalidade Desativada</h1>
+              <p className="text-muted-foreground">
+                O Agendamento pelo WhatsApp está atualmente desativado para o seu estabelecimento. 
+                Para utilizar o Bot e acompanhar os atendimentos, você precisa ativar esta opção nas configurações.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button asChild>
+                <Link href="/settings?tab=whatsapp">
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  Ir para Configurações
+                </Link>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className={cn("flex flex-col p-4 sm:p-6", viewMode === "chat" ? "gap-4" : "gap-6 h-full")}>
           <PageHeader
             title="WhatsApp — Atendimentos"
             description="Acompanhe em qual etapa do agendamento cada contato está."
@@ -749,6 +772,7 @@ export default function WhatsAppKanbanPage() {
             </div>
           )}
         </div>
+        )}
 
         {showSendModal && <SendTemplateModal onClose={() => setShowSendModal(false)} />}
       </ModuleGuard>

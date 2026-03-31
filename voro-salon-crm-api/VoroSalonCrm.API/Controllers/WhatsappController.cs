@@ -26,7 +26,8 @@ namespace VoroSalonCrm.API.Controllers
         IPublicBookingService publicBookingService,
         ITenantRepository tenantRepository,
         IWhatsAppMessageService whatsAppMessageService,
-        IWhatsAppTemplateService whatsAppTemplateService) : ControllerBase
+        IWhatsAppTemplateService whatsAppTemplateService,
+        IWhatsappChatService whatsappChatService) : ControllerBase
     {
         private readonly IntegrationUtil _integrationUtil = integrationUtil.Value;
         private readonly ILogger<WhatsappController> _logger = logger;
@@ -34,6 +35,7 @@ namespace VoroSalonCrm.API.Controllers
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IWhatsAppMessageService _whatsAppMessageService = whatsAppMessageService;
         private readonly IWhatsAppTemplateService _whatsAppTemplateService = whatsAppTemplateService;
+        private readonly IWhatsappChatService _whatsappChatService = whatsappChatService;
 
         [HttpGet]
         public IActionResult VerifyWebhook(
@@ -83,10 +85,13 @@ namespace VoroSalonCrm.API.Controllers
                     var contact = change.Value.Contacts?.FirstOrDefault();
                     var contactName = contact?.Profile?.Name ?? "Cliente";
 
-                    // Resolve tenant pelo número de telefone exibido
-                    var tenant = await _tenantRepository
-                        .Query(t => t.IsActive && t.ContactPhone != null && t.ContactPhone == metadata.DisplayPhoneNumber)
-                        .FirstOrDefaultAsync();
+                    // Resolve tenant pelo ID técnico do Meta (prioridade) ou número exibido (fallback)
+                    var allActiveTenants = await _tenantRepository.Query(t => t.IsActive).ToListAsync();
+                    var targetNumber = new string(metadata.DisplayPhoneNumber.Where(char.IsDigit).ToArray());
+                    
+                    var tenant = allActiveTenants.FirstOrDefault(t => 
+                        t.WhatsappPhoneNumberId == metadata.PhoneNumberId || 
+                        (t.ContactPhone != null && new string(t.ContactPhone.Where(char.IsDigit).ToArray()) == targetNumber));
 
                     foreach (var message in change.Value.Messages)
                     {
@@ -120,8 +125,7 @@ namespace VoroSalonCrm.API.Controllers
                             }
                         }
 
-                        var chatService = HttpContext.RequestServices.GetRequiredService<IWhatsappChatService>();
-                        await chatService.HandleMessageAsync(message, contactName, metadata.DisplayPhoneNumber);
+                        await _whatsappChatService.HandleMessageAsync(message, contactName, metadata.DisplayPhoneNumber, metadata.PhoneNumberId);
                     }
                 }
             }

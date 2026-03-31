@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VoroSalonCrm.Infrastructure.Factories;
@@ -11,9 +12,11 @@ using VoroSalonCrm.Infrastructure.Factories;
 namespace VoroSalonCrm.Infrastructure.Migrations
 {
     [DbContext(typeof(JasmimDbContext))]
-    partial class JasmimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260331142911_AddReminderSentAt")]
+    partial class AddReminderSentAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1846,6 +1849,8 @@ namespace VoroSalonCrm.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TenantId");
+
                     b.ToTable("WhatsAppTemplates");
                 });
 
@@ -2321,6 +2326,17 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.WhatsAppMessage", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.WhatsAppTemplate", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
                         .WithMany()

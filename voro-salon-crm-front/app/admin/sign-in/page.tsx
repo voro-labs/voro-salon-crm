@@ -79,7 +79,7 @@ export default function SignInPage() {
     }
   }
 
-  if (authLoading || loading) return <LoadingSimple />
+  if (authLoading || loading || user?.token) return <LoadingSimple />
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">

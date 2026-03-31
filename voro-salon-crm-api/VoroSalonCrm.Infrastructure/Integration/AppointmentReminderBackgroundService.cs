@@ -44,27 +44,36 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var whatsapp = scope.ServiceProvider.GetRequiredService<IWhatsappService>();
 
             var now = DateTimeOffset.UtcNow;
-            var window24hStart = now.AddHours(23).AddMinutes(50); // 23h50 de antecedência
-            var window24hEnd = now.AddHours(24).AddMinutes(10);   // 24h10 de antecedência
 
-            // Busca agendamentos confirmados ou pendentes, dentro da janela de 24h,
-            // que ainda não receberam o lembrete
+            // Busca agendamentos confirmados ou pendentes que precisam de lembrete.
+            // Regra: (ScheduledDateTime - ReminderMinutes) <= agora E ReminderSentAt == null
+            // Também mantemos a lógica de 24h para agendamentos que não tem ReminderMinutes definido (legado/padrão)
+            
             var appointments = await db.Appointments
                 .Include(a => a.Client)
                 .Include(a => a.Service)
                 .Include(a => a.Tenant)
                 .Where(a =>
                     !a.IsDeleted &&
-                    a.Reminder24hSentAt == null &&
                     (a.Status == AppointmentStatus.Pending || a.Status == AppointmentStatus.Confirmed) &&
-                    a.ScheduledDateTime >= window24hStart &&
-                    a.ScheduledDateTime <= window24hEnd &&
-                    a.Client.Phone != null)
+                    a.Client.Phone != null &&
+                    a.ScheduledDateTime > now && // agendamento no futuro
+                    (
+                        // Caso 1: Tem ReminderMinutes definido e chegou a hora (janela de 15 min para não perder o timing)
+                        (a.ReminderMinutes.HasValue && a.ReminderSentAt == null && 
+                         a.ScheduledDateTime.AddMinutes(-a.ReminderMinutes.Value) <= now &&
+                         a.ScheduledDateTime.AddMinutes(-a.ReminderMinutes.Value) >= now.AddMinutes(-15))
+                        ||
+                        // Caso 2: Legado/24h (se ReminderMinutes for null ou se for exatamente 1440)
+                        (!a.ReminderMinutes.HasValue && a.Reminder24hSentAt == null &&
+                         a.ScheduledDateTime <= now.AddHours(24).AddMinutes(5) &&
+                         a.ScheduledDateTime >= now.AddHours(23).AddMinutes(55))
+                    ))
                 .ToListAsync(ct);
 
             if (appointments.Count == 0) return;
 
-            logger.LogInformation("Sending 24h reminders for {Count} appointments.", appointments.Count);
+            logger.LogInformation("Sending reminders for {Count} appointments.", appointments.Count);
 
             foreach (var appointment in appointments)
             {
@@ -77,19 +86,30 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     var serviceName = appointment.Service?.Name ?? "seu serviço";
                     var salonName = appointment.Tenant?.Name ?? "o estabelecimento";
 
-                    var message =
-                        $"Olá, {appointment.Client.Name}! 👋\n\n" +
-                        $"Lembrando que você tem um agendamento amanhã:\n\n" +
-                        $"📅 *{dateStr}* às *{timeStr}*\n" +
-                        $"✂️ {serviceName}\n" +
-                        $"📍 {salonName}\n\n" +
-                        $"Até lá! 😊";
+                    string message;
+                    if (appointment.ReminderMinutes.HasValue && appointment.ReminderMinutes.Value < 1440)
+                    {
+                        var timeDesc = appointment.ReminderMinutes.Value switch
+                        {
+                            >= 60 => $"{appointment.ReminderMinutes.Value / 60} hora(s)",
+                            _ => $"{appointment.ReminderMinutes.Value} minutos"
+                        };
+                        message = $"Olá, {appointment.Client.Name}! 👋\n\nPassando para lembrar do seu agendamento daqui a *{timeDesc}*:\n\n📅 *{dateStr}* às *{timeStr}*\n✂️ {serviceName}\n📍 {salonName}\n\nAté logo! 😊";
+                    }
+                    else
+                    {
+                        message = $"Olá, {appointment.Client.Name}! 👋\n\nLembrando que você tem um agendamento amanhã:\n\n📅 *{dateStr}* às *{timeStr}*\n✂️ {serviceName}\n📍 {salonName}\n\nAté lá! 😊";
+                    }
 
                     var sent = await whatsapp.SendTextMessageAsync(phone, message, ct: ct);
 
                     if (sent)
                     {
-                        appointment.Reminder24hSentAt = now;
+                        if (appointment.ReminderMinutes.HasValue)
+                            appointment.ReminderSentAt = now;
+                        else
+                            appointment.Reminder24hSentAt = now;
+                            
                         db.Appointments.Update(appointment);
                         logger.LogInformation("Reminder sent for appointment {Id}.", appointment.Id);
                     }
