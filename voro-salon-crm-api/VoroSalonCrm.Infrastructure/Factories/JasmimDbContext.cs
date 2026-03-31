@@ -175,6 +175,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
             builder.Entity<AnamnesisSheet>().HasQueryFilter(asheet =>
                 !asheet.IsDeleted && asheet.TenantId == _currentUser.TenantId);
 
+            builder.Entity<WhatsAppTemplate>().HasQueryFilter(wt =>
+                (wt.TenantId == _currentUser.TenantId || wt.TenantId == Guid.Empty));
+
             // ---------------------------
             // TENANT
             // ---------------------------
@@ -729,6 +732,23 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(n => n.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // WHATSAPP TEMPLATE
+            // ---------------------------
+            builder.Entity<WhatsAppTemplate>(b =>
+            {
+                b.HasKey(wt => wt.Id);
+                b.Property(wt => wt.Id).ValueGeneratedOnAdd();
+                b.Property(wt => wt.Name).IsRequired();
+                b.Property(wt => wt.Label).IsRequired();
+
+                // To allow Guid.Empty without FK error, we configure it as optional here
+                b.HasOne(wt => wt.Tenant)
+                 .WithMany()
+                 .HasForeignKey(wt => wt.TenantId)
+                 .IsRequired(false); // Permite Guid.Empty / Null no banco se a constraint for removida
             });
         }
     }
