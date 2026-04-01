@@ -93,24 +93,24 @@ export async function removeRefreshToken(): Promise<void> {
   await SecureStore.deleteItemAsync("vorolabs_salon_refresh_token")
 }
 
-// Variáveis para controle da fila de refresh token
-let isRefreshing = false
-let refreshSubscribers: ((token: string) => void)[] = []
+import { MobileTokenAdapter } from "./auth-token-adapter"
+import { AuthTokenManager } from "./auth-token-manager"
 
-function subscribeTokenRefresh(cb: (token: string) => void) {
-  refreshSubscribers.push(cb)
-}
-
-function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token))
-  refreshSubscribers = []
-}
+// Instância única para gerenciar a renovação de tokens
+const tokenAdapter = new MobileTokenAdapter()
+const tokenManager = new AuthTokenManager(
+  tokenAdapter,
+  `${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`
+)
 
 // Função helper para fazer chamadas à API com ResponseViewModel
 export async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<ResponseViewModel<T>> {
   try {
     const url = `${API_CONFIG.BASE_API_URL}${endpoint}`
-    const token = await getAuthToken()
+    
+    // 🔥 Ponto de interceptação proativo para garantir um token válido e tratar concorrência
+    const token = await tokenManager.getValidToken()
+    
     const isFormData = options.body instanceof FormData
 
     const headers = {
@@ -126,132 +126,18 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
 
     const status = response.status
 
-    // 🔥 Se for 401, tenta o fluxo de Refresh Token ANTES de tentar parsear JSON
-    // Isso garante que mesmo respostas 401 sem corpo JSON sejam tratadas corretamente
+    // Se ainda for 401 após getValidToken, significa que o token/refresh é inválido
     if (status === 401) {
-      const refreshToken = await getRefreshToken()
-
-      if (refreshToken) {
-        if (!isRefreshing) {
-          isRefreshing = true
-
-          try {
-            const refreshResponse = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ token, refreshToken }),
-            })
-
-            const refreshData = await refreshResponse.json()
-
-            if (refreshResponse.ok && !refreshData.hasError && refreshData.data?.token) {
-              const newToken = refreshData.data.token
-              const newRefreshToken = refreshData.data.refreshToken
-
-              await setAuthToken(newToken)
-              if (newRefreshToken) {
-                await setRefreshToken(newRefreshToken)
-              }
-
-              isRefreshing = false
-              onRefreshed(newToken)
-
-              // Notifica o AuthContext para atualizar user.token com o novo JWT
-              DeviceEventEmitter.emit("auth:tokenRefreshed", newToken)
-
-              // Refaz a requisição original com o novo token
-              const retryHeaders = {
-                ...headers,
-                Authorization: `Bearer ${newToken}`,
-              }
-
-              const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
-              const retryText = await retryResponse.text()
-
-              try {
-                const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
-                return {
-                  status: retryResponse.status,
-                  data: retryJson.data ?? null,
-                  message: retryJson.message ?? null,
-                  hasError: !retryResponse.ok || retryJson.hasError,
-                }
-              } catch {
-                return {
-                  status: retryResponse.status,
-                  message: retryText || "Erro inesperado no servidor.",
-                  data: null,
-                  hasError: true,
-                }
-              }
-            } else {
-              // Refresh falhou — desloga e encerra
-              isRefreshing = false
-              DeviceEventEmitter.emit("auth:logout")
-              return {
-                status: 401,
-                message: "Sessão expirada. Faça login novamente.",
-                data: null,
-                hasError: true,
-              }
-            }
-          } catch {
-            isRefreshing = false
-            DeviceEventEmitter.emit("auth:logout")
-            return {
-              status: 401,
-              message: "Sessão expirada. Faça login novamente.",
-              data: null,
-              hasError: true,
-            }
-          }
-        } else {
-          // Já está renovando o token. Coloca na fila e aguarda.
-          return new Promise((resolve) => {
-            subscribeTokenRefresh(async (newToken: string) => {
-              const retryHeaders = {
-                ...headers,
-                Authorization: `Bearer ${newToken}`,
-              }
-              try {
-                const retryResponse = await fetch(url, { ...options, headers: retryHeaders })
-                const retryText = await retryResponse.text()
-                try {
-                  const retryJson = JSON.parse(retryText) as ResponseViewModel<T>
-                  resolve({
-                    status: retryResponse.status,
-                    data: retryJson.data ?? null,
-                    message: retryJson.message ?? null,
-                    hasError: !retryResponse.ok || retryJson.hasError,
-                  })
-                } catch {
-                  resolve({
-                    status: retryResponse.status,
-                    message: retryText || "Erro inesperado no servidor.",
-                    data: null,
-                    hasError: true,
-                  })
-                }
-              } catch {
-                resolve({
-                  status: 0,
-                  message: "Erro de conexão ao repetir requisição.",
-                  data: null,
-                  hasError: true,
-                })
-              }
-            })
-          })
-        }
-      } else {
-        // 401 sem refresh token — desloga
-        DeviceEventEmitter.emit("auth:logout")
-        return {
-          status: 401,
-          message: "Sessão expirada. Faça login novamente.",
-          data: null,
-          hasError: true,
-        }
+      const isPublicEndpoint = endpoint.startsWith("/public/")
+      if (!isPublicEndpoint) {
+        await tokenAdapter.clearTokens()
+        tokenAdapter.onLogout?.()
+      }
+      return {
+        status: 401,
+        message: "Sessão expirada. Faça login novamente.",
+        data: null,
+        hasError: true,
       }
     }
 
