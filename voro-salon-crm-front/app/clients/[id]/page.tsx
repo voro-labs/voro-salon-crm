@@ -77,6 +77,7 @@ import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
 import { useSettings } from "@/hooks/use-settings.hook"
 import { getServicePlaceholders } from "@/lib/branding"
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 
 
 function formatCurrency(val: number) {
@@ -151,6 +152,7 @@ export default function ClienteDetailPage() {
     addAnamnesis,
   } = useClientDetails(clientId)
 
+  const { hasAnamnesis } = usePlanLimits()
   const { tenant } = useSettings()
   const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
 
@@ -452,15 +454,17 @@ export default function ClienteDetailPage() {
 
         {/* Tabs for History */}
         <Tabs defaultValue="services" className="w-full">
-          <TabsList className="w-full sm:w-auto grid grid-cols-3">
+          <TabsList className={`w-full sm:w-auto grid ${hasAnamnesis ? "grid-cols-3" : "grid-cols-2"}`}>
             <TabsTrigger value="services">
               <CalendarDays className="h-4 w-4" />
               Serviços
             </TabsTrigger>
-            <TabsTrigger value="anamnesis">
-              <ClipboardList className="h-4 w-4" />
-              Anamnese
-            </TabsTrigger>
+            {hasAnamnesis && (
+              <TabsTrigger value="anamnesis">
+                <ClipboardList className="h-4 w-4" />
+                Anamnese
+              </TabsTrigger>
+            )}
             <TabsTrigger value="membership">
               <CreditCard className="h-4 w-4" />
               Assinatura
@@ -681,7 +685,8 @@ export default function ClienteDetailPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="anamnesis" className="mt-4">
+          {hasAnamnesis && (
+            <TabsContent value="anamnesis" className="mt-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <div>
@@ -780,7 +785,8 @@ export default function ClienteDetailPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
+          )}
           <TabsContent value="membership" className="mt-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-4">

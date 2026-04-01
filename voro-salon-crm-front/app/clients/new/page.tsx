@@ -13,6 +13,7 @@ import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useClientForm } from "@/hooks/use-client-form.hook"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 
 export default function NovoClientePage() {
   const {
@@ -26,6 +27,8 @@ export default function NovoClientePage() {
     isCreating,
     createClient,
   } = useClientForm()
+
+  const { hasAnamnesis } = usePlanLimits()
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
@@ -95,31 +98,35 @@ export default function NovoClientePage() {
                 />
               </div>
 
-              <div className="flex items-center space-x-2 py-4 border-t mt-2">
-                <Switch
-                  id="show-anamnesis"
-                  checked={showAnamnesis}
-                  onCheckedChange={setShowAnamnesis}
-                />
-                <Label htmlFor="show-anamnesis" className="cursor-pointer font-semibold text-sm sm:text-base text-balance">
-                  Iniciar Anamnese Capilar agora?
-                </Label>
-              </div>
+              {hasAnamnesis && (
+                <>
+                  <div className="flex items-center space-x-2 py-4 border-t mt-2">
+                    <Switch
+                      id="show-anamnesis"
+                      checked={showAnamnesis}
+                      onCheckedChange={setShowAnamnesis}
+                    />
+                    <Label htmlFor="show-anamnesis" className="cursor-pointer font-semibold text-sm sm:text-base text-balance">
+                      Iniciar Anamnese Capilar agora?
+                    </Label>
+                  </div>
 
-              {showAnamnesis && (
-                <div className="border rounded-xl p-6 bg-muted/30 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    Ficha de Anamnese
-                    <span className="text-xs font-normal text-muted-foreground bg-background px-2 py-1 rounded-full border">Opcional</span>
-                  </h3>
-                  <AnamnesisForm onChange={setAnamnesisResponses} />
-                </div>
+                  {showAnamnesis && (
+                    <div className="border rounded-xl p-6 bg-muted/30 mb-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                        Ficha de Anamnese
+                        <span className="text-xs font-normal text-muted-foreground bg-background px-2 py-1 rounded-full border">Opcional</span>
+                      </h3>
+                      <AnamnesisForm onChange={setAnamnesisResponses} />
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button type="submit" disabled={isCreating} size="lg" className="w-full sm:w-auto h-11 text-sm sm:text-base">
                   {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {showAnamnesis ? "Cadastrar com Anamnese" : "Cadastrar Cliente"}
+                  {hasAnamnesis && showAnamnesis ? "Cadastrar com Anamnese" : "Cadastrar Cliente"}
                 </Button>
                 <Button type="button" variant="outline" size="lg" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
                   <Link href="/clients">Cancelar</Link>
