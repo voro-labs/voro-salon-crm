@@ -15,6 +15,7 @@ export function usePlanLimits() {
     maxClients: plan?.maxClients ?? -1,
     maxEmployees: plan?.maxEmployees ?? -1,
     planName: plan?.name ?? "",
+    hasWhatsAppBot: plan?.hasWhatsAppBot ?? false,
     isLoaded: !!plan,
   }
 }

@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 import { useAuth } from "contexts/auth.context"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 interface NavRowProps {
   icon: string
@@ -60,6 +61,7 @@ export default function SettingsScreen() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const { primaryColor } = useTenantTheme()
+  const { planName, hasWhatsAppBot } = usePlanLimits()
 
   const initials =
     `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "U"
@@ -162,14 +164,16 @@ export default function SettingsScreen() {
                 iconBg="#fff7ed"
                 iconColor="#d97706"
               />
-              <NavRow
-                icon="logo-whatsapp"
-                label="Configurações do WhatsApp"
-                subtitle="Ativar bot e gerenciar templates"
-                onPress={() => router.push("/(tabs)/settings/whatsapp" as any)}
-                iconBg="#dcfce7"
-                iconColor="#16a34a"
-              />
+              {(planName.toLowerCase().includes("pro") || planName.toLowerCase().includes("premium") || hasWhatsAppBot) && (
+                <NavRow
+                  icon="logo-whatsapp"
+                  label="Configurações do WhatsApp"
+                  subtitle="Ativar bot e gerenciar templates"
+                  onPress={() => router.push("/(tabs)/settings/whatsapp" as any)}
+                  iconBg="#dcfce7"
+                  iconColor="#16a34a"
+                />
+              )}
               {isOwner && (
                 <NavRow
                   icon="extension-puzzle-outline"

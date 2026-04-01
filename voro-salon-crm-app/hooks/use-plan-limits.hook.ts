@@ -6,6 +6,7 @@ interface SubscriptionPlanDto {
   maxEmployees: number
   maxClients: number
   name: string
+  hasWhatsAppBot: boolean
 }
 
 interface TenantSubscriptionDto {
@@ -24,6 +25,7 @@ export function usePlanLimits() {
     maxClients: plan?.maxClients ?? -1,
     maxEmployees: plan?.maxEmployees ?? -1,
     planName: plan?.name ?? "",
+    hasWhatsAppBot: plan?.hasWhatsAppBot ?? false,
     isLoaded: !!plan,
   }
 }

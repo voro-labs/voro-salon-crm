@@ -34,6 +34,7 @@ const KANBAN_COLUMNS = [
   { state: "AWAITING_TIME",          label: "Escolhendo Horário",      borderColor: "border-orange-300", bgColor: "bg-orange-100",   textColor: "text-orange-700" },
   { state: "AWAITING_DESCRIPTION",   label: "Aguardando Descrição",    borderColor: "border-purple-300", bgColor: "bg-purple-100",   textColor: "text-purple-700" },
   { state: "AWAITING_CONFIRMATION",  label: "Aguardando Cont.",        borderColor: "border-rose-300",   bgColor: "bg-rose-100",     textColor: "text-rose-700" },
+  { state: "AWAITING_REMINDER_TIME", label: "Definindo Lembrete",    borderColor: "border-indigo-300", bgColor: "bg-indigo-100",   textColor: "text-indigo-700" },
   { state: "COMPLETED",              label: "Agendado",                borderColor: "border-emerald-300",bgColor: "bg-emerald-100",  textColor: "text-emerald-700" },
   { state: "CANCELLED",              label: "Cancelado",               borderColor: "border-gray-300",   bgColor: "bg-gray-100",     textColor: "text-gray-700" },  
 ]

@@ -75,6 +75,7 @@ const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor
   { state: "AWAITING_TIME",          label: "Escolhendo Horário",      color: "border-orange-300",  headerColor: "bg-orange-100 text-orange-700" },
   { state: "AWAITING_DESCRIPTION",   label: "Aguardando Descrição",    color: "border-purple-300",  headerColor: "bg-purple-100 text-purple-700" },
   { state: "AWAITING_CONFIRMATION",  label: "Aguardando Confirmação",  color: "border-rose-300",    headerColor: "bg-rose-100 text-rose-700" },
+  { state: "AWAITING_REMINDER_TIME", label: "Definindo Lembrete",     color: "border-indigo-300",  headerColor: "bg-indigo-100 text-indigo-700" },
   { state: "COMPLETED",              label: "Agendado",                color: "border-emerald-300", headerColor: "bg-emerald-100 text-emerald-700" },
   { state: "CANCELLED",              label: "Cancelado",               color: "border-gray-300",    headerColor: "bg-gray-100 text-gray-700" },
 ]
