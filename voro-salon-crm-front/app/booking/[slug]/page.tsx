@@ -309,29 +309,55 @@ export default function PublicBookingPage() {
   if (isBookingDisabled || hasNoServices) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background text-center">
-        <div className="h-20 w-20 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-4">
-          <Calendar className="h-10 w-10" />
+        {/* Tenant header */}
+        <div className="flex flex-col items-center gap-3 mb-8">
+          {tenant.logoUrl ? (
+            <img
+              src={tenant.logoUrl}
+              alt={tenant.name}
+              className="h-16 w-16 rounded-full object-cover border shadow-sm"
+            />
+          ) : (
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl border">
+              {tenant.name[0]}
+            </div>
+          )}
+          <h2 className="text-lg font-bold text-foreground">{tenant.name}</h2>
         </div>
-        <h1 className="text-xl font-bold">
-          {hasNoServices ? "Serviços indisponíveis" : "Agendamento online desativado"}
-        </h1>
-        <p className="text-muted-foreground mt-2 max-w-md">
-          {hasNoServices
-            ? "Este estabelecimento ainda não possui serviços cadastrados para agendamento online."
-            : "Este estabelecimento não está com o agendamento online ativo no momento."}
-          {" "}Entre em contato diretamente para mais informações.
-        </p>
-        {tenant.contactPhone && (
-          <Button asChild className="mt-6">
-            <a
-              href={`https://wa.me/${tenant.contactPhone.replace(/\D/g, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Falar pelo WhatsApp
-            </a>
-          </Button>
-        )}
+
+        <div className="max-w-sm w-full flex flex-col items-center gap-4">
+          <div className={`h-20 w-20 rounded-full flex items-center justify-center mb-2 ${
+            hasNoServices ? "bg-orange-100 text-orange-500" : "bg-muted text-muted-foreground"
+          }`}>
+            <Calendar className="h-10 w-10" />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h1 className="text-xl font-bold text-foreground">
+              {hasNoServices
+                ? "Serviços indisponíveis"
+                : "Agendamento online indisponível"}
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {hasNoServices
+                ? "Este estabelecimento ainda não possui serviços cadastrados para agendamento online."
+                : "Este estabelecimento não oferece agendamento online. Entre em contato diretamente para marcar um horário."}
+            </p>
+          </div>
+
+          {tenant.contactPhone && (
+            <Button asChild className="mt-2 w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold border-none">
+              <a
+                href={`https://wa.me/${tenant.contactPhone.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Falar pelo WhatsApp
+              </a>
+            </Button>
+          )}
+        </div>
       </div>
     )
   }
