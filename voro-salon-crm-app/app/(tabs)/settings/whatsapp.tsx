@@ -7,10 +7,18 @@ import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useWhatsAppTemplates, defaultWhatsAppTemplateForm, WhatsAppTemplate } from "hooks/use-whatsapp-templates.hook"
 import { useSettings } from "hooks/use-settings.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 export default function WhatsAppSettingsScreen() {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
+  const { hasWhatsAppBot } = usePlanLimits()
+
+  useEffect(() => {
+    if (!hasWhatsAppBot) {
+      router.replace("/(tabs)/settings" as any)
+    }
+  }, [hasWhatsAppBot, router])
   const { form: settingsForm, setForm: setSettingsForm, saveTenant, isSaving: isSavingSettings } = useSettings()
 
   const {
@@ -66,7 +74,7 @@ export default function WhatsAppSettingsScreen() {
 
   const filteredTemplates = (templates ?? []).filter(t => t.tenantId !== "00000000-0000-0000-0000-000000000000")
 
-  if (isLoadingTemplates || !settingsForm) {
+  if (isLoadingTemplates || !settingsForm || !hasWhatsAppBot) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
         <ActivityIndicator color={primaryColor} size="large" />

@@ -101,14 +101,16 @@ export default function EmployeesScreen() {
   const { primaryColor } = useTenantTheme()
   const { maxEmployees } = usePlanLimits()
   const { data: services = [] } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
-  const { filteredData, isLoading, search, setSearch } = useDataList<Employee>(
+  const { data: rawEmployees, filteredData, isLoading, search, setSearch } = useDataList<Employee>(
     API_CONFIG.ENDPOINTS.EMPLOYEES,
     (e, q) => e.name.toLowerCase().includes(q)
   )
 
+  const maxTotal = maxEmployees === -1 ? "Ilimitado" : maxEmployees
+  const currentTotal = rawEmployees?.length ?? 0
+
   function handleAddEmployee() {
-    const totalEmployees = (filteredData ?? []).length
-    if (maxEmployees > 0 && totalEmployees >= maxEmployees) {
+    if (maxEmployees > 0 && currentTotal >= maxEmployees) {
       Alert.alert(
         "Limite atingido",
         `Seu plano permite até ${maxEmployees} funcionário${maxEmployees === 1 ? "" : "s"}. Faça upgrade para adicionar mais.`,
@@ -123,9 +125,19 @@ export default function EmployeesScreen() {
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
       <ScreenHeader title="Funcionários" />
 
-      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
-        <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
-          <Ionicons name="search" size={18} color="#a1a1aa" />
+      <View className="bg-white px-5 pt-3 pb-4 border-b border-zinc-100 flex-col gap-3">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-sm font-bold text-zinc-700">Licenças de Membros</Text>
+          <View className="bg-zinc-50 px-3 py-1 rounded-full border border-zinc-200">
+            <Text className="text-xs font-black" style={{ color: currentTotal >= maxEmployees && maxEmployees !== -1 ? "#ef4444" : "#18181b" }}>
+              {currentTotal} de {maxTotal}
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center gap-3">
+          <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
+            <Ionicons name="search" size={18} color="#a1a1aa" />
           <TextInput
             className="flex-1 text-zinc-900 font-medium text-sm py-1"
             placeholder="Buscar por nome..."
@@ -146,6 +158,7 @@ export default function EmployeesScreen() {
         >
           <Ionicons name="add" size={24} color="white" />
         </Pressable>
+        </View>
       </View>
 
       {isLoading ? (

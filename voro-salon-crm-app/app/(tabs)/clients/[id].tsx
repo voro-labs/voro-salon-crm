@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useLocalSearchParams, router } from "expo-router"
 import useSWR from "swr"
 import { useClientDetails } from "hooks/use-client-details.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { PhoneInput } from "components/PhoneInput"
 import { CountrySelector } from "components/CountrySelector"
@@ -61,6 +62,7 @@ export default function ClientDetailScreen() {
     updateClient, deleteClient, addAnamnesis, addService, deleteService,
   } = useClientDetails(id, () => router.push("/(tabs)/clients" as any))
   const { primaryColor } = useTenantTheme()
+  const { hasAnamnesis } = usePlanLimits()
 
   const [tab, setTab] = useState<TabType>("services")
 
@@ -336,7 +338,7 @@ export default function ClientDetailScreen() {
 
         {/* Tabs */}
         <View style={{ flexDirection: "row", backgroundColor: "#f4f4f5", borderRadius: 16, padding: 4, marginBottom: 16 }}>
-          {(["services", "memberships", "anamnesis"] as TabType[]).map((t) => {
+          {(["services", "memberships", ...(hasAnamnesis ? ["anamnesis"] : [])] as TabType[]).map((t) => {
             const icon = t === "services" ? "calendar-outline" : t === "memberships" ? "card-outline" : "clipboard-outline"
             const label = t === "services" ? "Serviços" : t === "memberships" ? "Planos" : "Anamnese"
             return (
@@ -533,8 +535,9 @@ export default function ClientDetailScreen() {
         </View>
 
         {/* Anamnesis Tab */}
-        <View style={{ display: tab === "anamnesis" ? "flex" : "none" }}>
-          <View className="bg-white rounded-3xl border border-zinc-100">
+        {hasAnamnesis && (
+          <View style={{ display: tab === "anamnesis" ? "flex" : "none" }}>
+            <View className="bg-white rounded-3xl border border-zinc-100">
             <View className="flex-row items-center justify-between px-5 py-4 border-b border-zinc-100">
               <View>
                 <Text className="text-base font-black text-zinc-900">Histórico de Anamnese</Text>
@@ -585,6 +588,7 @@ export default function ClientDetailScreen() {
             )}
           </View>
         </View>
+        )}
       </ScrollView>
 
       {/* Edit Modal */}
@@ -767,8 +771,9 @@ export default function ClientDetailScreen() {
       </Modal>
 
       {/* Anamnesis Modal */}
-      <Modal visible={anamnesisOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAnamnesisOpen(false)}>
-        <View className="flex-1 bg-white">
+      {hasAnamnesis && (
+        <Modal visible={anamnesisOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAnamnesisOpen(false)}>
+          <View className="flex-1 bg-white">
           <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
             <View>
               <Text className="text-lg font-black text-zinc-900">Nova Ficha de Anamnese</Text>
@@ -975,6 +980,7 @@ export default function ClientDetailScreen() {
           </View>
         </View>
       </Modal>
+      )}
 
       {/* Modal: Assinar plano */}
       <Modal visible={membershipOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMembershipOpen(false)}>

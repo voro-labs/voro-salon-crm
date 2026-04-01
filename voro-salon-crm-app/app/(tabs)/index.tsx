@@ -340,7 +340,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets()
   const { user, logout, switchTenant } = useAuth()
   const { dashboardData, loading, refetch } = useDashboard()
-  const { maxClients } = usePlanLimits()
+  const { maxClients, hasBooking } = usePlanLimits()
   const { mutate: mutateAll } = useSWRConfig()
   const { sendWhatsAppMessage } = useWhatsApp()
   const router = useRouter() // Re-adding useRouter hook as it's required for navigation context tracking in some versions of expo-router
@@ -601,7 +601,7 @@ export default function DashboardScreen() {
               </View>
 
               {/* ── Booking Link ── */}
-              {isSchedulingEnabled && bookingUrl && (
+              {hasBooking && isSchedulingEnabled && bookingUrl && (
                 <View className="bg-white rounded-3xl p-4 mt-2 border border-zinc-100">
                   <View className="flex-row items-center gap-3 mb-3">
                     <View className="h-9 w-9 rounded-xl items-center justify-center" style={{ backgroundColor: primaryColor + "18" }}>

@@ -34,6 +34,7 @@ const TAB_MODULE_IDS: Record<string, number> = {
 import { MaterialTopTabs } from "components/MaterialTopTabs"
 
 import { useAuth } from "contexts/auth.context"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
@@ -61,6 +62,14 @@ export default function TabsLayout() {
   }, [mutate])
 
   function isTabEnabled(name: string): boolean {
+    const { hasBooking, hasWhatsAppBot, hasFinancial } = usePlanLimits()
+
+    // 1. Hard restrictions based on plan limits (cannot be overridden by SalonOwner role)
+    if (name === "appointments" && !hasBooking) return false
+    if (name === "whatsapp" && !hasWhatsAppBot) return false
+    if (name === "finance" && !hasFinancial) return false
+
+    // 2. Soft restrictions based on module enablement (can be overridden by SalonOwner role)
     if (isSalonOwner) return true
     const moduleId = TAB_MODULE_IDS[name]
     if (!moduleId) return true
