@@ -39,19 +39,29 @@ const STATUS_MAP: Record<string | number, { label: string; bg: string; text: str
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
-const TODAY_STR = new Date().toISOString().split("T")[0]
+const TODAY_STR = new Date().toLocaleDateString("en-CA") // YYYY-MM-DD em local time
 
 function isToday(iso?: string): boolean {
   if (!iso) return false
-  return iso.split("T")[0] === TODAY_STR
+  const d = new Date(iso)
+  const today = new Date()
+  return (
+    d.getDate() === today.getDate() &&
+    d.getMonth() === today.getMonth() &&
+    d.getFullYear() === today.getFullYear()
+  )
 }
 
 function isWithinNext7Days(iso?: string): boolean {
   if (!iso) return false
-  const d = new Date(iso.split("T")[0])
-  const today = new Date(TODAY_STR)
+  const d = new Date(iso)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
   const next7 = new Date(today)
-  next7.setDate(next7.getDate() + 7)
+  next7.setDate(today.getDate() + 7)
+  next7.setHours(23, 59, 59, 999)
+  
   return d >= today && d <= next7
 }
 
@@ -155,12 +165,25 @@ export default function AppointmentsScreen() {
   useModuleGuard("appointments")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
-  const [filterPeriod, setFilterPeriod] = React.useState<"today" | "week" | "all">("all")
+  const [filterPeriod, setFilterPeriod] = React.useState<"today" | "week" | "all">("today")
+  const [hasAutoSwitched, setHasAutoSwitched] = React.useState(false)
+
   const { filteredData, isLoading, search, setSearch } = useDataList<Appointment>(
     API_CONFIG.ENDPOINTS.APPOINTMENTS,
     (a, q) =>
       `${a.clientName ?? ""} ${a.client?.name ?? ""} ${a.client?.firstName ?? ""} ${a.serviceName ?? ""} ${a.service?.name ?? ""}`.toLowerCase().includes(q)
   )
+
+  // Auto-switch to week if today is empty
+  React.useEffect(() => {
+    if (!isLoading && filteredData && !hasAutoSwitched) {
+      const todayAppts = filteredData.filter((a) => isToday(a.scheduledDateTime ?? a.date))
+      if (todayAppts.length === 0 && filterPeriod === "today") {
+        setFilterPeriod("week")
+        setHasAutoSwitched(true)
+      }
+    }
+  }, [isLoading, filteredData, hasAutoSwitched])
 
   const finalData = React.useMemo(() => {
     return (filteredData ?? []).filter((a) => {

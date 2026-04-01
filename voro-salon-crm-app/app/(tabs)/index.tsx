@@ -48,19 +48,29 @@ function formatTime(iso?: string): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
-const TODAY_STR = new Date().toISOString().split("T")[0]
+const TODAY_STR = new Date().toLocaleDateString("en-CA") // YYYY-MM-DD em local time
 
 function isToday(iso?: string): boolean {
   if (!iso) return false
-  return iso.split("T")[0] === TODAY_STR
+  const d = new Date(iso)
+  const today = new Date()
+  return (
+    d.getDate() === today.getDate() &&
+    d.getMonth() === today.getMonth() &&
+    d.getFullYear() === today.getFullYear()
+  )
 }
 
 function isWithinNext7Days(iso?: string): boolean {
   if (!iso) return false
-  const d = new Date(iso.split("T")[0])
-  const today = new Date(TODAY_STR)
+  const d = new Date(iso)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
   const next7 = new Date(today)
-  next7.setDate(next7.getDate() + 7)
+  next7.setDate(today.getDate() + 7)
+  next7.setHours(23, 59, 59, 999)
+  
   return d >= today && d <= next7
 }
 
@@ -343,7 +353,27 @@ export default function DashboardScreen() {
   )
   const [switchingTenant, setSwitchingTenant] = useState(false)
 
+  const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
+  const { data: modules } = useSWR<any[]>(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
+
+  const { data: appointments, mutate: mutateAppointments } = useSWR<any[]>(
+    API_CONFIG.ENDPOINTS.APPOINTMENTS,
+    fetcher
+  )
+
   const [period, setPeriod] = useState<"today" | "week">("today")
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
+
+  // Auto-switch to week if today is empty (only once per app load or tenant change)
+  useEffect(() => {
+    if (!loading && appointments && !hasAutoSwitched) {
+      const todayAppts = appointments.filter((a: any) => isToday(a.scheduledDateTime ?? a.date))
+      if (todayAppts.length === 0 && period === "today") {
+        setPeriod("week")
+        setHasAutoSwitched(true)
+      }
+    }
+  }, [loading, appointments, hasAutoSwitched])
 
   // Sincroniza quando o user é restaurado do token (ex: app reaberto)
   useEffect(() => {
@@ -367,14 +397,6 @@ export default function DashboardScreen() {
       setSwitchingTenant(false)
     }
   }, [switchTenant, reloadTheme, mutateAll, refetch])
-
-  const { data: appointments, mutate: mutateAppointments } = useSWR<any[]>(
-    API_CONFIG.ENDPOINTS.APPOINTMENTS,
-    fetcher
-  )
-
-  const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
-  const { data: modules } = useSWR<any[]>(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const isSchedulingEnabled = !modules || modules.find((m: any) => m.module === 2)?.isEnabled !== false
   const bookingUrl = tenant?.slug
