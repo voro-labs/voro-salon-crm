@@ -91,11 +91,6 @@ export default function PublicBookingPage() {
         }
         setTenant(res.data)
 
-        // If booking is disabled by the plan or module toggle, stop here — don't load services
-        if (res.data.isBookingEnabled === false) {
-          return
-        }
-
         // Load data from localStorage
         const savedName = localStorage.getItem('voro_booking_name')
         const savedPhone = localStorage.getItem('voro_booking_phone')

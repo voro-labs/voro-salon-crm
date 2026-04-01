@@ -12,6 +12,7 @@ import { fetcher } from "lib/fetcher"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { ScreenHeader } from "components/ScreenHeader"
 import { SendTemplateModal } from "./components/SendTemplateModal"
+import { useModuleGuard } from "hooks/use-module-guard.hook"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface WhatsAppConversation {
@@ -64,6 +65,7 @@ function timeAgo(dateString: string) {
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function WhatsAppKanbanScreen() {
+  useModuleGuard("whatsapp")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const [search, setSearch] = useState("")
