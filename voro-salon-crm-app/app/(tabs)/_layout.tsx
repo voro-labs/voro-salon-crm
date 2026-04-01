@@ -102,33 +102,22 @@ export default function TabsLayout() {
           tabBarActiveTintColor: primaryColor,
           tabBarInactiveTintColor: "#9ca3af",
           tabBarLabel: getTabLabel(route.name),
-          tabBarIcon: ({ focused, color }) => (
+          tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
           swipeEnabled: enabled && route.name !== "whatsapp",
-          display: enabled ? "flex" : "none",
-        }
+          // Expo Router options to hide screen from tab bar without removing from navigator
+          href: enabled ? undefined : null,
+        } as any
       }}
     >
       <MaterialTopTabs.Screen name="index" />
-      {isTabEnabled("appointments") && (
-        <MaterialTopTabs.Screen name="appointments" />
-      )}
-      {isTabEnabled("clients") && (
-        <MaterialTopTabs.Screen name="clients" />
-      )}
-      {isTabEnabled("services") && (
-        <MaterialTopTabs.Screen name="services" />
-      )}
-      {isTabEnabled("employees") && (
-        <MaterialTopTabs.Screen name="employees" />
-      )}
-      {isTabEnabled("finance") && (
-        <MaterialTopTabs.Screen name="finance" />
-      )}
-      {isTabEnabled("whatsapp") && (
-        <MaterialTopTabs.Screen name="whatsapp" />
-      )}
+      <MaterialTopTabs.Screen name="appointments" />
+      <MaterialTopTabs.Screen name="clients" />
+      <MaterialTopTabs.Screen name="services" />
+      <MaterialTopTabs.Screen name="employees" />
+      <MaterialTopTabs.Screen name="finance" />
+      <MaterialTopTabs.Screen name="whatsapp" />
       <MaterialTopTabs.Screen name="notifications" />
       <MaterialTopTabs.Screen name="settings" />
     </MaterialTopTabs>

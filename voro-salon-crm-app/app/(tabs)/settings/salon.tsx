@@ -479,30 +479,7 @@ export default function SalonSettingsScreen() {
             </View>
           </View>
           
-          {/* ── Agendamento ────────────────────────────────────────── */}
-          <View className="flex-row items-center gap-2 mb-3">
-            <View className="h-7 w-7 bg-green-100 rounded-lg items-center justify-center">
-              <Ionicons name="chatbubbles-outline" size={14} color="#16a34a" />
-            </View>
-            <Text className="text-zinc-700 font-black text-sm">Agendamento</Text>
-          </View>
 
-          <View className="bg-white rounded-3xl border border-zinc-100 overflow-hidden mb-6 p-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1 mr-4">
-                <Text className="text-zinc-900 font-black text-sm">Agendamento pelo WhatsApp</Text>
-                <Text className="text-zinc-400 text-xs mt-0.5">
-                  Permite que o cliente realize o agendamento completo pelo Bot do WhatsApp.
-                </Text>
-              </View>
-              <Switch
-                value={formData.useWhatsappBooking}
-                onValueChange={(v) => setForm(p => p ? { ...p, useWhatsappBooking: v } : null)}
-                trackColor={{ false: "#e4e4e7", true: primaryColor + "50" }}
-                thumbColor={formData.useWhatsappBooking ? primaryColor : "#a1a1aa"}
-              />
-            </View>
-          </View>
 
           {/* Save Button */}
           <Pressable

@@ -203,32 +203,7 @@ export default function WhatsAppChatScreen() {
           )}
         </ScrollView>
 
-        {/* Input Area */}
-        <View className="bg-white px-3 py-3 border-t border-zinc-200 flex-row items-center gap-2">
-          <View className="flex-1 bg-zinc-50 border border-zinc-200 rounded-[24px] px-4 py-2 min-h-[44px] flex-row items-center gap-2">
-            <TextInput
-              className="flex-1 text-zinc-900 text-base py-1"
-              placeholder="Mensagem"
-              placeholderTextColor="#a1a1aa"
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              style={{ maxHeight: 100 }}
-            />
-          </View>
-          <Pressable
-            onPress={handleSendMessage}
-            disabled={!message.trim() || isSending}
-            className={`h-11 w-11 rounded-full items-center justify-center ${message.trim() ? "" : "opacity-50"}`}
-            style={{ backgroundColor: primaryColor }}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Ionicons name="send" size={20} color="white" style={{ marginLeft: 3 }} />
-            )}
-          </Pressable>
-        </View>
+
 
       </KeyboardAvoidingView>
     </SafeAreaView>

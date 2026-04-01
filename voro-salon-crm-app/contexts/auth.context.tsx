@@ -124,6 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: expiredToken ?? "", refreshToken }),
       })
+      
+      if (res.status === 401 || res.status === 400) {
+        // Token de refresh explicitamente inválido ou expirado
+        return false
+      }
+
       const data = await res.json()
       if (res.ok && !data.hasError && data.data?.token) {
         const newToken = data.data.token
@@ -133,7 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await applyToken(newToken, newRefresh || refreshToken)
         return true
       }
-    } catch {}
+    } catch (err) {
+      console.warn("[AuthContext] Falha na renovação silenciosa (possível erro de rede):", err)
+      // Em erro de rede, retornamos true para evitar que o checkAuth deslogue o usuário
+      // O interceptor do apiCall tentará novamente quando houver uma requisição real
+      return true 
+    }
     return false
   }, [applyToken])
 
@@ -144,8 +155,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!token) {
         // Sem access token — tenta refresh antes de deslogar
         const refreshed = await attemptSilentRefresh()
-        if (!refreshed) setUser(null)
-        setLoading(false)
+        if (!refreshed) {
+           setUser(null)
+           setLoading(false)
+        }
+        // Se refreshed for true ou se falhou mas não foi 401, o applyToken ou o estado atual é mantido
         return
       }
 
