@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { Plus, Pencil, Trash2, MessageSquare, Loader2, X, CheckCircle } from "lucide-react"
@@ -46,18 +46,21 @@ export default function WhatsAppTemplatesPage() {
     fetcher
   )
 
-  // Redirect if plan doesn't include WhatsApp bot (after plan is loaded)
-  if (isLoaded && !hasWhatsAppBot) {
-    router.replace("/settings")
-    return null
-  }
-
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<WhatsAppTemplate | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [paramLabelsText, setParamLabelsText] = useState("")
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Redirect if plan doesn't include WhatsApp bot (after plan is loaded)
+  useEffect(() => {
+    if (isLoaded && !hasWhatsAppBot) {
+      router.replace("/settings")
+    }
+  }, [isLoaded, hasWhatsAppBot, router])
+
+  if (isLoaded && !hasWhatsAppBot) return null
 
   const openCreate = () => {
     setEditing(null)

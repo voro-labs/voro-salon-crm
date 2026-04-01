@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -148,10 +149,13 @@ export default function AnamnesisConfigPage() {
   } = useAnamnesisConfig()
 
   // Redirect if plan doesn't include Anamnesis (after plan is loaded)
-  if (isLoaded && !hasAnamnesis) {
-    router.replace("/settings")
-    return null
-  }
+  useEffect(() => {
+    if (isLoaded && !hasAnamnesis) {
+      router.replace("/settings")
+    }
+  }, [isLoaded, hasAnamnesis, router])
+
+  if (isLoaded && !hasAnamnesis) return null
 
   const sections = Object.entries(ANAMNESIS_SECTION_LABELS).map(([key, label]) => ({
     value: parseInt(key) as AnamnesisSection,
