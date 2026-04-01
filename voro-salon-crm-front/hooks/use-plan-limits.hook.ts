@@ -17,6 +17,7 @@ export function usePlanLimits() {
     planName: plan?.name ?? "",
     hasWhatsAppBot: plan?.hasWhatsAppBot ?? false,
     hasAnamnesis: plan?.hasAnamnesis ?? false,
+    hasBooking: plan?.hasBooking ?? false,
     isLoaded: !!plan,
   }
 }

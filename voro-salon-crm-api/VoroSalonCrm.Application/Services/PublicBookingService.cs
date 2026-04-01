@@ -20,20 +20,29 @@ namespace VoroSalonCrm.Application.Services
         IExpoPushNotificationService expoPushNotificationService,
         ITimeSlotBlockRepository timeSlotBlockRepository,
         ITenantModuleRepository tenantModuleRepository,
+        ITenantSubscriptionRepository tenantSubscriptionRepository,
         ITenantBusinessHoursRepository businessHoursRepository) : IPublicBookingService
     {
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
         private readonly ITimeSlotBlockRepository _timeSlotBlockRepository = timeSlotBlockRepository;
         private readonly ITenantModuleRepository _tenantModuleRepository = tenantModuleRepository;
+        private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository = tenantSubscriptionRepository;
 
         public async Task<PublicTenantDto?> GetTenantBySlugAsync(string slug)
         {
             var tenant = await tenantRepository.GetBySlugAsync(slug);
             if (tenant == null) return null;
 
+            // Check plan feature flag first
+            var subscription = await _tenantSubscriptionRepository.GetByTenantIdWithPlanAsync(tenant.Id);
+            var planHasBooking = subscription?.Plan?.HasBooking ?? true; // default true if no subscription
+
+            // Also check the module toggle (can be disabled manually)
             var bookingModule = await _tenantModuleRepository.GetModuleAsync(tenant.Id, AppModule.Booking);
-            var isBookingEnabled = bookingModule == null || bookingModule.IsEnabled;
+            var moduleEnabled = bookingModule == null || bookingModule.IsEnabled;
+
+            var isBookingEnabled = planHasBooking && moduleEnabled;
 
             return new PublicTenantDto(
                 tenant.Id,
