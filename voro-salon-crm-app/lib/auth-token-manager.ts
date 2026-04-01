@@ -35,13 +35,14 @@ export class AuthTokenManager {
   /**
    * Retorna um token válido. Se o atual estiver expirando, inicia a renovação
    * ou espera por uma renovação já em curso.
+   * @param force Se true, ignora a validade do token atual e força um refresh.
    */
-  async getValidToken(): Promise<string | null> {
+  async getValidToken(force: boolean = false): Promise<string | null> {
     const token = await this.adapter.getAuthToken()
     if (!token) return null
 
-    // Se o token ainda é válido, retorna ele imediatamente
-    if (!this.isTokenExpiring(token)) {
+    // Se o token ainda é válido e não estamos forçando, retorna ele
+    if (!force && !this.isTokenExpiring(token)) {
       return token
     }
 
@@ -82,6 +83,12 @@ export class AuthTokenManager {
           const newToken = result.data.token
           const newRefresh = result.data.refreshToken
           await this.adapter.saveTokens(newToken, newRefresh)
+          
+          // Notifica interessados (como o AuthContext) que o token mudou
+          // Import dinâmico para evitar problemas de dependência circular no app
+          const { DeviceEventEmitter } = require("react-native")
+          DeviceEventEmitter.emit("auth:tokenRefreshed", newToken)
+          
           console.log("[AuthTokenManager] Token renovado com sucesso.")
           return newToken
         }
@@ -89,8 +96,9 @@ export class AuthTokenManager {
         return null
       } catch (err) {
         console.warn("[AuthTokenManager] Erro de rede na renovação:", err)
-        // Em erro de rede, não limpamos os tokens para permitir retry posterior
-        return null
+        // Em erro de rede, retornamos o token atual para evitar logout precoce.
+        // As requisições subsequentes falharão com erro de conexão em vez de 401.
+        return token
       } finally {
         this.refreshPromise = null
       }

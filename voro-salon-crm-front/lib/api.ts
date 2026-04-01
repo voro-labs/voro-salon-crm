@@ -133,8 +133,11 @@ const tokenManager = new AuthTokenManager(
   `${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`
 )
 
+// Opções estendidas para suportar controle interno de retry
+type ApiOptions = RequestInit & { _retry?: boolean }
+
 // Função helper para fazer chamadas à API com ResponseViewModel
-export async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<ResponseViewModel<T>> {
+export async function apiCall<T>(endpoint: string, options: ApiOptions = {}): Promise<ResponseViewModel<T>> {
   try {
     const url = `${API_CONFIG.BASE_API_URL}${endpoint}`
     
@@ -152,7 +155,25 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
     const response = await fetch(url, { ...options, headers })
     const status = response.status
 
-    if (status === 401) {
+    // Se for 401, o token circulando pode estar inválido/revogado. Tentamos UM refresh forçado.
+    if (status === 401 && !options._retry) {
+      console.warn("[apiCall] 401 Detectado no Web. Tentando refresh forçado...")
+      const newToken = await tokenManager.getValidToken(true)
+      
+      if (newToken) {
+        console.log("[apiCall] Refresh forçado funcionou no Web. Refazendo requisição...")
+        const retryHeaders = {
+          ...headers,
+          Authorization: `Bearer ${newToken}`,
+        }
+        return await apiCall(endpoint, { 
+          ...options, 
+          headers: retryHeaders,
+          _retry: true // Evita loop infinito
+        })
+      }
+      
+      // Se não conseguiu novo token, limpa estado e redireciona (exceto para rotas públicas)
       const isPublicEndpoint = endpoint.startsWith("/public/") || endpoint.includes("/api/auth/login")
       
       if (!isPublicEndpoint) {
@@ -163,6 +184,18 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
       return {
         status: 401,
         message: isPublicEndpoint ? "Sessão não autorizada." : "Sessão expirada. Faça login novamente.",
+        data: null,
+        hasError: true,
+      }
+    }
+
+    if (status === 401 && options._retry) {
+      console.error("[apiCall] 401 persistente após retry no Web. Limpando sessão...")
+      tokenAdapter.clearTokens()
+      tokenAdapter.onLogout?.()
+      return {
+        status: 401,
+        message: "Sessão expirada.",
         data: null,
         hasError: true,
       }

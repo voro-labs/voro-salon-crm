@@ -35,13 +35,14 @@ export class AuthTokenManager {
   /**
    * Retorna um token válido. Se o atual estiver expirando, inicia a renovação
    * ou espera por uma renovação já em curso.
+   * @param force Se true, ignora a validade do token atual e força um refresh.
    */
-  async getValidToken(): Promise<string | null> {
+  async getValidToken(force: boolean = false): Promise<string | null> {
     const token = await this.adapter.getAuthToken()
     if (!token) return null
 
-    // Se o token ainda é válido, retorna ele imediatamente
-    if (!this.isTokenExpiring(token)) {
+    // Se o token ainda é válido e não estamos forçando, retorna ele
+    if (!force && !this.isTokenExpiring(token)) {
       return token
     }
 
