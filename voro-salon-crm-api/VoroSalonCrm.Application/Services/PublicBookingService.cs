@@ -36,7 +36,7 @@ namespace VoroSalonCrm.Application.Services
 
             // Check plan feature flag first
             var subscription = await _tenantSubscriptionRepository.GetByTenantIdWithPlanAsync(tenant.Id);
-            var planHasBooking = subscription?.Plan?.HasBooking ?? true; // default true if no subscription
+            var planHasBooking = subscription?.Plan?.HasBooking ?? false; // default false if no subscription found
 
             // Also check the module toggle (can be disabled manually)
             var bookingModule = await _tenantModuleRepository.GetModuleAsync(tenant.Id, AppModule.Booking);

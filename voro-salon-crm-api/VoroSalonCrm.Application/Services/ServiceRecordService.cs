@@ -34,7 +34,7 @@ namespace VoroSalonCrm.Application.Services
             var description = dto.Description;
             if (string.IsNullOrEmpty(description) && dto.ServiceId.HasValue)
             {
-                var service = await _serviceRepository.GetByIdAsync(dto.ServiceId.Value);
+                var service = await _serviceRepository.GetByIdAsync(false, dto.ServiceId.Value);
                 description = service?.Name;
             }
 
@@ -92,7 +92,7 @@ namespace VoroSalonCrm.Application.Services
             }
             else if (dto.ServiceId.HasValue)
             {
-                var service = await _serviceRepository.GetByIdAsync(dto.ServiceId.Value);
+                var service = await _serviceRepository.GetByIdAsync(false, dto.ServiceId.Value);
                 record.Description = service?.Name;
             }
 

@@ -311,7 +311,7 @@ export default function PublicBookingPage() {
   const isBookingDisabled = tenant.isBookingEnabled === false
   const hasNoServices = services.length === 0
 
-  if (isBookingDisabled) {
+  if (isBookingDisabled || hasNoServices) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-background text-center">
         {/* Tenant header */}
