@@ -153,6 +153,16 @@ export default function WhatsAppKanbanScreen() {
             <View className="flex-1 items-center justify-center">
               <ActivityIndicator size="large" color={primaryColor} />
             </View>
+          ) : conversations?.length === 0 ? (
+            <View className="flex-1 items-center justify-center px-12 pb-20">
+              <View className="h-24 w-24 rounded-full bg-zinc-100 items-center justify-center mb-6">
+                <Ionicons name="chatbubbles-outline" size={48} color="#a1a1aa" />
+              </View>
+              <Text className="text-xl font-black text-zinc-900 text-center mb-2">Nenhuma conversa ainda</Text>
+              <Text className="text-zinc-500 text-center text-base leading-relaxed">
+                As conversas via WhatsApp aparecerão aqui conforme os clientes interagirem.
+              </Text>
+            </View>
           ) : (
             <ScrollView
               horizontal

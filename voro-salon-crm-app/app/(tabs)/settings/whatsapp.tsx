@@ -64,6 +64,8 @@ export default function WhatsAppSettingsScreen() {
     }
   }
 
+  const filteredTemplates = (templates ?? []).filter(t => t.tenantId !== "00000000-0000-0000-0000-000000000000")
+
   if (isLoadingTemplates || !settingsForm) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">
@@ -119,7 +121,7 @@ export default function WhatsAppSettingsScreen() {
             </Pressable>
           </View>
 
-          {!templates || templates.length === 0 ? (
+          {!filteredTemplates || filteredTemplates.length === 0 ? (
             <View className="bg-white rounded-3xl border border-zinc-100 p-8 items-center justify-center">
               <View className="h-12 w-12 rounded-full bg-zinc-50 items-center justify-center mb-3">
                 <Ionicons name="chatbubbles-outline" size={24} color="#d4d4d8" />
@@ -129,7 +131,7 @@ export default function WhatsAppSettingsScreen() {
             </View>
           ) : (
             <View className="gap-3">
-              {templates.map((t) => (
+              {filteredTemplates.map((t) => (
                 <View
                   key={t.id}
                   className="bg-white rounded-3xl p-4 border flex-row gap-3 items-center"

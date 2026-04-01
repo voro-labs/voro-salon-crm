@@ -11,6 +11,7 @@ export interface WhatsAppTemplate {
   paramsCount: number
   paramLabels: string[] | null
   isActive: boolean
+  tenantId: string
   createdAt: string
 }
 
