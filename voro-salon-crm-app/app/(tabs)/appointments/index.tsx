@@ -1,5 +1,5 @@
 import React from "react"
-import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from "react-native"
+import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, TouchableOpacity } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -213,25 +213,36 @@ export default function AppointmentsScreen() {
         </View>
 
         {/* Period Filter */}
-        <View className="flex-row bg-zinc-100 rounded-2xl p-1 mt-1">
-          <Pressable
-            onPress={() => setFilterPeriod("today")}
-            className={`flex-1 py-2.5 rounded-xl items-center ${filterPeriod === "today" ? "bg-white shadow-sm" : ""}`}
-          >
-            <Text className={`text-xs font-black ${filterPeriod === "today" ? "text-zinc-900" : "text-zinc-400"}`}>HOJE</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setFilterPeriod("week")}
-            className={`flex-1 py-2.5 rounded-xl items-center ${filterPeriod === "week" ? "bg-white shadow-sm" : ""}`}
-          >
-            <Text className={`text-xs font-black ${filterPeriod === "week" ? "text-zinc-900" : "text-zinc-400"}`}>SEMANA</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setFilterPeriod("all")}
-            className={`flex-1 py-2.5 rounded-xl items-center ${filterPeriod === "all" ? "bg-white shadow-sm" : ""}`}
-          >
-            <Text className={`text-xs font-black ${filterPeriod === "all" ? "text-zinc-900" : "text-zinc-400"}`}>TUDO</Text>
-          </Pressable>
+        <View style={{ flexDirection: "row", backgroundColor: "#f4f4f5", borderRadius: 16, padding: 4, marginTop: 4 }}>
+          {(["today", "week", "all"] as const).map((p) => (
+            <TouchableOpacity
+              key={p}
+              activeOpacity={0.7}
+              onPress={() => setFilterPeriod(p)}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                height: 36,
+                borderRadius: 12,
+                backgroundColor: filterPeriod === p ? "#ffffff" : "transparent",
+                shadowColor: filterPeriod === p ? "#000" : "transparent",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: filterPeriod === p ? 0.06 : 0,
+                shadowRadius: 2,
+                elevation: filterPeriod === p ? 1 : 0,
+              }}
+            >
+              <Text style={{ 
+                fontSize: 12, 
+                fontWeight: "800", 
+                color: filterPeriod === p ? "#18181b" : "#a1a1aa" 
+              }}>
+                {p === "today" ? "HOJE" : p === "week" ? "SEMANA" : "TUDO"}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 

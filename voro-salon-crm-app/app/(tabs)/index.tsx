@@ -1,11 +1,12 @@
-import React, { useState } from "react"
+import React, { useState, useMemo, useEffect, useCallback } from "react"
 import {
   View, Text, ScrollView, RefreshControl, Pressable,
-  ActivityIndicator, Modal, Alert, Share,
+  ActivityIndicator, Modal, Alert, Share, TouchableOpacity,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
+import { useRouter } from "expo-router"
 import { useAuth } from "contexts/auth.context"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useDashboard } from "hooks/use-dashboard.hook"
@@ -33,12 +34,12 @@ function getStatus(value: number) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtCurrency(value: number) {
-  return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return (value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function abbreviate(value: number): string {
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`
-  return value.toFixed(0)
+  return (value || 0).toFixed(0)
 }
 
 function formatTime(iso?: string): string {
@@ -142,7 +143,7 @@ function AppointmentCard({
 }) {
   const [modalOpen, setModalOpen] = useState(false)
   const { primaryColor } = useTenantTheme()
-  const status = getStatus(appointment.status ?? 0)
+  const status = useMemo(() => getStatus(appointment.status ?? 0), [appointment.status])
   const clientName = (appointment.clientName ?? `${appointment.client?.firstName ?? ""} ${appointment.client?.lastName ?? ""}`.trim()) || "Cliente"
   const serviceName = appointment.serviceName ?? appointment.service?.name ?? appointment.description ?? "Serviço"
 
@@ -240,7 +241,7 @@ function TenantSwitcher({
 }) {
   const [open, setOpen] = useState(false)
   const { primaryColor } = useTenantTheme()
-  const current = tenants.find((t) => t.id === currentTenantId) ?? tenants[0]
+  const current = useMemo(() => tenants.find((t) => t.id === currentTenantId) ?? tenants[0], [tenants, currentTenantId])
 
   if (tenants.length <= 1) {
     return (
@@ -332,6 +333,7 @@ export default function DashboardScreen() {
   const { maxClients } = usePlanLimits()
   const { mutate: mutateAll } = useSWRConfig()
   const { sendWhatsAppMessage } = useWhatsApp()
+  const router = useRouter() // Re-adding useRouter hook as it's required for navigation context tracking in some versions of expo-router
 
   const { primaryColor, reload: reloadTheme } = useTenantTheme()
 
@@ -344,13 +346,13 @@ export default function DashboardScreen() {
   const [period, setPeriod] = useState<"today" | "week">("today")
 
   // Sincroniza quando o user é restaurado do token (ex: app reaberto)
-  React.useEffect(() => {
+  useEffect(() => {
     if (user?.currentTenantId) {
       setCurrentTenantId(user.currentTenantId)
     }
   }, [user?.currentTenantId])
 
-  async function handleSwitchTenant(tenantId: string) {
+  const handleSwitchTenant = useCallback(async (tenantId: string) => {
     setSwitchingTenant(true)
     try {
       await switchTenant(tenantId)
@@ -364,7 +366,7 @@ export default function DashboardScreen() {
     } finally {
       setSwitchingTenant(false)
     }
-  }
+  }, [switchTenant, reloadTheme, mutateAll, refetch])
 
   const { data: appointments, mutate: mutateAppointments } = useSWR<any[]>(
     API_CONFIG.ENDPOINTS.APPOINTMENTS,
@@ -381,7 +383,7 @@ export default function DashboardScreen() {
 
   const [sharingLink, setSharingLink] = useState(false)
 
-  async function handleShareBookingLink() {
+  const handleShareBookingLink = useCallback(async () => {
     if (!bookingUrl) return
     setSharingLink(true)
     try {
@@ -394,20 +396,22 @@ export default function DashboardScreen() {
     } finally {
       setSharingLink(false)
     }
-  }
+  }, [bookingUrl])
 
-  const dashboardAppointments = (appointments ?? [])
-    .filter((a: any) => {
-      const date = a.scheduledDateTime ?? a.date
-      return period === "today" ? isToday(date) : isWithinNext7Days(date)
-    })
-    .sort((a: any, b: any) => {
-      const ta = a.scheduledDateTime ?? a.date ?? ""
-      const tb = b.scheduledDateTime ?? b.date ?? ""
-      return ta.localeCompare(tb)
-    })
+  const dashboardAppointments = useMemo(() => {
+    return (appointments ?? [])
+      .filter((a: any) => {
+        const date = a.scheduledDateTime ?? a.date
+        return period === "today" ? isToday(date) : isWithinNext7Days(date)
+      })
+      .sort((a: any, b: any) => {
+        const ta = a.scheduledDateTime ?? a.date ?? ""
+        const tb = b.scheduledDateTime ?? b.date ?? ""
+        return ta.localeCompare(tb)
+      })
+  }, [appointments, period])
 
-  async function handleStatusChange(id: string, newStatus: number) {
+  const handleStatusChange = useCallback(async (id: string, newStatus: number) => {
     const appointment = appointments?.find((a) => a.id === id)
     mutateAppointments(
       (prev) => prev?.map((a) => a.id === id ? { ...a, status: newStatus } : a),
@@ -431,7 +435,7 @@ export default function DashboardScreen() {
     } finally {
       mutateAppointments()
     }
-  }
+  }, [appointments, mutateAppointments, tenant?.useWhatsappBooking, sendWhatsAppMessage])
 
   const revenue = dashboardData?.monthlyRevenue ?? dashboardData?.revenueThisMonth ?? 0
   const apptCount = dashboardData?.monthlyServiceCount ?? dashboardData?.appointmentsThisMonth ?? 0
@@ -522,19 +526,36 @@ export default function DashboardScreen() {
               <View className="bg-white rounded-3xl p-4 mt-2 border border-zinc-100">
                 <View className="flex-row items-center justify-between mb-4">
                   <Text className="text-base font-black text-zinc-900">Agendamentos</Text>
-                  <View className="flex-row bg-zinc-100 rounded-xl p-1">
-                    <Pressable
-                      onPress={() => setPeriod("today")}
-                      className={`px-3 py-1.5 rounded-lg ${period === "today" ? "bg-white shadow-sm" : ""}`}
-                    >
-                      <Text className={`text-xs font-bold ${period === "today" ? "text-zinc-900" : "text-zinc-500"}`}>Hoje</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setPeriod("week")}
-                      className={`px-3 py-1.5 rounded-lg ${period === "week" ? "bg-white shadow-sm" : ""}`}
-                    >
-                      <Text className={`text-xs font-bold ${period === "week" ? "text-zinc-900" : "text-zinc-500"}`}>Semana</Text>
-                    </Pressable>
+                  <View style={{ flexDirection: "row", backgroundColor: "#f4f4f5", borderRadius: 16, padding: 4, width: 160 }}>
+                    {(["today", "week"] as const).map((p) => (
+                      <TouchableOpacity
+                        key={p}
+                        activeOpacity={0.7}
+                        onPress={() => setPeriod(p)}
+                        style={{
+                          flex: 1,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: 32,
+                          borderRadius: 12,
+                          backgroundColor: period === p ? "#ffffff" : "transparent",
+                          shadowColor: period === p ? "#000" : "transparent",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: period === p ? 0.06 : 0,
+                          shadowRadius: 2,
+                          elevation: period === p ? 1 : 0,
+                        }}
+                      >
+                        <Text style={{ 
+                          fontSize: 12, 
+                          fontWeight: "700", 
+                          color: period === p ? "#18181b" : "#71717a" 
+                        }}>
+                          {p === "today" ? "Hoje" : "Semana"}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
                 </View>
 
