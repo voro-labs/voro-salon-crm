@@ -13,6 +13,7 @@ import { useTenantTheme } from "contexts/tenant-theme.context"
 import { ScreenHeader } from "components/ScreenHeader"
 import { SendTemplateModal } from "./components/SendTemplateModal"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface WhatsAppConversation {
@@ -66,10 +67,13 @@ function timeAgo(dateString: string) {
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function WhatsAppKanbanScreen() {
   useModuleGuard("whatsapp")
+  const { hasWhatsAppBot, isLoaded } = usePlanLimits()
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const [search, setSearch] = useState("")
   const [showSendModal, setShowSendModal] = useState(false)
+
+  if (isLoaded && !hasWhatsAppBot) return null
 
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(

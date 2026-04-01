@@ -9,6 +9,7 @@ import { ScreenHeader } from "components/ScreenHeader"
 import { TransactionType, TransactionStatus } from "types/DTOs/financial.interface"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 type FilterType = "all" | "income" | "expense"
 
@@ -42,12 +43,15 @@ const MONTH_START = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 
 export default function FinanceScreen() {
   useModuleGuard("finance")
+  const { hasFinancial, isLoaded } = usePlanLimits()
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { user } = useAuth()
   
   const roleNames = user?.roles?.map((r: any) => r.name) ?? []
   const isSalonOwner = roleNames.includes("SalonOwner") || roleNames.includes("Owner")
+
+  if (isLoaded && !hasFinancial) return null
 
   const txOptions = React.useMemo(() => ({
     startDate: MONTH_START,

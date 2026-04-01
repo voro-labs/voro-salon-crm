@@ -1,5 +1,5 @@
 import React, { useEffect } from "react"
-import { AppState } from "react-native"
+import { AppState, View, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import useSWR, { useSWRConfig } from "swr"
 import { useTenantTheme } from "contexts/tenant-theme.context"
@@ -37,10 +37,10 @@ import { useAuth } from "contexts/auth.context"
 import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 export default function TabsLayout() {
+  const { hasBooking, hasWhatsAppBot, hasFinancial, isLoaded } = usePlanLimits()
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
   const { user } = useAuth()
-  const { hasBooking, hasWhatsAppBot, hasFinancial } = usePlanLimits()
   
   const roleNames = user?.roles?.map((r) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
@@ -91,6 +91,14 @@ export default function TabsLayout() {
     return defaultLabel
   }
 
+  if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "white" }}>
+        <ActivityIndicator size="large" color={primaryColor} />
+      </View>
+    )
+  }
+
   return (
     <MaterialTopTabs
       tabBarPosition="bottom"
@@ -105,9 +113,8 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
-          swipeEnabled: enabled && route.name !== "whatsapp",
-          // Expo Router options to hide screen from tab bar without removing from navigator
-          href: enabled ? undefined : null,
+          swipeEnabled: false, // Desativa swipe globalmente para evitar entrar em abas restritas
+          href: enabled ? undefined : null, // Expo Router: esconde da tab bar se null
         } as any
       }}
     >
