@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import useSWR from "swr"
@@ -29,13 +30,22 @@ import {
   ANAMNESIS_SECTION_LABELS,
   AnamnesisFieldType
 } from "@/types/anamnesis.types"
-import { useState } from "react"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 
 export default function AnamnesisDetailPage() {
   const params = useParams()
   const router = useRouter()
   const clientId = params.id as string
   const anamnesisId = params.anamnesisId as string
+  const { hasAnamnesis, isLoaded } = usePlanLimits()
+
+  useEffect(() => {
+    if (isLoaded && !hasAnamnesis) {
+      router.replace(`/clients/${clientId}`)
+    }
+  }, [isLoaded, hasAnamnesis, router, clientId])
+
+  if (isLoaded && !hasAnamnesis) return null
 
   const { data: anamnesis, isLoading: loadingSheet } = useSWR<AnamnesisSheet>(
     `${API_CONFIG.ENDPOINTS.ANAMNESIS}/${anamnesisId}`, 

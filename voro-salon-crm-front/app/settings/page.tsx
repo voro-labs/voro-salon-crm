@@ -43,6 +43,7 @@ import { refreshTenantTheme } from "@/contexts/tenant-theme.context"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useAuth } from "@/contexts/auth.context"
 import { useSettings } from "@/hooks/use-settings.hook"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PhoneInput } from "@/components/ui/custom/phone-input"
 import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -95,6 +96,7 @@ export default function ConfiguracoesPage() {
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
   const { user, refreshUser } = useAuth()
+  const { planName, hasWhatsAppBot, hasAnamnesis } = usePlanLimits()
 
   // 2FA state
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.twoFactorEnabled ?? false)
@@ -121,7 +123,15 @@ export default function ConfiguracoesPage() {
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
   
   const defaultTab = isSalonOwner ? "geral" : "aparencia"
-  const activeTab = tabParam || defaultTab
+
+  // Sanitize tab param: if the requested tab requires a plan feature the user doesn't have, fallback to default
+  const resolvedTab = (() => {
+    if (!tabParam) return defaultTab
+    if (tabParam === "anamnesis" && !hasAnamnesis) return defaultTab
+    if (tabParam === "whatsapp" && !hasWhatsAppBot) return defaultTab
+    return tabParam
+  })()
+  const activeTab = resolvedTab
 
   // Business Hours state
   const DAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
@@ -348,7 +358,7 @@ export default function ConfiguracoesPage() {
                   Horários
                 </TabsTrigger>
               )}
-              {isSalonOwner && (
+              {isSalonOwner && hasAnamnesis && (
                 <TabsTrigger value="anamnesis" className="shrink-0 py-2">
                   <ClipboardList className="mr-2 h-4 w-4" />
                   Anamnese
@@ -360,7 +370,7 @@ export default function ConfiguracoesPage() {
                   Assinaturas
                 </TabsTrigger>
               )}
-              {isSalonOwner && (
+              {isSalonOwner && hasWhatsAppBot && (
                 <TabsTrigger value="whatsapp" className="shrink-0 py-2">
                   <MessageCircle className="mr-2 h-4 w-4" />
                   WhatsApp

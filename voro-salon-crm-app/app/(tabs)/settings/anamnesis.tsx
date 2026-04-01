@@ -3,9 +3,20 @@ import { View, Text, Pressable, ScrollView } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import { useEffect } from "react"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 export default function AnamnesisSettingsScreen() {
   const router = useRouter()
+  const { hasAnamnesis } = usePlanLimits()
+
+  useEffect(() => {
+    if (!hasAnamnesis) {
+      router.replace("/(tabs)/settings" as any)
+    }
+  }, [hasAnamnesis, router])
+
+  if (!hasAnamnesis) return null
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>

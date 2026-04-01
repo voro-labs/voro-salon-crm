@@ -9,12 +9,14 @@ using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 namespace VoroSalonCrm.Application.Services
 {
     public class ServiceRecordService(
-        IServiceRecordRepository serviceRepository,
+        IServiceRecordRepository serviceRecordRepository,
+        IServiceRepository serviceRepository,
         IClientRepository clientRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService) : IServiceRecordService
     {
-        private readonly IServiceRecordRepository _serviceRepository = serviceRepository;
+        private readonly IServiceRecordRepository _serviceRecordRepository = serviceRecordRepository;
+        private readonly IServiceRepository _serviceRepository = serviceRepository;
         private readonly IClientRepository _clientRepository = clientRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
@@ -29,6 +31,13 @@ namespace VoroSalonCrm.Application.Services
             _ = await _clientRepository.GetByIdAsync(false, dto.ClientId)
                 ?? throw new KeyNotFoundException($"Client '{dto.ClientId}' not found.");
 
+            var description = dto.Description;
+            if (string.IsNullOrEmpty(description) && dto.ServiceId.HasValue)
+            {
+                var service = await _serviceRepository.GetByIdAsync(false, dto.ServiceId.Value);
+                description = service?.Name;
+            }
+
             var record = new ServiceRecord
             {
                 Id = Guid.NewGuid(),
@@ -37,13 +46,13 @@ namespace VoroSalonCrm.Application.Services
                 ServiceId = dto.ServiceId,
                 AppointmentId = dto.AppointmentId,
                 ServiceDate = dto.ServiceDate?.ToUniversalTime() ?? DateTimeOffset.UtcNow,
-                Description = dto.Description,
+                Description = description,
                 Amount = dto.Amount,
                 Notes = dto.Notes,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
-            await _serviceRepository.AddAsync(record);
+            await _serviceRecordRepository.AddAsync(record);
             await _unitOfWork.SaveChangesAsync();
 
             return MapToDto(record);
@@ -51,7 +60,7 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<ServiceRecordDto?> GetByIdAsync(Guid id)
         {
-            var record = await _serviceRepository.GetByIdAsync(r => r.Id == id, false, r => r.Include(x => x.Service!));
+            var record = await _serviceRecordRepository.GetByIdAsync(r => r.Id == id, false, r => r.Include(x => x.Service!));
             if (record is null) return null;
 
             return MapToDto(record);
@@ -59,30 +68,40 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<IEnumerable<ServiceRecordDto>> GetAllAsync()
         {
-            var records = await _serviceRepository.GetAllAsync(r => true, true, r => r.Include(x => x.Service!));
+            var records = await _serviceRecordRepository.GetAllAsync(r => true, true, r => r.Include(x => x.Service!));
             return records.Select(MapToDto);
         }
 
         public async Task<IEnumerable<ServiceRecordDto>> GetByClientIdAsync(Guid clientId)
         {
-            var records = await _serviceRepository.GetAllAsync(r => r.ClientId == clientId, true, r => r.Include(x => x.Service!));
+            var records = await _serviceRecordRepository.GetAllAsync(r => r.ClientId == clientId, true, r => r.Include(x => x.Service!));
             return records.Select(MapToDto);
         }
 
         public async Task<ServiceRecordDto> UpdateAsync(Guid id, UpdateServiceRecordDto dto)
         {
-            var record = await _serviceRepository.GetByIdAsync(r => r.Id == id, false, r => r.Include(x => x.Service!))
+            var record = await _serviceRecordRepository.GetByIdAsync(r => r.Id == id, false, r => r.Include(x => x.Service!))
                 ?? throw new KeyNotFoundException($"ServiceRecord '{id}' not found.");
 
             if (dto.ServiceId.HasValue) record.ServiceId = dto.ServiceId;
             if (dto.ServiceDate.HasValue) record.ServiceDate = dto.ServiceDate.Value.ToUniversalTime();
-            if (dto.Description is not null) record.Description = dto.Description;
+            
+            if (dto.Description is not null)
+            {
+                record.Description = dto.Description;
+            }
+            else if (dto.ServiceId.HasValue)
+            {
+                var service = await _serviceRepository.GetByIdAsync(false, dto.ServiceId.Value);
+                record.Description = service?.Name;
+            }
+
             if (dto.Amount.HasValue) record.Amount = dto.Amount.Value;
             if (dto.Notes is not null) record.Notes = dto.Notes;
 
             record.UpdatedAt = DateTimeOffset.UtcNow;
 
-            _serviceRepository.Update(record);
+            _serviceRecordRepository.Update(record);
             await _unitOfWork.SaveChangesAsync();
 
             return MapToDto(record);
@@ -95,13 +114,13 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteAsync(Guid id)
         {
-            var record = await _serviceRepository.GetByIdAsync(false, id);
+            var record = await _serviceRecordRepository.GetByIdAsync(false, id);
             if (record is null) return false;
 
             record.IsDeleted = true;
             record.DeletedAt = DateTimeOffset.UtcNow;
 
-            _serviceRepository.Update(record);
+            _serviceRecordRepository.Update(record);
             await _unitOfWork.SaveChangesAsync();
 
             return true;
@@ -109,12 +128,12 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<bool> DeleteByAppointmentIdAsync(Guid appointmentId)
         {
-            var records = await _serviceRepository.GetAllAsync(r => r.AppointmentId == appointmentId && !r.IsDeleted, false);
+            var records = await _serviceRecordRepository.GetAllAsync(r => r.AppointmentId == appointmentId && !r.IsDeleted, false);
             foreach (var record in records)
             {
                 record.IsDeleted = true;
                 record.DeletedAt = DateTimeOffset.UtcNow;
-                _serviceRepository.Update(record);
+                _serviceRecordRepository.Update(record);
             }
 
             if (records.Any())

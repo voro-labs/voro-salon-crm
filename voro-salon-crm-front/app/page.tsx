@@ -93,7 +93,7 @@ export default function DashboardPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const { sendWhatsAppMessage } = useWhatsApp()
-  const { maxClients } = usePlanLimits()
+  const { maxClients, hasBooking } = usePlanLimits()
 
   const isSchedulingEnabled = !modules || modules.find((m: any) => m.module === 2)?.isEnabled !== false
 
@@ -173,6 +173,7 @@ export default function DashboardPage() {
 
     return true
   }).sort((a: any, b: any) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
+  .slice(0, 5)
 
   async function handleStatusUpdate(id: string, newStatus: string) {
     const apt = (aptData ?? []).find((a: any) => a.id === id)
@@ -206,10 +207,12 @@ export default function DashboardPage() {
           action={
             isSchedulingEnabled ? (
               <>
-                <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
-                  {copied ? <Check className="mr-2 h-4 w-4 text-green-500" /> : <Copy className="mr-2 h-4 w-4" />}
-                  {copied ? "Link Copiado!" : "Copiar Link de Agendamento"}
-                </Button>
+                {hasBooking && (
+                  <Button variant="outline" size="sm" onClick={handleCopyLink} disabled={!tenant?.slug}>
+                    {copied ? <Check className="mr-2 h-4 w-4 text-green-500" /> : <Copy className="mr-2 h-4 w-4" />}
+                    {copied ? "Link Copiado!" : "Copiar Link de Agendamento"}
+                  </Button>
+                )}
                 <Button asChild size="sm">
                   <Link href="/appointments/new">
                     <Plus className="mr-2 h-4 w-4" />

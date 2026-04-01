@@ -34,11 +34,13 @@ const TAB_MODULE_IDS: Record<string, number> = {
 import { MaterialTopTabs } from "components/MaterialTopTabs"
 
 import { useAuth } from "contexts/auth.context"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 export default function TabsLayout() {
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
   const { user } = useAuth()
+  const { hasBooking, hasWhatsAppBot, hasFinancial } = usePlanLimits()
   
   const roleNames = user?.roles?.map((r) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
@@ -61,6 +63,12 @@ export default function TabsLayout() {
   }, [mutate])
 
   function isTabEnabled(name: string): boolean {
+    // 1. Hard restrictions based on plan limits (cannot be overridden by SalonOwner role)
+    if (name === "appointments" && !hasBooking) return false
+    if (name === "whatsapp" && !hasWhatsAppBot) return false
+    if (name === "finance" && !hasFinancial) return false
+
+    // 2. Soft restrictions based on module enablement (can be overridden by SalonOwner role)
     if (isSalonOwner) return true
     const moduleId = TAB_MODULE_IDS[name]
     if (!moduleId) return true
@@ -89,6 +97,7 @@ export default function TabsLayout() {
       tabBar={ScrollableTabBar}
       screenOptions={({ route }) => {
         const icon = TAB_ICONS[route.name] ?? TAB_ICONS["index"]
+        const enabled = isTabEnabled(route.name)
         return {
           tabBarActiveTintColor: primaryColor,
           tabBarInactiveTintColor: "#9ca3af",
@@ -96,35 +105,30 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
-          swipeEnabled: route.name !== "whatsapp",
+          swipeEnabled: enabled && route.name !== "whatsapp",
+          display: enabled ? "flex" : "none",
         }
       }}
     >
       <MaterialTopTabs.Screen name="index" />
-      <MaterialTopTabs.Screen
-        name="appointments"
-        options={{ href: isTabEnabled("appointments") ? undefined : null } as any}
-      />
-      <MaterialTopTabs.Screen
-        name="clients"
-        options={{ href: isTabEnabled("clients") ? undefined : null } as any}
-      />
-      <MaterialTopTabs.Screen
-        name="services"
-        options={{ href: isTabEnabled("services") ? undefined : null } as any}
-      />
-      <MaterialTopTabs.Screen
-        name="employees"
-        options={{ href: isTabEnabled("employees") ? undefined : null } as any}
-      />
-      <MaterialTopTabs.Screen
-        name="finance"
-        options={{ href: isTabEnabled("finance") ? undefined : null } as any}
-      />
-      <MaterialTopTabs.Screen
-        name="whatsapp"
-        options={{ href: isTabEnabled("whatsapp") ? undefined : null } as any}
-      />
+      {isTabEnabled("appointments") && (
+        <MaterialTopTabs.Screen name="appointments" />
+      )}
+      {isTabEnabled("clients") && (
+        <MaterialTopTabs.Screen name="clients" />
+      )}
+      {isTabEnabled("services") && (
+        <MaterialTopTabs.Screen name="services" />
+      )}
+      {isTabEnabled("employees") && (
+        <MaterialTopTabs.Screen name="employees" />
+      )}
+      {isTabEnabled("finance") && (
+        <MaterialTopTabs.Screen name="finance" />
+      )}
+      {isTabEnabled("whatsapp") && (
+        <MaterialTopTabs.Screen name="whatsapp" />
+      )}
       <MaterialTopTabs.Screen name="notifications" />
       <MaterialTopTabs.Screen name="settings" />
     </MaterialTopTabs>

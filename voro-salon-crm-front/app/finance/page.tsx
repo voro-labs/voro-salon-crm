@@ -128,7 +128,7 @@ export default function FinancialPage() {
   const [payForm, setPayForm] = useState({
     paidAmount: 0,
     paymentDate: format(new Date(), "yyyy-MM-dd"),
-    paymentMethod: "5",
+    paymentMethod: "4",
     notes: ""
   })
 
@@ -138,7 +138,7 @@ export default function FinancialPage() {
     type: "2",
     categoryId: "none",
     dueDate: format(new Date(), "yyyy-MM-dd"),
-    paymentMethod: "5",
+    paymentMethod: "4",
     notes: ""
   })
 
@@ -149,7 +149,7 @@ export default function FinancialPage() {
       type: "2",
       categoryId: "none",
       dueDate: format(new Date(), "yyyy-MM-dd"),
-      paymentMethod: "5",
+      paymentMethod: "4",
       notes: ""
     })
   }

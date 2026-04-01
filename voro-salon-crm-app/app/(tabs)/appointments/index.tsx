@@ -1,5 +1,5 @@
 import React from "react"
-import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator } from "react-native"
+import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, TouchableOpacity } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -38,6 +38,32 @@ const STATUS_MAP: Record<string | number, { label: string; bg: string; text: str
 }
 
 const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
+const TODAY_STR = new Date().toLocaleDateString("en-CA") // YYYY-MM-DD em local time
+
+function isToday(iso?: string): boolean {
+  if (!iso) return false
+  const d = new Date(iso)
+  const today = new Date()
+  return (
+    d.getDate() === today.getDate() &&
+    d.getMonth() === today.getMonth() &&
+    d.getFullYear() === today.getFullYear()
+  )
+}
+
+function isWithinNext7Days(iso?: string): boolean {
+  if (!iso) return false
+  const d = new Date(iso)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const next7 = new Date(today)
+  next7.setDate(today.getDate() + 7)
+  next7.setHours(23, 59, 59, 999)
+  
+  return d >= today && d <= next7
+}
 
 function parseDateInfo(item: Appointment): { day: string; month: string; time: string } | null {
   if (item.scheduledDateTime) {
@@ -139,11 +165,35 @@ export default function AppointmentsScreen() {
   useModuleGuard("appointments")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
+  const [filterPeriod, setFilterPeriod] = React.useState<"today" | "week" | "all">("today")
+  const [hasAutoSwitched, setHasAutoSwitched] = React.useState(false)
+
   const { filteredData, isLoading, search, setSearch } = useDataList<Appointment>(
     API_CONFIG.ENDPOINTS.APPOINTMENTS,
     (a, q) =>
       `${a.clientName ?? ""} ${a.client?.name ?? ""} ${a.client?.firstName ?? ""} ${a.serviceName ?? ""} ${a.service?.name ?? ""}`.toLowerCase().includes(q)
   )
+
+  // Auto-switch to week if today is empty
+  React.useEffect(() => {
+    if (!isLoading && filteredData && !hasAutoSwitched) {
+      const todayAppts = filteredData.filter((a) => isToday(a.scheduledDateTime ?? a.date))
+      if (todayAppts.length === 0 && filterPeriod === "today") {
+        setFilterPeriod("week")
+        setHasAutoSwitched(true)
+      }
+    }
+  }, [isLoading, filteredData, hasAutoSwitched])
+
+  const finalData = React.useMemo(() => {
+    return (filteredData ?? []).filter((a) => {
+      const date = a.scheduledDateTime ?? a.date
+      if (filterPeriod === "all") return true
+      if (filterPeriod === "today") return isToday(date)
+      if (filterPeriod === "week") return isWithinNext7Days(date)
+      return true
+    })
+  }, [filteredData, filterPeriod])
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -178,11 +228,44 @@ export default function AppointmentsScreen() {
         <View className="flex-row items-center gap-2">
           <Pressable
             onPress={() => router.push("/(tabs)/appointments/blocked" as any)}
-            className="flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl bg-red-50 border border-red-100 leading-none"
+            className="flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl bg-red-50 border border-red-100"
           >
             <Ionicons name="lock-closed" size={14} color="#ef4444" />
             <Text className="text-red-700 font-bold text-sm">Horários Bloqueados</Text>
           </Pressable>
+        </View>
+
+        {/* Period Filter */}
+        <View style={{ flexDirection: "row", backgroundColor: "#f4f4f5", borderRadius: 16, padding: 4, marginTop: 4 }}>
+          {(["today", "week", "all"] as const).map((p) => (
+            <TouchableOpacity
+              key={p}
+              activeOpacity={0.7}
+              onPress={() => setFilterPeriod(p)}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                height: 36,
+                borderRadius: 12,
+                backgroundColor: filterPeriod === p ? "#ffffff" : "transparent",
+                shadowColor: filterPeriod === p ? "#000" : "transparent",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: filterPeriod === p ? 0.06 : 0,
+                shadowRadius: 2,
+                elevation: filterPeriod === p ? 1 : 0,
+              }}
+            >
+              <Text style={{ 
+                fontSize: 12, 
+                fontWeight: "800", 
+                color: filterPeriod === p ? "#18181b" : "#a1a1aa" 
+              }}>
+                {p === "today" ? "HOJE" : p === "week" ? "SEMANA" : "TUDO"}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -192,7 +275,7 @@ export default function AppointmentsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredData}
+          data={finalData}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <AppointmentCard

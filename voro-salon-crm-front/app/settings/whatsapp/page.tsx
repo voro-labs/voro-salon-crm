@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { Plus, Pencil, Trash2, MessageSquare, Loader2, X, CheckCircle } from "lucide-react"
 import { AuthGuard } from "@/components/auth/auth.guard"
@@ -15,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 
 interface WhatsAppTemplate {
   id: string
@@ -23,6 +25,7 @@ interface WhatsAppTemplate {
   paramsCount: number
   paramLabels: string[] | null
   isActive: boolean
+  tenantId: string
   createdAt: string
 }
 
@@ -35,6 +38,9 @@ const EMPTY_FORM = {
 }
 
 export default function WhatsAppTemplatesPage() {
+  const router = useRouter()
+  const { hasWhatsAppBot, isLoaded } = usePlanLimits()
+
   const { data: templates, isLoading, mutate } = useSWR<WhatsAppTemplate[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_TEMPLATES,
     fetcher
@@ -46,6 +52,15 @@ export default function WhatsAppTemplatesPage() {
   const [paramLabelsText, setParamLabelsText] = useState("")
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  // Redirect if plan doesn't include WhatsApp bot (after plan is loaded)
+  useEffect(() => {
+    if (isLoaded && !hasWhatsAppBot) {
+      router.replace("/settings")
+    }
+  }, [isLoaded, hasWhatsAppBot, router])
+
+  if (isLoaded && !hasWhatsAppBot) return null
 
   const openCreate = () => {
     setEditing(null)
@@ -135,6 +150,8 @@ export default function WhatsAppTemplatesPage() {
     }
   }
 
+  const filteredTemplates = (templates ?? []).filter(t => t.tenantId !== "00000000-0000-0000-0000-000000000000")
+
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <div className="flex flex-col gap-6 p-4 sm:p-6">
@@ -153,7 +170,7 @@ export default function WhatsAppTemplatesPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : !templates || templates.length === 0 ? (
+        ) : !filteredTemplates || filteredTemplates.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
             <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
             <p className="text-muted-foreground font-medium">Nenhum template cadastrado</p>
@@ -165,7 +182,7 @@ export default function WhatsAppTemplatesPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {templates.map((t) => (
+            {filteredTemplates.map((t) => (
               <Card key={t.id} className="transition-colors hover:bg-accent/10">
                 <CardContent className="flex items-start gap-4 p-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
