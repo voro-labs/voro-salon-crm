@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -49,6 +50,7 @@ import {
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { AnamnesisFieldType, AnamnesisSection, ANAMNESIS_SECTION_LABELS } from "@/types/anamnesis.types"
 import { useAnamnesisConfig } from "@/hooks/use-anamnesis-config.hook"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 
 function downloadTemplate(format: "json" | "csv") {
   const templateData = [
@@ -126,6 +128,9 @@ function downloadMyQuestions(questions: any[]) {
 }
 
 export default function AnamnesisConfigPage() {
+  const router = useRouter()
+  const { hasAnamnesis, isLoaded } = usePlanLimits()
+
   const {
     questions,
     isLoading,
@@ -141,6 +146,12 @@ export default function AnamnesisConfigPage() {
     deleteQuestion,
     importQuestions,
   } = useAnamnesisConfig()
+
+  // Redirect if plan doesn't include Anamnesis (after plan is loaded)
+  if (isLoaded && !hasAnamnesis) {
+    router.replace("/settings")
+    return null
+  }
 
   const sections = Object.entries(ANAMNESIS_SECTION_LABELS).map(([key, label]) => ({
     value: parseInt(key) as AnamnesisSection,

@@ -123,7 +123,15 @@ export default function ConfiguracoesPage() {
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
   
   const defaultTab = isSalonOwner ? "geral" : "aparencia"
-  const activeTab = tabParam || defaultTab
+
+  // Sanitize tab param: if the requested tab requires a plan feature the user doesn't have, fallback to default
+  const resolvedTab = (() => {
+    if (!tabParam) return defaultTab
+    if (tabParam === "anamnesis" && !hasAnamnesis) return defaultTab
+    if (tabParam === "whatsapp" && !hasWhatsAppBot) return defaultTab
+    return tabParam
+  })()
+  const activeTab = resolvedTab
 
   // Business Hours state
   const DAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]

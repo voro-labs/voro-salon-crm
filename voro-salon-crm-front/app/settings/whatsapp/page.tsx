@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { Plus, Pencil, Trash2, MessageSquare, Loader2, X, CheckCircle } from "lucide-react"
 import { AuthGuard } from "@/components/auth/auth.guard"
@@ -15,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { toast } from "sonner"
+import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 
 interface WhatsAppTemplate {
   id: string
@@ -36,10 +38,19 @@ const EMPTY_FORM = {
 }
 
 export default function WhatsAppTemplatesPage() {
+  const router = useRouter()
+  const { hasWhatsAppBot, isLoaded } = usePlanLimits()
+
   const { data: templates, isLoading, mutate } = useSWR<WhatsAppTemplate[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_TEMPLATES,
     fetcher
   )
+
+  // Redirect if plan doesn't include WhatsApp bot (after plan is loaded)
+  if (isLoaded && !hasWhatsAppBot) {
+    router.replace("/settings")
+    return null
+  }
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<WhatsAppTemplate | null>(null)
