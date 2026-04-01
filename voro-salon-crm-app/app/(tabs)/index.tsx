@@ -431,6 +431,7 @@ export default function DashboardScreen() {
         const tb = b.scheduledDateTime ?? b.date ?? ""
         return ta.localeCompare(tb)
       })
+      .slice(0, 5)
   }, [appointments, period])
 
   const handleStatusChange = useCallback(async (id: string, newStatus: number) => {

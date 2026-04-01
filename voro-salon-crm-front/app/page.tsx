@@ -173,6 +173,7 @@ export default function DashboardPage() {
 
     return true
   }).sort((a: any, b: any) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
+  .slice(0, 5)
 
   async function handleStatusUpdate(id: string, newStatus: string) {
     const apt = (aptData ?? []).find((a: any) => a.id === id)

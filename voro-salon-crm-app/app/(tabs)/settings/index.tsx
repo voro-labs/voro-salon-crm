@@ -61,7 +61,7 @@ export default function SettingsScreen() {
   const router = useRouter()
   const { user, logout } = useAuth()
   const { primaryColor } = useTenantTheme()
-  const { planName, hasWhatsAppBot } = usePlanLimits()
+  const { planName, hasWhatsAppBot, hasAnamnesis } = usePlanLimits()
 
   const initials =
     `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "U"
@@ -156,15 +156,17 @@ export default function SettingsScreen() {
                 iconBg="#fdf4ff"
                 iconColor="#c026d3"
               />
-              <NavRow
-                icon="clipboard-outline"
-                label="Anamnese"
-                subtitle="Configurar ficha de avaliação"
-                onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
-                iconBg="#fff7ed"
-                iconColor="#d97706"
-              />
-              {(planName.toLowerCase().includes("pro") || planName.toLowerCase().includes("premium") || hasWhatsAppBot) && (
+              {hasAnamnesis && (
+                <NavRow
+                  icon="clipboard-outline"
+                  label="Anamnese"
+                  subtitle="Configurar ficha de avaliação"
+                  onPress={() => router.push("/(tabs)/settings/anamnesis" as any)}
+                  iconBg="#fff7ed"
+                  iconColor="#d97706"
+                />
+              )}
+              {hasWhatsAppBot && (
                 <NavRow
                   icon="logo-whatsapp"
                   label="Configurações do WhatsApp"
