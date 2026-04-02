@@ -548,13 +548,23 @@ namespace VoroSalonCrm.Application.Services
 
         private async Task<AuthDto> GenerateAuthDtoAsync(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
         {
-            var primaryTenantId = targetTenantId
+            // Verificar flags pós-login (senha expirada, troca obrigatória, termos)
+            var userExt = await _userExtensionRepository.GetByIdAsync(false, user.Id);
+
+            // Se não foi passado um tenant específico (login normal), tenta usar o último conectado
+            Guid? resolvedTenantId = targetTenantId;
+            if (resolvedTenantId == null && userExt?.LastConnectedTenantId != null)
+            {
+                var lastTenant = userExt.LastConnectedTenantId.Value;
+                var belongsToLastTenant = user.UserTenants?.Any(ut => ut.TenantId == lastTenant) == true;
+                if (belongsToLastTenant)
+                    resolvedTenantId = lastTenant;
+            }
+
+            var primaryTenantId = resolvedTenantId
                                 ?? user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.TenantId
                                 ?? user.UserTenants?.FirstOrDefault()?.TenantId
                                 ?? Guid.Empty;
-
-            // Verificar flags pós-login (senha expirada, troca obrigatória, termos)
-            var userExt = await _userExtensionRepository.GetByIdAsync(false, user.Id);
             var requiresPasswordChange = false;
             var requiresTermsAcceptance = false;
             var requiresProfileCompletion = false;
@@ -603,7 +613,8 @@ namespace VoroSalonCrm.Application.Services
                 {
                     UserId = user.Id,
                     RefreshToken = refreshToken,
-                    RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
+                    RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7),
+                    LastConnectedTenantId = primaryTenantId != Guid.Empty ? primaryTenantId : null
                 };
                 await _userExtensionRepository.AddAsync(userExtension);
             }
@@ -611,6 +622,7 @@ namespace VoroSalonCrm.Application.Services
             {
                 userExtension.RefreshToken = refreshToken;
                 userExtension.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+                userExtension.LastConnectedTenantId = primaryTenantId != Guid.Empty ? primaryTenantId : null;
                 _userExtensionRepository.Update(userExtension);
             }
             await _unitOfWork.SaveChangesAsync();

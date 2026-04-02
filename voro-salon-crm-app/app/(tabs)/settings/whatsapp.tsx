@@ -74,6 +74,8 @@ export default function WhatsAppSettingsScreen() {
 
   const filteredTemplates = (templates ?? []).filter(t => t.tenantId !== "00000000-0000-0000-0000-000000000000")
 
+  console.log(filteredTemplates);
+
   if (isLoadingTemplates || !settingsForm || !hasWhatsAppBot) {
     return (
       <SafeAreaView className="flex-1 bg-zinc-50 items-center justify-center">

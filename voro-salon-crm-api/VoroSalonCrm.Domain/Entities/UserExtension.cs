@@ -30,5 +30,8 @@ namespace VoroSalonCrm.Domain.Entities
 
         // Demo reset
         public DateTime? LastDemoResetAt { get; set; }
+
+        // Último tenant conectado — usado para auto-selecionar no próximo login
+        public Guid? LastConnectedTenantId { get; set; }
     }
 }

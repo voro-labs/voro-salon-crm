@@ -14,7 +14,7 @@ namespace VoroSalonCrm.Application.Services
         IUnitOfWork unitOfWork) : IWhatsAppTemplateService
     {
         private static WhatsAppTemplateDto ToDto(WhatsAppTemplate t) => new(
-            t.Id, t.Name, t.Label, t.ParamsCount,
+            t.Id,  t.TenantId, t.Name, t.Label, t.ParamsCount,
             t.ParamLabelsJson != null ? JsonSerializer.Deserialize<string[]>(t.ParamLabelsJson) : null,
             t.IsActive, t.CreatedAt);
 

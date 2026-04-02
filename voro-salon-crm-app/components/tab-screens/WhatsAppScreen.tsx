@@ -222,8 +222,8 @@ export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
                               onPress={() => {
                                 router.push({
                                   pathname: `${rootPath}/whatsapp/[phone]`,
-                                  params: { 
-                                    phone: conv.phoneNumber, 
+                                  params: {
+                                    phone: conv.phoneNumber,
                                     contactName: conv.contactName,
                                     clientId: conv.clientId || undefined
                                   }
@@ -246,20 +246,14 @@ export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
                                   {timeAgo(conv.lastMessageAt)}
                                 </Text>
                               </View>
-                              
-                              <Text className="text-xs text-zinc-500 line-clamp-2 mt-1 leading-relaxed">
-                                {conv.lastMessageBody || "Sem mensagens"}
-                              </Text>
 
-                              {conv.clientId && (
-                                <Pressable 
-                                  onPress={() => router.push(`${rootPath}/clients/${conv.clientId}` as any)}
-                                  className="mt-1 flex-row items-center gap-1 self-start rounded bg-zinc-100 px-2 py-1"
-                                >
-                                  <Ionicons name="link" size={10} color="#71717a" />
-                                  <Text className="text-[10px] font-bold text-zinc-600">Ver Ficha</Text>
-                                </Pressable>
-                              )}
+                              {/* Última mensagem */}
+                              <View className="flex-row items-start gap-1.5 bg-zinc-50 rounded-xl px-2.5 py-2 mt-0.5">
+                                <Ionicons name="chatbubble-ellipses-outline" size={12} color="#a1a1aa" style={{ marginTop: 1 }} />
+                                <Text className="text-xs text-zinc-500 flex-1 leading-relaxed" numberOfLines={2}>
+                                  {conv.lastMessageBody || "Sem mensagens"}
+                                </Text>
+                              </View>
                             </Pressable>
                           )
                         })
