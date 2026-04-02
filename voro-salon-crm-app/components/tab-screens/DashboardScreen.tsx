@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react"
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import {
   View, Text, ScrollView, RefreshControl, Pressable,
   ActivityIndicator, Modal, Alert, Share, TouchableOpacity,
@@ -360,6 +360,24 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
 
   const [period, setPeriod] = useState<"today" | "week">("today")
   const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
+  const [showPastModal, setShowPastModal] = useState(false)
+  const hasShownPastModal = useRef(false)
+
+  const pastAppointments = useMemo(() => {
+    const now = new Date()
+    return (appointments ?? []).filter((a: any) => {
+      const date = new Date(a.scheduledDateTime ?? a.date)
+      const status = Number(a.status)
+      return date < now && (status === 0 || status === 1)
+    }).sort((a: any, b: any) => (a.scheduledDateTime ?? a.date ?? "").localeCompare(b.scheduledDateTime ?? b.date ?? ""))
+  }, [appointments])
+
+  useEffect(() => {
+    if (!hasShownPastModal.current && appointments && pastAppointments.length > 0) {
+      hasShownPastModal.current = true
+      setShowPastModal(true)
+    }
+  }, [appointments, pastAppointments.length])
 
   // Auto-switch to week if today is empty
   useEffect(() => {
@@ -643,6 +661,94 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
           )}
         </View>
       </ScrollView>
+
+      {/* ── Past Appointments Modal ── */}
+      <Modal
+        visible={showPastModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPastModal(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
+          onPress={() => setShowPastModal(false)}
+        >
+          <Pressable onPress={() => {}} style={{ backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 36 }}>
+            {/* Header */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ height: 36, width: 36, borderRadius: 12, backgroundColor: "#fef3c7", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="time-outline" size={18} color="#d97706" />
+                </View>
+                <Text style={{ fontSize: 17, fontWeight: "900", color: "#18181b" }}>Agendamentos Passados</Text>
+              </View>
+              <Pressable
+                onPress={() => setShowPastModal(false)}
+                style={{ height: 32, width: 32, borderRadius: 16, backgroundColor: "#f4f4f5", alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name="close" size={18} color="#71717a" />
+              </Pressable>
+            </View>
+            <Text style={{ color: "#71717a", fontSize: 13, marginBottom: 16 }}>
+              {pastAppointments.length === 1
+                ? "1 agendamento ainda não foi finalizado. Qual foi o desfecho?"
+                : `${pastAppointments.length} agendamentos ainda não foram finalizados. Qual foi o desfecho?`}
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
+              {pastAppointments.length === 0 ? (
+                <View style={{ alignItems: "center", paddingVertical: 32 }}>
+                  <Ionicons name="checkmark-circle-outline" size={48} color="#22c55e" />
+                  <Text style={{ color: "#71717a", fontSize: 14, marginTop: 8 }}>Tudo atualizado!</Text>
+                </View>
+              ) : (
+                pastAppointments.map((apt: any) => {
+                  const currentStatus = getStatus(Number(apt.status))
+                  return (
+                    <View key={apt.id} style={{ borderWidth: 1, borderColor: "#f4f4f5", borderRadius: 16, padding: 12 }}>
+                      {/* Appointment info row */}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                        <View style={{ height: 36, width: 36, borderRadius: 12, backgroundColor: "#f4f4f5", alignItems: "center", justifyContent: "center" }}>
+                          <Ionicons name="person-outline" size={16} color="#71717a" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, fontWeight: "800", color: "#18181b" }}>{apt.clientName}</Text>
+                          <Text style={{ fontSize: 12, color: "#71717a" }}>
+                            {apt.serviceName ? `${apt.serviceName} · ` : ""}{formatTime(apt.scheduledDateTime ?? apt.date)}
+                          </Text>
+                        </View>
+                        <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: currentStatus.bg, borderWidth: 1, borderColor: currentStatus.border }}>
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: currentStatus.text }}>{currentStatus.label}</Text>
+                        </View>
+                      </View>
+
+                      {/* Status action buttons: only terminal statuses */}
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        {STATUS_OPTIONS.filter(s => [2, 3, 4].includes(s.value)).map((opt) => (
+                          <Pressable
+                            key={opt.value}
+                            onPress={() => handleStatusChange(apt.id, opt.value)}
+                            style={{ flex: 1, paddingVertical: 8, borderRadius: 12, alignItems: "center", backgroundColor: opt.bg, borderWidth: 1, borderColor: opt.border }}
+                          >
+                            <Text style={{ fontSize: 12, fontWeight: "700", color: opt.text }}>{opt.label}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  )
+                })
+              )}
+            </ScrollView>
+
+            <Pressable
+              onPress={() => setShowPastModal(false)}
+              style={{ marginTop: 12, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#f4f4f5" }}
+            >
+              <Text style={{ color: "#52525b", fontWeight: "700" }}>Fechar</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   )
 }

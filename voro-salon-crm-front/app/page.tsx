@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { MetricCard } from "@/components/metric-card"
@@ -17,7 +17,17 @@ import {
   Loader2,
   ChevronRight,
   Copy,
-  Check} from "lucide-react"
+  Check,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -83,6 +93,8 @@ export default function DashboardPage() {
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const [timeFilter, setTimeFilter] = useState("today")
+  const [showPastModal, setShowPastModal] = useState(false)
+  const hasShownPastModal = useRef(false)
 
   // Se não houver agendamentos hoje, mostra a semana automaticamente
   useEffect(() => {
@@ -90,6 +102,27 @@ export default function DashboardPage() {
     const hasToday = aptData.some((a: any) => isToday(new Date(a.scheduledDateTime)))
     if (!hasToday) setTimeFilter("week")
   }, [aptData])
+
+  const pastAppointments = useMemo(() => {
+    const now = new Date()
+    return (aptData ?? []).filter((apt: any) => {
+      const aptDate = new Date(apt.scheduledDateTime)
+      return (
+        isToday(aptDate) &&
+        aptDate < now &&
+        (Number(apt.status) === 0 || Number(apt.status) === 1)
+      )
+    })
+  }, [aptData])
+
+  useEffect(() => {
+    if (hasShownPastModal.current) return
+    if (pastAppointments.length > 0) {
+      setShowPastModal(true)
+      hasShownPastModal.current = true
+    }
+  }, [pastAppointments])
+
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const { sendWhatsAppMessage } = useWhatsApp()
@@ -452,6 +485,87 @@ export default function DashboardPage() {
           </Card>
         )}
       </div>
+
+      <Dialog open={showPastModal} onOpenChange={setShowPastModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              </div>
+              Agendamentos sem atualização
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Os agendamentos abaixo já passaram e ainda estão como pendente ou confirmado.
+            </p>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto py-1 pr-1">
+            {pastAppointments.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Tudo certo!</p>
+                <p className="text-xs text-muted-foreground">Nenhum agendamento pendente.</p>
+              </div>
+            ) : (
+              pastAppointments.map((apt: any) => {
+                const date = new Date(apt.scheduledDateTime)
+                const isAptUpdating = updatingId === apt.id
+                return (
+                  <div key={apt.id} className="flex flex-col gap-2 rounded-xl border border-border/50 bg-amber-50/40 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-sm font-semibold text-foreground truncate">{apt.clientName}</span>
+                        <span className="text-xs text-muted-foreground truncate">{apt.serviceName || "Sem serviço"}</span>
+                        <span className="text-xs font-medium text-amber-700 flex items-center gap-1 mt-0.5">
+                          <Clock className="h-3 w-3" />
+                          {format(date, "HH:mm")}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        disabled={isAptUpdating}
+                        onClick={() => handleStatusUpdate(apt.id, "2")}
+                      >
+                        {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Concluído"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                        disabled={isAptUpdating}
+                        onClick={() => handleStatusUpdate(apt.id, "3")}
+                      >
+                        {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Cancelado"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1 border-orange-200 text-orange-600 hover:bg-orange-50"
+                        disabled={isAptUpdating}
+                        onClick={() => handleStatusUpdate(apt.id, "4")}
+                      >
+                        {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Faltou"}
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" className="w-full" onClick={() => setShowPastModal(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthGuard>
   )
 }
