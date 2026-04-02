@@ -63,12 +63,8 @@ export default function TabsLayout() {
   }, [mutate])
 
   function isTabEnabled(name: string): boolean {
-    // 1. Hard restrictions based on plan limits (cannot be overridden by SalonOwner role)
-    if (name === "appointments" && !hasBooking) return false
-    if (name === "whatsapp" && !hasWhatsAppBot) return false
-    if (name === "finance" && !hasFinancial) return false
-
-    // 2. Soft restrictions based on module enablement (can be overridden by SalonOwner role)
+    // No grupo básico, finance e whatsapp nem existem no navigator
+    // A agenda interna sempre aparece; apenas o agendamento online é premium
     if (isSalonOwner) return true
     const moduleId = TAB_MODULE_IDS[name]
     if (!moduleId) return true
@@ -91,6 +87,14 @@ export default function TabsLayout() {
     return defaultLabel
   }
 
+  // Extrai o nome base da tab a partir do route.name, independente do formato:
+  // "index", "appointments/index", "(tabs)/settings/index", etc.
+  function getTabKey(routeName: string): string {
+    const segments = routeName.split("/").filter((s) => !s.startsWith("(") && s !== "index" && s !== "")
+    if (segments.length === 0) return "index"
+    return segments[segments.length - 1]
+  }
+
   if (!isLoaded) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "white" }}>
@@ -104,17 +108,19 @@ export default function TabsLayout() {
       tabBarPosition="bottom"
       tabBar={ScrollableTabBar}
       screenOptions={({ route }) => {
-        const icon = TAB_ICONS[route.name] ?? TAB_ICONS["index"]
-        const enabled = isTabEnabled(route.name)
+        const tabKey = getTabKey(route.name)
+        const icon = TAB_ICONS[tabKey] ?? TAB_ICONS["index"]
+        const enabled = isTabEnabled(tabKey)
         return {
           tabBarActiveTintColor: primaryColor,
           tabBarInactiveTintColor: "#9ca3af",
-          tabBarLabel: getTabLabel(route.name),
+          tabBarLabel: getTabLabel(tabKey),
           tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
-          swipeEnabled: false, // Desativa swipe globalmente para evitar entrar em abas restritas
-          href: enabled ? undefined : null, // Expo Router: esconde da tab bar se null
+          swipeEnabled: true,
+          animationEnabled: true,
+          href: enabled ? undefined : null,
         } as any
       }}
     >
@@ -123,10 +129,8 @@ export default function TabsLayout() {
       <MaterialTopTabs.Screen name="clients" />
       <MaterialTopTabs.Screen name="services" />
       <MaterialTopTabs.Screen name="employees" />
-      <MaterialTopTabs.Screen name="finance" />
-      <MaterialTopTabs.Screen name="whatsapp" />
-      <MaterialTopTabs.Screen name="notifications" />
       <MaterialTopTabs.Screen name="settings" />
+      <MaterialTopTabs.Screen name="notifications" />
     </MaterialTopTabs>
   )
 }

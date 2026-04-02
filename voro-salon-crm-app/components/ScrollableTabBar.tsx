@@ -38,7 +38,11 @@ export function ScrollableTabBar({ state, descriptors, navigation }: MaterialTop
               ? options.tabBarLabel
               : typeof options.title === "string"
               ? options.title
-              : route.name
+              : // Fallback robusto: extrai o segmento base do route.name
+                (() => {
+                  const segs = route.name.split("/").filter((s) => !s.startsWith("(") && s !== "index" && s !== "")
+                  return segs.length > 0 ? segs[segs.length - 1] : route.name
+                })()
 
           const color = isFocused
             ? (options.tabBarActiveTintColor as string) ?? "#000"

@@ -1,6 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import useSWR from "swr"
-import { useRouter } from "expo-router"
 import { Toast } from "toastify-react-native"
 import { API_CONFIG, secureApiCall } from "../lib/api"
 import { fetcher } from "../lib/fetcher"
@@ -30,15 +29,37 @@ const DEFAULT_FORM: NewAppointmentForm = {
   notes: "",
 }
 
-export function useAppointmentForm() {
-  const router = useRouter()
-
+export function useAppointmentForm(id?: string) {
   const { data: clients, isLoading: loadingClients, mutate: mutateClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
   const { data: services, isLoading: loadingServices, mutate: mutateServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const [form, setForm] = useState<NewAppointmentForm>(DEFAULT_FORM)
   const [isCreating, setIsCreating] = useState(false)
+
+  // Fetch existing appointment data when editing
+  const { data: existingAppointment, isLoading: loadingAppointment } = useSWR(
+    id ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}` : null,
+    fetcher
+  )
+
+  // Populate form with existing data once loaded
+  useEffect(() => {
+    if (!id || !existingAppointment) return
+    const a = existingAppointment as any
+    setForm({
+      clientId: a.clientId ?? "",
+      serviceId: a.serviceId ?? "none",
+      employeeId: a.employeeId ?? "none",
+      scheduledDateTime: a.scheduledDateTime ?? "",
+      durationMinutes: a.durationMinutes ?? 30,
+      status: a.status ?? 0,
+      description: a.description ?? "",
+      amount: a.amount ?? 0,
+      notes: a.notes ?? "",
+      isEncaixe: a.isEncaixe ?? false,
+    })
+  }, [id, existingAppointment])
 
   const { data: employees, mutate: mutateEmployees } = useSWR(
     form.serviceId !== "none" && form.serviceId !== ""
@@ -74,21 +95,29 @@ export function useAppointmentForm() {
     setIsCreating(true)
     try {
       const date = new Date(f.scheduledDateTime)
-      const res = await secureApiCall(API_CONFIG.ENDPOINTS.APPOINTMENTS, {
-        method: "POST",
-        body: JSON.stringify({
-          ...f,
-          scheduledDateTime: date.toISOString(),
-          serviceId: f.serviceId === "none" ? null : f.serviceId,
-          employeeId: f.employeeId === "none" ? null : f.employeeId,
-          isEncaixe: f.isEncaixe ?? false,
-        }),
+      const body = JSON.stringify({
+        ...f,
+        scheduledDateTime: date.toISOString(),
+        serviceId: f.serviceId === "none" ? null : f.serviceId,
+        employeeId: f.employeeId === "none" ? null : f.employeeId,
+        isEncaixe: f.isEncaixe ?? false,
       })
+
+      const endpoint = id
+        ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}`
+        : API_CONFIG.ENDPOINTS.APPOINTMENTS
+
+      const res = await secureApiCall(endpoint, {
+        method: id ? "PUT" : "POST",
+        body,
+      })
+
       if (res.hasError) {
-        Toast.error(res.message || "Erro ao criar agendamento.")
+        Toast.error(res.message || (id ? "Erro ao atualizar agendamento." : "Erro ao criar agendamento."))
         return false
       }
-      Toast.success("Agendamento criado com sucesso!")
+
+      Toast.success(id ? "Agendamento atualizado!" : "Agendamento criado com sucesso!")
       return true
     } catch {
       Toast.error("Erro de conexão. Tente novamente.")
@@ -104,7 +133,7 @@ export function useAppointmentForm() {
     employees,
     form,
     setForm,
-    isLoading: loadingClients || loadingServices,
+    isLoading: loadingClients || loadingServices || (!!id && loadingAppointment),
     isCreating,
     isModuleEnabled,
     handleServiceChange,
