@@ -32,7 +32,7 @@ const DEFAULT_FORM: AppointmentForm = {
 
 export function useAppointmentDetail(appointmentId: string) {
   const router = useRouter()
-  const { sendWhatsAppMessage } = useWhatsApp()
+  const { requestWhatsAppConfirm, pendingWhatsApp, confirmWhatsApp, cancelWhatsApp } = useWhatsApp()
 
   const { data: appointment, isLoading: loadingApt } = useSWR(
     appointmentId ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}` : null,
@@ -144,7 +144,7 @@ export function useAppointmentDetail(appointmentId: string) {
       toast.success(`Status atualizado para ${statusLabels[newStatus] ?? newStatus}`)
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
       if (appointment) {
-        sendWhatsAppMessage(appointment, newStatus, !!tenant?.useWhatsappBooking)
+        requestWhatsAppConfirm(appointment, newStatus, !!tenant?.useWhatsappBooking)
       }
       return true
     } catch {
@@ -193,5 +193,8 @@ export function useAppointmentDetail(appointmentId: string) {
     updateAppointment,
     updateStatus,
     deleteAppointment,
+    pendingWhatsApp,
+    confirmWhatsApp,
+    cancelWhatsApp,
   }
 }

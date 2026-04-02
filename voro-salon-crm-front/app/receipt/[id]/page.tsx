@@ -20,7 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
-import { apiCall, API_CONFIG } from "@/lib/api"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { apiCall, API_CONFIG, getAuthToken } from "@/lib/api"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale/pt-BR"
 import { toast } from "sonner"
@@ -56,6 +57,13 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
   const [data, setData] = useState<ReceiptData | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    if (getAuthToken()) {
+      router.replace("/")
+      return
+    }
+  }, [router])
 
   useEffect(() => {
     const fetchReceipt = async () => {
@@ -130,7 +138,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <span className="font-semibold text-sm">Comprovante de Agendamento</span>
-          <div className="w-10" /> {/* Spacer */}
+          <ThemeToggle />
         </div>
       </div>
 
