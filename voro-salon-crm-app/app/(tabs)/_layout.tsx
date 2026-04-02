@@ -37,7 +37,7 @@ import { useAuth } from "contexts/auth.context"
 import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 export default function TabsLayout() {
-  const { hasBooking, hasWhatsAppBot, hasFinancial, isLoaded } = usePlanLimits()
+  const { hasWhatsAppBot, hasFinancial, isLoaded } = usePlanLimits()
   const { primaryColor } = useTenantTheme()
   const { mutate } = useSWRConfig()
   const { user } = useAuth()
