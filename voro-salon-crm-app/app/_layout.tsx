@@ -10,6 +10,7 @@ import * as Notifications from "expo-notifications"
 import { usePushNotifications } from "hooks/use-push-notifications.hook"
 import { useSubscription } from "hooks/use-subscription.hook"
 import { SubscriptionPaywall } from "components/SubscriptionPaywall"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 import ToastManager from "toastify-react-native"
 import "../global.css"
 
@@ -36,6 +37,7 @@ function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth()
   const { primaryColor } = useTenantTheme()
   const { isPaywalled, isLoading: isSubscriptionLoading } = useSubscription()
+  const { hasFinancial, hasWhatsAppBot, isLoaded: isPlanLoaded } = usePlanLimits()
   const segments = useSegments()
   const router = useRouter()
   const { registerPushToken, unregisterPushToken, handleNotificationResponse } = usePushNotifications()
@@ -58,10 +60,19 @@ function RootLayoutNav() {
   const inAuthGroup = segments[0] === "(auth)"
   const inBookingGroup = segments[0] === "booking"
   const inOnboardingGroup = segments[0] === "(onboarding)"
+  const inTabsGroup = segments[0] === "(tabs)"
+  const inPremiumTabsGroup = segments[0] === "(premium-tabs)"
+  
   const pendingRedirect = !isAuthenticated && !inAuthGroup && !inBookingGroup && !inOnboardingGroup
 
   useEffect(() => {
     if (isLoading) return
+    // Só aguarda o plano quando autenticado — sem auth, plan nunca carrega (401)
+    if (isAuthenticated && !isPlanLoaded) return
+
+    const isPremium = hasFinancial || hasWhatsAppBot
+    const targetTabs = isPremium ? "/(premium-tabs)" : "/(tabs)"
+
     if (!isAuthenticated && !inAuthGroup && !inBookingGroup && !inOnboardingGroup) {
       router.replace("/(auth)/welcome")
     } else if (isAuthenticated && inAuthGroup) {
@@ -75,14 +86,20 @@ function RootLayoutNav() {
         } else if (flags?.requiresProfileCompletion) {
           router.replace("/(onboarding)/complete-profile")
         } else {
-          router.replace("/(tabs)")
+          router.replace(targetTabs as any)
         }
       })
+    } else if (isAuthenticated && isPlanLoaded) {
+      // Redireciona se estiver no grupo de abas errado baseado no plano atual
+      if (isPremium && inTabsGroup) {
+        router.replace("/(premium-tabs)")
+      } else if (!isPremium && inPremiumTabsGroup) {
+        router.replace("/(tabs)")
+      }
     }
-    // Se está em /(onboarding), não redireciona — usuário está completando o cadastro
-  }, [isAuthenticated, isLoading, segments])
+  }, [isAuthenticated, isLoading, isPlanLoaded, segments, hasFinancial, hasWhatsAppBot])
 
-  if (isLoading || pendingRedirect || (isAuthenticated && isSubscriptionLoading)) {
+  if (isLoading || pendingRedirect || (isAuthenticated && (isSubscriptionLoading || !isPlanLoaded))) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color={primaryColor} />
@@ -98,6 +115,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(premium-tabs)" />
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="booking" />
     </Stack>

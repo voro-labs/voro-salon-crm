@@ -370,7 +370,7 @@ export default function PublicBookingPage() {
       {/* Mobile App Banner */}
       {showAppBanner && (
         <div className="bg-background border-b border-border/60 shadow-sm">
-          <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
+          <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto pr-14">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Smartphone className="h-5 w-5 text-primary" />
             </div>
@@ -426,7 +426,7 @@ export default function PublicBookingPage() {
       )}
 
       {/* Header */}
-      <header className="sticky top-0 z-10 flex items-center gap-4 bg-background px-6 py-4 shadow-sm border-b">
+      <header className="sticky top-0 z-10 flex items-center gap-4 bg-background px-6 py-4 shadow-sm border-b pr-14">
         {tenant.logoUrl ? (
           <AuthenticatedImage
             src={tenant.logoUrl}
@@ -547,7 +547,7 @@ export default function PublicBookingPage() {
                   className="h-auto py-3 px-3 flex flex-col items-start gap-1 text-left bg-background hover:bg-primary/5 hover:border-primary hover:text-primary transition-all"
                   onClick={() => handleServiceSelect(s)}
                 >
-                  <span className="font-bold text-sm line-clamp-1">{s.name}</span>
+                  <span className="font-bold text-sm line-clamp-1 w-full text-left">{s.name}</span>
                   <span className="text-[10px] text-muted-foreground">
                     {s.durationMinutes} min • R$ {s.price.toFixed(2)}
                   </span>

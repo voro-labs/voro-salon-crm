@@ -9,6 +9,7 @@ import { ScreenHeader } from "components/ScreenHeader"
 import { TransactionType, TransactionStatus } from "types/DTOs/financial.interface"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 type FilterType = "all" | "income" | "expense"
 
@@ -40,8 +41,13 @@ function fmtCurrency(v: number) {
 const TODAY = new Date().toISOString().split("T")[0]
 const MONTH_START = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0]
 
-export default function FinanceScreen() {
+interface FinanceScreenProps {
+  rootPath?: string // e.g. "/(tabs)" or "/(premium-tabs)"
+}
+
+export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
   useModuleGuard("finance")
+  const { hasFinancial, isLoaded } = usePlanLimits()
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { user } = useAuth()
@@ -59,12 +65,7 @@ export default function FinanceScreen() {
   const [filter, setFilter] = useState<FilterType>("all")
   const [search, setSearch] = useState("")
 
-  const pendingPayments = (transactions || [])
-    .filter((t: any) => t.status === 0 || t.status === "Pending")
-    .reduce((acc: number, t: any) => acc + (t.amount || 0), 0)
-
-
-  if (!router) return null // Safety for early renders
+  if (isLoaded && !hasFinancial) return null
 
   if (isLoading) {
     return (
@@ -103,13 +104,13 @@ export default function FinanceScreen() {
         right={
           <View className="flex-row items-center gap-2">
             <Pressable
-              onPress={() => router.push("/(tabs)/finance/import-pdf" as any)}
+              onPress={() => router.push(`${rootPath}/finance/import-pdf` as any)}
               className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center border border-zinc-200"
             >
               <Ionicons name="document-text-outline" size={16} color="#52525b" />
             </Pressable>
             <Pressable
-              onPress={() => router.push("/(tabs)/finance/categories" as any)}
+              onPress={() => router.push(`${rootPath}/finance/categories` as any)}
               className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-2 border border-zinc-200"
             >
               <Ionicons name="pricetags-outline" size={15} color="#52525b" />
@@ -138,13 +139,10 @@ export default function FinanceScreen() {
         </View>
 
         <View className="flex-row gap-3 mb-4">
-          {/* Card: Receitas */}
           <View className="flex-1 bg-green-50 rounded-2xl p-3.5 border border-green-100">
             <Text className="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-0.5">Entradas</Text>
             <Text className="text-base font-black text-green-700" numberOfLines={1}>R$ {fmtCurrency(totalIncome)}</Text>
           </View>
-
-          {/* Card: Despesas */}
           <View className="flex-1 bg-red-50 rounded-2xl p-3.5 border border-red-100">
             <Text className="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-0.5">Saídas</Text>
             <Text className="text-base font-black text-red-700" numberOfLines={1}>R$ {fmtCurrency(totalExpense)}</Text>
@@ -152,7 +150,6 @@ export default function FinanceScreen() {
         </View>
 
         <View className="flex-row gap-3 mb-4">
-          {/* Card: Saldo Total */}
           <View
             className="flex-1 rounded-2xl p-3.5 border"
             style={balance >= 0
@@ -164,7 +161,6 @@ export default function FinanceScreen() {
           </View>
         </View>
 
-        {/* Search + Add */}
         <View className="flex-row items-center gap-3 mb-3">
           <View className="flex-1 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2 flex-row items-center gap-2">
             <Ionicons name="search" size={16} color="#a1a1aa" />
@@ -182,7 +178,7 @@ export default function FinanceScreen() {
             )}
           </View>
           <Pressable
-            onPress={() => router.push("/(tabs)/finance/new" as any)}
+            onPress={() => router.push(`${rootPath}/finance/new` as any)}
             className="h-11 w-11 rounded-2xl items-center justify-center"
             style={{ backgroundColor: primaryColor }}
           >
@@ -190,7 +186,6 @@ export default function FinanceScreen() {
           </Pressable>
         </View>
 
-        {/* Filter tabs */}
         <View className="flex-row gap-2">
           {(["all", "income", "expense"] as FilterType[]).map((f) => (
             <Pressable
@@ -207,55 +202,51 @@ export default function FinanceScreen() {
         </View>
       </View>
 
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color={primaryColor} /></View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item: any, i) => item.id ?? String(i)}
-          renderItem={({ item }: { item: any }) => {
-            const income = isIncome(item)
-            const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG[1]
-            return (
-              <Pressable
-                onPress={() => router.push(`/(tabs)/finance/${item.id}` as any)}
-                className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50"
-              >
-                <View className={`h-10 w-10 rounded-xl items-center justify-center shrink-0 ${income ? "bg-green-50" : "bg-red-50"}`}>
-                  <Ionicons name={income ? "arrow-up" : "arrow-down"} size={18} color={income ? "#10b981" : "#ef4444"} />
+      <FlatList
+        data={filtered}
+        keyExtractor={(item: any, i) => item.id ?? String(i)}
+        renderItem={({ item }: { item: any }) => {
+          const income = isIncome(item)
+          const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG[1]
+          return (
+            <Pressable
+              onPress={() => router.push(`${rootPath}/finance/${item.id}` as any)}
+              className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50"
+            >
+              <View className={`h-10 w-10 rounded-xl items-center justify-center shrink-0 ${income ? "bg-green-50" : "bg-red-50"}`}>
+                <Ionicons name={income ? "arrow-up" : "arrow-down"} size={18} color={income ? "#10b981" : "#ef4444"} />
+              </View>
+              <View className="flex-1 min-w-0">
+                <Text className="text-zinc-900 font-bold text-sm" numberOfLines={1}>{item.description ?? "Transação"}</Text>
+                <View className="flex-row items-center gap-2 mt-0.5">
+                  {item.category?.name ? (
+                    <Text className="text-zinc-400 text-xs" numberOfLines={1}>{item.category.name}</Text>
+                  ) : null}
+                  <Text className="text-zinc-300 text-xs">{formatDate(item.dueDate)}</Text>
                 </View>
-                <View className="flex-1 min-w-0">
-                  <Text className="text-zinc-900 font-bold text-sm" numberOfLines={1}>{item.description ?? "Transação"}</Text>
-                  <View className="flex-row items-center gap-2 mt-0.5">
-                    {item.category?.name ? (
-                      <Text className="text-zinc-400 text-xs" numberOfLines={1}>{item.category.name}</Text>
-                    ) : null}
-                    <Text className="text-zinc-300 text-xs">{formatDate(item.dueDate)}</Text>
-                  </View>
+              </View>
+              <View className="items-end gap-1 shrink-0">
+                <Text className={`font-black text-sm ${income ? "text-green-600" : "text-red-600"}`}>
+                  {income ? "+" : "-"}R$ {fmtCurrency(Math.abs(item.amount ?? 0))}
+                </Text>
+                <View className="rounded-2xl px-2 py-0.5 border" style={{ backgroundColor: status.bg, borderColor: status.border }}>
+                  <Text className="text-xs font-bold" style={{ color: status.text }}>{status.label}</Text>
                 </View>
-                <View className="items-end gap-1 shrink-0">
-                  <Text className={`font-black text-sm ${income ? "text-green-600" : "text-red-600"}`}>
-                    {income ? "+" : "-"}R$ {fmtCurrency(Math.abs(item.amount ?? 0))}
-                  </Text>
-                  <View className="rounded-2xl px-2 py-0.5 border" style={{ backgroundColor: status.bg, borderColor: status.border }}>
-                    <Text className="text-xs font-bold" style={{ color: status.text }}>{status.label}</Text>
-                  </View>
-                </View>
-              </Pressable>
-            )
-          }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View className="items-center py-16">
-              <Ionicons name="wallet-outline" size={48} color="#d4d4d8" />
-              <Text className="text-zinc-400 font-semibold mt-3 text-base">
-                {search ? "Nenhum resultado encontrado" : "Nenhuma transação"}
-              </Text>
-            </View>
-          }
-        />
-      )}
+              </View>
+            </Pressable>
+          )
+        }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View className="items-center py-16">
+            <Ionicons name="wallet-outline" size={48} color="#d4d4d8" />
+            <Text className="text-zinc-400 font-semibold mt-3 text-base">
+              {search ? "Nenhum resultado encontrado" : "Nenhuma transação"}
+            </Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   )
 }

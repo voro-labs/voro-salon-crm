@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import {
   View, Text, ScrollView, ActivityIndicator, Pressable, RefreshControl,
-  TextInput, Dimensions, Modal, TouchableWithoutFeedback
+  TextInput, Dimensions
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -11,8 +11,9 @@ import { API_CONFIG } from "lib/api"
 import { fetcher } from "lib/fetcher"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { ScreenHeader } from "components/ScreenHeader"
-import { SendTemplateModal } from "./components/SendTemplateModal"
+import { SendTemplateModal } from "./whatsapp/SendTemplateModal"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
+import { usePlanLimits } from "hooks/use-plan-limits.hook"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface WhatsAppConversation {
@@ -40,7 +41,6 @@ const KANBAN_COLUMNS = [
   { state: "CANCELLED",              label: "Cancelado",               borderColor: "border-gray-300",   bgColor: "bg-gray-100",     textColor: "text-gray-700" },  
 ]
 
-// Calculate a reasonable column width (e.g., 85% of screen width)
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
 const COLUMN_WIDTH = Math.min(SCREEN_WIDTH * 0.85, 300)
 
@@ -63,13 +63,19 @@ function timeAgo(dateString: string) {
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
 }
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
-export default function WhatsAppKanbanScreen() {
+interface WhatsAppScreenProps {
+  rootPath?: string
+}
+
+export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
   useModuleGuard("whatsapp")
+  const { hasWhatsAppBot, isLoaded } = usePlanLimits()
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const [search, setSearch] = useState("")
   const [showSendModal, setShowSendModal] = useState(false)
+
+  if (isLoaded && !hasWhatsAppBot) return null
 
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
@@ -103,7 +109,7 @@ export default function WhatsAppKanbanScreen() {
             O assistente do WhatsApp não está ativo para este estabelecimento. Ative-o nas configurações para gerenciar suas conversas.
           </Text>
           <Pressable
-            onPress={() => router.push("/(tabs)/settings/whatsapp" as any)}
+            onPress={() => router.push(`${rootPath}/settings/whatsapp` as any)}
             className="w-full h-14 rounded-2xl items-center justify-center flex-row gap-2"
             style={{ backgroundColor: primaryColor }}
           >
@@ -183,8 +189,7 @@ export default function WhatsAppKanbanScreen() {
                     style={{ width: COLUMN_WIDTH, marginRight: index === KANBAN_COLUMNS.length - 1 ? 0 : 12 }}
                     className={`bg-white rounded-3xl border-2 ${col.borderColor} p-3`}
                   >
-                   {/* Header = Stage Info */}
-                   <View className={`flex-row items-center justify-between rounded-xl px-3 py-2 ${col.bgColor} mb-3`}>
+                    <View className={`flex-row items-center justify-between rounded-xl px-3 py-2 ${col.bgColor} mb-3`}>
                       <Text className={`text-xs font-black uppercase tracking-wider ${col.textColor}`}>
                         {col.label}
                       </Text>
@@ -193,7 +198,6 @@ export default function WhatsAppKanbanScreen() {
                       </View>
                     </View>
 
-                    {/* Cards List */}
                     <ScrollView 
                       showsVerticalScrollIndicator={false}
                       contentContainerStyle={{ gap: 10, paddingBottom: 16 }}
@@ -217,13 +221,13 @@ export default function WhatsAppKanbanScreen() {
                               className={`flex-col gap-2 p-3 rounded-2xl border ${isScheduled ? "border-emerald-200 bg-emerald-50/40" : "border-zinc-100 bg-white shadow-sm"}`}
                               onPress={() => {
                                 router.push({
-                                  pathname: "/(tabs)/whatsapp/[phone]",
-                                  params: { 
-                                    phone: conv.phoneNumber, 
+                                  pathname: `${rootPath}/whatsapp/[phone]`,
+                                  params: {
+                                    phone: conv.phoneNumber,
                                     contactName: conv.contactName,
                                     clientId: conv.clientId || undefined
                                   }
-                                });
+                                } as any);
                               }}
                             >
                               <View className="flex-row justify-between items-start gap-2">
@@ -242,20 +246,14 @@ export default function WhatsAppKanbanScreen() {
                                   {timeAgo(conv.lastMessageAt)}
                                 </Text>
                               </View>
-                              
-                              <Text className="text-xs text-zinc-500 line-clamp-2 mt-1 leading-relaxed">
-                                {conv.lastMessageBody || "Sem mensagens"}
-                              </Text>
 
-                              {conv.clientId && (
-                                <Pressable 
-                                  onPress={() => router.push(`/(tabs)/clients/${conv.clientId}` as any)}
-                                  className="mt-1 flex-row items-center gap-1 self-start rounded bg-zinc-100 px-2 py-1"
-                                >
-                                  <Ionicons name="link" size={10} color="#71717a" />
-                                  <Text className="text-[10px] font-bold text-zinc-600">Ver Ficha</Text>
-                                </Pressable>
-                              )}
+                              {/* Última mensagem */}
+                              <View className="flex-row items-start gap-1.5 bg-zinc-50 rounded-xl px-2.5 py-2 mt-0.5">
+                                <Ionicons name="chatbubble-ellipses-outline" size={12} color="#a1a1aa" style={{ marginTop: 1 }} />
+                                <Text className="text-xs text-zinc-500 flex-1 leading-relaxed" numberOfLines={2}>
+                                  {conv.lastMessageBody || "Sem mensagens"}
+                                </Text>
+                              </View>
                             </Pressable>
                           )
                         })

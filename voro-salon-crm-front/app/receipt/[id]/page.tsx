@@ -20,7 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
-import { apiCall, API_CONFIG } from "@/lib/api"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { apiCall, API_CONFIG, getAuthToken } from "@/lib/api"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale/pt-BR"
 import { toast } from "sonner"
@@ -43,6 +44,7 @@ interface ReceiptData {
     primaryColor?: string
     secondaryColor?: string
     themeMode?: string
+    isBookingEnabled?: boolean
   }
   dayAgenda: Array<{
     startTime: string
@@ -56,6 +58,13 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
   const [data, setData] = useState<ReceiptData | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    if (getAuthToken()) {
+      router.replace("/")
+      return
+    }
+  }, [router])
 
   useEffect(() => {
     const fetchReceipt = async () => {
@@ -130,7 +139,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <span className="font-semibold text-sm">Comprovante de Agendamento</span>
-          <div className="w-10" /> {/* Spacer */}
+          <ThemeToggle />
         </div>
       </div>
 
@@ -257,7 +266,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         </Card>
 
         {/* Dynamic Context: Agenda of the Day */}
-        <div className="flex flex-col gap-4 mt-4">
+        {data.tenant.isBookingEnabled && <div className="flex flex-col gap-4 mt-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" /> Agenda do Dia
@@ -307,7 +316,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               Fazer outro agendamento <ChevronRight className="h-3 w-3 ml-1" />
             </Button>
           </div>
-        </div>
+        </div>}
 
         {/* Footer Support */}
         <div className="text-center mt-4">

@@ -1606,6 +1606,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<bool>("IsAutoProvisioned")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("LastConnectedTenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("LastDemoResetAt")
                         .HasColumnType("timestamp with time zone");
 

@@ -4,6 +4,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
 {
     public record WhatsAppTemplateDto(
         Guid Id,
+        Guid TenantId,
         string Name,
         string Label,
         int ParamsCount,

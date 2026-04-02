@@ -113,69 +113,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  // Tenta renovar o token silenciosamente usando o refresh token
-  const attemptSilentRefresh = useCallback(async (): Promise<boolean> => {
-    const refreshToken = await getRefreshToken()
-    if (!refreshToken) return false
-    const expiredToken = await getAuthToken()
-    try {
-      const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: expiredToken ?? "", refreshToken }),
-      })
-      const data = await res.json()
-      if (res.ok && !data.hasError && data.data?.token) {
-        const newToken = data.data.token
-        const newRefresh = data.data.refreshToken
-        await setAuthToken(newToken)
-        if (newRefresh) await setRefreshToken(newRefresh)
-        await applyToken(newToken, newRefresh || refreshToken)
-        return true
-      }
-    } catch {}
-    return false
-  }, [applyToken])
+
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = await getAuthToken()
-
-      if (!token) {
-        // Sem access token — tenta refresh antes de deslogar
-        const refreshed = await attemptSilentRefresh()
-        if (!refreshed) setUser(null)
-        setLoading(false)
-        return
-      }
-
+      console.log("[AuthContext] Iniciando checkAuth...")
+      const { tokenManager } = await import("lib/api")
+      
       try {
-        const decoded = jwtDecode<JwtPayload>(token)
-        const isExpired = decoded.exp * 1000 < Date.now()
+        const token = await tokenManager.getValidToken()
 
-        if (isExpired) {
-          // Token expirado — tenta refresh silencioso
-          const refreshed = await attemptSilentRefresh()
-          if (!refreshed) {
-            await removeAuthToken()
-            await removeRefreshToken()
-            setUser(null)
-          }
-        } else {
-          // Token ainda válido — usa normalmente
-          const refreshToken = (await getRefreshToken()) || undefined
-          await applyToken(token, refreshToken)
-        }
-      } catch (err) {
-        // Token malformado — tenta refresh antes de deslogar
-        console.error("Erro ao decodificar token:", err)
-        const refreshed = await attemptSilentRefresh()
-        if (!refreshed) {
-          await removeAuthToken()
-          await removeRefreshToken()
+        if (!token) {
+          console.log("[AuthContext] Nenhum token válido encontrado no checkAuth.")
           setUser(null)
+          return
         }
+
+        console.log("[AuthContext] Token válido encontrado, aplicando ao estado...")
+        const decoded = jwtDecode<JwtPayload>(token)
+        const refreshToken = (await getRefreshToken()) || undefined
+        await applyToken(token, refreshToken)
+      } catch (err) {
+        console.error("[AuthContext] Erro fatal no checkAuth:", err)
+        setUser(null)
       } finally {
+        console.log("[AuthContext] checkAuth finalizado, liberando loading.")
         setLoading(false)
       }
     }
@@ -183,24 +145,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Re-verifica token quando app volta ao primeiro plano
     const handleAppStateChange = async (nextState: AppStateStatus) => {
       if (nextState !== "active") return
-      const token = await getAuthToken()
+      console.log("[AuthContext] App voltou ao primeiro plano, verificando sessão...")
+      
+      const { tokenManager } = await import("lib/api")
+      const token = await tokenManager.getValidToken()
+      
       if (!token) {
-        await attemptSilentRefresh()
+        console.warn("[AuthContext] Sessão perdida durante background/foreground.")
+        setUser(null)
         return
       }
-      try {
-        const decoded = jwtDecode<JwtPayload>(token)
-        if (decoded.exp * 1000 < Date.now()) {
-          const refreshed = await attemptSilentRefresh()
-          if (!refreshed) {
-            await removeAuthToken()
-            await removeRefreshToken()
-            setUser(null)
-          }
-        }
-      } catch {
-        await attemptSilentRefresh()
-      }
+      
+      const refreshToken = (await getRefreshToken()) || undefined
+      await applyToken(token, refreshToken)
+      console.log("[AuthContext] Sessão revalidada com sucesso no foreground.")
     }
 
     checkAuth()
@@ -226,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logoutListener.remove()
       tokenRefreshedListener.remove()
     }
-  }, [applyToken, attemptSilentRefresh])
+  }, [applyToken])
 
   // Registra push token automaticamente ao autenticar
   useEffect(() => {

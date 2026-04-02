@@ -10,6 +10,7 @@ import { useRouter, useLocalSearchParams } from "expo-router"
 import * as SecureStore from "expo-secure-store"
 import { API_CONFIG } from "lib/api"
 import { flags } from "lib/flag-utils"
+import { saveToHistory, KEY_SLUG, KEY_TENANT_NAME } from "./index"
 import { PhoneInput } from "components/PhoneInput"
 import { formatPhone } from "@/lib/mask-utils"
 import { CountrySelector } from "@/components/CountrySelector"
@@ -34,6 +35,7 @@ interface Tenant {
   primaryColor?: string
   secondaryColor?: string
   contactPhone?: string
+  isBookingEnabled?: boolean
 }
 
 interface Service {
@@ -182,6 +184,11 @@ export default function BookingScreen() {
           publicFetch<Tenant>(`${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${slug}`),
           publicFetch<Service[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_SERVICES}?tenantSlug=${slug}`),
         ])
+        if (tenantData.isBookingEnabled === false) {
+          setError("Este estabelecimento não possui agendamento online disponível.")
+          setStep("SERVICE")
+          return
+        }
         setTenant(tenantData)
         setServices(servicesData)
         // Restore saved info
@@ -303,6 +310,10 @@ export default function BookingScreen() {
           description: form.description,
         }),
       })
+      // Salva o último serviço no histórico de estabelecimentos
+      if (slug && tenant?.name && form.serviceName) {
+        await saveToHistory(slug, tenant.name, [form.serviceName])
+      }
       setStep("SUCCESS")
     } catch (err: any) {
       setError(err.message ?? "Erro ao criar agendamento.")
