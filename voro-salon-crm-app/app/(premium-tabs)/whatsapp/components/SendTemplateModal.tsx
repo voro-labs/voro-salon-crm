@@ -271,3 +271,5 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
     </Modal>
   )
 }
+
+export default function _RouteStub() { return null }

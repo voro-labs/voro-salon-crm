@@ -66,7 +66,9 @@ function RootLayoutNav() {
   const pendingRedirect = !isAuthenticated && !inAuthGroup && !inBookingGroup && !inOnboardingGroup
 
   useEffect(() => {
-    if (isLoading || !isPlanLoaded) return
+    if (isLoading) return
+    // Só aguarda o plano quando autenticado — sem auth, plan nunca carrega (401)
+    if (isAuthenticated && !isPlanLoaded) return
 
     const isPremium = hasFinancial || hasWhatsAppBot
     const targetTabs = isPremium ? "/(premium-tabs)" : "/(tabs)"
