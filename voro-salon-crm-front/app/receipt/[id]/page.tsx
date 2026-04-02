@@ -44,6 +44,7 @@ interface ReceiptData {
     primaryColor?: string
     secondaryColor?: string
     themeMode?: string
+    isBookingEnabled?: boolean
   }
   dayAgenda: Array<{
     startTime: string
@@ -265,7 +266,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         </Card>
 
         {/* Dynamic Context: Agenda of the Day */}
-        <div className="flex flex-col gap-4 mt-4">
+        {data.tenant.isBookingEnabled && <div className="flex flex-col gap-4 mt-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" /> Agenda do Dia
@@ -315,7 +316,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               Fazer outro agendamento <ChevronRight className="h-3 w-3 ml-1" />
             </Button>
           </div>
-        </div>
+        </div>}
 
         {/* Footer Support */}
         <div className="text-center mt-4">
