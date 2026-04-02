@@ -108,7 +108,6 @@ export default function DashboardPage() {
     return (aptData ?? []).filter((apt: any) => {
       const aptDate = new Date(apt.scheduledDateTime)
       return (
-        isToday(aptDate) &&
         aptDate < now &&
         (Number(apt.status) === 0 || Number(apt.status) === 1)
       )
