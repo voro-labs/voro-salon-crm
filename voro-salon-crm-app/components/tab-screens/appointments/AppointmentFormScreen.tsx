@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import useSWR from "swr"
 import { useAppointmentForm } from "hooks/use-appointment-form.hook"
 import { DatePickerInput } from "components/DatePickerInput"
 import { TimePickerInput } from "components/TimePickerInput"
@@ -13,7 +14,9 @@ import { SelectPickerInput } from "components/SelectPickerInput"
 import { ScreenHeader } from "components/ScreenHeader"
 import { formatPhone } from "@/lib/mask-utils"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { useAuth } from "contexts/auth.context"
 import { API_CONFIG, secureApiCall } from "lib/api"
+import { fetcher } from "lib/fetcher"
 import * as FileSystem from "expo-file-system"
 import * as Sharing from "expo-sharing"
 import { mutate } from "swr"
@@ -22,16 +25,27 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
   const router = useRouter()
   const { clients, services, employees, form, setForm, isLoading, isCreating, handleServiceChange, createAppointment, isModuleEnabled } = useAppointmentForm(id)
   const { primaryColor } = useTenantTheme()
+  const { user } = useAuth()
+
+  const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
+  const { data: myEmployee } = useSWR<any>(isSalonEmployee ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/me` : null, fetcher)
 
   const showClients = isModuleEnabled(1)
   const showServices = isModuleEnabled(3)
-  const showEmployees = isModuleEnabled(4)
+  const showEmployees = isModuleEnabled(4) && !isSalonEmployee
 
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [availableSlots, setAvailableSlots] = useState<string[] | undefined>(undefined)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [successModalOpen, setSuccessModalOpen] = useState(false)
+
+  // Auto-set employee for SalonEmployee role
+  useEffect(() => {
+    if (myEmployee?.id && !id) {
+      setForm((p) => ({ ...p, employeeId: myEmployee.id }))
+    }
+  }, [myEmployee?.id, id])
 
   // Sync internal date/time state with form if id is present
   useEffect(() => {

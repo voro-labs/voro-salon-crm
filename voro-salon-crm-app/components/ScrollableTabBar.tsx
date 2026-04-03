@@ -30,8 +30,8 @@ export function ScrollableTabBar({ state, descriptors, navigation }: MaterialTop
           const { options } = descriptors[route.key]
           const isFocused = state.index === index
 
-          // Respeita tabs ocultas (href: null) — prop injetada pelo Expo Router
-          if ((options as any).href === null) return null
+          // Respeita tabs ocultas (href: null) — só esconde se não tiver label explícito
+          if ((options as any).href === null && !options.tabBarLabel) return null
 
           const label =
             typeof options.tabBarLabel === "string"
@@ -55,12 +55,14 @@ export function ScrollableTabBar({ state, descriptors, navigation }: MaterialTop
             }
           }
 
+          const itemStyle = (options as any).tabBarItemStyle
+
           return (
             <TouchableOpacity
               key={route.key}
               onPress={onPress}
               activeOpacity={0.7}
-              style={[styles.tab, isFocused && styles.tabActive]}
+              style={[styles.tab, isFocused && styles.tabActive, itemStyle]}
             >
               {options.tabBarIcon?.({ focused: isFocused, color })}
               <Text style={[styles.label, { color }]} numberOfLines={1}>

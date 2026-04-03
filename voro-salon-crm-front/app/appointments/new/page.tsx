@@ -29,6 +29,7 @@ import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentForm } from "@/hooks/use-appointment-form.hook"
 import { useSettings } from "@/hooks/use-settings.hook"
+import { useAuth } from "@/contexts/auth.context"
 import { getServicePlaceholders } from "@/lib/branding"
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { Switch } from "@/components/ui/switch"
@@ -59,6 +60,13 @@ export default function NovoAgendamentoPage() {
 
   const { tenant } = useSettings()
   const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
+  const { user } = useAuth()
+  const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
+
+  const { data: myEmployee } = useSWR<any>(
+    isSalonEmployee ? API_CONFIG.ENDPOINTS.EMPLOYEE_ME : null,
+    fetcher
+  )
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [isEncaixe, setIsEncaixe] = useState(false)
@@ -69,6 +77,13 @@ export default function NovoAgendamentoPage() {
       : null,
     fetcher
   )
+
+  // Auto-set employee for SalonEmployee role
+  useEffect(() => {
+    if (myEmployee?.id) {
+      setForm((p) => ({ ...p, employeeId: myEmployee.id }))
+    }
+  }, [myEmployee?.id])
 
   // Set default date/time to now (rounded to next 30 min)
   useEffect(() => {
@@ -169,7 +184,7 @@ export default function NovoAgendamentoPage() {
                   </div>
                 )}
 
-                {isModuleEnabled(4) && (
+                {isModuleEnabled(4) && !isSalonEmployee && (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="employeeId">Funcionário (Opcional)</Label>

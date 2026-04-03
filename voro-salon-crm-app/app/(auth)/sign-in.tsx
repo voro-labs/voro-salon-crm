@@ -76,6 +76,8 @@ export default function SignInScreen() {
                     autoCapitalize="none"
                     keyboardType="email-address"
                     returnKeyType="next"
+                    textContentType="emailAddress"
+                    autoComplete="email"
                   />
                 </View>
                 {fieldErrors.email && (
@@ -100,6 +102,8 @@ export default function SignInScreen() {
                     autoCorrect={false}
                     returnKeyType="done"
                     onSubmitEditing={handleSignIn}
+                    textContentType="password"
+                    autoComplete="current-password"
                   />
                   <Pressable onPress={() => setShowPassword(v => !v)} className="ml-2 p-1">
                     <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#71717a" />
