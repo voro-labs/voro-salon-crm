@@ -31,7 +31,7 @@ interface MainProps {
 }
 
 export function Main({ children }: MainProps) {
-  const { user, loading, logout } = useAuth()
+  const { user, loading } = useAuth()
   const { requestPermission } = useBrowserNotifications()
   const { isPaywalled, trialEndsAt, mutate: refreshSubscription } = useSubscription()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)

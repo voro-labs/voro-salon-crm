@@ -13,16 +13,16 @@
 ### Backend (`voro-salon-crm-api`)
 
 #### 1.1 Entidade e Migração
-- [ ] Adicionar campo `CommissionPercentage` (`decimal?`) em `Employee.cs`
-- [ ] Adicionar campo `EmployeeId` (`Guid?`, nullable FK) em `Transaction.cs` + navigation property
-- [ ] Criar migration do EF Core
+- [x] Adicionar campo `CommissionPercentage` (`decimal?`) em `Employee.cs`
+- [x] Adicionar campo `EmployeeId` (`Guid?`, nullable FK) em `Transaction.cs` + navigation property
+- [x] Criar migration do EF Core
 
 #### 1.2 DTOs
-- [ ] Adicionar `CommissionPercentage` em `CreateEmployeeDto`, `UpdateEmployeeDto` e `EmployeeDto`
-- [ ] Adicionar `EmployeeId` em `CreateTransactionDto` e `TransactionDto`
+- [x] Adicionar `CommissionPercentage` em `CreateEmployeeDto`, `UpdateEmployeeDto` e `EmployeeDto`
+- [x] Adicionar `EmployeeId` em `CreateTransactionDto` e `TransactionDto`
 
 #### 1.3 Lógica de Negócio
-- [ ] No `AppointmentService` (ou `ServiceRecordService`), ao finalizar um agendamento:
+- [x] No `AppointmentService`, ao finalizar um agendamento:
   - Buscar `CommissionPercentage` do funcionário
   - Se configurado, criar automaticamente uma `Transaction` do tipo `Expense` com:
     - `Description`: "Comissão – [nome do funcionário] – [nome do serviço]"
@@ -30,18 +30,18 @@
     - `Status`: `Pending`
     - `DueDate`: último dia do mês corrente
     - `EmployeeId`: id do funcionário
-- [ ] Criar endpoint `GET /employees/{id}/commissions?from=&to=` que retorna as transações de comissão do funcionário no período
+- [x] Criar endpoint `GET /employees/{id}/commissions?from=&to=` que retorna as transações de comissão do funcionário no período
 
 #### 1.4 Controller
-- [ ] Adicionar action `GetCommissions` em `EmployeeController`
+- [x] Adicionar action `GetCommissions` em `EmployeeController`
 
 ### Frontend (`voro-salon-crm-front`)
 
 #### 1.5 Formulário de Funcionário
-- [ ] Adicionar campo "Comissão (%)" (input numérico 0–100) em `/employees/new` e `/employees/[id]`
+- [x] Adicionar campo "Comissão (%)" (input numérico 0–100) em `/employees/new` e `/employees/[id]`
 
 #### 1.6 Visualização de Comissões
-- [ ] Adicionar aba/seção "Comissões" na página de detalhe do funcionário (`/employees/[id]`)
+- [x] Adicionar aba/seção "Comissões" na página de detalhe do funcionário (`/employees/[id]`)
   - Seletor de período (mês/ano)
   - Lista de comissões geradas com: data, serviço, valor do agendamento, valor da comissão, status (pago/pendente)
   - Total do período
@@ -59,39 +59,33 @@
 ### Backend (`voro-salon-crm-api`)
 
 #### 2.1 Entidade e Migração
-- [ ] Adicionar campo `UserId` (`Guid?`) em `Employee.cs` com FK para `User`
-- [ ] Criar migration do EF Core
+- [x] Adicionar campo `UserId` (`Guid?`) em `Employee.cs` com FK para `User`
+- [x] Criar migration do EF Core
 
 #### 2.2 DTOs
-- [ ] Criar `CreateEmployeeAccessDto`: `{ email: string, password: string }`
-- [ ] Adicionar `UserId` e `HasAccess` (bool) em `EmployeeDto`
+- [x] Criar `CreateEmployeeAccessDto`: `{ email: string, password: string }`
+- [x] Adicionar `UserId` e `HasAccess` (bool) em `EmployeeDto`
 
 #### 2.3 Lógica de Negócio
-- [ ] Criar método `CreateAccessAsync(Guid employeeId, CreateEmployeeAccessDto dto)` no `EmployeeService`:
-  1. Verificar se o funcionário já tem acesso (`UserId != null`)
-  2. Criar novo `User` (firstName = nome do funcionário, email, password)
-  3. Atribuir role `SalonEmployee` via `UserManager`
-  4. Criar `UserTenant` vinculando o usuário ao tenant atual
-  5. Salvar `Employee.UserId = newUser.Id`
-- [ ] Criar método `RevokeAccessAsync(Guid employeeId)` para remover acesso:
-  - Desativar o usuário (`isActive = false`) sem deletar
-  - Limpar `Employee.UserId`
+- [x] Criar método `CreateAccessAsync(Guid employeeId, CreateEmployeeAccessDto dto)` no `EmployeeService`
+- [x] Criar método `RevokeAccessAsync(Guid employeeId)` para remover acesso
 
 #### 2.4 Controller
-- [ ] Adicionar `POST /employees/{id}/access` → cria acesso
-- [ ] Adicionar `DELETE /employees/{id}/access` → revoga acesso
-- [ ] Autorizar: `Owner, SalonOwner`
+- [x] Adicionar `POST /employees/{id}/access` → cria acesso
+- [x] Adicionar `DELETE /employees/{id}/access` → revoga acesso
+- [x] Autorizar: `Owner, SalonOwner`
 
 #### 2.5 Permissões do SalonEmployee
-- [ ] Rever/ajustar `[Authorize]` nos controllers para que `SalonEmployee` possa:
-  - `GET /appointments` — filtrado pelo seu `employeeId`
-  - `GET /employees/{id}/commissions` — somente o próprio ID
-  - **Não** acessar: clientes completos, finanças gerais, configurações, outros funcionários
+- [x] Ajustar `[Authorize]` nos controllers para que `SalonEmployee` possa:
+  - `GET /appointments` — filtrado automaticamente pelo seu `employeeId`
+  - `GET /employees/{id}/commissions` — permitido
+  - `GET /employee/me` — endpoint exclusivo para SalonEmployee
+  - Não acessa: finanças gerais, configurações, outros funcionários
 
 ### Frontend (`voro-salon-crm-front`)
 
 #### 2.6 Página de Detalhe do Funcionário
-- [ ] Adicionar seção "Acesso ao Sistema" em `/employees/[id]`
+- [x] Adicionar seção "Acesso ao Sistema" em `/employees/[id]`
   - Se sem acesso: botão "Criar Acesso" → modal com campos de e-mail e senha temporária
   - Se com acesso: exibir e-mail + botão "Revogar Acesso" (com confirmação)
 
@@ -101,13 +95,8 @@
   - Minhas Comissões
   - Perfil (alterar senha)
 - [x] Ajustar `middleware.ts` ou guards de rota conforme necessário
+- [x] Criar página `/my-commissions` com resumo e detalhamento de comissões
 
 ---
 
-## Ordem de Implementação Sugerida
-
-1. **Migração de banco** (Task 1.1 + Task 2.1) — ambas podem ser feitas em uma migration só
-2. **Backend Task 1** (comissão: DTOs → lógica → controller)
-3. **Backend Task 2** (acesso: DTOs → lógica → controller + ajuste de permissões)
-4. **Frontend Task 1** (campo % comissão + tela de comissões)
-5. **Frontend Task 2** (seção de acesso + visão do funcionário)
+## ✅ Todas as tarefas concluídas
