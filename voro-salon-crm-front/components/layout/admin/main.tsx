@@ -24,7 +24,7 @@ const ONBOARDING_PATHS = [
 ]
 
 // Rotas de landing que têm navbar própria — não devem exibir o ThemeToggle flutuante
-const LANDING_PATHS = ["/prices", "/"]
+const LANDING_PATHS = ["/prices", "/privacy", "/refund", "/terms", "/cookies", "/"]
 
 interface MainProps {
   children: React.ReactNode
