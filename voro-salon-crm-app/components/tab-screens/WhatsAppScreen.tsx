@@ -75,14 +75,14 @@ export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
   const [search, setSearch] = useState("")
   const [showSendModal, setShowSendModal] = useState(false)
 
-  if (isLoaded && !hasWhatsAppBot) return null
-
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
     fetcher,
     { refreshInterval: 30000 }
   )
+
+  if (isLoaded && !hasWhatsAppBot) return null
 
   const isConfigured = tenant?.whatsappPhoneNumberId && tenant?.whatsappBusinessAccountId
 

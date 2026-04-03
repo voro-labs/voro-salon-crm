@@ -79,6 +79,20 @@ export function EmployeeFormScreen({ id }: { id?: string }) {
               />
             </FormField>
 
+            <FormField label="Comissão (%)">
+              <TextInput
+                className={inputClass}
+                placeholder="Ex: 10 (opcional)"
+                placeholderTextColor="#a1a1aa"
+                value={form.commissionPercentage != null ? String(form.commissionPercentage) : ""}
+                onChangeText={(v) => {
+                  const num = parseFloat(v.replace(",", "."))
+                  setForm((p) => ({ ...p, commissionPercentage: isNaN(num) ? undefined : num }))
+                }}
+                keyboardType="decimal-pad"
+              />
+            </FormField>
+
             <View className="flex-row items-center justify-between py-2">
               <View>
                 <Text className="text-zinc-700 font-bold text-sm">Funcionário Ativo</Text>

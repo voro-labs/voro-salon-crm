@@ -316,7 +316,7 @@ export default function AppointmentDetailPage() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="durationMinutes">Duração (minutos)</Label>
+                      <Label htmlFor="durationMinutes">Duração Estimada</Label>
                       <Select
                         key={`duration-${form.durationMinutes}`}
                         value={form.durationMinutes.toString()}
@@ -348,7 +348,25 @@ export default function AppointmentDetailPage() {
                     })
                     return (
                       <div className="flex flex-col gap-2">
-                        <Label className="text-sm font-medium">Horários Disponíveis</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Horários Disponíveis</Label>
+                          {form.employeeId !== "none" && form.employeeId && (
+                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                                Livre
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block h-2 w-2 rounded-full bg-orange-400" />
+                                Ocupado
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
+                                Bloqueado
+                              </span>
+                            </div>
+                          )}
+                        </div>
                         {loadingAvailability ? (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -358,7 +376,7 @@ export default function AppointmentDetailPage() {
                           <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
                             {visibleSlots.map((slot: any) => {
                               const isSelected = form.scheduledDateTime && new Date(slot.startTime).getTime() === new Date(form.scheduledDateTime).getTime()
-                              // Can select if it's available, if it's the current selection, or if it's an encaixe (manual override)
+                              const hasSpecificEmployee = form.employeeId !== "none" && !!form.employeeId
                               const canSelect = isSelected || slot.isAvailable || (isEncaixe && !slot.isBlocked)
                               return (
                                 <Button
@@ -367,14 +385,29 @@ export default function AppointmentDetailPage() {
                                   variant={isSelected ? "default" : "outline"}
                                   size="sm"
                                   className={cn(
-                                    "h-9 px-1 text-[10px] sm:text-xs",
-                                    slot.isBlocked && "opacity-30 cursor-not-allowed bg-muted",
-                                    !slot.isAvailable && !slot.isBlocked && !isEncaixe && "opacity-30 cursor-not-allowed bg-muted",
-                                    !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 text-amber-600",
+                                    "h-9 px-1 text-[10px] sm:text-xs font-medium",
+                                    // Disponível (não selecionado): verde
+                                    !isSelected && slot.isAvailable && "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800",
+                                    // Bloqueado (hard block): vermelho
+                                    slot.isBlocked && "border-red-200 bg-red-50 text-red-400 opacity-60 cursor-not-allowed hover:bg-red-50 hover:text-red-400",
+                                    // Ocupado sem encaixe: laranja (mais expressivo quando há funcionário específico)
+                                    !slot.isAvailable && !slot.isBlocked && !isEncaixe && (
+                                      hasSpecificEmployee
+                                        ? "border-orange-300 bg-orange-50 text-orange-500 opacity-70 cursor-not-allowed hover:bg-orange-50 hover:text-orange-500"
+                                        : "border-muted bg-muted/40 text-muted-foreground opacity-50 cursor-not-allowed"
+                                    ),
+                                    // Ocupado com encaixe ativo: âmbar clicável
+                                    !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700",
                                   )}
                                   disabled={!canSelect}
                                   onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
-                                  title={slot.isBlocked ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado") : undefined}
+                                  title={
+                                    slot.isBlocked
+                                      ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado")
+                                      : !slot.isAvailable && hasSpecificEmployee
+                                        ? "Funcionário ocupado neste horário"
+                                        : undefined
+                                  }
                                 >
                                   {format(new Date(slot.startTime), "HH:mm")}
                                 </Button>

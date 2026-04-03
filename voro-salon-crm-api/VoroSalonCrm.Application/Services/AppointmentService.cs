@@ -106,6 +106,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task<AppointmentDto?> GetByIdAsync(Guid id)
         {
             var appointment = await _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .Include(a => a.Employee!)
                 .Include(a => a.Membership!)
                 .ThenInclude(m => m.Plan)
                 .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
@@ -115,15 +116,19 @@ namespace VoroSalonCrm.Application.Services
             return MapToDto(appointment);
         }
 
-        public async Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null)
+        public async Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null, Guid? employeeId = null)
         {
             var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .Include(a => a.Employee!)
                 .Include(a => a.Membership!)
                 .ThenInclude(m => m.Plan)
                 .Where(a => !a.IsDeleted);
 
             if (clientId.HasValue)
                 query = query.Where(a => a.ClientId == clientId.Value);
+
+            if (employeeId.HasValue)
+                query = query.Where(a => a.EmployeeId == employeeId.Value);
 
             var appointments = await query.OrderBy(a => a.ScheduledDateTime).ToListAsync();
             return appointments.Select(MapToDto);
@@ -139,6 +144,7 @@ namespace VoroSalonCrm.Application.Services
 
             if (dto.ClientId.HasValue) appointment.ClientId = dto.ClientId.Value;
             if (dto.ServiceId.HasValue) appointment.ServiceId = dto.ServiceId.Value;
+            appointment.EmployeeId = dto.EmployeeId; // null = sem funcionário, GUID = funcionário selecionado
             if (dto.ScheduledDateTime.HasValue) appointment.ScheduledDateTime = dto.ScheduledDateTime.Value;
             if (dto.DurationMinutes.HasValue) appointment.DurationMinutes = dto.DurationMinutes.Value;
             if (dto.Status.HasValue) appointment.Status = dto.Status.Value;
@@ -635,7 +641,9 @@ namespace VoroSalonCrm.Application.Services
                 a.IsEncaixe,
                 a.ClientMembershipId,
                 a.Membership?.Plan?.Name,
-                a.Membership?.RemainingSessions
+                a.Membership?.RemainingSessions,
+                a.EmployeeId,
+                a.Employee?.Name
             );
         }
     }

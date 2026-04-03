@@ -115,7 +115,7 @@ export default function EmployeesPage() {
   }
 
   return (
-    <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
+    <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       {showLimitModal && (
         <PlanLimitModal
           type="funcionários"

@@ -29,9 +29,13 @@ export function useModuleGuard(tabName: keyof typeof MODULE_IDS) {
   const roleNames = user?.roles?.map((r: any) => r.name) ?? []
   const isOwner = roleNames.includes("Owner")
   const isSalonOwner = roleNames.includes("SalonOwner") || isOwner
+  const isSalonEmployee = roleNames.includes("SalonEmployee")
 
   useFocusEffect(
     useCallback(() => {
+      // SalonEmployee bypassa todas as restrições de módulo
+      if (isSalonEmployee) return
+
       // 1. Hard restrictions based on plan limits (cannot be overridden by SalonOwner role)
       if (!isLoaded) return
       if (tabName === "appointments" && !hasBooking) { router.replace("/"); return }
@@ -45,6 +49,6 @@ export function useModuleGuard(tabName: keyof typeof MODULE_IDS) {
       if (mod && !mod.isEnabled) {
         router.replace("/")
       }
-    }, [modules, moduleId, router, isSalonOwner, tabName, hasBooking, hasFinancial, hasWhatsAppBot, isLoaded])
+    }, [modules, moduleId, router, isSalonOwner, isSalonEmployee, tabName, hasBooking, hasFinancial, hasWhatsAppBot, isLoaded])
   )
 }

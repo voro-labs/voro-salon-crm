@@ -1,4 +1,3 @@
-using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,14 +10,14 @@ namespace VoroSalonCrm.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Comissão do funcionário
+            // Add CommissionPercentage to Employees
             migrationBuilder.AddColumn<decimal>(
                 name: "CommissionPercentage",
                 table: "Employees",
-                type: "NUMERIC(5,2)",
+                type: "numeric",
                 nullable: true);
 
-            // Vincula funcionário a um usuário do sistema
+            // Add UserId (FK to Users) to Employees
             migrationBuilder.AddColumn<Guid>(
                 name: "UserId",
                 table: "Employees",
@@ -31,14 +30,14 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.AddForeignKey(
-                name: "FK_Employees_AspNetUsers_UserId",
+                name: "FK_Employees_Users_UserId",
                 table: "Employees",
                 column: "UserId",
-                principalTable: "AspNetUsers",
+                principalTable: "Users",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.SetNull);
 
-            // Vincula transação (comissão) a um funcionário
+            // Add EmployeeId (FK to Employees) to Transactions
             migrationBuilder.AddColumn<Guid>(
                 name: "EmployeeId",
                 table: "Transactions",
@@ -75,7 +74,7 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                 table: "Transactions");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_Employees_AspNetUsers_UserId",
+                name: "FK_Employees_Users_UserId",
                 table: "Employees");
 
             migrationBuilder.DropIndex(

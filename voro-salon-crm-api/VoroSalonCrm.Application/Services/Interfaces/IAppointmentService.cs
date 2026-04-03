@@ -6,7 +6,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
     {
         Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto);
         Task<AppointmentDto?> GetByIdAsync(Guid id);
-        Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null);
+        Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null, Guid? employeeId = null);
         Task<AppointmentDto> UpdateAsync(Guid id, UpdateAppointmentDto dto);
         Task<bool> DeleteAsync(Guid id);
         Task<bool> UpdateStatusAsync(Guid id, Domain.Enums.AppointmentStatus status);

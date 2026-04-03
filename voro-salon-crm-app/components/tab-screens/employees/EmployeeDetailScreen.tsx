@@ -7,11 +7,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import useSWR from "swr"
 import { useEmployeeDetail } from "hooks/use-employee-detail.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { DatePickerInput } from "components/DatePickerInput"
 import { ImagePickerInput } from "components/ImagePickerInput"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { API_CONFIG } from "lib/api"
+import { fetcher } from "lib/fetcher"
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return "—"
@@ -31,6 +34,20 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
 
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ ...form })
+
+  const [commissionMonth, setCommissionMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() + 1 }
+  })
+
+  const fromDate = `${commissionMonth.year}-${String(commissionMonth.month).padStart(2, "0")}-01`
+  const lastDay = new Date(commissionMonth.year, commissionMonth.month, 0).getDate()
+  const toDate = `${commissionMonth.year}-${String(commissionMonth.month).padStart(2, "0")}-${lastDay}`
+
+  const { data: commissions, isLoading: isLoadingCommissions } = useSWR(
+    id ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/commissions?from=${fromDate}&to=${toDate}` : null,
+    fetcher
+  )
 
   useEffect(() => {
     if (employee) {
@@ -144,6 +161,12 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
                   <Text className="text-zinc-400 text-xs">Desde {formatDate(employee.hireDate)}</Text>
                 </View>
               )}
+              {employee.commissionPercentage != null && (
+                <View className="flex-row items-center gap-1 mt-1">
+                  <Ionicons name="cash-outline" size={12} color="#a1a1aa" />
+                  <Text className="text-zinc-400 text-xs">Comissão: {employee.commissionPercentage}%</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -197,6 +220,79 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
             <Text className="text-zinc-300 text-sm mt-1">Toque em Editar para adicionar</Text>
           </View>
         )}
+
+        {/* Comissões */}
+        {employee.commissionPercentage != null && (
+          <View className="bg-white rounded-3xl border border-zinc-100 p-5 mt-4">
+            <Text className="text-base font-black text-zinc-900 mb-3">Comissões</Text>
+
+            {/* Navegação de mês */}
+            <View className="flex-row items-center justify-between mb-4">
+              <Pressable
+                onPress={() => setCommissionMonth(p => {
+                  const d = new Date(p.year, p.month - 2)
+                  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+                })}
+                className="h-8 w-8 bg-zinc-100 rounded-xl items-center justify-center"
+              >
+                <Ionicons name="chevron-back" size={16} color="#52525b" />
+              </Pressable>
+              <Text className="font-bold text-zinc-700 text-sm">
+                {new Date(commissionMonth.year, commissionMonth.month - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+              </Text>
+              <Pressable
+                onPress={() => setCommissionMonth(p => {
+                  const d = new Date(p.year, p.month)
+                  return { year: d.getFullYear(), month: d.getMonth() + 1 }
+                })}
+                className="h-8 w-8 bg-zinc-100 rounded-xl items-center justify-center"
+              >
+                <Ionicons name="chevron-forward" size={16} color="#52525b" />
+              </Pressable>
+            </View>
+
+            {isLoadingCommissions ? (
+              <ActivityIndicator color={primaryColor} />
+            ) : !commissions || (commissions as any[]).length === 0 ? (
+              <View className="items-center py-6">
+                <Ionicons name="cash-outline" size={32} color="#d4d4d8" />
+                <Text className="text-zinc-400 font-semibold mt-2 text-sm">Nenhuma comissão neste período</Text>
+              </View>
+            ) : (
+              <>
+                {(commissions as any[]).map((c: any) => (
+                  <View key={c.id} className="flex-row items-center justify-between py-2.5 border-b border-zinc-50">
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-sm font-semibold text-zinc-800 leading-tight" numberOfLines={2}>{c.description}</Text>
+                      <Text className="text-xs text-zinc-400 mt-0.5">
+                        {new Date(c.dueDate ?? c.createdAt).toLocaleDateString("pt-BR")}
+                      </Text>
+                    </View>
+                    <View className="items-end ml-3">
+                      <Text className="text-sm font-black" style={{ color: primaryColor }}>
+                        {(c.amount as number).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </Text>
+                      <View className={`rounded-lg px-2 py-0.5 mt-0.5 ${c.status === "Paid" ? "bg-emerald-100" : "bg-amber-100"}`}>
+                        <Text className={`text-[10px] font-bold ${c.status === "Paid" ? "text-emerald-700" : "text-amber-700"}`}>
+                          {c.status === "Paid" ? "Pago" : "Pendente"}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+
+                {/* Total */}
+                <View className="flex-row justify-between items-center pt-3 mt-1">
+                  <Text className="text-sm font-bold text-zinc-700">Total do período</Text>
+                  <Text className="text-base font-black" style={{ color: primaryColor }}>
+                    {(commissions as any[]).reduce((sum: number, c: any) => sum + (c.amount || 0), 0)
+                      .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Edit Modal */}
@@ -242,6 +338,22 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
               <DatePickerInput
                 value={editForm.hireDate}
                 onChange={(v) => setEditForm((p) => ({ ...p, hireDate: v }))}
+              />
+            </View>
+
+            {/* Comissão */}
+            <View className="mb-4">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Comissão (%)</Text>
+              <TextInput
+                className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base"
+                placeholder="Ex: 10 (opcional)"
+                placeholderTextColor="#a1a1aa"
+                value={editForm.commissionPercentage != null ? String(editForm.commissionPercentage) : ""}
+                onChangeText={(v) => {
+                  const num = parseFloat(v.replace(",", "."))
+                  setEditForm((p) => ({ ...p, commissionPercentage: isNaN(num) ? undefined : num }))
+                }}
+                keyboardType="decimal-pad"
               />
             </View>
 

@@ -8,6 +8,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
     {
         Task<IEnumerable<EmployeeDto>> GetAllAsync();
         Task<EmployeeDto?> GetByIdAsync(Guid id);
+        Task<EmployeeDto?> GetByCurrentUserAsync();
         Task<EmployeeDto> CreateAsync(CreateEmployeeDto dto);
         Task UpdateAsync(Guid id, UpdateEmployeeDto dto);
         Task DeleteAsync(Guid id);

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using VoroSalonCrm.Application.DTOs.CRM.Financial;
 using VoroSalonCrm.Application.DTOs.Employee;
 using VoroSalonCrm.Application.DTOs.Identity;
@@ -20,7 +21,10 @@ namespace VoroSalonCrm.Application.Services
         ITenantSubscriptionRepository subscriptionRepository,
         ITransactionRepository transactionRepository,
         IUserService userService,
-        IUserTenantRepository userTenantRepository) : IEmployeeService
+        IUserTenantRepository userTenantRepository,
+        INotificationService notificationService,
+        ITenantRepository tenantRepository,
+        IConfiguration configuration) : IEmployeeService
     {
         private readonly IEmployeeRepository _repository = repository;
         private readonly ICurrentUserService _currentUser = currentUser;
@@ -30,6 +34,9 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITransactionRepository _transactionRepository = transactionRepository;
         private readonly IUserService _userService = userService;
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
+        private readonly INotificationService _notificationService = notificationService;
+        private readonly ITenantRepository _tenantRepository = tenantRepository;
+        private readonly IConfiguration _configuration = configuration;
 
         public async Task<IEnumerable<EmployeeDto>> GetAllAsync()
         {
@@ -40,6 +47,21 @@ namespace VoroSalonCrm.Application.Services
         public async Task<EmployeeDto?> GetByIdAsync(Guid id)
         {
             var employee = await _repository.GetByIdWithSpecialtiesAsync(id);
+            return employee != null ? MapToDto(employee) : null;
+        }
+
+        public async Task<EmployeeDto?> GetByCurrentUserAsync()
+        {
+            var userId = _currentUser.UserId;
+            if (userId == Guid.Empty) return null;
+
+            // Busca o ID do employee vinculado ao usuário logado
+            var slim = await _repository.GetByIdAsync(
+                e => e.UserId == userId && !e.IsDeleted);
+            if (slim == null) return null;
+
+            // Busca com especialidades para retornar DTO completo
+            var employee = await _repository.GetByIdWithSpecialtiesAsync(slim.Id);
             return employee != null ? MapToDto(employee) : null;
         }
 
@@ -192,6 +214,11 @@ namespace VoroSalonCrm.Application.Services
             _repository.Update(employee);
 
             await _unitOfWork.CommitAsync();
+
+            // Enviar e-mail com credenciais de acesso
+            var tenant = await _tenantRepository.GetByIdAsync(false, _currentUser.TenantId);
+            var loginUrl = $"{_configuration.GetSection("CorsSettings").GetSection("AllowedOrigins").Get<string[]>()?[0]}/sign-in";
+            await _notificationService.SendAccountCreatedAsync(dto.Email, employee.Name, dto.Password, loginUrl, tenant);
         }
 
         public async Task RevokeAccessAsync(Guid employeeId)

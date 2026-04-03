@@ -8,6 +8,7 @@ import { API_CONFIG } from "lib/api"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
+import { useAuth } from "contexts/auth.context"
 
 interface Appointment {
   id: string
@@ -162,6 +163,8 @@ export function AppointmentsScreen({ rootPath = "/(tabs)" }: { rootPath?: string
   useModuleGuard("appointments")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
+  const { user } = useAuth()
+  const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
   const [filterPeriod, setFilterPeriod] = React.useState<"today" | "week" | "all">("today")
   const [hasAutoSwitched, setHasAutoSwitched] = React.useState(false)
 
@@ -222,15 +225,17 @@ export function AppointmentsScreen({ rootPath = "/(tabs)" }: { rootPath?: string
           </Pressable>
         </View>
 
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            onPress={() => router.push(`${rootPath}/appointments/blocked` as any)}
-            className="flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl bg-red-50 border border-red-100"
-          >
-            <Ionicons name="lock-closed" size={14} color="#ef4444" />
-            <Text className="text-red-700 font-bold text-sm">Horários Bloqueados</Text>
-          </Pressable>
-        </View>
+        {!isSalonEmployee && (
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => router.push(`${rootPath}/appointments/blocked` as any)}
+              className="flex-1 flex-row items-center justify-center gap-1.5 h-10 rounded-xl bg-red-50 border border-red-100"
+            >
+              <Ionicons name="lock-closed" size={14} color="#ef4444" />
+              <Text className="text-red-700 font-bold text-sm">Horários Bloqueados</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Period Filter */}
         <View style={{ flexDirection: "row", backgroundColor: "#f4f4f5", borderRadius: 16, padding: 4, marginTop: 4 }}>

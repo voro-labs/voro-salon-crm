@@ -6,7 +6,7 @@ export default function SettingsLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuthGuard requiredRoles={["Owner", "SalonOwner"]}>
+    <AuthGuard requiredRoles={["Owner", "SalonOwner", "SalonEmployee"]}>
       {children}
     </AuthGuard>
   )

@@ -16,6 +16,8 @@ import {
   Bell,
   CreditCard,
   MessageCircle,
+  DollarSign,
+  User,
 } from "lucide-react"
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
@@ -35,20 +37,33 @@ const navItems = [
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
-    roles: ["SalonOwner", "SalonEmployee", "Owner"]
+    roles: ["SalonOwner", "Owner"]
   },
   {
     title: "Agendamentos",
     href: "/appointments",
     icon: Calendar,
-    roles: ["SalonOwner", "SalonEmployee", "Owner"],
+    roles: ["SalonOwner", "Owner"],
     moduleId: 2 // Scheduling
+  },
+  {
+    title: "Meus Agendamentos",
+    href: "/appointments",
+    icon: Calendar,
+    roles: ["SalonEmployee"],
+    moduleId: 2 // Scheduling
+  },
+  {
+    title: "Minhas Comissões",
+    href: "/my-commissions",
+    icon: DollarSign,
+    roles: ["SalonEmployee"],
   },
   {
     title: "Clientes",
     href: "/clients",
     icon: Users,
-    roles: ["SalonOwner", "SalonEmployee", "Owner"],
+    roles: ["SalonOwner", "Owner"],
     moduleId: 1 // Clients
   },
   {
@@ -80,10 +95,16 @@ const navItems = [
     moduleId: 9 // WhatsappBot
   },
   {
+    title: "Perfil",
+    href: "/my-profile",
+    icon: User,
+    roles: ["SalonEmployee"],
+  },
+  {
     title: "Configurações",
     href: "/settings",
     icon: Settings,
-    roles: ["SalonOwner", "Owner"]
+    roles: ["SalonOwner", "SalonEmployee", "Owner"]
   }
 ]
 
@@ -237,29 +258,29 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
             )
           })}
 
-          <div className="border-t border-border my-4" />
-
           {/* Assinatura */}
           {["SalonOwner", "Owner"].includes((user?.roles?.map((r) => r.name) ?? [])[0]) && (
-            <Link
-              href="/subscription"
-              onClick={onClose}
-              className={`
-                flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                ${isActive("/subscription")
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }
-              `}
-            >
-              <CreditCard className="h-5 w-5" />
-              <span className="flex-1">Assinatura</span>
-              {isTrial && trialDaysLeft > 0 && (
-                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
-                  {trialDaysLeft}d
-                </span>
-              )}
-            </Link>
+            <>
+              <div className="border-t border-border my-4" />
+              <Link
+                href="/subscription"
+                onClick={onClose}
+                className={`
+                  flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                  ${isActive("/subscription")
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}
+                `}
+              >
+                <CreditCard className="h-5 w-5" />
+                <span className="flex-1">Assinatura</span>
+                {isTrial && trialDaysLeft > 0 && (
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                    {trialDaysLeft}d
+                  </span>
+                )}
+              </Link>
+            </>
           )}
 
           <div className="border-t border-border my-4" />

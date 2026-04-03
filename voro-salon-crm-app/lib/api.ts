@@ -24,6 +24,7 @@ export const API_CONFIG = {
     TENANT_ME: "/tenant/me",
     TENANT_MODULES: "/tenant/me/modules",
     EMPLOYEES: "/employee",
+    EMPLOYEE_ME: "/employee/me",
     CLIENTS: "/client",
     SERVICE_RECORDS: "/servicerecord",
     SERVICES: "/services",
