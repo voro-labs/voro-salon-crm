@@ -25,6 +25,10 @@ namespace VoroSalonCrm.Domain.Entities
 
         public string? Notes { get; set; }
 
+        /// <summary>Funcionário relacionado (usado para comissões geradas automaticamente).</summary>
+        public Guid? EmployeeId { get; set; }
+        public Employee? Employee { get; set; }
+
         public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }
 

@@ -11,6 +11,7 @@ export interface EmployeeForm {
   hireDate: string
   isActive: boolean
   specialtyIds: string[]
+  commissionPercentage: number | ""
 }
 
 function toLocalDateString(date: Date): string {
@@ -23,6 +24,7 @@ const DEFAULT_FORM: EmployeeForm = {
   hireDate: toLocalDateString(new Date()),
   isActive: true,
   specialtyIds: [],
+  commissionPercentage: "",
 }
 
 export function useEmployeeDetail(employeeId?: string) {
@@ -48,6 +50,7 @@ export function useEmployeeDetail(employeeId?: string) {
         hireDate: employee.hireDate ? toLocalDateString(new Date(employee.hireDate)) : DEFAULT_FORM.hireDate,
         isActive: employee.isActive,
         specialtyIds: employee.specialtyIds || [],
+        commissionPercentage: employee.commissionPercentage ?? "",
       })
     }
   }, [employee])
@@ -122,6 +125,7 @@ export function useEmployeeDetail(employeeId?: string) {
       const payload = {
         ...f,
         hireDate: f.hireDate ? f.hireDate + "T12:00:00.000Z" : f.hireDate,
+        commissionPercentage: f.commissionPercentage === "" ? null : Number(f.commissionPercentage),
       }
       const res = await secureApiCall<any>(endpoint, {
         method,

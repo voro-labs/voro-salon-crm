@@ -1,8 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Loader2, Save, Trash2, Camera, Upload } from "lucide-react"
+import { mutate } from "swr"
+import { ArrowLeft, Loader2, Save, Trash2, Camera, Upload, ShieldCheck, ShieldOff, Search } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,8 +14,43 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useEmployeeDetail } from "@/hooks/use-employee-detail.hook"
+import { API_CONFIG, secureApiCall } from "@/lib/api"
 
-// Inline helper to show employee photos proxied through blob proxy
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface TransactionDto {
+  employeeId: string
+  employeeName: string
+  amount: number
+  paidAmount: number
+  dueDate: string
+  status: number
+  description: string
+}
+
+// TransactionStatus: Pending=1, Partial=2, Paid=3, Overdue=4, Cancelled=5
+const STATUS_LABEL: Record<number, string> = {
+  1: "Pendente",
+  2: "Parcial",
+  3: "Pago",
+  4: "Vencido",
+  5: "Cancelado",
+}
+
+const STATUS_VARIANT: Record<number, string> = {
+  1: "bg-yellow-100 text-yellow-800",
+  2: "bg-blue-100 text-blue-800",
+  3: "bg-green-100 text-green-800",
+  4: "bg-red-100 text-red-800",
+  5: "bg-gray-100 text-gray-500",
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 function AuthenticatedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   if (!src) {
     return <div className={`${className} flex items-center justify-center bg-muted/30`} />
@@ -21,11 +59,26 @@ function AuthenticatedImage({ src, alt, className }: { src: string; alt: string;
   return <img src={src} alt={alt} className={className} />
 }
 
+function formatCurrency(value: number): string {
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "-"
+  const d = new Date(dateStr)
+  return d.toLocaleDateString("pt-BR")
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default function EmployeeDetailPage() {
   const params = useParams()
   const id = params.id as string
 
   const {
+    employee,
     services,
     form,
     setForm,
@@ -40,9 +93,133 @@ export default function EmployeeDetailPage() {
     deleteEmployee,
   } = useEmployeeDetail(id)
 
+  // --- System access modal state ---
+  const [accessModalOpen, setAccessModalOpen] = useState(false)
+  const [accessEmail, setAccessEmail] = useState("")
+  const [accessPassword, setAccessPassword] = useState("")
+  const [isCreatingAccess, setIsCreatingAccess] = useState(false)
+  const [isRevokingAccess, setIsRevokingAccess] = useState(false)
+  const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false)
+
+  // --- Commissions state ---
+  const currentYear = new Date().getFullYear()
+  const currentMonth = new Date().getMonth() + 1
+  const [commMonth, setCommMonth] = useState(currentMonth)
+  const [commYear, setCommYear] = useState(currentYear)
+  const [commissions, setCommissions] = useState<TransactionDto[]>([])
+  const [isFetchingCommissions, setIsFetchingCommissions] = useState(false)
+  const [commissionsFetched, setCommissionsFetched] = useState(false)
+
+  // ---------------------------------------------------------------------------
+  // Handlers: System Access
+  // ---------------------------------------------------------------------------
+
+  async function handleCreateAccess() {
+    if (!accessEmail.trim() || !accessPassword.trim()) {
+      toast.error("Preencha o e-mail e a senha.")
+      return
+    }
+    setIsCreatingAccess(true)
+    try {
+      const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
+        method: "POST",
+        body: JSON.stringify({ email: accessEmail, password: accessPassword }),
+      })
+      if (res.hasError) {
+        toast.error(res.message || "Erro ao criar acesso.")
+        return
+      }
+      toast.success("Acesso criado com sucesso!")
+      setAccessModalOpen(false)
+      setAccessEmail("")
+      setAccessPassword("")
+      mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
+      mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
+    } catch {
+      toast.error("Erro de conexão.")
+    } finally {
+      setIsCreatingAccess(false)
+    }
+  }
+
+  async function handleRevokeAccess() {
+    setIsRevokingAccess(true)
+    try {
+      const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
+        method: "DELETE",
+      })
+      if (res.hasError) {
+        toast.error(res.message || "Erro ao revogar acesso.")
+        return
+      }
+      toast.success("Acesso revogado.")
+      setRevokeConfirmOpen(false)
+      mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
+      mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
+    } catch {
+      toast.error("Erro de conexão.")
+    } finally {
+      setIsRevokingAccess(false)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Handlers: Commissions
+  // ---------------------------------------------------------------------------
+
+  async function fetchCommissions() {
+    const from = `${commYear}-${String(commMonth).padStart(2, "0")}-01`
+    const lastDay = new Date(commYear, commMonth, 0).getDate()
+    const to = `${commYear}-${String(commMonth).padStart(2, "0")}-${lastDay}`
+
+    setIsFetchingCommissions(true)
+    try {
+      const res = await secureApiCall<TransactionDto[]>(
+        `${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/commissions?from=${from}&to=${to}`
+      )
+      if (res.hasError) {
+        toast.error(res.message || "Erro ao buscar comissões.")
+        return
+      }
+      setCommissions(res.data ?? [])
+      setCommissionsFetched(true)
+    } catch {
+      toast.error("Erro de conexão.")
+    } finally {
+      setIsFetchingCommissions(false)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   if (!isNew && isLoading) {
     return <div className="flex items-center justify-center p-12"><Loader2 className="animate-spin" /></div>
   }
+
+  const showCommissionsSection =
+    !isNew && ((employee?.commissionPercentage && employee.commissionPercentage > 0) || commissions.length > 0)
+
+  const totalAmount = commissions.reduce((sum, c) => sum + c.amount, 0)
+  const totalPaid = commissions.reduce((sum, c) => sum + c.paidAmount, 0)
+
+  const monthOptions = [
+    { value: 1, label: "Janeiro" },
+    { value: 2, label: "Fevereiro" },
+    { value: 3, label: "Março" },
+    { value: 4, label: "Abril" },
+    { value: 5, label: "Maio" },
+    { value: 6, label: "Junho" },
+    { value: 7, label: "Julho" },
+    { value: 8, label: "Agosto" },
+    { value: 9, label: "Setembro" },
+    { value: 10, label: "Outubro" },
+    { value: 11, label: "Novembro" },
+    { value: 12, label: "Dezembro" },
+  ]
+
+  const yearOptions = [currentYear - 1, currentYear, currentYear + 1]
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
@@ -101,6 +278,27 @@ export default function EmployeeDetailPage() {
                     />
                     <Label htmlFor="isActive" className="cursor-pointer">Funcionário Ativo</Label>
                   </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="commissionPercentage">Comissão (%)</Label>
+                  <Input
+                    id="commissionPercentage"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    placeholder="Ex: 30"
+                    value={form.commissionPercentage}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      setForm((p) => ({
+                        ...p,
+                        commissionPercentage: raw === "" ? "" : Math.min(100, Math.max(0, Number(raw))),
+                      }))
+                    }}
+                    className="w-48"
+                  />
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -186,6 +384,102 @@ export default function EmployeeDetailPage() {
                 <Link href="/employees">Cancelar</Link>
               </Button>
             </div>
+
+            {/* Commissions Section */}
+            {showCommissionsSection && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Comissões</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Comissão configurada: {employee?.commissionPercentage ?? 0}%
+                  </p>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="comm-month">Mês</Label>
+                      <select
+                        id="comm-month"
+                        value={commMonth}
+                        onChange={(e) => setCommMonth(Number(e.target.value))}
+                        className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        {monthOptions.map((m) => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="comm-year">Ano</Label>
+                      <select
+                        id="comm-year"
+                        value={commYear}
+                        onChange={(e) => setCommYear(Number(e.target.value))}
+                        className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        {yearOptions.map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={fetchCommissions}
+                      disabled={isFetchingCommissions}
+                    >
+                      {isFetchingCommissions
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <Search className="mr-2 h-4 w-4" />}
+                      Buscar
+                    </Button>
+                  </div>
+
+                  {commissionsFetched && (
+                    commissions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">Nenhuma comissão encontrada para o período.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="py-2 pr-4 text-left font-medium text-muted-foreground">Vencimento</th>
+                              <th className="py-2 pr-4 text-left font-medium text-muted-foreground">Descrição</th>
+                              <th className="py-2 pr-4 text-right font-medium text-muted-foreground">Valor</th>
+                              <th className="py-2 pr-4 text-right font-medium text-muted-foreground">Pago</th>
+                              <th className="py-2 text-left font-medium text-muted-foreground">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {commissions.map((c, idx) => (
+                              <tr key={idx} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                                <td className="py-2 pr-4 whitespace-nowrap">{formatDate(c.dueDate)}</td>
+                                <td className="py-2 pr-4">{c.description}</td>
+                                <td className="py-2 pr-4 text-right whitespace-nowrap">{formatCurrency(c.amount)}</td>
+                                <td className="py-2 pr-4 text-right whitespace-nowrap">{formatCurrency(c.paidAmount)}</td>
+                                <td className="py-2">
+                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_VARIANT[c.status] ?? "bg-gray-100 text-gray-500"}`}>
+                                    {STATUS_LABEL[c.status] ?? "Desconhecido"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t bg-muted/20">
+                              <td colSpan={2} className="py-2 pr-4 font-medium">Total do período</td>
+                              <td className="py-2 pr-4 text-right font-semibold">{formatCurrency(totalAmount)}</td>
+                              <td className="py-2 pr-4 text-right font-semibold">{formatCurrency(totalPaid)}</td>
+                              <td />
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="flex flex-col gap-6">
@@ -217,8 +511,149 @@ export default function EmployeeDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* System Access Card */}
+            {!isNew && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Acesso ao Sistema</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  {employee?.hasAccess ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-green-600" />
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Acesso ativo</Badge>
+                      </div>
+                      {employee?.userId && (
+                        <p className="text-xs text-muted-foreground break-all">
+                          ID do usuário: {employee.userId}
+                        </p>
+                      )}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setRevokeConfirmOpen(true)}
+                        disabled={isRevokingAccess}
+                      >
+                        {isRevokingAccess
+                          ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          : <ShieldOff className="mr-2 h-4 w-4" />}
+                        Revogar Acesso
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <ShieldOff className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Sem acesso</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAccessModalOpen(true)}
+                      >
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Criar Acesso
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </form>
+
+        {/* Create Access Modal */}
+        {accessModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-xl">
+              <h2 className="mb-1 text-lg font-semibold">Criar Acesso ao Sistema</h2>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Defina o e-mail e a senha para que o funcionário acesse o sistema.
+              </p>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="access-email">E-mail</Label>
+                  <Input
+                    id="access-email"
+                    type="email"
+                    placeholder="funcionario@exemplo.com"
+                    value={accessEmail}
+                    onChange={(e) => setAccessEmail(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="access-password">Senha</Label>
+                  <Input
+                    id="access-password"
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={accessPassword}
+                    onChange={(e) => setAccessPassword(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setAccessModalOpen(false)
+                    setAccessEmail("")
+                    setAccessPassword("")
+                  }}
+                  disabled={isCreatingAccess}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleCreateAccess}
+                  disabled={isCreatingAccess}
+                >
+                  {isCreatingAccess ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Confirmar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Revoke Access Confirmation Modal */}
+        {revokeConfirmOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-sm rounded-lg border bg-background p-6 shadow-xl">
+              <h2 className="mb-1 text-lg font-semibold">Revogar Acesso</h2>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Tem certeza que deseja revogar o acesso ao sistema deste funcionário? Esta ação não pode ser desfeita sem criar um novo acesso.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRevokeConfirmOpen(false)}
+                  disabled={isRevokingAccess}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleRevokeAccess}
+                  disabled={isRevokingAccess}
+                >
+                  {isRevokingAccess ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Revogar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AuthGuard>
   )

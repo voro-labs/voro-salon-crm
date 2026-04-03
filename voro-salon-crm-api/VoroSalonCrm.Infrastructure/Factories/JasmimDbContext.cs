@@ -349,6 +349,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(e => e.Name).HasMaxLength(200).IsRequired();
                 b.Property(e => e.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
                 b.Property(e => e.IsActive).HasDefaultValue(true);
+                b.Property(e => e.CommissionPercentage).HasColumnType("NUMERIC(5,2)");
 
                 b.HasIndex(e => e.TenantId);
 
@@ -356,6 +357,11 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(e => e.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(e => e.User)
+                 .WithMany()
+                 .HasForeignKey(e => e.UserId)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ---------------------------
@@ -403,7 +409,12 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasOne(t => t.Category)
                  .WithMany()
                  .HasForeignKey(t => t.CategoryId)
-                 .OnDelete(DeleteBehavior.SetNull); // Categoria excluída não afeta registros já consolidados, apenas anula o vínculo
+                 .OnDelete(DeleteBehavior.SetNull);
+
+                b.HasOne(t => t.Employee)
+                 .WithMany()
+                 .HasForeignKey(t => t.EmployeeId)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ---------------------------
