@@ -1,6 +1,7 @@
 import useSWR from "swr"
 import { API_CONFIG } from "../lib/api"
 import { fetcher } from "../lib/fetcher"
+import { useAuth } from "../contexts/auth.context"
 
 interface SubscriptionPlanDto {
   id: string
@@ -21,8 +22,9 @@ interface TenantSubscriptionDto {
 }
 
 export function useSubscription() {
+  const { isAuthenticated } = useAuth()
   const { data: subscription, isLoading, mutate } = useSWR<TenantSubscriptionDto>(
-    API_CONFIG.ENDPOINTS.SUBSCRIPTION_ME,
+    isAuthenticated ? API_CONFIG.ENDPOINTS.SUBSCRIPTION_ME : null,
     fetcher
   )
 
