@@ -23,7 +23,8 @@ namespace VoroSalonCrm.Application.Services
         IUserTenantRepository userTenantRepository,
         IExpoPushNotificationService expoPushNotificationService,
         ITimeSlotBlockService timeSlotBlockService,
-        ITenantBusinessHoursRepository businessHoursRepository) : IAppointmentService
+        ITenantBusinessHoursRepository businessHoursRepository,
+        ITransactionRepository transactionRepository) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -38,6 +39,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
         private readonly ITimeSlotBlockService _timeSlotBlockService = timeSlotBlockService;
         private readonly ITenantBusinessHoursRepository _businessHoursRepository = businessHoursRepository;
+        private readonly ITransactionRepository _transactionRepository = transactionRepository;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -579,6 +581,39 @@ namespace VoroSalonCrm.Application.Services
             );
 
             await _serviceRecordService.CreateAsync(historyDto);
+
+            // Gera comissão automaticamente se o funcionário tiver percentual configurado
+            if (appointment.EmployeeId.HasValue && appointment.Amount > 0)
+            {
+                var employee = await _employeeRepository.GetByIdAsync(true, appointment.EmployeeId.Value);
+                if (employee?.CommissionPercentage is > 0)
+                {
+                    var commissionAmount = Math.Round(appointment.Amount * (employee.CommissionPercentage.Value / 100m), 2);
+                    var dueDate = new DateTimeOffset(
+                        appointment.ScheduledDateTime.Year,
+                        appointment.ScheduledDateTime.Month,
+                        DateTime.DaysInMonth(appointment.ScheduledDateTime.Year, appointment.ScheduledDateTime.Month),
+                        23, 59, 59, TimeSpan.Zero);
+
+                    var commissionTx = new Transaction
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = appointment.TenantId,
+                        Description = $"Comissão – {employee.Name} – {appointment.Service?.Name ?? "Serviço"}",
+                        Amount = commissionAmount,
+                        PaidAmount = 0,
+                        DueDate = dueDate,
+                        Type = TransactionType.Expense,
+                        PaymentMethod = PaymentMethod.Other,
+                        Status = TransactionStatus.Pending,
+                        EmployeeId = employee.Id,
+                        Notes = $"Comissão de {employee.CommissionPercentage}% sobre agendamento {appointment.Id}",
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+
+                    await _transactionRepository.AddAsync(commissionTx);
+                }
+            }
         }
 
         private static AppointmentDto MapToDto(Appointment a)

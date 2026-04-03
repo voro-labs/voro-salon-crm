@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using VoroSalonCrm.Application.DTOs.CRM.Financial;
 using VoroSalonCrm.Application.DTOs.Employee;
 
 namespace VoroSalonCrm.Application.Services.Interfaces
@@ -12,5 +13,8 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task DeleteAsync(Guid id);
         Task<IEnumerable<EmployeeDto>> GetAvailableForServiceAsync(Guid serviceId);
         Task<string> UploadPhotoAsync(Guid id, IFormFile file);
+        Task<IEnumerable<TransactionDto>> GetCommissionsAsync(Guid id, DateTimeOffset from, DateTimeOffset to);
+        Task CreateAccessAsync(Guid employeeId, CreateEmployeeAccessDto dto);
+        Task RevokeAccessAsync(Guid employeeId);
     }
 }

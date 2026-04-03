@@ -21,6 +21,9 @@ namespace VoroSalonCrm.Application.DTOs.CRM.Financial
 
         public string? Notes { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
+
+        public Guid? EmployeeId { get; set; }
+        public string? EmployeeName { get; set; }
     }
 
     public class CreateTransactionDto

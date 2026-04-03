@@ -209,7 +209,9 @@ namespace VoroSalonCrm.Application.Services
                 PaymentMethod = t.PaymentMethod,
                 Status = t.Status,
                 Notes = t.Notes,
-                CreatedAt = t.CreatedAt
+                CreatedAt = t.CreatedAt,
+                EmployeeId = t.EmployeeId,
+                EmployeeName = t.Employee?.Name
             };
         }
         public async Task<BatchImportResultDto> BatchImportAsync(

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VoroSalonCrm.Application.DTOs.CRM.Financial;
 using VoroSalonCrm.Application.DTOs.Employee;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Shared.Extensions;
@@ -16,6 +17,7 @@ namespace VoroSalonCrm.API.Controllers
         private readonly IEmployeeService _service = service;
 
         [HttpGet]
+        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -32,6 +34,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet("{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             try
@@ -99,6 +102,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet("available-for-service/{serviceId:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetAvailableForService([FromRoute] Guid serviceId)
         {
             try
@@ -125,6 +129,61 @@ namespace VoroSalonCrm.API.Controllers
                 var photoUrl = await _service.UploadPhotoAsync(id, file);
 
                 return ResponseViewModel<string>.SuccessWithMessage("Photo uploaded successfully.", photoUrl).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("{id:guid}/commissions")]
+        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
+        public async Task<IActionResult> GetCommissions(
+            [FromRoute] Guid id,
+            [FromQuery] DateTimeOffset? from = null,
+            [FromQuery] DateTimeOffset? to = null)
+        {
+            try
+            {
+                var start = from ?? new DateTimeOffset(DateTimeOffset.UtcNow.Year, DateTimeOffset.UtcNow.Month, 1, 0, 0, 0, TimeSpan.Zero);
+                var end = to ?? start.AddMonths(1).AddSeconds(-1);
+
+                var result = await _service.GetCommissionsAsync(id, start, end);
+                return ResponseViewModel<IEnumerable<TransactionDto>>
+                    .SuccessWithMessage("Commissions retrieved.", result)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("{id:guid}/access")]
+        public async Task<IActionResult> CreateAccess([FromRoute] Guid id, [FromBody] CreateEmployeeAccessDto dto)
+        {
+            try
+            {
+                await _service.CreateAccessAsync(id, dto);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Acesso criado com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("{id:guid}/access")]
+        public async Task<IActionResult> RevokeAccess([FromRoute] Guid id)
+        {
+            try
+            {
+                await _service.RevokeAccessAsync(id);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Acesso revogado com sucesso.", null)
+                    .ToActionResult();
             }
             catch (Exception ex)
             {
