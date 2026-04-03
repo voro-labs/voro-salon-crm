@@ -7,13 +7,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
-import useSWR from "swr"
+import useSWR, { mutate } from "swr"
 import { useEmployeeDetail } from "hooks/use-employee-detail.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { DatePickerInput } from "components/DatePickerInput"
 import { ImagePickerInput } from "components/ImagePickerInput"
 import { useTenantTheme } from "contexts/tenant-theme.context"
-import { API_CONFIG } from "lib/api"
+import { API_CONFIG, secureApiCall } from "lib/api"
 import { fetcher } from "lib/fetcher"
 
 function formatDate(dateStr?: string) {
@@ -35,6 +35,14 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ ...form })
 
+  // --- Acesso ao sistema ---
+  const [accessModalOpen, setAccessModalOpen] = useState(false)
+  const [accessEmail, setAccessEmail] = useState("")
+  const [accessPassword, setAccessPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [isCreatingAccess, setIsCreatingAccess] = useState(false)
+  const [isRevokingAccess, setIsRevokingAccess] = useState(false)
+
   const [commissionMonth, setCommissionMonth] = useState(() => {
     const now = new Date()
     return { year: now.getFullYear(), month: now.getMonth() + 1 }
@@ -55,6 +63,85 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee])
+
+  function generateTempPassword(): string {
+    const upper   = "ABCDEFGHJKMNPQRSTUVWXYZ"
+    const lower   = "abcdefghjkmnpqrstuvwxyz"
+    const digits  = "23456789"
+    const special = "!@#$"
+    const all     = upper + lower + digits + special
+    const pick = (src: string) => src[Math.floor(Math.random() * src.length)]
+    const chars = [
+      pick(upper), pick(lower), pick(digits), pick(special),
+      pick(all), pick(all), pick(all), pick(all),
+      pick(all), pick(all), pick(all), pick(all),
+    ]
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[chars[i], chars[j]] = [chars[j], chars[i]]
+    }
+    return chars.join("")
+  }
+
+  async function handleCreateAccess() {
+    if (!accessEmail.trim() || !accessPassword.trim()) {
+      Alert.alert("Campos obrigatórios", "Preencha o e-mail e a senha.")
+      return
+    }
+    setIsCreatingAccess(true)
+    try {
+      const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
+        method: "POST",
+        body: JSON.stringify({ email: accessEmail, password: accessPassword }),
+      })
+      if (res.hasError) {
+        Alert.alert("Erro", res.message || "Erro ao criar acesso.")
+        return
+      }
+      setAccessModalOpen(false)
+      setAccessEmail("")
+      setAccessPassword("")
+      setShowPassword(false)
+      mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
+      mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
+    } catch {
+      Alert.alert("Erro", "Erro de conexão.")
+    } finally {
+      setIsCreatingAccess(false)
+    }
+  }
+
+  function handleRevokeAccess() {
+    Alert.alert(
+      "Revogar acesso?",
+      "O funcionário perderá o acesso ao sistema. Esta ação não pode ser desfeita sem criar um novo acesso.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Revogar",
+          style: "destructive",
+          onPress: async () => {
+            setIsRevokingAccess(true)
+            try {
+              const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
+                method: "DELETE",
+              })
+              if (res.hasError) {
+                Alert.alert("Erro", res.message || "Erro ao revogar acesso.")
+                return
+              }
+              mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
+              mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
+            } catch {
+              Alert.alert("Erro", "Erro de conexão.")
+            } finally {
+              setIsRevokingAccess(false)
+            }
+          },
+        },
+      ]
+    )
+  }
 
   function openEdit() {
     setEditForm({ ...form })
@@ -293,7 +380,144 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
             )}
           </View>
         )}
+        {/* Acesso ao Sistema */}
+        <View className="bg-white rounded-3xl border border-zinc-100 p-5 mt-4">
+          <View className="flex-row items-center gap-2 mb-4">
+            <Ionicons name="shield-checkmark-outline" size={18} color="#18181b" />
+            <Text className="text-base font-black text-zinc-900">Acesso ao Sistema</Text>
+          </View>
+
+          {employee.hasAccess ? (
+            <View className="gap-3">
+              <View className="flex-row items-center gap-2">
+                <View className="h-7 px-2.5 bg-emerald-100 rounded-lg items-center justify-center flex-row gap-1.5">
+                  <Ionicons name="shield-checkmark" size={13} color="#16a34a" />
+                  <Text className="text-xs font-bold text-emerald-700">Acesso ativo</Text>
+                </View>
+              </View>
+              {employee.userId && (
+                <Text className="text-xs text-zinc-400" numberOfLines={1}>ID: {employee.userId}</Text>
+              )}
+              <Pressable
+                onPress={handleRevokeAccess}
+                disabled={isRevokingAccess}
+                className="flex-row items-center justify-center gap-2 h-10 bg-red-50 border border-red-100 rounded-xl"
+              >
+                {isRevokingAccess
+                  ? <ActivityIndicator size="small" color="#ef4444" />
+                  : <>
+                      <Ionicons name="shield-outline" size={15} color="#ef4444" />
+                      <Text className="text-red-600 font-bold text-sm">Revogar Acesso</Text>
+                    </>
+                }
+              </Pressable>
+            </View>
+          ) : (
+            <View className="gap-3">
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="shield-outline" size={15} color="#a1a1aa" />
+                <Text className="text-sm text-zinc-400">Sem acesso ao sistema</Text>
+              </View>
+              <Pressable
+                onPress={() => setAccessModalOpen(true)}
+                className="flex-row items-center justify-center gap-2 h-10 bg-zinc-50 border border-zinc-200 rounded-xl"
+              >
+                <Ionicons name="shield-checkmark-outline" size={15} color="#18181b" />
+                <Text className="text-zinc-800 font-bold text-sm">Criar Acesso</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </ScrollView>
+
+      {/* Create Access Modal */}
+      <Modal visible={accessModalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAccessModalOpen(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+          <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
+            <Text className="text-lg font-black text-zinc-900">Criar Acesso ao Sistema</Text>
+            <Pressable
+              onPress={() => { setAccessModalOpen(false); setAccessEmail(""); setAccessPassword(""); setShowPassword(false) }}
+              className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center"
+            >
+              <Ionicons name="close" size={20} color="#71717a" />
+            </Pressable>
+          </View>
+
+          <ScrollView className="flex-1 px-5 py-5" keyboardShouldPersistTaps="handled">
+            <Text className="text-sm text-zinc-500 mb-5">
+              Defina o e-mail e a senha para que o funcionário acesse o sistema.
+            </Text>
+
+            {/* E-mail */}
+            <View className="mb-4">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">E-mail</Text>
+              <TextInput
+                className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base"
+                placeholder="funcionario@exemplo.com"
+                placeholderTextColor="#a1a1aa"
+                value={accessEmail}
+                onChangeText={setAccessEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Senha */}
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-1.5">
+                <Text className="text-zinc-700 font-bold text-sm">Senha</Text>
+                <Pressable
+                  onPress={() => { setAccessPassword(generateTempPassword()); setShowPassword(true) }}
+                  className="flex-row items-center gap-1"
+                >
+                  <Ionicons name="refresh-outline" size={13} color="#7c3aed" />
+                  <Text className="text-xs font-bold text-violet-600">Gerar senha</Text>
+                </Pressable>
+              </View>
+              <View className="relative">
+                <TextInput
+                  className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base pr-12"
+                  placeholder="Mínimo 6 caracteres"
+                  placeholderTextColor="#a1a1aa"
+                  value={accessPassword}
+                  onChangeText={setAccessPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-0 bottom-0 justify-center px-1"
+                >
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#a1a1aa" />
+                </Pressable>
+              </View>
+            </View>
+          </ScrollView>
+
+          <View className="px-5 pb-8 pt-3 border-t border-zinc-100 flex-row gap-3">
+            <Pressable
+              onPress={() => { setAccessModalOpen(false); setAccessEmail(""); setAccessPassword(""); setShowPassword(false) }}
+              disabled={isCreatingAccess}
+              className="flex-1 h-14 rounded-2xl items-center justify-center bg-zinc-100"
+            >
+              <Text className="text-zinc-700 font-black text-base">Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleCreateAccess}
+              disabled={isCreatingAccess}
+              className="flex-1 h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: isCreatingAccess ? primaryColor + "99" : primaryColor }}
+            >
+              {isCreatingAccess
+                ? <ActivityIndicator color="white" />
+                : <Text className="text-white font-black text-base">Confirmar</Text>
+              }
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditOpen(false)}>
