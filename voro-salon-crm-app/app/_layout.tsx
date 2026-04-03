@@ -34,7 +34,7 @@ if (Platform.OS === "android") {
 }
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
   const { primaryColor } = useTenantTheme()
   const { isPaywalled, isLoading: isSubscriptionLoading } = useSubscription()
   const { hasFinancial, hasWhatsAppBot, isLoaded: isPlanLoaded } = usePlanLimits()
@@ -62,11 +62,24 @@ function RootLayoutNav() {
   const inOnboardingGroup = segments[0] === "(onboarding)"
   const inTabsGroup = segments[0] === "(tabs)"
   const inPremiumTabsGroup = segments[0] === "(premium-tabs)"
-  
+  const inEmployeeTabsGroup = segments[0] === "(employee-tabs)"
+
   const pendingRedirect = !isAuthenticated && !inAuthGroup && !inBookingGroup && !inOnboardingGroup
 
   useEffect(() => {
     if (isLoading) return
+
+    // Detecta SalonEmployee antes de esperar o plan (que pode nunca carregar para esse role)
+    const roleNames = (user?.roles ?? []).map((r: any) => r.name)
+    const isSalonEmployee = roleNames.includes("SalonEmployee")
+
+    if (isSalonEmployee && isAuthenticated) {
+      if (!inEmployeeTabsGroup) {
+        router.replace("/(employee-tabs)/appointments" as any)
+      }
+      return
+    }
+
     // Só aguarda o plano quando autenticado — sem auth, plan nunca carrega (401)
     if (isAuthenticated && !isPlanLoaded) return
 
@@ -97,9 +110,12 @@ function RootLayoutNav() {
         router.replace("/(tabs)")
       }
     }
-  }, [isAuthenticated, isLoading, isPlanLoaded, segments, hasFinancial, hasWhatsAppBot])
+  }, [isAuthenticated, isLoading, isPlanLoaded, segments, hasFinancial, hasWhatsAppBot, user])
 
-  if (isLoading || pendingRedirect || (isAuthenticated && (isSubscriptionLoading || !isPlanLoaded))) {
+  const roleNames = (user?.roles ?? []).map((r: any) => r.name)
+  const isSalonEmployee = roleNames.includes("SalonEmployee")
+
+  if (isLoading || pendingRedirect || (isAuthenticated && !isSalonEmployee && (isSubscriptionLoading || !isPlanLoaded))) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color={primaryColor} />
@@ -116,6 +132,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(premium-tabs)" />
+      <Stack.Screen name="(employee-tabs)" />
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="booking" />
     </Stack>

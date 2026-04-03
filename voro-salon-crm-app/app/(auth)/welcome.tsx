@@ -44,7 +44,7 @@ export default function WelcomeScreen() {
             <Ionicons name="storefront-outline" size={24} color="white" />
           </View>
           <View className="flex-1">
-            <Text className="text-white font-black text-base">Sou dono do salão</Text>
+            <Text className="text-white font-black text-base">Sou da equipe do salão</Text>
             <Text className="text-white/60 font-medium text-sm mt-0.5">
               Gerenciar agendamentos e clientes
             </Text>

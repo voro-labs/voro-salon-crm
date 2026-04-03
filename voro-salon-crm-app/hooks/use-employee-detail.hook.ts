@@ -11,6 +11,7 @@ export interface EmployeeForm {
   hireDate: string
   isActive: boolean
   specialtyIds: string[]
+  commissionPercentage?: number
 }
 
 const DEFAULT_FORM: EmployeeForm = {
@@ -19,6 +20,7 @@ const DEFAULT_FORM: EmployeeForm = {
   hireDate: new Date().toISOString().split("T")[0],
   isActive: true,
   specialtyIds: [],
+  commissionPercentage: undefined,
 }
 
 export function useEmployeeDetail(employeeId?: string) {
@@ -43,6 +45,7 @@ export function useEmployeeDetail(employeeId?: string) {
         hireDate: new Date(employee.hireDate).toISOString().split("T")[0],
         isActive: employee.isActive,
         specialtyIds: employee.specialtyIds || [],
+        commissionPercentage: employee.commissionPercentage ?? undefined,
       })
     }
   }, [employee])
@@ -129,7 +132,7 @@ export function useEmployeeDetail(employeeId?: string) {
       }
 
       Toast.success(isNew ? "Funcionário cadastrado!" : "Dados atualizados!")
-      router.push("/(tabs)/employees" as any)
+      router.back()
       return true
     } catch {
       Toast.error("Erro de conexão.")
@@ -150,7 +153,7 @@ export function useEmployeeDetail(employeeId?: string) {
         return false
       }
       Toast.success("Funcionário excluído.")
-      router.push("/(tabs)/employees" as any)
+      router.back()
       return true
     } catch {
       Toast.error("Erro de conexão.")

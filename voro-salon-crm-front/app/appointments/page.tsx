@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale"
 
 import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
+import { useAuth } from "@/contexts/auth.context"
 
 import { useDataList } from "@/hooks/use-data-list.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
@@ -36,6 +37,8 @@ export default function AppointmentsPage() {
 
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
   const { plan } = useSubscription()
+  const { user } = useAuth()
+  const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
 
   // Se não houver agendamentos hoje, mostra a semana automaticamente
   useEffect(() => {
@@ -118,12 +121,14 @@ export default function AppointmentsPage() {
                     { header: "Descrição", value: (a: any) => a.description ?? "" },
                   ]}
                 />
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/appointments/blocked">
-                    <Ban className="h-4 w-4 sm:mr-2" />
-                    <span>Bloqueios</span>
-                  </Link>
-                </Button>
+                {!isSalonEmployee && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/appointments/blocked">
+                      <Ban className="h-4 w-4 sm:mr-2" />
+                      <span>Bloqueios</span>
+                    </Link>
+                  </Button>
+                )}
                 <Button asChild size="sm">
                   <Link href="/appointments/new">
                     <Plus className="mr-1.5 h-4 w-4" />
