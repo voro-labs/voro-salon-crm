@@ -122,12 +122,14 @@ export default function NovoAgendamentoPage() {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="clientId">Cliente *</Label>
-                    <QuickCreateClient
-                      onSuccess={async (id) => {
-                        await mutateClients()
-                        setForm((p) => ({ ...p, clientId: id }))
-                      }}
-                    />
+                    {!isSalonEmployee && (
+                      <QuickCreateClient
+                        onSuccess={async (id) => {
+                          await mutateClients()
+                          setForm((p) => ({ ...p, clientId: id }))
+                        }}
+                      />
+                    )}
                   </div>
                   <Select
                     key={clients ? "clients-loaded" : "clients-loading"}
@@ -159,12 +161,14 @@ export default function NovoAgendamentoPage() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="serviceId">Serviço (Opcional)</Label>
-                      <QuickCreateService
-                        onSuccess={async (id, serviceData) => {
-                          await mutateServices()
-                          handleServiceChange(id, serviceData)
-                        }}
-                      />
+                      {!isSalonEmployee && (
+                        <QuickCreateService
+                          onSuccess={async (id, serviceData) => {
+                            await mutateServices()
+                            handleServiceChange(id, serviceData)
+                          }}
+                        />
+                      )}
                     </div>
                     <Select
                       key={services ? "services-loaded" : "services-loading"}
