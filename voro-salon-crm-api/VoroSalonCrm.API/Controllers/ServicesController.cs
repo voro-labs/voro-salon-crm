@@ -10,12 +10,13 @@ namespace VoroSalonCrm.API.Controllers
     [Route("api/v{version:version}/[controller]")]
     [Tags("CRM")]
     [ApiController]
-    [Authorize(Roles = "Owner,SalonOwner")]
+    [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
     public class ServicesController(IServiceService serviceService) : ControllerBase
     {
         private readonly IServiceService _serviceService = serviceService;
 
         [HttpPost]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> Create(CreateServiceDto dto)
         {
             try
@@ -67,6 +68,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> Update(Guid id, UpdateServiceDto dto)
         {
             try
@@ -83,6 +85,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> Delete(Guid id)
         {
             try

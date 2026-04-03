@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { mutate } from "swr"
-import { ArrowLeft, Loader2, Save, Trash2, Camera, Upload, ShieldCheck, ShieldOff, Search } from "lucide-react"
+import { ArrowLeft, Loader2, Save, Trash2, Camera, Upload, ShieldCheck, ShieldOff, Search, RefreshCw, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -97,6 +97,7 @@ export default function EmployeeDetailPage() {
   const [accessModalOpen, setAccessModalOpen] = useState(false)
   const [accessEmail, setAccessEmail] = useState("")
   const [accessPassword, setAccessPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [isCreatingAccess, setIsCreatingAccess] = useState(false)
   const [isRevokingAccess, setIsRevokingAccess] = useState(false)
   const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false)
@@ -111,6 +112,31 @@ export default function EmployeeDetailPage() {
   const [commissionsFetched, setCommissionsFetched] = useState(false)
 
   // ---------------------------------------------------------------------------
+  // Gera senha temporária com o mesmo padrão do backend (GenerateTempPassword)
+  function generateTempPassword(): string {
+    const upper   = "ABCDEFGHJKMNPQRSTUVWXYZ"
+    const lower   = "abcdefghjkmnpqrstuvwxyz"
+    const digits  = "23456789"
+    const special = "!@#$"
+    const all     = upper + lower + digits + special
+
+    const pick = (src: string) => src[Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000 * src.length)]
+
+    const chars = [
+      pick(upper), pick(lower), pick(digits), pick(special),
+      pick(all), pick(all), pick(all), pick(all),
+      pick(all), pick(all), pick(all), pick(all),
+    ]
+
+    // Fisher-Yates shuffle
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000 * (i + 1))
+      ;[chars[i], chars[j]] = [chars[j], chars[i]]
+    }
+
+    return chars.join("")
+  }
+
   // Handlers: System Access
   // ---------------------------------------------------------------------------
 
@@ -133,6 +159,7 @@ export default function EmployeeDetailPage() {
       setAccessModalOpen(false)
       setAccessEmail("")
       setAccessPassword("")
+      setShowPassword(false)
       mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
       mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
     } catch {
@@ -587,15 +614,40 @@ export default function EmployeeDetailPage() {
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="access-password">Senha</Label>
-                  <Input
-                    id="access-password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    value={accessPassword}
-                    onChange={(e) => setAccessPassword(e.target.value)}
-                    autoComplete="new-password"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="access-password">Senha</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pwd = generateTempPassword()
+                        setAccessPassword(pwd)
+                        setShowPassword(true)
+                      }}
+                      className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Gerar senha
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="access-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Mínimo 6 caracteres"
+                      value={accessPassword}
+                      onChange={(e) => setAccessPassword(e.target.value)}
+                      autoComplete="new-password"
+                      className="pr-9 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="mt-6 flex justify-end gap-3">
@@ -606,6 +658,7 @@ export default function EmployeeDetailPage() {
                     setAccessModalOpen(false)
                     setAccessEmail("")
                     setAccessPassword("")
+                    setShowPassword(false)
                   }}
                   disabled={isCreatingAccess}
                 >

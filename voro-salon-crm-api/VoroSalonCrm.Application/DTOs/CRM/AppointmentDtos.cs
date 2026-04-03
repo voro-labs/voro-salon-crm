@@ -14,17 +14,19 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         bool IsEncaixe = false
     );
 
-    public record UpdateAppointmentDto(
-        Guid? ClientId,
-        Guid? ServiceId,
-        DateTimeOffset? ScheduledDateTime,
-        int? DurationMinutes,
-        AppointmentStatus? Status,
-        string? Description,
-        decimal? Amount,
-        string? Notes,
-        bool? IsEncaixe = null
-    );
+    public record UpdateAppointmentDto
+    {
+        public Guid? ClientId { get; init; }
+        public Guid? ServiceId { get; init; }
+        public Guid? EmployeeId { get; init; }
+        public DateTimeOffset? ScheduledDateTime { get; init; }
+        public int? DurationMinutes { get; init; }
+        public AppointmentStatus? Status { get; init; }
+        public string? Description { get; init; }
+        public decimal? Amount { get; init; }
+        public string? Notes { get; init; }
+        public bool? IsEncaixe { get; init; }
+    }
 
     public record AppointmentDto(
         Guid Id,
@@ -43,7 +45,9 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         bool IsEncaixe = false,
         Guid? ClientMembershipId = null,
         string? MembershipPlanName = null,
-        int? MembershipRemainingSessions = null
+        int? MembershipRemainingSessions = null,
+        Guid? EmployeeId = null,
+        string? EmployeeName = null
     );
 
     public record AvailabilitySlotDto(

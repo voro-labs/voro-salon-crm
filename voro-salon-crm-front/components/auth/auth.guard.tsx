@@ -33,18 +33,20 @@ export function AuthGuard({ children, requiredRoles }: AuthGuardProps) {
         return
       }
 
-      // Se há role requerido e o usuário não tem permissão
-      const hasRequiredRole = requiredRoles
-        ? user.roles.some(role => requiredRoles.includes(role.name as any))
-        : false
-
-      const hasAllowedRole = rolesAllowed
-        ? user.roles.some(role => rolesAllowed.includes(role.name as any))
-        : false
-
-      if (!hasRequiredRole && !hasAllowedRole) {
-        router.push("/not-authorized") // Redireciona para dashboard padrão
-        return
+      if (requiredRoles) {
+        // Quando roles específicas são exigidas, apenas elas concedem acesso
+        const hasRequiredRole = user.roles.some(role => requiredRoles.includes(role.name as any))
+        if (!hasRequiredRole) {
+          router.push("/not-authorized")
+          return
+        }
+      } else {
+        // Sem roles específicas: qualquer role reconhecida é suficiente
+        const hasAllowedRole = user.roles.some(role => rolesAllowed.includes(role.name as any))
+        if (!hasAllowedRole) {
+          router.push("/not-authorized")
+          return
+        }
       }
     }
   }, [user, loading, router, requiredRoles])

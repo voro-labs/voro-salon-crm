@@ -316,7 +316,7 @@ export default function AppointmentDetailPage() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="durationMinutes">Duração (minutos)</Label>
+                      <Label htmlFor="durationMinutes">Duração Estimada</Label>
                       <Select
                         key={`duration-${form.durationMinutes}`}
                         value={form.durationMinutes.toString()}

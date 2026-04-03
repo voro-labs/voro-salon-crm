@@ -11,13 +11,13 @@ namespace VoroSalonCrm.API.Controllers
     [Route("api/v{version:version}/[controller]")]
     [Tags("CRM")]
     [ApiController]
-    [Authorize(Roles = "Owner,SalonOwner")]
+    [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
     public class EmployeeController(IEmployeeService service) : ControllerBase
     {
         private readonly IEmployeeService _service = service;
 
+        /// <summary>Retorna o funcionário vinculado ao usuário logado (uso exclusivo de SalonEmployee).</summary>
         [HttpGet("me")]
-        [Authorize(Roles = "SalonEmployee")]
         public async Task<IActionResult> GetMe()
         {
             try
@@ -37,7 +37,6 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetAll()
         {
             try
@@ -54,7 +53,6 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet("{id:guid}")]
-        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetById([FromRoute] Guid id)
         {
             try
@@ -74,6 +72,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> Create([FromBody] CreateEmployeeDto dto)
         {
             try
@@ -90,6 +89,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateEmployeeDto dto)
         {
             try
@@ -106,6 +106,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> Delete([FromRoute] Guid id)
         {
             try
@@ -122,7 +123,6 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet("available-for-service/{serviceId:guid}")]
-        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetAvailableForService([FromRoute] Guid serviceId)
         {
             try
@@ -139,6 +139,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost("{id:guid}/photo")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> UploadPhoto([FromRoute] Guid id, [FromForm] IFormFile file)
         {
             try
@@ -157,7 +158,6 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet("{id:guid}/commissions")]
-        [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetCommissions(
             [FromRoute] Guid id,
             [FromQuery] DateTimeOffset? from = null,
@@ -180,6 +180,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost("{id:guid}/access")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> CreateAccess([FromRoute] Guid id, [FromBody] CreateEmployeeAccessDto dto)
         {
             try
@@ -196,6 +197,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpDelete("{id:guid}/access")]
+        [Authorize(Roles = "Owner,SalonOwner")]
         public async Task<IActionResult> RevokeAccess([FromRoute] Guid id)
         {
             try

@@ -96,22 +96,24 @@ export function Main({ children }: MainProps) {
     }
   }, [tenant])
 
-  if (loading) {
-    return <LoadingSimple />
-  }
-
   const isPublicRoute = routesAllowed.some(item => pathname === item || (item !== "/" && pathname.startsWith(item)))
   const isOnboardingRoute = ONBOARDING_PATHS.some(p => pathname.startsWith(p))
   const isAuthRoute = ["/admin/sign-in", "/admin/forgot-password", "/admin/reset-password", "/admin/verify-2fa"].some(p => pathname.startsWith(p))
+  const needsLoginRedirect = !loading && !user?.token && !isPublicRoute
+
+  useEffect(() => {
+    if (needsLoginRedirect) {
+      router.replace(`/admin/sign-in?redirect=${encodeURIComponent(pathname)}`)
+    }
+  }, [needsLoginRedirect, pathname, router])
+
+  if (loading || needsLoginRedirect) {
+    return <LoadingSimple />
+  }
 
   // Se não estiver logado, ou se estiver logado mas em uma página de autenticação (Sign-in, etc.)
   // Renderiza o shell minimalista sem sidebar/navbar.
   if (!user?.token || (isAuthRoute && !isOnboardingRoute)) {
-    if (!user?.token && !isPublicRoute) {
-      // Rota protegida sem usuário: redireciona para login com redirect de volta
-      router.replace(`/admin/sign-in?redirect=${encodeURIComponent(pathname)}`)
-      return <LoadingSimple />
-    }
 
     // Layout público (sign-in, forgot-password, etc.) — nunca mostra sidebar/navbar aqui,
     // mesmo que o usuário esteja logado (mas ainda na página de login aguardando redirect)

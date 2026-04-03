@@ -48,8 +48,13 @@ namespace VoroSalonCrm.Application.Services
             var userId = _currentUser.UserId;
             if (userId == Guid.Empty) return null;
 
-            var employee = await _repository.GetByIdAsync(
+            // Busca o ID do employee vinculado ao usuário logado
+            var slim = await _repository.GetByIdAsync(
                 e => e.UserId == userId && !e.IsDeleted);
+            if (slim == null) return null;
+
+            // Busca com especialidades para retornar DTO completo
+            var employee = await _repository.GetByIdWithSpecialtiesAsync(slim.Id);
             return employee != null ? MapToDto(employee) : null;
         }
 

@@ -59,6 +59,7 @@ const PROTECTED_PATHS = [
   "/dashboard",
   "/notifications",
   "/my-commissions",
+  "/my-profile",
   "/api",
 ]
 
