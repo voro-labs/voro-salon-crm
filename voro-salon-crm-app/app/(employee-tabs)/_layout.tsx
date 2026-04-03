@@ -44,16 +44,6 @@ export default function EmployeeTabsLayout() {
         } as any}
       />
       <MaterialTopTabs.Screen
-        name="notifications"
-        options={{
-          ...common,
-          tabBarLabel: "Avisos",
-          tabBarIcon: ({ focused, color }: any) => (
-            <Ionicons name={focused ? "notifications" : "notifications-outline"} size={22} color={color} />
-          ),
-        } as any}
-      />
-      <MaterialTopTabs.Screen
         name="profile"
         options={{
           ...common,
@@ -67,9 +57,19 @@ export default function EmployeeTabsLayout() {
         name="settings"
         options={{
           ...common,
-          tabBarLabel: "Config",
+          tabBarLabel: "Config.",
           tabBarIcon: ({ focused, color }: any) => (
             <Ionicons name={focused ? "settings" : "settings-outline"} size={22} color={color} />
+          ),
+        } as any}
+      />
+      <MaterialTopTabs.Screen
+        name="notifications"
+        options={{
+          ...common,
+          tabBarLabel: "Avisos",
+          tabBarIcon: ({ focused, color }: any) => (
+            <Ionicons name={focused ? "notifications" : "notifications-outline"} size={22} color={color} />
           ),
         } as any}
       />

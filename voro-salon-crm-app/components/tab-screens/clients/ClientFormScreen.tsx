@@ -26,7 +26,7 @@ const inputClass = "bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text
 
 export function ClientFormScreen({ id }: { id?: string }) {
   const router = useRouter()
-  const { form, setForm, errors, clearFieldError, countryCode, setCountryCode, isCreating, createClient } = useClientForm(id)
+  const { form, setForm, errors, clearFieldError, countryCode, setCountryCode, isCreating, createClient } = useClientForm()
   const { primaryColor } = useTenantTheme()
 
   return (

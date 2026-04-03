@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { TextInput, View, Text, TextInputProps } from "react-native"
 
-interface CurrencyInputProps extends Omit<TextInputProps, "value" | "onChangeText" | "keyboardType"> {
+interface CurrencyInputProps extends Omit<TextInputProps, "value" | "onChangeText" | "keyboardType" | "onChange"> {
   value: number
   onChange: (value: number) => void
   label?: string

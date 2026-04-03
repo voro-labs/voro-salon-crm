@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { TextInput, View, TextInputProps } from "react-native"
 import { applyMask, removeMask, phoneMasks } from "lib/mask-utils"
 
-interface PhoneInputProps extends Omit<TextInputProps, "value" | "onChangeText"> {
+interface PhoneInputProps extends Omit<TextInputProps, "value" | "onChangeText" | "onChange"> {
   value: string
   countryCode?: string
   onChange: (rawNumbers: string) => void
