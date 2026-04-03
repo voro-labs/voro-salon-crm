@@ -141,35 +141,9 @@ export function Main({ children }: MainProps) {
     )
   }
 
-  // Bloqueia funcionários: o painel web é exclusivo para proprietários
+  // Paywall: trial expirado ou assinatura inativa — exceto na página de assinatura e para funcionários
   const isEmployee = (user.roles?.length ?? 0) > 0 && (user.roles ?? []).every(r => r.name === "SalonEmployee")
-  if (isEmployee) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
-        <div className="fixed top-4 right-4 z-50">
-          <ThemeToggle />
-        </div>
-        <div className="max-w-sm w-full text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <span className="text-3xl">📱</span>
-          </div>
-          <h1 className="text-xl font-bold">Use o aplicativo</h1>
-          <p className="text-sm text-muted-foreground">
-            O painel web é destinado aos proprietários do salão. Como funcionário, utilize o aplicativo móvel para acessar seus agendamentos.
-          </p>
-          <button
-            onClick={() => { logout(); router.replace("/admin/sign-in"); }}
-            className="text-xs text-muted-foreground underline underline-offset-4"
-          >
-            Sair
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Paywall: trial expirado ou assinatura inativa — exceto na página de assinatura
-  if (isPaywalled && !pathname.startsWith("/subscription")) {
+  if (isPaywalled && !pathname.startsWith("/subscription") && !isEmployee) {
     return <SubscriptionPaywall trialEndsAt={trialEndsAt} onRefresh={() => refreshSubscription()} />
   }
 

@@ -96,11 +96,11 @@
   - Se com acesso: exibir e-mail + botão "Revogar Acesso" (com confirmação)
 
 #### 2.7 Visão do Funcionário (após login)
-- [ ] Garantir que o layout/navegação para role `SalonEmployee` exiba apenas:
+- [x] Garantir que o layout/navegação para role `SalonEmployee` exiba apenas:
   - Meus Agendamentos (filtrado pelo próprio `employeeId`)
   - Minhas Comissões
   - Perfil (alterar senha)
-- [ ] Ajustar `middleware.ts` ou guards de rota conforme necessário
+- [x] Ajustar `middleware.ts` ou guards de rota conforme necessário
 
 ---
 

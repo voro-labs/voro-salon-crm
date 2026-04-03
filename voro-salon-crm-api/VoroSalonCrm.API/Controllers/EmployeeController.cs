@@ -16,6 +16,26 @@ namespace VoroSalonCrm.API.Controllers
     {
         private readonly IEmployeeService _service = service;
 
+        [HttpGet("me")]
+        [Authorize(Roles = "SalonEmployee")]
+        public async Task<IActionResult> GetMe()
+        {
+            try
+            {
+                var result = await _service.GetByCurrentUserAsync();
+                if (result == null)
+                    return ResponseViewModel<object>.Fail("Employee not found for current user.").ToActionResult();
+
+                return ResponseViewModel<EmployeeDto>
+                    .SuccessWithMessage("Employee retrieved.", result)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
         [HttpGet]
         [Authorize(Roles = "Owner,SalonOwner,SalonEmployee")]
         public async Task<IActionResult> GetAll()

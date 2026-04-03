@@ -16,6 +16,8 @@ import {
   Bell,
   CreditCard,
   MessageCircle,
+  DollarSign,
+  User,
 } from "lucide-react"
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
@@ -35,20 +37,33 @@ const navItems = [
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
-    roles: ["SalonOwner", "SalonEmployee", "Owner"]
+    roles: ["SalonOwner", "Owner"]
   },
   {
     title: "Agendamentos",
     href: "/appointments",
     icon: Calendar,
-    roles: ["SalonOwner", "SalonEmployee", "Owner"],
+    roles: ["SalonOwner", "Owner"],
     moduleId: 2 // Scheduling
+  },
+  {
+    title: "Meus Agendamentos",
+    href: "/appointments",
+    icon: Calendar,
+    roles: ["SalonEmployee"],
+    moduleId: 2 // Scheduling
+  },
+  {
+    title: "Minhas Comissões",
+    href: "/my-commissions",
+    icon: DollarSign,
+    roles: ["SalonEmployee"],
   },
   {
     title: "Clientes",
     href: "/clients",
     icon: Users,
-    roles: ["SalonOwner", "SalonEmployee", "Owner"],
+    roles: ["SalonOwner", "Owner"],
     moduleId: 1 // Clients
   },
   {
@@ -78,6 +93,12 @@ const navItems = [
     icon: MessageCircle,
     roles: ["SalonOwner", "Owner"],
     moduleId: 9 // WhatsappBot
+  },
+  {
+    title: "Perfil",
+    href: "/admin/change-password",
+    icon: User,
+    roles: ["SalonEmployee"],
   },
   {
     title: "Configurações",

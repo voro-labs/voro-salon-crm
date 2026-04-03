@@ -115,7 +115,7 @@ namespace VoroSalonCrm.Application.Services
             return MapToDto(appointment);
         }
 
-        public async Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null)
+        public async Task<IEnumerable<AppointmentDto>> GetAllAsync(Guid? clientId = null, Guid? employeeId = null)
         {
             var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
                 .Include(a => a.Membership!)
@@ -124,6 +124,9 @@ namespace VoroSalonCrm.Application.Services
 
             if (clientId.HasValue)
                 query = query.Where(a => a.ClientId == clientId.Value);
+
+            if (employeeId.HasValue)
+                query = query.Where(a => a.EmployeeId == employeeId.Value);
 
             var appointments = await query.OrderBy(a => a.ScheduledDateTime).ToListAsync();
             return appointments.Select(MapToDto);

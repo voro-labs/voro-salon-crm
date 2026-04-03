@@ -43,6 +43,16 @@ namespace VoroSalonCrm.Application.Services
             return employee != null ? MapToDto(employee) : null;
         }
 
+        public async Task<EmployeeDto?> GetByCurrentUserAsync()
+        {
+            var userId = _currentUser.UserId;
+            if (userId == Guid.Empty) return null;
+
+            var employee = await _repository.GetByIdAsync(
+                e => e.UserId == userId && !e.IsDeleted);
+            return employee != null ? MapToDto(employee) : null;
+        }
+
         public async Task<EmployeeDto> CreateAsync(CreateEmployeeDto dto)
         {
             var subscription = await _subscriptionRepository.GetByTenantIdWithPlanAsync(_currentUser.TenantId);

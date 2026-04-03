@@ -5,6 +5,7 @@ using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
+using VoroSalonCrm.Application.DTOs.Employee;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -12,9 +13,10 @@ namespace VoroSalonCrm.API.Controllers
     [Tags("CRM")]
     [ApiController]
     [Authorize]
-    public class AppointmentsController(IAppointmentService appointmentService) : ControllerBase
+    public class AppointmentsController(IAppointmentService appointmentService, IEmployeeService employeeService) : ControllerBase
     {
         private readonly IAppointmentService _appointmentService = appointmentService;
+        private readonly IEmployeeService _employeeService = employeeService;
 
         [HttpPost]
         public async Task<IActionResult> Create(CreateAppointmentDto dto)
@@ -56,7 +58,18 @@ namespace VoroSalonCrm.API.Controllers
         {
             try
             {
-                var result = await _appointmentService.GetAllAsync(clientId);
+                Guid? employeeId = null;
+                if (User.IsInRole("SalonEmployee"))
+                {
+                    var employee = await _employeeService.GetByCurrentUserAsync();
+                    if (employee == null)
+                        return ResponseViewModel<IEnumerable<AppointmentDto>>
+                            .SuccessWithMessage("Appointments retrieved.", Enumerable.Empty<AppointmentDto>())
+                            .ToActionResult();
+                    employeeId = employee.Id;
+                }
+
+                var result = await _appointmentService.GetAllAsync(clientId, employeeId);
                 return ResponseViewModel<IEnumerable<AppointmentDto>>
                     .SuccessWithMessage("Appointments retrieved.", result)
                     .ToActionResult();
