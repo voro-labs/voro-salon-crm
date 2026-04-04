@@ -120,6 +120,9 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IUserNotificationService, UserNotificationService>();
             services.AddScoped<IWhatsAppTemplateService, WhatsAppTemplateService>();
             services.AddScoped<IClientMembershipService, ClientMembershipService>();
+            services.AddScoped<IEmployeeGoalRepository, EmployeeGoalRepository>();
+            services.AddScoped<IEmployeeGoalService, EmployeeGoalService>();
+            services.AddScoped<IBirthdayGreetingService, BirthdayGreetingService>();
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();

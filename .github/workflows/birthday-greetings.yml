@@ -1,0 +1,23 @@
+name: Birthday Greetings
+
+on:
+  schedule:
+    - cron: '0 11 * * *'  # 08:00 BRT (UTC-3) todos os dias
+  workflow_dispatch:        # permite execução manual via GitHub UI
+
+jobs:
+  send-greetings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send birthday greetings
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.API_BASE_URL }}/api/v1/birthday-greeting/trigger" \
+            -H "X-Api-Key: ${{ secrets.BIRTHDAY_API_KEY }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP Status: $RESPONSE"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "Falha ao enviar parabéns. Status: $RESPONSE"
+            exit 1
+          fi
+          echo "Parabéns enviados com sucesso."

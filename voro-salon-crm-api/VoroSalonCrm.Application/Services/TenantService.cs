@@ -95,6 +95,7 @@ namespace VoroSalonCrm.Application.Services
             if (dto.WhatsappPhoneNumberId is not null) tenant.WhatsappPhoneNumberId = dto.WhatsappPhoneNumberId;
             if (dto.WhatsappBusinessAccountId is not null) tenant.WhatsappBusinessAccountId = dto.WhatsappBusinessAccountId;
             if (dto.UseWhatsappBooking.HasValue) tenant.UseWhatsappBooking = dto.UseWhatsappBooking.Value;
+            if (dto.BirthdayWhatsappTemplateName is not null) tenant.BirthdayWhatsappTemplateName = dto.BirthdayWhatsappTemplateName;
 
             tenant.UpdatedAt = DateTimeOffset.UtcNow;
 

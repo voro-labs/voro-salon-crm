@@ -41,13 +41,14 @@ namespace VoroSalonCrm.Application.Services
                 Name = dto.Name,
                 Phone = dto.Phone,
                 Notes = dto.Notes,
+                BirthDate = dto.BirthDate,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
             await _clientRepository.AddAsync(client);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt);
+            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt, client.BirthDate);
         }
 
         public async Task<ClientDto?> GetByIdAsync(Guid id)
@@ -55,13 +56,13 @@ namespace VoroSalonCrm.Application.Services
             var client = await _clientRepository.GetByIdAsync(false, id);
             if (client is null) return null;
 
-            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt);
+            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt, client.BirthDate);
         }
 
         public async Task<IEnumerable<ClientDto>> GetAllAsync()
         {
             var clients = await _clientRepository.GetAllAsync();
-            return clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt));
+            return clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate));
         }
 
         public async Task<ClientDto> UpdateAsync(Guid id, UpdateClientDto dto)
@@ -73,13 +74,14 @@ namespace VoroSalonCrm.Application.Services
             if (dto.Phone is not null) client.Phone = dto.Phone;
             if (dto.Email is not null) client.Email = dto.Email;
             if (dto.Notes is not null) client.Notes = dto.Notes;
+            if (dto.BirthDate.HasValue) client.BirthDate = dto.BirthDate;
 
             client.UpdatedAt = DateTimeOffset.UtcNow;
 
             _clientRepository.Update(client);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt);
+            return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt, client.BirthDate);
         }
 
         public async Task<bool> DeleteAsync(Guid id)

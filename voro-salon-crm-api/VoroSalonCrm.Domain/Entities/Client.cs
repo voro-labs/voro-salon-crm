@@ -12,6 +12,7 @@ namespace VoroSalonCrm.Domain.Entities
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? Notes { get; set; }
+        public DateOnly? BirthDate { get; set; }
 
         public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }

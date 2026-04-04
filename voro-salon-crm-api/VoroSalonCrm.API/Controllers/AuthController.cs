@@ -50,7 +50,8 @@ namespace VoroSalonCrm.API.Controllers
 
                 var sessionTenant = new TenantDto(
                     tenant.Id, tenant.Name, tenant.Slug, tenant.IsActive, tenant.CreatedAt,
-                    tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode, tenant.EstablishmentType
+                    tenant.LogoUrl, tenant.PrimaryColor, tenant.SecondaryColor, tenant.ContactPhone, tenant.ContactEmail, tenant.ThemeMode, tenant.EstablishmentType,
+                    tenant.WhatsappPhoneNumberId, tenant.WhatsappBusinessAccountId, tenant.UseWhatsappBooking, tenant.BirthdayWhatsappTemplateName
                 );
 
                 var sessionDto = new SessionDto(sessionUser, sessionTenant);

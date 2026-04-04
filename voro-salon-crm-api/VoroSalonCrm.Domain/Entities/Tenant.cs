@@ -25,6 +25,7 @@ namespace VoroSalonCrm.Domain.Entities
         public bool UseWhatsappBooking { get; set; } = false;
         public string? WhatsappPhoneNumberId { get; set; }
         public string? WhatsappBusinessAccountId { get; set; }
+        public string? BirthdayWhatsappTemplateName { get; set; }
         
         public string ThemeMode { get; set; } = "system";
 

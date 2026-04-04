@@ -59,6 +59,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<ClientMembershipPlan> ClientMembershipPlans { get; set; }
         public DbSet<ClientMembership> ClientMemberships { get; set; }
 
+        public DbSet<EmployeeGoal> EmployeeGoals { get; set; }
+
         public DbSet<PushToken> PushTokens { get; set; }
         public DbSet<UserNotification> UserNotifications { get; set; }
 
@@ -755,6 +757,34 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(wt => wt.Name).IsRequired();
                 b.Property(wt => wt.Label).IsRequired();
             });
+
+            // ---------------------------
+            // EMPLOYEE GOAL
+            // ---------------------------
+            builder.Entity<EmployeeGoal>(b =>
+            {
+                b.HasKey(g => g.Id);
+                b.Property(g => g.TargetAmount).HasColumnType("NUMERIC(10,2)").IsRequired();
+                b.Property(g => g.TargetAppointments).IsRequired();
+                b.Property(g => g.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(g => g.TenantId);
+                b.HasIndex(g => new { g.TenantId, g.EmployeeId, g.Month, g.Year }).IsUnique();
+
+                b.HasOne(g => g.Tenant)
+                 .WithMany()
+                 .HasForeignKey(g => g.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(g => g.Employee)
+                 .WithMany()
+                 .HasForeignKey(g => g.EmployeeId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Filtro global para EmployeeGoal
+            builder.Entity<EmployeeGoal>().HasQueryFilter(g =>
+                g.TenantId == _currentUser.TenantId);
         }
     }
 }

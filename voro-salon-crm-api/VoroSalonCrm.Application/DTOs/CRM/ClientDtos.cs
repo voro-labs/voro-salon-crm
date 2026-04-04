@@ -6,14 +6,16 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         [Required][StringLength(200)] string Name,
         [StringLength(50)] string? Phone,
         [StringLength(50)] string? Email,
-        string? Notes
+        string? Notes,
+        DateOnly? BirthDate = null
     );
 
     public record UpdateClientDto(
         [StringLength(200)] string? Name,
         [StringLength(50)] string? Phone,
         [StringLength(50)] string? Email,
-        string? Notes
+        string? Notes,
+        DateOnly? BirthDate = null
     );
 
     public record ClientDto(
@@ -22,6 +24,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Phone,
         string? Email,
         string? Notes,
-        DateTimeOffset CreatedAt
+        DateTimeOffset CreatedAt,
+        DateOnly? BirthDate = null
     );
 }
