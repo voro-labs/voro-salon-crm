@@ -121,7 +121,7 @@ namespace VoroSalonCrm.Application.Services
                 ScheduledDateTime = dto.ScheduledDateTime.ToUniversalTime(),
                 DurationMinutes = service.DurationMinutes,
                 Amount = service.Price,
-                Status = AppointmentStatus.Confirmed,
+                Status = AppointmentStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
                 Description = dto.Description,
                 Notes = dto.Notes,

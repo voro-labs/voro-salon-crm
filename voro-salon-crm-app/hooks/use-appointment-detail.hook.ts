@@ -134,7 +134,10 @@ export function useAppointmentDetail(appointmentId: string) {
       Toast.success(`Status atualizado para ${statusLabels[newStatus] ?? newStatus}`)
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
       mutate(API_CONFIG.ENDPOINTS.APPOINTMENTS)
-      if (appointment && !tenant?.useWhatsappBooking) {
+      // O bot envia automaticamente apenas para Confirmado (1) e Cancelado (3)
+      // Para outros status, ou quando o bot está desativado, oferece envio manual
+      const botHandlesStatus = tenant?.useWhatsappBooking && (newStatus === 1 || newStatus === 3)
+      if (appointment && !botHandlesStatus) {
         Alert.alert(
           "Enviar via WhatsApp?",
           "Deseja notificar o cliente sobre a mudança de status pelo WhatsApp?",

@@ -142,6 +142,19 @@ namespace VoroSalonCrm.Infrastructure.Integration
             // Handle user response based on current state
             try
             {
+                // Global keyword: "reagendar" typed at any state routes back to appointment check
+                var incomingText = message.Type == "text" ? message.Text?.Body?.Trim().ToLower() : null;
+                if (incomingText != null && incomingText.Contains("reagend") &&
+                    session.State != "AWAITING_APPOINTMENT_ACTION" &&
+                    session.State != "AWAITING_RESCHEDULE_CONFIRMATION" &&
+                    session.State != "AWAITING_CANCEL_CONFIRMATION")
+                {
+                    session.State = "START";
+                    await StartBookingFlowAsync(from, contactName, session, ct);
+                    _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
+                    return;
+                }
+
                 if (message.Type == "audio")
                 {
                     const string audioReply = "Ainda estou aprendendo a ouvir áudios! 🎧 Por favor, pode digitar sua mensagem?";
@@ -403,7 +416,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelMsg);
                 session.State = "AWAITING_CANCEL_CONFIRMATION";
             }
-            else if (choice == "2" || choice?.ToLower().Contains("reaGend") == true || choice?.ToLower().Contains("reschedul") == true)
+            else if (choice == "2" || choice?.ToLower().Contains("reagend") == true || choice?.ToLower().Contains("reschedul") == true)
             {
                 var rescheduleMsg = "Deseja realmente trocar o horário do seu agendamento?\n\n1 - Sim, reagendar\n2 - Não, manter";
                 var buttons = new[]

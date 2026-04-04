@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -24,7 +25,8 @@ namespace VoroSalonCrm.Application.Services
         IExpoPushNotificationService expoPushNotificationService,
         ITimeSlotBlockService timeSlotBlockService,
         ITenantBusinessHoursRepository businessHoursRepository,
-        ITransactionRepository transactionRepository) : IAppointmentService
+        ITransactionRepository transactionRepository,
+        IMemoryCache memoryCache) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -40,6 +42,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITimeSlotBlockService _timeSlotBlockService = timeSlotBlockService;
         private readonly ITenantBusinessHoursRepository _businessHoursRepository = businessHoursRepository;
         private readonly ITransactionRepository _transactionRepository = transactionRepository;
+        private readonly IMemoryCache _memoryCache = memoryCache;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -162,11 +165,12 @@ namespace VoroSalonCrm.Application.Services
             {
                 await CreateHistoryFromAppointmentAsync(appointment);
             }
-            // Se saiu de concluído para cancelado/pendente, remove o histórico
+            // Se saiu de concluído para cancelado/pendente, remove o histórico e reverte comissão/sessão
             else if (oldStatus == AppointmentStatus.Completed &&
                 (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
             {
                 await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
+                await ReverseCompletionAsync(appointment);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -221,6 +225,7 @@ namespace VoroSalonCrm.Application.Services
                 (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
             {
                 await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
+                await ReverseCompletionAsync(appointment);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -287,6 +292,10 @@ namespace VoroSalonCrm.Application.Services
                 var tenant = await _tenantRepository.GetByIdAsync(false, appointment.TenantId);
                 if (tenant == null || !tenant.UseWhatsappBooking) return true;
 
+                // Anti-spam: skip if the same status notification was already sent within 5 minutes
+                var cacheKey = $"wa_status_{appointment.Id}_{status}";
+                if (_memoryCache.TryGetValue(cacheKey, out _)) return true;
+
                 var tenantName = tenant.Name;
                 var phone = appointment.Client.Phone;
 
@@ -325,6 +334,7 @@ namespace VoroSalonCrm.Application.Services
                     };
 
                     await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
+                    _memoryCache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
                 }
                 else if (status == AppointmentStatus.Cancelled)
                 {
@@ -358,6 +368,7 @@ namespace VoroSalonCrm.Application.Services
                     };
 
                     await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
+                    _memoryCache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
                 }
             }
 
@@ -544,6 +555,42 @@ namespace VoroSalonCrm.Application.Services
             }
 
             return slots;
+        }
+
+        private async Task ReverseCompletionAsync(Appointment appointment)
+        {
+            // Revert membership session if one was decremented
+            if (appointment.ClientMembershipId.HasValue)
+            {
+                var membership = await _clientMembershipRepository
+                    .GetByIdAsync(false, appointment.ClientMembershipId.Value);
+
+                if (membership != null && membership.RemainingSessions != null)
+                {
+                    membership.RemainingSessions += 1;
+                    if (membership.Status == ClientMembershipStatus.Expired && membership.RemainingSessions > 0)
+                        membership.Status = ClientMembershipStatus.Active;
+                    membership.UpdatedAt = DateTimeOffset.UtcNow;
+                    _clientMembershipRepository.Update(membership);
+                }
+
+                appointment.ClientMembershipId = null;
+                _appointmentRepository.Update(appointment);
+            }
+
+            // Delete the commission transaction generated on completion
+            if (appointment.EmployeeId.HasValue)
+            {
+                var appointmentIdStr = appointment.Id.ToString();
+                var commissions = await _transactionRepository
+                    .Query(t => t.TenantId == appointment.TenantId
+                        && t.EmployeeId == appointment.EmployeeId
+                        && t.Notes != null && t.Notes.Contains(appointmentIdStr)
+                        && t.Type == TransactionType.Expense)
+                    .ToListAsync();
+
+                _transactionRepository.DeleteRange(commissions);
+            }
         }
 
         private async Task DecrementMembershipSessionAsync(Appointment appointment)
