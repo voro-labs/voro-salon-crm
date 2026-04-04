@@ -294,7 +294,7 @@ export default function AnamnesisSignPage({ params }: { params: Promise<{ token:
                 ref={canvasRef}
                 width={600}
                 height={200}
-                className="w-full h-[180px] cursor-crosshair touch-none"
+                className="w-full h-45 cursor-crosshair touch-none"
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}

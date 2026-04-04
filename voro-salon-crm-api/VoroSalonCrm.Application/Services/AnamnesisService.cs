@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using VoroSalonCrm.Application.DTOs.Anamnesis;
 using VoroSalonCrm.Application.DTOs.CRM;
+using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
@@ -13,13 +17,21 @@ namespace VoroSalonCrm.Application.Services
         IAnamnesisSheetRepository sheetRepository,
         IClientRepository clientRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService) : IAnamnesisService
+        ICurrentUserService currentUserService,
+        IWhatsappService whatsappService,
+        ITenantRepository tenantRepository,
+        IConfiguration configuration,
+        ILogger<AnamnesisService> logger) : IAnamnesisService
     {
         private readonly IAnamnesisQuestionRepository _questionRepository = questionRepository;
         private readonly IAnamnesisSheetRepository _sheetRepository = sheetRepository;
         private readonly IClientRepository _clientRepository = clientRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly IWhatsappService _whatsappService = whatsappService;
+        private readonly ITenantRepository _tenantRepository = tenantRepository;
+        private readonly IConfiguration _configuration = configuration;
+        private readonly ILogger<AnamnesisService> _logger = logger;
 
         public async Task<IEnumerable<AnamnesisQuestionDto>> GetQuestionsAsync()
         {
@@ -282,6 +294,58 @@ namespace VoroSalonCrm.Application.Services
 
             _sheetRepository.Update(sheet);
             await _unitOfWork.SaveChangesAsync();
+
+            // Send WhatsApp signing link to client
+            try
+            {
+                var sheetWithDetails = await _sheetRepository
+                    .Query(s => s.Id == sheetId)
+                    .Include(s => s.Client)
+                    .Include(s => s.Tenant)
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync();
+
+                if (sheetWithDetails?.Client?.Phone != null && sheetWithDetails.Tenant != null &&
+                    sheetWithDetails.Tenant.UseWhatsappBooking)
+                {
+                    var frontendUrl = _configuration["FrontendUrl"] ?? "https://app.vorosalon.com";
+                    var signingUrl = $"{frontendUrl}/anamnesis/sign/{sheet.PublicToken}";
+
+                    var templateMsg = new WhatsappTemplateMessageDto
+                    {
+                        To = sheetWithDetails.Client.Phone,
+                        Template = new()
+                        {
+                            Name = "anamnesis_signing_1",
+                            Components =
+                            [
+                                new() {
+                                    Type = "body",
+                                    Parameters =
+                                    [
+                                        new() { Type = "text", Text = sheetWithDetails.Client.Name },
+                                        new() { Type = "text", Text = sheetWithDetails.Tenant.Name }
+                                    ]
+                                },
+                                new() {
+                                    Type = "button",
+                                    SubType = "url",
+                                    Index = "0",
+                                    Parameters = [
+                                        new() { Type = "text", Text = "/" + sheet.PublicToken }
+                                    ]
+                                }
+                            ]
+                        }
+                    };
+
+                    await _whatsappService.SendTemplateMessageAsync(templateMsg, sheetWithDetails.Tenant.WhatsappPhoneNumberId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao enviar link de assinatura via WhatsApp para ficha {SheetId}.", sheetId);
+            }
 
             return sheet.PublicToken;
         }

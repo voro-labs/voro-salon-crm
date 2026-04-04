@@ -6,6 +6,7 @@ import { Toast } from "toastify-react-native"
 import { API_CONFIG, secureApiCall } from "../lib/api"
 import { useWhatsApp } from "./use-whatsapp.hook"
 import { fetcher } from "../lib/fetcher"
+import { useClientRating } from "./use-client-rating.hook"
 
 export interface AppointmentForm {
   clientId: string
@@ -47,6 +48,9 @@ export function useAppointmentDetail(appointmentId: string) {
   const [form, setForm] = useState<AppointmentForm>(DEFAULT_FORM)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showRatingModal, setShowRatingModal] = useState(false)
+
+  const { existingRating, isSubmitting: isSubmittingRating, submitRating } = useClientRating(appointmentId)
 
   const { data: employees } = useSWR(
     form.serviceId !== "none" && form.serviceId !== ""
@@ -134,6 +138,12 @@ export function useAppointmentDetail(appointmentId: string) {
       Toast.success(`Status atualizado para ${statusLabels[newStatus] ?? newStatus}`)
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
       mutate(API_CONFIG.ENDPOINTS.APPOINTMENTS)
+
+      // Ao concluir, oferecer avaliação manual do cliente (somente se ainda não avaliado)
+      if (newStatus === 2 && !existingRating) {
+        setShowRatingModal(true)
+      }
+
       // O bot envia automaticamente apenas para Confirmado (1) e Cancelado (3)
       // Para outros status, ou quando o bot está desativado, oferece envio manual
       const botHandlesStatus = tenant?.useWhatsappBooking && (newStatus === 1 || newStatus === 3)
@@ -154,6 +164,17 @@ export function useAppointmentDetail(appointmentId: string) {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  async function handleRatingSubmit(stars: number, comment?: string): Promise<void> {
+    const success = await submitRating(stars, comment)
+    if (success) {
+      setShowRatingModal(false)
+    }
+  }
+
+  function handleRatingSkip(): void {
+    setShowRatingModal(false)
   }
 
   async function deleteAppointment(): Promise<boolean> {
@@ -194,5 +215,9 @@ export function useAppointmentDetail(appointmentId: string) {
     updateAppointment,
     updateStatus,
     deleteAppointment,
+    showRatingModal,
+    isSubmittingRating,
+    handleRatingSubmit,
+    handleRatingSkip,
   }
 }

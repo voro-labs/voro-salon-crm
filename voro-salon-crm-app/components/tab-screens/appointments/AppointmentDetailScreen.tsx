@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 import { useAppointmentDetail } from "hooks/use-appointment-detail.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { RatingModal } from "components/RatingModal"
 
 const STATUS_OPTIONS = [
   { value: 0, label: "Pendente",   bg: "#fef9c3", text: "#854d0e", border: "#fef08a" },
@@ -58,7 +59,18 @@ function InfoRow({
 
 export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; rootPath?: string }) {
   const router = useRouter()
-  const { appointment, isLoading, isSaving, isDeleting, updateStatus, deleteAppointment } = useAppointmentDetail(id)
+  const {
+    appointment,
+    isLoading,
+    isSaving,
+    isDeleting,
+    updateStatus,
+    deleteAppointment,
+    showRatingModal,
+    isSubmittingRating,
+    handleRatingSubmit,
+    handleRatingSkip,
+  } = useAppointmentDetail(id)
   const { primaryColor } = useTenantTheme()
 
   const [statusModal, setStatusModal] = useState(false)
@@ -231,6 +243,15 @@ export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: stri
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Rating Modal */}
+      <RatingModal
+        visible={showRatingModal}
+        onClose={handleRatingSkip}
+        onSubmit={handleRatingSubmit}
+        clientName={clientName}
+        isLoading={isSubmittingRating}
+      />
     </SafeAreaView>
   )
 }
