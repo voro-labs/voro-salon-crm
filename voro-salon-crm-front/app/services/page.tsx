@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Scissors, Banknote } from "lucide-react"
+import { Plus, Search, Scissors, Banknote, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -45,6 +45,13 @@ export default function ServicesPage() {
             <div className="flex flex-col gap-2 w-full sm:w-auto">
               {/* Linha 2: ações — ícone-only nos secundários em mobile */}
               <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-end">
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/services/promotions">
+                    <Tag className="mr-1.5 h-4 w-4" />
+                    <span className="hidden sm:inline">Promoções</span>
+                    <span className="sm:hidden">Promoções</span>
+                  </Link>
+                </Button>
                 <Button asChild size="sm">
                   <Link href="/services/new">
                     <Plus className="mr-1.5 h-4 w-4" />

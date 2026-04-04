@@ -39,6 +39,7 @@ export function useAppointmentForm() {
 
   const [form, setForm] = useState<NewAppointmentForm>(DEFAULT_FORM)
   const [isCreating, setIsCreating] = useState(false)
+  const [activePromotion, setActivePromotion] = useState<{ serviceName: string; originalPrice: number; promotionalPrice: number } | null>(null)
 
   const { data: clientMemberships } = useSWR(
     form.clientId ? `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/client/${form.clientId}` : null,
@@ -61,11 +62,17 @@ export function useAppointmentForm() {
 
   function handleServiceChange(serviceId: string, serviceData?: any) {
     const selected = serviceData ?? services?.find((s: any) => s.id === serviceId)
+    const hasPromo = !!(selected?.hasPromotion && selected?.promotionalPrice)
+    setActivePromotion(hasPromo ? {
+      serviceName: selected.name,
+      originalPrice: selected.price,
+      promotionalPrice: selected.promotionalPrice,
+    } : null)
     setForm((p) => ({
       ...p,
       serviceId,
       employeeId: "none",
-      amount: selected?.price ?? p.amount,
+      amount: hasPromo ? selected.promotionalPrice : (selected?.price ?? p.amount),
       durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
       description: p.description || selected?.name || "",
     }))
@@ -136,5 +143,6 @@ export function useAppointmentForm() {
     mutateServices,
     mutateEmployees,
     activeMembership,
+    activePromotion,
   }
 }

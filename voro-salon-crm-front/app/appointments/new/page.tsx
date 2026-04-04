@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, Zap } from "lucide-react"
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, Zap, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -56,6 +56,7 @@ export default function NovoAgendamentoPage() {
     mutateServices,
     mutateEmployees,
     activeMembership,
+    activePromotion,
   } = useAppointmentForm()
 
   const { tenant } = useSettings()
@@ -181,10 +182,31 @@ export default function NovoAgendamentoPage() {
                       <SelectContent>
                         <SelectItem value="none">Nenhum / Customizado</SelectItem>
                         {services?.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          <SelectItem key={s.id} value={s.id}>
+                            <span className="flex items-center gap-2">
+                              {s.name}
+                              {s.hasPromotion && (
+                                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">PROMOÇÃO</span>
+                              )}
+                            </span>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {activePromotion && (
+                      <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                        <Tag className="h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>
+                          Promoção aplicada:{" "}
+                          <span className="line-through text-emerald-600/70">
+                            {activePromotion.originalPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </span>{" "}
+                          <strong>
+                            {activePromotion.promotionalPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </strong>
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 

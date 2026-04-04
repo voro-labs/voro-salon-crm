@@ -36,6 +36,7 @@ export function useAppointmentForm(id?: string) {
 
   const [form, setForm] = useState<NewAppointmentForm>(DEFAULT_FORM)
   const [isCreating, setIsCreating] = useState(false)
+  const [activePromotion, setActivePromotion] = useState<{ serviceName: string; originalPrice: number; promotionalPrice: number } | null>(null)
 
   // Fetch existing appointment data when editing
   const { data: existingAppointment, isLoading: loadingAppointment } = useSWR(
@@ -73,10 +74,16 @@ export function useAppointmentForm(id?: string) {
 
   function handleServiceChange(serviceId: string) {
     const selected = services?.find((s: any) => s.id === serviceId)
+    const hasPromo = !!(selected?.hasPromotion && selected?.promotionalPrice)
+    setActivePromotion(hasPromo ? {
+      serviceName: selected.name,
+      originalPrice: selected.price,
+      promotionalPrice: selected.promotionalPrice,
+    } : null)
     setForm((p) => ({
       ...p,
       serviceId,
-      amount: selected?.price ?? p.amount,
+      amount: hasPromo ? selected.promotionalPrice : (selected?.price ?? p.amount),
       description: p.description || selected?.name || "",
       durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
     }))
@@ -141,5 +148,6 @@ export function useAppointmentForm(id?: string) {
     mutateClients,
     mutateServices,
     mutateEmployees,
+    activePromotion,
   }
 }

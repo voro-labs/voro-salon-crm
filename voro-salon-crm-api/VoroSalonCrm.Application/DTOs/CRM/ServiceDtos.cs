@@ -22,6 +22,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Description,
         decimal Price,
         int DurationMinutes,
-        DateTimeOffset CreatedAt
+        DateTimeOffset CreatedAt,
+        decimal? PromotionalPrice = null,
+        bool HasPromotion = false
     );
 }

@@ -3,16 +3,18 @@
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { useState, useEffect } from "react"
-import { 
-  ArrowLeft, 
-  Loader2, 
-  Trash2, 
-  UserCheck, 
-  CreditCard, 
-  Calendar as CalendarIcon, 
+import {
+  ArrowLeft,
+  Loader2,
+  Trash2,
+  UserCheck,
+  CreditCard,
+  Calendar as CalendarIcon,
   Zap,
   MessageCircle,
-  MessageSquare
+  MessageSquare,
+  Star,
+  Send
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -55,6 +57,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import useSWR from "swr"
+import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentDetail } from "@/hooks/use-appointment-detail.hook"
 import { useSettings } from "@/hooks/use-settings.hook"
@@ -78,6 +81,10 @@ export default function AppointmentDetailPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [isEncaixe, setIsEncaixe] = useState(false)
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false)
+  const [isSendingRating, setIsSendingRating] = useState(false)
+  const [ratingRequestSent, setRatingRequestSent] = useState(false)
+  const [existingRating, setExistingRating] = useState<{ stars: number; comment?: string } | null>(null)
+  const [isFetchingRating, setIsFetchingRating] = useState(false)
 
   const {
     appointment,
@@ -103,6 +110,25 @@ export default function AppointmentDetailPage() {
 
   const { tenant } = useSettings()
   const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
+
+  useEffect(() => {
+    if (!appointment || appointment.status !== 2) return
+    setIsFetchingRating(true)
+    secureApiCall<{ stars: number; comment?: string }>(`/ClientRating/${appointmentId}`)
+      .then((res) => { if (!res.hasError && res.data) setExistingRating(res.data) })
+      .finally(() => setIsFetchingRating(false))
+  }, [appointment?.id, appointment?.status])
+
+  async function handleSendRatingRequest() {
+    setIsSendingRating(true)
+    try {
+      const res = await secureApiCall(`/ClientRating/send-request/${appointmentId}`, { method: "POST" })
+      if (res.hasError) { toast.error(res.message || "Erro ao enviar solicitação."); return }
+      toast.success("Solicitação de avaliação enviada via WhatsApp!")
+      setRatingRequestSent(true)
+    } catch { toast.error("Erro de conexão.") }
+    finally { setIsSendingRating(false) }
+  }
 
   // Initialize selectedDate from loaded appointment
   useEffect(() => {
@@ -531,6 +557,55 @@ export default function AppointmentDetailPage() {
                 </p>
               </CardContent>
             </Card>
+
+            {appointment.status === 2 && (
+              <Card>
+                <CardContent className="p-4 flex flex-col gap-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    Avaliação do Cliente
+                  </h4>
+                  {isFetchingRating ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Verificando avaliação...
+                    </div>
+                  ) : existingRating ? (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star key={s} className={`h-5 w-5 ${s <= existingRating.stars ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
+                        ))}
+                      </div>
+                      {existingRating.comment && (
+                        <p className="text-xs text-muted-foreground italic">"{existingRating.comment}"</p>
+                      )}
+                      <span className="text-xs text-green-600 font-medium">Avaliação recebida</span>
+                    </div>
+                  ) : ratingRequestSent ? (
+                    <p className="text-xs text-green-600 font-medium">Solicitação enviada com sucesso!</p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        Envie uma solicitação de avaliação para o cliente via WhatsApp.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendRatingRequest}
+                        disabled={isSendingRating}
+                      >
+                        {isSendingRating
+                          ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          : <Send className="mr-2 h-4 w-4" />}
+                        Solicitar Avaliação
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
