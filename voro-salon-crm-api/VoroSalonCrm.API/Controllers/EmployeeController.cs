@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM.Financial;
 using VoroSalonCrm.Application.DTOs.Employee;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -37,12 +38,15 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
         {
             try
             {
-                var result = await _service.GetAllAsync();
-                return ResponseViewModel<IEnumerable<EmployeeDto>>
+                var result = await _service.GetPagedAsync(page, pageSize, search);
+                return ResponseViewModel<PagedResult<EmployeeDto>>
                     .SuccessWithMessage("Employees retrieved.", result)
                     .ToActionResult();
             }

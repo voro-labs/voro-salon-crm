@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
@@ -73,6 +74,25 @@ namespace VoroSalonCrm.Application.Services
                 return new ServiceDto(s.Id, s.Name, s.Description, s.Price, s.DurationMinutes, s.CreatedAt,
                     promo?.PromotionalPrice, promo != null);
             });
+        }
+
+        public async Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search)
+        {
+            var dtos = (await GetAllAsync()).ToList();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                dtos = dtos.Where(s =>
+                    (s.Name?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (s.Description?.ToLowerInvariant().Contains(term) ?? false))
+                    .ToList();
+            }
+
+            var totalCount = dtos.Count;
+            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+
+            return new PagedResult<ServiceDto>(items, totalCount, page, pageSize);
         }
 
         public async Task<ServiceDto> UpdateAsync(Guid id, UpdateServiceDto dto)

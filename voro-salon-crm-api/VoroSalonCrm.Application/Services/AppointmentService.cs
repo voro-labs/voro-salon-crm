@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -135,6 +136,36 @@ namespace VoroSalonCrm.Application.Services
 
             var appointments = await query.OrderBy(a => a.ScheduledDateTime).ToListAsync();
             return appointments.Select(MapToDto);
+        }
+
+        public async Task<PagedResult<AppointmentDto>> GetPagedAsync(int page, int pageSize, string? search, Guid? clientId = null)
+        {
+            var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .Include(a => a.Employee!)
+                .Include(a => a.Membership!)
+                .ThenInclude(m => m.Plan)
+                .Where(a => !a.IsDeleted);
+
+            if (clientId.HasValue)
+                query = query.Where(a => a.ClientId == clientId.Value);
+
+            var appointments = await query.OrderBy(a => a.ScheduledDateTime).ToListAsync();
+            var dtos = appointments.Select(MapToDto).ToList();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                dtos = dtos.Where(a =>
+                    (a.ClientName?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (a.ServiceName?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (a.Description?.ToLowerInvariant().Contains(term) ?? false))
+                    .ToList();
+            }
+
+            var totalCount = dtos.Count;
+            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+
+            return new PagedResult<AppointmentDto>(items, totalCount, page, pageSize);
         }
 
         public async Task<AppointmentDto> UpdateAsync(Guid id, UpdateAppointmentDto dto)

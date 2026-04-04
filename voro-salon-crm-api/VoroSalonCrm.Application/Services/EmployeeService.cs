@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM.Financial;
 using VoroSalonCrm.Application.DTOs.Employee;
 using VoroSalonCrm.Application.DTOs.Identity;
@@ -42,6 +43,24 @@ namespace VoroSalonCrm.Application.Services
         {
             var employees = await _repository.GetByTenantWithSpecialtiesAsync(_currentUser.TenantId);
             return employees.Select(MapToDto);
+        }
+
+        public async Task<PagedResult<EmployeeDto>> GetPagedAsync(int page, int pageSize, string? search)
+        {
+            var dtos = (await GetAllAsync()).ToList();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                dtos = dtos.Where(e =>
+                    e.Name.ToLowerInvariant().Contains(term))
+                    .ToList();
+            }
+
+            var totalCount = dtos.Count;
+            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+
+            return new PagedResult<EmployeeDto>(items, totalCount, page, pageSize);
         }
 
         public async Task<EmployeeDto?> GetByIdAsync(Guid id)

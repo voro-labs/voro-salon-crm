@@ -1,7 +1,5 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import useSWR from "swr"
 import Link from "next/link"
 import { Plus, Search, Scissors, Banknote, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,8 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 
 import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
-import { fetcher } from "@/lib/fetcher"
 import { PageHeader } from "@/components/ui/custom/page-header"
+import { useDataList } from "@/hooks/use-data-list.hook"
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -21,29 +19,24 @@ function formatCurrency(val: number) {
 }
 
 export default function ServicesPage() {
-  const [search, setSearch] = useState("")
-  const { data, isLoading } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
-
-  const services = data ?? []
-
-  const filtered = useCallback(() => {
-    if (!search.trim()) return services
-    const q = search.toLowerCase()
-    return services.filter(
-      (s: { name: string; description: string }) =>
-        s.name.toLowerCase().includes(q) ||
-        (s.description && s.description.toLowerCase().includes(q))
-    )
-  }, [search, services])
+  const {
+    items,
+    totalCount,
+    totalPages,
+    page,
+    setPage,
+    search,
+    setSearch,
+    isLoading,
+  } = useDataList(API_CONFIG.ENDPOINTS.SERVICES, { pageSize: 20 })
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <div className="flex flex-col gap-6 p-6">
-        <PageHeader 
-          title="Serviços" 
+        <PageHeader
+          title="Serviços"
           action={
             <div className="flex flex-col gap-2 w-full sm:w-auto">
-              {/* Linha 2: ações — ícone-only nos secundários em mobile */}
               <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-end">
                 <Button asChild size="sm" variant="outline">
                   <Link href="/services/promotions">
@@ -61,7 +54,7 @@ export default function ServicesPage() {
                 </Button>
               </div>
             </div>
-          } 
+          }
         />
 
         <div className="relative">
@@ -90,7 +83,7 @@ export default function ServicesPage() {
               </Card>
             ))}
           </div>
-        ) : filtered().length === 0 ? (
+        ) : items.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Scissors className="mb-4 h-12 w-12 text-muted-foreground/50" />
@@ -114,7 +107,7 @@ export default function ServicesPage() {
           </Card>
         ) : (
           <div className="flex flex-col gap-3">
-            {filtered().map(
+            {items.map(
               (service: {
                 id: string
                 name: string
@@ -146,6 +139,31 @@ export default function ServicesPage() {
                 </Link>
               )
             )}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-muted-foreground">{totalCount} registros</p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm">Página {page} de {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Próxima
+              </Button>
+            </div>
           </div>
         )}
       </div>

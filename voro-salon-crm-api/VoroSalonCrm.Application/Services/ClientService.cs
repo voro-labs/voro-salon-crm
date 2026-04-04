@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
@@ -63,6 +64,27 @@ namespace VoroSalonCrm.Application.Services
         {
             var clients = await _clientRepository.GetAllAsync();
             return clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate));
+        }
+
+        public async Task<PagedResult<ClientDto>> GetPagedAsync(int page, int pageSize, string? search)
+        {
+            var clients = await _clientRepository.GetAllAsync();
+            var dtos = clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate));
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                dtos = dtos.Where(c =>
+                    (c.Name?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (c.Email?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (c.Phone?.ToLowerInvariant().Contains(term) ?? false));
+            }
+
+            var list = dtos.ToList();
+            var totalCount = list.Count;
+            var items = list.Skip((page - 1) * pageSize).Take(pageSize);
+
+            return new PagedResult<ClientDto>(items, totalCount, page, pageSize);
         }
 
         public async Task<ClientDto> UpdateAsync(Guid id, UpdateClientDto dto)

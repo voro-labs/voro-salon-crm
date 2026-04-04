@@ -1,35 +1,71 @@
-import { useState, useCallback, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import useSWR from "swr"
-import { secureApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
+
+export interface PagedResult<T> {
+  items: T[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState<T>(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+
+  return debounced
+}
 
 export function useDataList<T>(
   endpoint: string,
-  filterFn: (item: T, search: string) => boolean,
-  initialData?: T[]
+  options?: {
+    pageSize?: number
+    extraParams?: Record<string, string>
+  }
 ) {
+  const pageSize = options?.pageSize ?? 20
+  const extraParams = options?.extraParams ?? {}
+
+  const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
+  const debouncedSearch = useDebounce(search, 300)
 
-  const { data, isLoading, error, mutate } = useSWR<T[]>(endpoint, fetcher, {
-    fallbackData: initialData,
+  // Reset to page 1 whenever the debounced search term changes
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    setPage(1)
+  }, [debouncedSearch])
+
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    ...extraParams,
   })
+  const key = `${endpoint}?${params.toString()}`
 
-  const rawData: T[] = data || []
-
-  // Pre-filter the data based on search input efficiently.
-  const filteredData = useMemo(() => {
-    if (!search.trim()) return rawData
-    const query = search.toLowerCase()
-    return rawData.filter((item) => filterFn(item, query))
-  }, [rawData, search, filterFn])
+  const { data, isLoading, error, mutate } = useSWR<PagedResult<T>>(key, fetcher)
 
   return {
-    data: rawData,
-    filteredData,
-    isLoading,
-    error,
+    items: data?.items ?? [],
+    totalCount: data?.totalCount ?? 0,
+    totalPages: data?.totalPages ?? 1,
+    page,
+    setPage,
+    pageSize,
     search,
     setSearch,
+    isLoading,
+    error,
     mutate,
   }
 }

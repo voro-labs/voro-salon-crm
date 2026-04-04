@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Shared.Extensions;
@@ -15,14 +16,17 @@ namespace VoroSalonCrm.API.Controllers
     public class ClientController(IClientService clientService) : ControllerBase
     {
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
         {
             try
             {
-                var clients = await clientService.GetAllAsync();
+                var result = await clientService.GetPagedAsync(page, pageSize, search);
 
-                return ResponseViewModel<IEnumerable<ClientDto>>
-                    .SuccessWithMessage("Clients retrieved.", clients)
+                return ResponseViewModel<PagedResult<ClientDto>>
+                    .SuccessWithMessage("Clients retrieved.", result)
                     .ToActionResult();
             }
             catch (Exception ex)

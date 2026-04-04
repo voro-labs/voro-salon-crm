@@ -27,23 +27,26 @@ import { fetcher } from "@/lib/fetcher"
 export default function AppointmentsPage() {
   const [periodFilter, setPeriodFilter] = useState("today")
 
-  const { filteredData: searchFiltered, isLoading, search, setSearch } = useDataList(
-    API_CONFIG.ENDPOINTS.APPOINTMENTS,
-    (a: any, q: string) =>
-      a.clientName.toLowerCase().includes(q) ||
-      (a.serviceName && a.serviceName.toLowerCase().includes(q)) ||
-      (a.description && a.description.toLowerCase().includes(q))
-  )
+  const {
+    items,
+    totalCount,
+    totalPages,
+    page,
+    setPage,
+    search,
+    setSearch,
+    isLoading,
+  } = useDataList(API_CONFIG.ENDPOINTS.APPOINTMENTS, { pageSize: 20 })
 
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
   const { plan } = useSubscription()
   const { user } = useAuth()
   const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
 
-  // Se não houver agendamentos hoje, mostra a semana automaticamente
+  // If there are no appointments today in the current page, show week automatically
   useEffect(() => {
     if (isLoading) return
-    const hasToday = searchFiltered.some((a: any) => isToday(new Date(a.scheduledDateTime)))
+    const hasToday = items.some((a: any) => isToday(new Date(a.scheduledDateTime)))
     if (!hasToday) setPeriodFilter("week")
   }, [isLoading])
 
@@ -55,11 +58,11 @@ export default function AppointmentsPage() {
     const now = new Date()
     const weekStart = startOfWeek(now, { locale: ptBR })
     const weekEnd = endOfWeek(now, { locale: ptBR })
-    return searchFiltered.filter((a: any) => {
+    return items.filter((a: any) => {
       const d = new Date(a.scheduledDateTime)
       return isWithinInterval(d, { start: weekStart, end: weekEnd })
     }).length
-  }, [searchFiltered])
+  }, [items])
 
   const WHATSAPP_UPSELL_KEY = "whatsapp_upsell_dismissed"
   const [upsellDismissed, setUpsellDismissed] = useState(true)
@@ -75,11 +78,11 @@ export default function AppointmentsPage() {
 
   const showWhatsAppUpsell = plan !== undefined && plan.hasWhatsAppBot === false && !upsellDismissed
 
+  // Client-side period filter applied on top of the server-paginated results
   const finalFiltered = useMemo(() => {
-    let result = searchFiltered
+    let result = items
     const now = new Date()
 
-    // Period filter
     if (periodFilter === "today") {
       result = result.filter((a: any) => isToday(new Date(a.scheduledDateTime)))
     } else if (periodFilter === "week") {
@@ -96,13 +99,13 @@ export default function AppointmentsPage() {
         new Date(a.scheduledDateTime).getTime() -
         new Date(b.scheduledDateTime).getTime()
     )
-  }, [searchFiltered, periodFilter])
+  }, [items, periodFilter])
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
       <div className="flex flex-col gap-6 p-6">
-        <PageHeader 
-          title="Agendamentos" 
+        <PageHeader
+          title="Agendamentos"
           action={
             <div className="flex flex-col gap-2 w-full">
               {/* Linha 2: ações — ícone-only nos secundários em mobile */}
@@ -148,7 +151,7 @@ export default function AppointmentsPage() {
                 </Tabs>
               </div>
             </div>
-          } 
+          }
         />
 
         {showWhatsAppUpsell && (
@@ -202,7 +205,7 @@ export default function AppointmentsPage() {
         {isLoading ? (
           <ListSkeleton type="cards" count={5} />
         ) : finalFiltered.length === 0 ? (
-          <EmptyState 
+          <EmptyState
             icon={Calendar}
             title={search ? "Nenhum resultado encontrado" : "Nenhum agendamento encontrado"}
             description={search ? "Tente buscar por outro termo." : "Comece agendando seu primeiro horário."}
@@ -269,6 +272,31 @@ export default function AppointmentsPage() {
                 )
               }
             )}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-muted-foreground">{totalCount} registros</p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm">Página {page} de {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Próxima
+              </Button>
+            </div>
           </div>
         )}
       </div>

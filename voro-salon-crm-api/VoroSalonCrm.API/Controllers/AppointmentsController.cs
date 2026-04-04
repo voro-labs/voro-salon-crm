@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
+using VoroSalonCrm.Application.DTOs.Employee;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
-using VoroSalonCrm.Application.DTOs.Employee;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -54,23 +55,49 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] Guid? clientId)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] Guid? clientId = null)
         {
             try
             {
-                Guid? employeeId = null;
                 if (User.IsInRole("SalonEmployee"))
                 {
                     var employee = await _employeeService.GetByCurrentUserAsync();
                     if (employee == null)
-                        return ResponseViewModel<IEnumerable<AppointmentDto>>
-                            .SuccessWithMessage("Appointments retrieved.", Enumerable.Empty<AppointmentDto>())
+                    {
+                        var empty = new PagedResult<AppointmentDto>(Enumerable.Empty<AppointmentDto>(), 0, page, pageSize);
+                        return ResponseViewModel<PagedResult<AppointmentDto>>
+                            .SuccessWithMessage("Appointments retrieved.", empty)
                             .ToActionResult();
-                    employeeId = employee.Id;
+                    }
+
+                    // For SalonEmployee, scope results to their own appointments and apply pagination/search in-memory
+                    var all = (await _appointmentService.GetAllAsync(clientId, employee.Id)).ToList();
+
+                    if (!string.IsNullOrWhiteSpace(search))
+                    {
+                        var term = search.Trim().ToLowerInvariant();
+                        all = all.Where(a =>
+                            (a.ClientName?.ToLowerInvariant().Contains(term) ?? false) ||
+                            (a.ServiceName?.ToLowerInvariant().Contains(term) ?? false) ||
+                            (a.Description?.ToLowerInvariant().Contains(term) ?? false))
+                            .ToList();
+                    }
+
+                    var employeeTotal = all.Count;
+                    var employeeItems = all.Skip((page - 1) * pageSize).Take(pageSize);
+                    var employeePaged = new PagedResult<AppointmentDto>(employeeItems, employeeTotal, page, pageSize);
+
+                    return ResponseViewModel<PagedResult<AppointmentDto>>
+                        .SuccessWithMessage("Appointments retrieved.", employeePaged)
+                        .ToActionResult();
                 }
 
-                var result = await _appointmentService.GetAllAsync(clientId, employeeId);
-                return ResponseViewModel<IEnumerable<AppointmentDto>>
+                var result = await _appointmentService.GetPagedAsync(page, pageSize, search, clientId);
+                return ResponseViewModel<PagedResult<AppointmentDto>>
                     .SuccessWithMessage("Appointments retrieved.", result)
                     .ToActionResult();
             }
