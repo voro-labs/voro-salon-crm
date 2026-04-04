@@ -60,6 +60,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<ClientMembership> ClientMemberships { get; set; }
 
         public DbSet<EmployeeGoal> EmployeeGoals { get; set; }
+        public DbSet<ServicePromotion> ServicePromotions { get; set; }
+        public DbSet<ClientRating> ClientRatings { get; set; }
 
         public DbSet<PushToken> PushTokens { get; set; }
         public DbSet<UserNotification> UserNotifications { get; set; }
@@ -595,6 +597,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(asheet => asheet.TenantId);
                 b.HasIndex(asheet => asheet.ClientId);
                 b.HasIndex(asheet => new { asheet.TenantId, asheet.Date });
+                b.HasIndex(asheet => asheet.PublicToken).IsUnique().HasFilter("\"PublicToken\" IS NOT NULL");
 
                 b.HasOne(asheet => asheet.Tenant)
                  .WithMany()
@@ -785,6 +788,68 @@ namespace VoroSalonCrm.Infrastructure.Factories
             // Filtro global para EmployeeGoal
             builder.Entity<EmployeeGoal>().HasQueryFilter(g =>
                 g.TenantId == _currentUser.TenantId);
+
+            // ---------------------------
+            // SERVICE PROMOTION
+            // ---------------------------
+            builder.Entity<ServicePromotion>(b =>
+            {
+                b.HasKey(sp => sp.Id);
+                b.Property(sp => sp.PromotionalPrice).HasColumnType("NUMERIC(10,2)").IsRequired();
+                b.Property(sp => sp.IsActive).HasDefaultValue(true);
+                b.Property(sp => sp.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.Property(sp => sp.DaysOfWeek).HasColumnType("integer[]");
+
+                b.HasIndex(sp => sp.TenantId);
+                b.HasIndex(sp => new { sp.TenantId, sp.ServiceId });
+
+                b.HasOne(sp => sp.Tenant)
+                 .WithMany()
+                 .HasForeignKey(sp => sp.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(sp => sp.Service)
+                 .WithMany()
+                 .HasForeignKey(sp => sp.ServiceId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<ServicePromotion>().HasQueryFilter(sp =>
+                sp.TenantId == _currentUser.TenantId);
+
+            // ---------------------------
+            // CLIENT RATING
+            // ---------------------------
+            builder.Entity<ClientRating>(b =>
+            {
+                b.HasKey(cr => cr.Id);
+                b.Property(cr => cr.Stars).IsRequired();
+                b.Property(cr => cr.Source).HasConversion<int>().IsRequired();
+                b.Property(cr => cr.Comment).HasMaxLength(1000);
+                b.Property(cr => cr.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(cr => cr.TenantId);
+                b.HasIndex(cr => cr.AppointmentId).IsUnique(); // one rating per appointment
+                b.HasIndex(cr => cr.ClientId);
+
+                b.HasOne(cr => cr.Tenant)
+                 .WithMany()
+                 .HasForeignKey(cr => cr.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(cr => cr.Appointment)
+                 .WithMany()
+                 .HasForeignKey(cr => cr.AppointmentId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(cr => cr.Client)
+                 .WithMany()
+                 .HasForeignKey(cr => cr.ClientId)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<ClientRating>().HasQueryFilter(cr =>
+                cr.TenantId == _currentUser.TenantId);
         }
     }
 }

@@ -16,7 +16,9 @@ namespace VoroSalonCrm.Application.DTOs.Public
         Guid Id,
         string Name,
         decimal Price,
-        int DurationMinutes
+        int DurationMinutes,
+        decimal? PromotionalPrice = null,
+        bool HasPromotion = false
     );
 
     public record PublicEmployeeDto(
@@ -54,6 +56,8 @@ namespace VoroSalonCrm.Application.DTOs.Public
         decimal Amount,
         string Status,
         PublicTenantDto Tenant,
-        IEnumerable<CRM.AvailabilitySlotDto> DayAgenda
+        IEnumerable<CRM.AvailabilitySlotDto> DayAgenda,
+        int? Rating = null,
+        bool CanRate = false
     );
 }

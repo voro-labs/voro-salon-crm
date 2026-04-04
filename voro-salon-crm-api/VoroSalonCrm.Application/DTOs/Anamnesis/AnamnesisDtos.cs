@@ -82,4 +82,27 @@ namespace VoroSalonCrm.Application.DTOs.Anamnesis
         CreateClientDto Client,
         CreateAnamnesisSheetDto Anamnesis
     );
+
+    /// <summary>Anamnesis sheet exposed publicly for client signing (no sensitive tenant data).</summary>
+    public record PublicAnamnesisSheetDto(
+        Guid Id,
+        string ClientName,
+        string TenantName,
+        DateTimeOffset Date,
+        string? Diagnosis,
+        string? TreatmentProtocol,
+        IEnumerable<PublicAnamnesisQuestionAnswerDto> Questions,
+        bool AlreadySigned,
+        DateTimeOffset? ExpiresAt
+    );
+
+    public record PublicAnamnesisQuestionAnswerDto(
+        string Label,
+        string Value
+    );
+
+    public record SubmitPublicSignatureDto(
+        /// <summary>Base64-encoded PNG of the signature drawn on canvas.</summary>
+        string SignatureData
+    );
 }

@@ -24,6 +24,10 @@ namespace VoroSalonCrm.Domain.Entities
         public ICollection<AnamnesisEvidence> Evidences { get; set; } = new List<AnamnesisEvidence>();
         public ICollection<AnamnesisSignature> Signatures { get; set; } = new List<AnamnesisSignature>();
 
+        /// <summary>Unique token for public (unauthenticated) access to sign the sheet.</summary>
+        public string? PublicToken { get; set; }
+        public DateTimeOffset? PublicTokenExpiresAt { get; set; }
+
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }
         public bool IsDeleted { get; set; }

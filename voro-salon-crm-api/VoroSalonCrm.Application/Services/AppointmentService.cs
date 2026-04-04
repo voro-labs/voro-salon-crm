@@ -370,6 +370,44 @@ namespace VoroSalonCrm.Application.Services
                     await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
                     _memoryCache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
                 }
+                else if (status == AppointmentStatus.Completed && appointment.Client != null &&
+                    !string.IsNullOrWhiteSpace(appointment.Client.Phone))
+                {
+                    // Send rating request template after completion
+                    var ratingMsg = new WhatsappTemplateMessageDto
+                    {
+                        To = appointment.Client.Phone,
+                        Template = new()
+                        {
+                            Name = "service_rating_request_1",
+                            Components =
+                            [
+                                new() {
+                                    Type = "body",
+                                    Parameters =
+                                    [
+                                        new() { Type = "text", Text = appointment.Client.Name },
+                                        new() { Type = "text", Text = appointment.Service?.Name ?? "Serviço" }
+                                    ]
+                                },
+                                new() {
+                                    Type = "button",
+                                    SubType = "url",
+                                    Index = "0",
+                                    Parameters = [
+                                        new() { Type = "text", Text = "/" + appointment.Id.ToString() }
+                                    ]
+                                }
+                            ]
+                        }
+                    };
+
+                    try
+                    {
+                        await _whatsappService.SendTemplateMessageAsync(ratingMsg, tenant?.WhatsappPhoneNumberId);
+                    }
+                    catch (Exception) { /* Não falha o fluxo se o envio falhar */ }
+                }
             }
 
             return true;

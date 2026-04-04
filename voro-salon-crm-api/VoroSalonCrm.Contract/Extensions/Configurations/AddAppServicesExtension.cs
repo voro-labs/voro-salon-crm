@@ -123,6 +123,10 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IEmployeeGoalRepository, EmployeeGoalRepository>();
             services.AddScoped<IEmployeeGoalService, EmployeeGoalService>();
             services.AddScoped<IBirthdayGreetingService, BirthdayGreetingService>();
+            services.AddScoped<IServicePromotionRepository, ServicePromotionRepository>();
+            services.AddScoped<IServicePromotionService, ServicePromotionService>();
+            services.AddScoped<IClientRatingRepository, ClientRatingRepository>();
+            services.AddScoped<IClientRatingService, ClientRatingService>();
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();

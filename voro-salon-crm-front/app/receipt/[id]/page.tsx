@@ -2,18 +2,19 @@
 
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
-import { 
-  CheckCircle2, 
-  Calendar, 
-  Clock, 
-  User, 
-  Scissors, 
-  MapPin, 
+import {
+  CheckCircle2,
+  Calendar,
+  Clock,
+  User,
+  Scissors,
+  MapPin,
   Phone,
   ArrowLeft,
   Share2,
   Printer,
-  ChevronRight
+  ChevronRight,
+  Star
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,12 +52,19 @@ interface ReceiptData {
     endTime: string
     isAvailable: boolean
   }>
+  rating?: number
+  canRate?: boolean
 }
 
 export default function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [data, setData] = useState<ReceiptData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hoveredStar, setHoveredStar] = useState(0)
+  const [selectedStar, setSelectedStar] = useState(0)
+  const [ratingComment, setRatingComment] = useState("")
+  const [submittingRating, setSubmittingRating] = useState(false)
+  const [ratingSubmitted, setRatingSubmitted] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -116,6 +124,30 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
   const primaryColor = data.tenant.primaryColor || "#000000"
   const dateObj = new Date(data.scheduledDateTime)
+
+  const handleSubmitRating = async () => {
+    if (selectedStar === 0) {
+      toast.error("Selecione uma nota de 1 a 5 estrelas.")
+      return
+    }
+    setSubmittingRating(true)
+    try {
+      const res = await apiCall(`/ClientRating/${id}`, {
+        method: "POST",
+        body: JSON.stringify({ stars: selectedStar, comment: ratingComment || null, source: 1 }),
+      })
+      if (res.hasError) {
+        toast.error("Erro ao enviar avaliação.")
+        return
+      }
+      setRatingSubmitted(true)
+      toast.success("Obrigado pela sua avaliação!")
+    } catch {
+      toast.error("Erro ao enviar avaliação.")
+    } finally {
+      setSubmittingRating(false)
+    }
+  }
 
   const handleShare = () => {
     if (navigator.share) {
@@ -317,6 +349,74 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             </Button>
           </div>
         </div>}
+
+        {/* Rating Section */}
+        {(data.canRate || data.rating || ratingSubmitted) && (
+          <div className="flex flex-col gap-4 mt-2">
+            <Card className="border-none shadow-xl overflow-hidden">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  {(data.rating || ratingSubmitted) ? "Sua Avaliação" : "Avalie seu Atendimento"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center gap-4 pb-6">
+                {data.rating ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} className={`h-8 w-8 ${s <= data.rating! ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`} />
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Obrigado pela avaliação!</p>
+                  </div>
+                ) : ratingSubmitted ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+                    <p className="text-sm font-semibold">Avaliação enviada!</p>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} className={`h-7 w-7 ${s <= selectedStar ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`} />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground text-center">Como foi seu atendimento em {data.tenant.name}?</p>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <button
+                          key={s}
+                          onMouseEnter={() => setHoveredStar(s)}
+                          onMouseLeave={() => setHoveredStar(0)}
+                          onClick={() => setSelectedStar(s)}
+                        >
+                          <Star className={`h-9 w-9 transition-all ${s <= (hoveredStar || selectedStar) ? "text-yellow-400 fill-yellow-400 scale-110" : "text-muted-foreground"}`} />
+                        </button>
+                      ))}
+                    </div>
+                    {selectedStar > 0 && (
+                      <textarea
+                        className="w-full rounded-lg border bg-background p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                        rows={3}
+                        placeholder="Comentário opcional..."
+                        value={ratingComment}
+                        onChange={e => setRatingComment(e.target.value)}
+                      />
+                    )}
+                    <Button
+                      className="w-full"
+                      disabled={selectedStar === 0 || submittingRating}
+                      onClick={handleSubmitRating}
+                    >
+                      {submittingRating ? "Enviando..." : "Enviar Avaliação"}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Footer Support */}
         <div className="text-center mt-4">

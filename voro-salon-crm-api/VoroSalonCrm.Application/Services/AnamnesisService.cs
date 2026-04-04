@@ -271,6 +271,89 @@ namespace VoroSalonCrm.Application.Services
             return MapToDto(sheet);
         }
 
+        public async Task<string> GeneratePublicTokenAsync(Guid sheetId)
+        {
+            var sheet = await _sheetRepository.GetByIdAsync(false, sheetId)
+                ?? throw new KeyNotFoundException("Anamnesis sheet not found.");
+
+            sheet.PublicToken = Guid.NewGuid().ToString("N");
+            sheet.PublicTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(72);
+            sheet.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _sheetRepository.Update(sheet);
+            await _unitOfWork.SaveChangesAsync();
+
+            return sheet.PublicToken;
+        }
+
+        public async Task<PublicAnamnesisSheetDto?> GetSheetByPublicTokenAsync(string token)
+        {
+            var sheet = await _sheetRepository
+                .Query(s => s.PublicToken == token && !s.IsDeleted)
+                .Include(s => s.Client)
+                .Include(s => s.Tenant)
+                .Include(s => s.Responses)
+                    .ThenInclude(r => r.Question)
+                .Include(s => s.Signatures)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (sheet == null) return null;
+            if (sheet.PublicTokenExpiresAt.HasValue && sheet.PublicTokenExpiresAt < DateTimeOffset.UtcNow)
+                return null; // token expired
+
+            var alreadySigned = sheet.Signatures.Any(sig =>
+                sig.Type == Domain.Enums.AnamnesisSignatureType.Client);
+
+            var questions = sheet.Responses
+                .Where(r => r.Question != null)
+                .Select(r => new PublicAnamnesisQuestionAnswerDto(r.Question.Text, r.Value));
+
+            return new PublicAnamnesisSheetDto(
+                sheet.Id,
+                sheet.Client?.Name ?? string.Empty,
+                sheet.Tenant?.Name ?? string.Empty,
+                sheet.Date,
+                sheet.Diagnosis,
+                sheet.TreatmentProtocol,
+                questions,
+                alreadySigned,
+                sheet.PublicTokenExpiresAt
+            );
+        }
+
+        public async Task<bool> SubmitPublicSignatureAsync(string token, SubmitPublicSignatureDto dto)
+        {
+            var sheet = await _sheetRepository
+                .Query(s => s.PublicToken == token && !s.IsDeleted)
+                .Include(s => s.Signatures)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (sheet == null) return false;
+            if (sheet.PublicTokenExpiresAt.HasValue && sheet.PublicTokenExpiresAt < DateTimeOffset.UtcNow)
+                throw new InvalidOperationException("O link de assinatura expirou. Solicite um novo link.");
+
+            if (sheet.Signatures.Any(sig => sig.Type == Domain.Enums.AnamnesisSignatureType.Client))
+                throw new InvalidOperationException("Este documento já foi assinado.");
+
+            sheet.Signatures.Add(new AnamnesisSignature
+            {
+                Id = Guid.NewGuid(),
+                SheetId = sheet.Id,
+                Type = Domain.Enums.AnamnesisSignatureType.Client,
+                SignatureData = dto.SignatureData,
+                SignedAt = DateTimeOffset.UtcNow
+            });
+
+            sheet.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _sheetRepository.Update(sheet);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
         private static AnamnesisSheetDto MapToDto(AnamnesisSheet s)
         {
             return new AnamnesisSheetDto(
