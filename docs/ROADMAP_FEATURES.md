@@ -1,49 +1,47 @@
 # Roadmap de Funcionalidades
 
-## ✅ Concluído
-
-- [x] Paginação para listagens (agendamentos, clientes, serviços, funcionários) — web e mobile
-- [x] Debounce na pesquisa das listagens
-- [x] Seção de metas nos funcionários (web e mobile)
-- [x] Botão de avaliação no detalhe do agendamento (web)
-- [x] Gerenciamento de promoções no detalhe do serviço (mobile)
-- [x] Data de validade nas promoções (mobile)
-- [x] Aplicar preço promocional automaticamente ao criar agendamento (web e mobile)
-- [x] Exibir promoção nas páginas públicas de booking (web e mobile)
-
----
-
 ## 📱 Mobile
 
 ### Funcionalidades
 
-- [x] Histórico de agendamentos: remover estabelecimentos do storage que não existem mais na API
-- [x] Agendamentos passados (popup): mostrar os dias das ocorrências para melhor entendimento do usuário
-- [x] StatusBar do celular acompanhar a cor do aplicativo (branco)
-- [x] Limpar o histórico de navegação após exclusão de um item (evitar o usuário voltar para item excluído)
-- [x] Remover o swipe da página de WhatsApp (manter apenas os swipes do Kanban)
-- [x] Permitir múltiplos horários no mesmo dia da semana (ex: 08:00–11:50 | 13:00–18:00)
+- [ ] A tela de sig-in faz o redirect para a tela de 2fa, isso faz a sugestão de salvar o login (email e senha) não aparecer, pois ele entende que o login não foi um sucesso, no caso o ideal era tudo ser uma tela só com dois forms, devemos validar para isso ser possivel para salvar a sugestão de conta
 
-### Inset Top (SafeAreaView faltando)
 
-- [x] Editar cliente (já estava correto)
-- [x] Criar serviço
-- [x] Criar acesso ao sistema (SafeAreaView adicionado dentro do modal)
-- [x] Editar funcionário (já estava correto)
-- [x] Nova categoria
-- [x] Enviar template
-- [x] Criar plano (usa ScreenHeader que gerencia top inset)
+O autofill do sistema (iOS Keychain / Android Autofill) só dispara quando o fluxo de autenticação é concluído na mesma tela.
+Quando você faz:
 
-### Modais customizados (substituir alerts nativos do Android)
+Login → redirect → tela 2FA
 
-- [x] Confirmação de exclusão: categorias financeiras
-- [x] Confirmação de exclusão: horários bloqueados
-- [x] Confirmação de exclusão: notificações (unitária e em lote)
-- [x] Planos de fidelidade (já usava ConfirmModal)
-- [x] Modal de escolher foto (galeria / câmera) — bottom sheet customizado
+o sistema interpreta como:
 
-### Padding Bottom em ScrollView
+“login ainda não finalizado” → não salva credenciais
 
-- [x] Tela de enviar template
+🔎 Por que isso acontece (comportamento interno)
 
----
+Os heurísticos do sistema esperam:
+
+Campo email + senha
+Submissão
+Sucesso final de autenticação naquela mesma tela
+
+Se houver navegação intermediária (2FA, captcha, etc), o salvamento é abortado.
+
+
+## WEB:
+    se eu mudo o status de pendente para concluido ele gear um service record, mas a data desse service record é o dia de hoje, e o serviço foi feito no dia da agenda, como podemos resolver isso?
+
+se eu gero a receita automatico está duplicando os registros, ele não filtra que já foi cadastrado aquele serviço
+
+
+# notifications não é deletada junto com o cliente, agendamento e etc
+# mensagens de whatsapp, chat não são deletadas junto com os clientes
+
+na solicitação de avalição deu essa mensagem:
+
+http://192.168.1.72:9000/api/v1/ClientRating/7781d5b2-22ea-4f60-96ac-2ced166c23c2
+
+{"status":500,"message":"Avaliação não encontrada.","data":null,"hasError":false}
+
+as rotas parecem não condizer com a api:
+
+http://192.168.1.72:9000/api/v1/ClientRating/send-request/7781d5b2-22ea-4f60-96ac-2ced166c23c2
