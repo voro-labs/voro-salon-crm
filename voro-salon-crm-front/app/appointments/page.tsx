@@ -27,6 +27,17 @@ import { fetcher } from "@/lib/fetcher"
 export default function AppointmentsPage() {
   const [periodFilter, setPeriodFilter] = useState("today")
 
+  interface AppointmentItem {
+    id: string
+    clientName: string
+    serviceName?: string
+    scheduledDateTime: string
+    durationMinutes: number
+    status: number
+    amount: number
+    description?: string
+  }
+
   const {
     items,
     totalCount,
@@ -36,7 +47,7 @@ export default function AppointmentsPage() {
     search,
     setSearch,
     isLoading,
-  } = useDataList(API_CONFIG.ENDPOINTS.APPOINTMENTS, { pageSize: 20 })
+  } = useDataList<AppointmentItem>(API_CONFIG.ENDPOINTS.APPOINTMENTS, { pageSize: 20 })
 
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
   const { plan } = useSubscription()
@@ -220,16 +231,7 @@ export default function AppointmentsPage() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {finalFiltered.map(
-              (apt: {
-                id: string
-                clientName: string
-                serviceName?: string
-                scheduledDateTime: string
-                durationMinutes: number
-                status: number
-                amount: number
-              }) => {
+            {finalFiltered.map((apt) => {
                 const date = new Date(apt.scheduledDateTime)
 
                 return (

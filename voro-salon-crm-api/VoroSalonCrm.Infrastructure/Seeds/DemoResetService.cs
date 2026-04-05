@@ -147,8 +147,8 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
         private static readonly string[][] EmployeeNamesByTenant =
         [
-            // 0 – starter (5 funcionários)
-            [ "Márcia Vidal", "Carlos Eduardo Ramos", "Patrícia Cristina Lima", "Roberto Nascimento", "Tatiana Borges" ],
+            // 0 – starter (3 funcionários)
+            [ "Márcia Vidal", "Carlos Eduardo Ramos", "Patrícia Cristina Lima" ],
             // 1 – pro (5 funcionários)
             [ "Fernanda Moraes", "Gustavo Henrique Sousa", "Priscila Almeida", "Renato Batista", "Simone Cavalcanti" ],
             // 2 – premium (5 funcionários)
@@ -158,18 +158,18 @@ namespace VoroSalonCrm.Infrastructure.Seeds
         // Serviços: (nome, duração em minutos, preços por tenant [starter, pro, premium])
         private static readonly (string Name, int Duration, decimal[] Prices)[] ServiceCatalog =
         [
-            ("Corte Feminino",       60,  [ 70m,  80m,  110m ]),
-            ("Corte Masculino",      30,  [ 40m,  50m,   70m ]),
-            ("Coloração",           120,  [130m, 150m,  200m ]),
-            ("Escova Progressiva",  180,  [180m, 210m,  280m ]),
-            ("Hidratação Profunda",  45,  [ 55m,  65m,   90m ]),
-            ("Escova",               45,  [ 50m,  60m,   80m ]),
-            ("Manicure",             40,  [ 30m,  35m,   50m ]),
-            ("Pedicure",             50,  [ 35m,  45m,   65m ]),
-            ("Design de Sobrancelha",30,  [ 25m,  30m,   45m ]),
-            ("Luzes / Mechas",      150,  [160m, 190m,  250m ]),
-            ("Tratamento Capilar",   60,  [ 70m,  85m,  120m ]),
-            ("Maquiagem",            60,  [ 90m, 110m,  160m ])
+            ("Corte Feminino",        60,  [ 70m,  80m, 110m ]),
+            ("Corte Masculino",       30,  [ 40m,  50m,  70m ]),
+            ("Coloração",            120,  [130m, 150m, 200m ]),
+            ("Escova Progressiva",   120,  [180m, 210m, 280m ]), // 180 -> 120
+            ("Hidratação Profunda",   45,  [ 55m,  65m,  90m ]),
+            ("Escova",                45,  [ 50m,  60m,  80m ]),
+            ("Manicure",              45,  [ 30m,  35m,  50m ]), // 40 -> 45
+            ("Pedicure",              45,  [ 35m,  45m,  65m ]), // 50 -> 45
+            ("Design de Sobrancelha", 30,  [ 25m,  30m,  45m ]),
+            ("Luzes / Mechas",       120,  [160m, 190m, 250m ]), // 150 -> 120
+            ("Tratamento Capilar",    60,  [ 70m,  85m, 120m ]),
+            ("Maquiagem",             60,  [ 90m, 110m, 160m ])
         ];
 
         private async Task SeedDemoDefaultsAsync(Guid tenantId, int tenantIndex)
@@ -258,7 +258,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 var client = clients[i % clients.Count];
                 var svc    = services[i % services.Count];
                 var emp    = employees[i % employees.Count];
-                var scheduled = new DateTimeOffset(today.AddDays(-daysAgo).Add(TimeSpan.FromHours(hour)), TimeSpan.Zero);
+                var scheduled = new DateTimeOffset(today.AddDays(-daysAgo).Add(TimeSpan.FromHours(hour)), TimeSpan.FromHours(-3)).ToUniversalTime();
                 var method = payMethods[i % payMethods.Length];
 
                 var appt = new Appointment
@@ -307,7 +307,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 var client = clients[(i + 3) % clients.Count];
                 var svc    = services[(i + 2) % services.Count];
                 var emp    = employees[(i + 1) % employees.Count];
-                var scheduled = new DateTimeOffset(today.AddDays(daysAhead).Add(TimeSpan.FromHours(hour)), TimeSpan.Zero);
+                var scheduled = new DateTimeOffset(today.AddDays(daysAhead).Add(TimeSpan.FromHours(hour)), TimeSpan.FromHours(-3)).ToUniversalTime();
                 var status = i < 4 ? AppointmentStatus.Confirmed : AppointmentStatus.Pending;
 
                 appointments.Add(new Appointment

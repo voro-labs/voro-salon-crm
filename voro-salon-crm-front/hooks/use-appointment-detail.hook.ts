@@ -49,12 +49,13 @@ export function useAppointmentDetail(appointmentId: string) {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const { data: employeesRaw } = useSWR(
+  const { data: _employeesRaw } = useSWR(
     form.serviceId !== "none" && form.serviceId !== ""
       ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
       : API_CONFIG.ENDPOINTS.EMPLOYEES,
     fetcher
   )
+  const employeesRaw = _employeesRaw?.items ?? (Array.isArray(_employeesRaw) ? _employeesRaw : undefined)
 
   // Garante que o funcionário atual do agendamento sempre apareça na lista,
   // mesmo que não seja especialista no serviço selecionado.
