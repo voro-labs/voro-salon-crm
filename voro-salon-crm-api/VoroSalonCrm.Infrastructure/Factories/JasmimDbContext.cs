@@ -52,6 +52,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
         public DbSet<TimeSlotBlock> TimeSlotBlocks { get; set; }
         public DbSet<TenantBusinessHours> TenantBusinessHours { get; set; }
+        public DbSet<TenantBusinessHoursRange> TenantBusinessHoursRanges { get; set; }
         public DbSet<WhatsAppMessage> WhatsAppMessages { get; set; }
         public DbSet<WhatsAppConversation> WhatsAppConversations { get; set; }
         public DbSet<WhatsAppTemplate> WhatsAppTemplates { get; set; }
@@ -699,8 +700,6 @@ namespace VoroSalonCrm.Infrastructure.Factories
             builder.Entity<TenantBusinessHours>(b =>
             {
                 b.HasKey(bh => bh.Id);
-                b.Property(bh => bh.OpenTime).HasMaxLength(5).HasDefaultValue("08:00");
-                b.Property(bh => bh.CloseTime).HasMaxLength(5).HasDefaultValue("18:00");
                 b.Property(bh => bh.IsOpen).HasDefaultValue(true);
 
                 b.HasIndex(bh => bh.TenantId);
@@ -710,6 +709,20 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(bh => bh.TenantId)
                  .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasMany(bh => bh.Ranges)
+                 .WithOne(r => r.BusinessHours)
+                 .HasForeignKey(r => r.BusinessHoursId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<TenantBusinessHoursRange>(b =>
+            {
+                b.HasKey(r => r.Id);
+                b.Property(r => r.OpenTime).HasMaxLength(5).HasDefaultValue("08:00");
+                b.Property(r => r.CloseTime).HasMaxLength(5).HasDefaultValue("18:00");
+                b.Property(r => r.SortOrder).HasDefaultValue(0);
+                b.HasIndex(r => r.BusinessHoursId);
             });
 
             // ---------------------------

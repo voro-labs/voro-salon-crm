@@ -225,61 +225,50 @@ namespace VoroSalonCrm.Application.Services
             if (dayHours != null && !dayHours.IsOpen)
                 return [];
 
-            // Parse open/close times, fall back to defaults if not configured
-            var openTimeParts = (dayHours?.OpenTime ?? "08:00").Split(':');
-            var closeTimeParts = (dayHours?.CloseTime ?? "18:00").Split(':');
-            int openHour = int.Parse(openTimeParts[0]);
-            int openMin = int.Parse(openTimeParts[1]);
-            int closeHour = int.Parse(closeTimeParts[0]);
-            int closeMin = int.Parse(closeTimeParts[1]);
+            // Build sorted ranges (or use default if none configured)
+            var orderedRanges = dayHours?.Ranges.OrderBy(r => r.SortOrder).ToList() ?? [];
+            if (orderedRanges.Count == 0)
+                orderedRanges.Add(new TenantBusinessHoursRange { OpenTime = "08:00", CloseTime = "18:00" });
 
-            var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, openHour, openMin, 0, TimeSpan.FromHours(-3));
-            var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, closeHour, closeMin, 0, TimeSpan.FromHours(-3));
-
-            // Início dos slots gerados: para o dia atual filtra horários já passados
-            var slotStart = startOfDay;
-            if (date.Date == nowBrasilia.Date && nowBrasilia > startOfDay)
+            static DateTimeOffset ParseRangeTime(DateTime d, string time, TimeSpan tz)
             {
-                var minutesCeil = (int)Math.Ceiling(nowBrasilia.Minute / 30.0) * 30;
-                slotStart = new DateTimeOffset(date.Year, date.Month, date.Day, nowBrasilia.Hour, 0, 0, TimeSpan.FromHours(-3))
-                    .AddMinutes(minutesCeil);
+                var parts = time.Split(':');
+                return new DateTimeOffset(d.Year, d.Month, d.Day,
+                    int.Parse(parts[0]), int.Parse(parts[1]), 0, tz);
             }
 
-            // A query ao banco sempre busca desde o início do dia para detectar conflitos de duração
-            var startUtc = startOfDay.ToUniversalTime();
-            var endUtc = endOfDay.ToUniversalTime();
+            var tz = TimeSpan.FromHours(-3);
+            var firstRangeStart = ParseRangeTime(date, orderedRanges.First().OpenTime, tz);
+            var lastRangeEnd    = ParseRangeTime(date, orderedRanges.Last().CloseTime, tz);
+
+            // Full day window for appointment/block queries
+            var dayStartUtc = firstRangeStart.ToUniversalTime();
+            var dayEndUtc   = lastRangeEnd.ToUniversalTime();
 
             var query = appointmentRepository.Query(a =>
                 a.TenantId == tenant.Id &&
-                a.ScheduledDateTime >= startUtc &&
-                a.ScheduledDateTime < endUtc &&
+                a.ScheduledDateTime >= dayStartUtc &&
+                a.ScheduledDateTime < dayEndUtc &&
                 a.Status != AppointmentStatus.Cancelled)
                 .IgnoreQueryFilters();
 
             if (employeeId.HasValue && employeeId.Value != Guid.Empty)
-            {
                 query = query.Where(a => a.EmployeeId == employeeId.Value);
-            }
 
             var appointments = await query.ToListAsync();
 
-            // Fetch time slot blocks for this tenant directly, bypassing the global tenant filter
-            // (no authenticated user in public context)
             var blocks = await _timeSlotBlockRepository
-                .Query(b => b.TenantId == tenant.Id && b.StartDateTime < endUtc && b.EndDateTime > startUtc)
+                .Query(b => b.TenantId == tenant.Id && b.StartDateTime < dayEndUtc && b.EndDateTime > dayStartUtc)
                 .IgnoreQueryFilters()
                 .ToListAsync();
 
-            // Get total active employees to handle "Any professional" case
             int activeEmployeesCount;
-
             if (employeeId.HasValue && employeeId.Value != Guid.Empty)
             {
                 activeEmployeesCount = 1;
             }
             else if (serviceId.HasValue && serviceId.Value != Guid.Empty)
             {
-                // Count employees who provide this service
                 activeEmployeesCount = await employeeRepository.Query(e =>
                     e.TenantId == tenant.Id &&
                     e.IsActive &&
@@ -294,62 +283,73 @@ namespace VoroSalonCrm.Application.Services
                     .CountAsync();
             }
 
-            var slots = new List<DTOs.CRM.AvailabilitySlotDto>();
-            var current = slotStart.ToUniversalTime();
-
-            // Salon-only Mode: If no active employees exist, treat the salon as a single resource with capacity 1
             if (activeEmployeesCount <= 0 && (!employeeId.HasValue || employeeId.Value == Guid.Empty))
-            {
                 activeEmployeesCount = 1;
-            }
 
-            while (current < endOfDay)
+            var slots = new List<DTOs.CRM.AvailabilitySlotDto>();
+
+            // Generate slots per range (supports lunch break gaps)
+            foreach (var range in orderedRanges)
             {
-                var next = current.AddMinutes(30);
-                var slotEnd = current.AddMinutes(serviceDurationMinutes);
+                var rangeStart = ParseRangeTime(date, range.OpenTime, tz);
+                var rangeEnd   = ParseRangeTime(date, range.CloseTime, tz);
 
-                // If the service would extend past end of day, this slot is unavailable
-                if (slotEnd > endOfDay)
+                // For today, skip past slots
+                var effectiveStart = rangeStart;
+                if (date.Date == nowBrasilia.Date && nowBrasilia > rangeStart)
                 {
-                    slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, false));
+                    var minutesCeil = (int)Math.Ceiling(nowBrasilia.Minute / 30.0) * 30;
+                    effectiveStart = new DateTimeOffset(date.Year, date.Month, date.Day, nowBrasilia.Hour, 0, 0, tz)
+                        .AddMinutes(minutesCeil);
+                    if (effectiveStart >= rangeEnd) continue;
+                }
+
+                var startUtc = rangeStart.ToUniversalTime();
+                var endUtc   = rangeEnd.ToUniversalTime();
+                var current  = effectiveStart.ToUniversalTime();
+
+                while (current < endUtc)
+                {
+                    var next    = current.AddMinutes(30);
+                    var slotEnd = current.AddMinutes(serviceDurationMinutes);
+
+                    if (slotEnd > endUtc)
+                    {
+                        slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, false));
+                        current = next;
+                        continue;
+                    }
+
+                    var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
+                    if (overlappingBlock != null)
+                    {
+                        slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, false, true, overlappingBlock.Reason));
+                        current = next;
+                        continue;
+                    }
+
+                    bool isBusy;
+                    if (activeEmployeesCount <= 0)
+                    {
+                        isBusy = true;
+                    }
+                    else if (employeeId.HasValue && employeeId.Value != Guid.Empty)
+                    {
+                        isBusy = appointments.Any(a =>
+                            current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
+                            slotEnd > a.ScheduledDateTime);
+                    }
+                    else
+                    {
+                        var overlappingCount = appointments.Count(a =>
+                            current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
+                            slotEnd > a.ScheduledDateTime);
+                        isBusy = overlappingCount >= activeEmployeesCount;
+                    }
+
+                    slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, !isBusy));
                     current = next;
-                    continue;
                 }
-
-                // Check if the slot falls within a configured time slot block
-                var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
-                if (overlappingBlock != null)
-                {
-                    slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, false, true, overlappingBlock.Reason));
-                    current = next;
-                    continue;
-                }
-
-                bool isBusy;
-                if (activeEmployeesCount <= 0)
-                {
-                    // This case only happens if a SPECIFIC employee was requested but they are inactive/non-existent
-                    isBusy = true;
-                }
-                else if (employeeId.HasValue && employeeId.Value != Guid.Empty)
-                {
-                    // For specific professional: conflict if the service window overlaps any existing appointment
-                    isBusy = appointments.Any(a =>
-                        current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        slotEnd > a.ScheduledDateTime);
-                }
-                else
-                {
-                    // For "Any professional" or Salon-only mode, busy only if ALL (or the default 1) capacity is occupied
-                    var overlappingCount = appointments.Count(a =>
-                        current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        slotEnd > a.ScheduledDateTime);
-
-                    isBusy = overlappingCount >= activeEmployeesCount;
-                }
-
-                slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, !isBusy));
-                current = next;
             }
 
             return slots;

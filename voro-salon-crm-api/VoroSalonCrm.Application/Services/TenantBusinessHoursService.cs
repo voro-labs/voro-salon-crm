@@ -38,11 +38,25 @@ namespace VoroSalonCrm.Application.Services
                         DayOfWeek = day.DayOfWeek,
                     };
                     await repository.AddAsync(record);
+                    existing.Add(record);
                 }
 
                 record.IsOpen = day.IsOpen;
-                record.OpenTime = day.OpenTime;
-                record.CloseTime = day.CloseTime;
+
+                // Replace ranges: remove old, add new
+                record.Ranges.Clear();
+                var sortOrder = 0;
+                foreach (var range in day.Ranges ?? new List<TimeRangeDto>())
+                {
+                    record.Ranges.Add(new TenantBusinessHoursRange
+                    {
+                        Id = Guid.NewGuid(),
+                        BusinessHoursId = record.Id,
+                        OpenTime = range.OpenTime,
+                        CloseTime = range.CloseTime,
+                        SortOrder = sortOrder++,
+                    });
+                }
             }
 
             await unitOfWork.SaveChangesAsync();
@@ -51,7 +65,17 @@ namespace VoroSalonCrm.Application.Services
             return updated.Select(MapToDto);
         }
 
-        private static BusinessHoursDayDto MapToDto(TenantBusinessHours h) =>
-            new(h.DayOfWeek, h.IsOpen, h.OpenTime, h.CloseTime);
+        private static BusinessHoursDayDto MapToDto(TenantBusinessHours h)
+        {
+            var ranges = h.Ranges
+                .OrderBy(r => r.SortOrder)
+                .Select(r => new TimeRangeDto(r.OpenTime, r.CloseTime))
+                .ToList();
+
+            if (ranges.Count == 0)
+                ranges.Add(new TimeRangeDto("08:00", "18:00"));
+
+            return new BusinessHoursDayDto(h.DayOfWeek, h.IsOpen, ranges);
+        }
     }
 }

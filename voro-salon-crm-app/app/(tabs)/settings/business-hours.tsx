@@ -33,12 +33,16 @@ interface BusinessHoursViewModel {
   ranges: TimeRange[]
 }
 
-// Shape returned by the API (single range per day)
+// Shape returned by the API
+interface ApiTimeRange {
+  openTime: string
+  closeTime: string
+}
+
 interface ApiBusinessHours {
   dayOfWeek: number
   isOpen: boolean
-  openTime: string
-  closeTime: string
+  ranges: ApiTimeRange[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -79,15 +83,18 @@ function apiToViewModel(apiHours: ApiBusinessHours[], days: typeof DAYS_OF_WEEK)
       }
     }
 
+    const ranges =
+      setting.ranges && setting.ranges.length > 0
+        ? setting.ranges.map((r) => ({
+            openTime: r.openTime ? r.openTime.slice(0, 5) : DEFAULT_OPEN,
+            closeTime: r.closeTime ? r.closeTime.slice(0, 5) : DEFAULT_CLOSE,
+          }))
+        : [{ ...DEFAULT_RANGE }]
+
     return {
       dayOfWeek: d.day,
       isOpen: setting.isOpen,
-      ranges: [
-        {
-          openTime: setting.openTime ? setting.openTime.slice(0, 5) : DEFAULT_OPEN,
-          closeTime: setting.closeTime ? setting.closeTime.slice(0, 5) : DEFAULT_CLOSE,
-        },
-      ],
+      ranges,
     }
   })
 }
@@ -169,8 +176,6 @@ export default function BusinessHoursScreen() {
 
   // ─── Save ──────────────────────────────────────────────────────────────────
 
-  // API currently accepts a single openTime/closeTime per day.
-  // We send the first range for backward compatibility.
   const saveDay = useCallback(
     async (dayOfWeek: number) => {
       const day = localHours.find((d) => d.dayOfWeek === dayOfWeek)
@@ -178,12 +183,17 @@ export default function BusinessHoursScreen() {
 
       setIsSaving(dayOfWeek)
       try {
-        const firstRange = day.ranges[0] ?? DEFAULT_RANGE
         const payload = {
-          dayOfWeek: day.dayOfWeek,
-          isOpen: day.isOpen,
-          openTime: firstRange.openTime,
-          closeTime: firstRange.closeTime,
+          days: [
+            {
+              dayOfWeek: day.dayOfWeek,
+              isOpen: day.isOpen,
+              ranges: day.ranges.map((r) => ({
+                openTime: r.openTime,
+                closeTime: r.closeTime,
+              })),
+            },
+          ],
         }
 
         const result = await secureApiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {

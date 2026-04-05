@@ -13,6 +13,7 @@ namespace VoroSalonCrm.Infrastructure.Repositories
         public async Task<IEnumerable<TenantBusinessHours>> GetByTenantAsync(Guid tenantId)
         {
             return await context.TenantBusinessHours
+                .Include(bh => bh.Ranges)
                 .Where(bh => bh.TenantId == tenantId)
                 .OrderBy(bh => bh.DayOfWeek)
                 .ToListAsync();
