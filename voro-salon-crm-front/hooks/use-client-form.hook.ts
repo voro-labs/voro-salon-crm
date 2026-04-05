@@ -9,6 +9,7 @@ export interface NewClientForm {
   phone: string
   email: string
   notes: string
+  birthDate: string
 }
 
 const DEFAULT_FORM: NewClientForm = {
@@ -16,6 +17,7 @@ const DEFAULT_FORM: NewClientForm = {
   phone: "",
   email: "",
   notes: "",
+  birthDate: "",
 }
 
 export function useClientForm() {

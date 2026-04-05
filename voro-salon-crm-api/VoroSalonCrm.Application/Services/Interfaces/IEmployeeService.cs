@@ -8,7 +8,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
     public interface IEmployeeService
     {
         Task<IEnumerable<EmployeeDto>> GetAllAsync();
-        Task<PagedResult<EmployeeDto>> GetPagedAsync(int page, int pageSize, string? search);
+        Task<PagedResult<EmployeeDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc");
         Task<EmployeeDto?> GetByIdAsync(Guid id);
         Task<EmployeeDto?> GetByCurrentUserAsync();
         Task<EmployeeDto> CreateAsync(CreateEmployeeDto dto);

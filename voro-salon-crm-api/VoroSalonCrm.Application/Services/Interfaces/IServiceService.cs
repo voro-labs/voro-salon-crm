@@ -10,7 +10,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<ServiceDto> CreateAsync(CreateServiceDto dto);
         Task<ServiceDto?> GetByIdAsync(Guid id);
         Task<IEnumerable<ServiceDto>> GetAllAsync();
-        Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search);
+        Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc");
         Task<ServiceDto> UpdateAsync(Guid id, UpdateServiceDto dto);
         Task<bool> DeleteAsync(Guid id);
     }

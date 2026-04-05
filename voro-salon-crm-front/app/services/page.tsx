@@ -1,21 +1,69 @@
 "use client"
 
 import Link from "next/link"
-import { Plus, Search, Scissors, Banknote, Tag } from "lucide-react"
+import useSWR from "swr"
+import { Plus, Search, Scissors, Banknote, Tag, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 import { API_CONFIG } from "@/lib/api"
+import { fetcher } from "@/lib/fetcher"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { useDataList } from "@/hooks/use-data-list.hook"
+
+interface ServiceItem {
+  id: string
+  name: string
+  price: number
+  durationMinutes: number
+  description?: string
+}
+
+interface ServicePromotion {
+  id: string
+  serviceId: string
+  promotionalPrice: number
+  daysOfWeek: number[]
+  validFrom?: string
+  validUntil?: string
+  isActive: boolean
+}
 
 function formatCurrency(val: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
   }).format(val)
+}
+
+function formatDuration(minutes: number): string {
+  if (!minutes) return ""
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}min` : `${h}h`
+}
+
+function getActivePromotion(serviceId: string, promotions: ServicePromotion[]): ServicePromotion | null {
+  const now = new Date()
+  const todayDow = now.getDay()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return promotions.find((p) => {
+    if (p.serviceId !== serviceId || !p.isActive) return false
+    if (!p.daysOfWeek.includes(todayDow)) return false
+    if (p.validFrom) {
+      const [y, m, d] = p.validFrom.split("-").map(Number)
+      if (today < new Date(y, m - 1, d)) return false
+    }
+    if (p.validUntil) {
+      const [y, m, d] = p.validUntil.split("-").map(Number)
+      if (today > new Date(y, m - 1, d)) return false
+    }
+    return true
+  }) ?? null
 }
 
 export default function ServicesPage() {
@@ -28,7 +76,16 @@ export default function ServicesPage() {
     search,
     setSearch,
     isLoading,
-  } = useDataList(API_CONFIG.ENDPOINTS.SERVICES, { pageSize: 20 })
+  } = useDataList<ServiceItem>(API_CONFIG.ENDPOINTS.SERVICES, { pageSize: 20 })
+
+  const { data: _promosRaw } = useSWR("/ServicePromotion", fetcher)
+  const promotions: ServicePromotion[] = (() => {
+    if (!_promosRaw) return []
+    if (Array.isArray(_promosRaw)) return _promosRaw
+    if (Array.isArray(_promosRaw?.items)) return _promosRaw.items
+    if (Array.isArray(_promosRaw?.data)) return _promosRaw.data
+    return []
+  })()
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
@@ -107,13 +164,9 @@ export default function ServicesPage() {
           </Card>
         ) : (
           <div className="flex flex-col gap-3">
-            {items.map(
-              (service: {
-                id: string
-                name: string
-                price: number
-                description: string
-              }) => (
+            {items.map((service) => {
+              const promo = getActivePromotion(service.id, promotions)
+              return (
                 <Link key={service.id} href={`/services/${service.id}`}>
                   <Card className="transition-colors hover:bg-accent/10">
                     <CardContent className="flex items-center gap-4 p-4">
@@ -125,9 +178,27 @@ export default function ServicesPage() {
                           {service.name}
                         </span>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                          {service.durationMinutes > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDuration(service.durationMinutes)}
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
                             <Banknote className="h-3 w-3" />
-                            {formatCurrency(service.price)}
+                            {promo ? (
+                              <>
+                                <span className="line-through opacity-60">{formatCurrency(service.price)}</span>
+                                <span className="font-semibold text-green-600 dark:text-green-400 ml-1">
+                                  {formatCurrency(promo.promotionalPrice)}
+                                </span>
+                                <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0 border-green-500 text-green-600 dark:text-green-400">
+                                  promo
+                                </Badge>
+                              </>
+                            ) : (
+                              formatCurrency(service.price)
+                            )}
                           </span>
                           {service.description && (
                             <span className="truncate">{service.description}</span>
@@ -138,7 +209,7 @@ export default function ServicesPage() {
                   </Card>
                 </Link>
               )
-            )}
+            })}
           </div>
         )}
 

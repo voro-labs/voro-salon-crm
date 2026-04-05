@@ -64,8 +64,19 @@ export function ServiceDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; 
   useEffect(() => {
     if (!id) return
     setIsFetchingPromos(true)
-    secureApiCall<ServicePromotionDto[]>(`/ServicePromotion?serviceId=${id}`)
-      .then((res) => setPromos(!res.hasError && res.data ? res.data : []))
+    secureApiCall<any>(`/ServicePromotion?serviceId=${id}`)
+      .then((res) => {
+        if (res.hasError || !res.data) { setPromos([]); return }
+        const raw = res.data
+        const all: ServicePromotionDto[] = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.items)
+          ? raw.items
+          : Array.isArray(raw?.data)
+          ? raw.data
+          : []
+        setPromos(all.filter((p) => p.serviceId === id))
+      })
       .finally(() => setIsFetchingPromos(false))
   }, [id])
 

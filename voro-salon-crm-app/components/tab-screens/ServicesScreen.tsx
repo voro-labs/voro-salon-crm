@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
+import useSWR from "swr"
 import { useDataList } from "hooks/use-data-list.hook"
 import { API_CONFIG } from "lib/api"
+import { fetcher } from "lib/fetcher"
 import { ScreenHeader } from "components/ScreenHeader"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
@@ -20,9 +22,46 @@ import { useModuleGuard } from "hooks/use-module-guard.hook"
 interface Service {
   id: string
   name: string
-  duration?: number
+  durationMinutes?: number
   price?: number
   description?: string
+}
+
+interface ServicePromotion {
+  id: string
+  serviceId: string
+  promotionalPrice: number
+  daysOfWeek: number[]
+  validFrom?: string
+  validUntil?: string
+  isActive: boolean
+}
+
+function formatDuration(minutes: number): string {
+  if (!minutes) return ""
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}min` : `${h}h`
+}
+
+function getActivePromotion(serviceId: string, promotions: ServicePromotion[]): ServicePromotion | null {
+  const now = new Date()
+  const todayDow = now.getDay()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return promotions.find((p) => {
+    if (p.serviceId !== serviceId || !p.isActive) return false
+    if (!p.daysOfWeek.includes(todayDow)) return false
+    if (p.validFrom) {
+      const [y, m, d] = p.validFrom.split("-").map(Number)
+      if (today < new Date(y, m - 1, d)) return false
+    }
+    if (p.validUntil) {
+      const [y, m, d] = p.validUntil.split("-").map(Number)
+      if (today > new Date(y, m - 1, d)) return false
+    }
+    return true
+  }) ?? null
 }
 
 export function ServicesScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) {
@@ -31,6 +70,15 @@ export function ServicesScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) 
   const { primaryColor } = useTenantTheme()
   const { items, isLoading, isLoadingMore, search, setSearch, loadMore, refresh } =
     useDataList<Service>(API_CONFIG.ENDPOINTS.SERVICES)
+
+  const { data: _promosRaw } = useSWR("/ServicePromotion", fetcher)
+  const promotions: ServicePromotion[] = (() => {
+    if (!_promosRaw) return []
+    if (Array.isArray(_promosRaw)) return _promosRaw
+    if (Array.isArray(_promosRaw?.items)) return _promosRaw.items
+    if (Array.isArray(_promosRaw?.data)) return _promosRaw.data
+    return []
+  })()
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -68,28 +116,49 @@ export function ServicesScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) 
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push(`${rootPath}/services/${item.id}` as any)}
-              className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50"
-            >
-              <View className="h-12 w-12 rounded-2xl items-center justify-center" style={{ backgroundColor: primaryColor + "15" }}>
-                <Ionicons name="cut-outline" size={22} color={primaryColor} />
-              </View>
-              <View className="flex-1">
-                <Text className="text-zinc-900 font-bold text-base">{item.name}</Text>
-                <View className="flex-row gap-3 mt-1">
-                  {item.duration ? <Text className="text-zinc-500 text-sm">{item.duration} min</Text> : null}
-                  {item.price != null ? (
-                    <Text className="font-bold text-sm" style={{ color: primaryColor }}>
-                      R$ {item.price.toFixed(2)}
-                    </Text>
-                  ) : null}
+          renderItem={({ item }) => {
+            const promo = getActivePromotion(item.id, promotions)
+            return (
+              <Pressable
+                onPress={() => router.push(`${rootPath}/services/${item.id}` as any)}
+                className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50"
+              >
+                <View className="h-12 w-12 rounded-2xl items-center justify-center" style={{ backgroundColor: primaryColor + "15" }}>
+                  <Ionicons name="cut-outline" size={22} color={primaryColor} />
                 </View>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#d4d4d8" />
-            </Pressable>
-          )}
+                <View className="flex-1">
+                  <Text className="text-zinc-900 font-bold text-base">{item.name}</Text>
+                  <View className="flex-row flex-wrap gap-x-3 gap-y-0.5 mt-1 items-center">
+                    {item.durationMinutes ? (
+                      <Text className="text-zinc-500 text-sm">
+                        {formatDuration(item.durationMinutes)}
+                      </Text>
+                    ) : null}
+                    {item.price != null ? (
+                      promo ? (
+                        <View className="flex-row items-center gap-1.5">
+                          <Text className="text-zinc-400 text-sm line-through">
+                            R$ {item.price.toFixed(2)}
+                          </Text>
+                          <Text className="text-sm font-bold text-green-600">
+                            R$ {promo.promotionalPrice.toFixed(2)}
+                          </Text>
+                          <View className="bg-green-100 rounded px-1">
+                            <Text className="text-green-700 text-[10px] font-bold">PROMO</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <Text className="font-bold text-sm" style={{ color: primaryColor }}>
+                          R$ {item.price.toFixed(2)}
+                        </Text>
+                      )
+                    ) : null}
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#d4d4d8" />
+              </Pressable>
+            )
+          }}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}

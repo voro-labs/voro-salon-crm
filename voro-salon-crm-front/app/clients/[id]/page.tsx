@@ -157,7 +157,7 @@ export default function ClienteDetailPage() {
   const placeholders = getServicePlaceholders(tenant?.establishmentType ?? EstablishmentType.Salon)
 
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "" })
+  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", notes: "", birthDate: "" })
   const [countryCode, setCountryCode] = useState("BR")
 
   const [svcOpen, setSvcOpen] = useState(false)
@@ -199,6 +199,7 @@ export default function ClienteDetailPage() {
         phone: phoneNumber,
         email: client.email || "",
         notes: client.notes || "",
+        birthDate: client.birthDate ? client.birthDate.slice(0, 10) : "",
       })
       setCountryCode(countryCode)
       setEditOpen(true)
@@ -217,7 +218,11 @@ export default function ClienteDetailPage() {
     }
     const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
     const phoneForApi = `${dialCode}${editForm.phone}`
-    const success = await updateClient({ ...editForm, phone: phoneForApi })
+    const success = await updateClient({
+      ...editForm,
+      phone: phoneForApi,
+      birthDate: editForm.birthDate || null,
+    })
     if (success) setEditOpen(false)
   }
 
@@ -987,6 +992,15 @@ export default function ClienteDetailPage() {
                   type="email"
                   value={editForm.email}
                   onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit-birthdate">Data de Nascimento</Label>
+                <Input
+                  id="edit-birthdate"
+                  type="date"
+                  value={editForm.birthDate}
+                  onChange={(e) => setEditForm((p) => ({ ...p, birthDate: e.target.value }))}
                 />
               </div>
               <div className="flex flex-col gap-2">

@@ -68,7 +68,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
   const [tab, setTab] = useState<TabType>("services")
 
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", notes: "" })
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", notes: "", birthDate: "" })
   const [editCountryCode, setEditCountryCode] = useState("BR")
 
   // Anamnesis modal
@@ -178,6 +178,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
       email: c.email ?? "",
       phone: phoneNumber,
       notes: c.notes ?? "",
+      birthDate: c.birthDate ? c.birthDate.slice(0, 10) : "",
     })
     setEditOpen(true)
   }
@@ -190,6 +191,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
       email: editForm.email,
       phone: `${dialCodeOnlyNumber}${editForm.phone}`,
       notes: editForm.notes,
+      birthDate: editForm.birthDate || null,
     })
     if (success) setEditOpen(false)
   }
@@ -626,6 +628,15 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
                 onChangeText={(v) => setEditForm((p) => ({ ...p, email: v }))}
                 keyboardType="email-address"
                 autoCapitalize="none"
+              />
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Data de Nascimento</Text>
+              <DatePickerInput
+                value={editForm.birthDate}
+                onChange={(v) => setEditForm((p) => ({ ...p, birthDate: v ?? "" }))}
+                placeholder="Selecionar data"
               />
             </View>
 

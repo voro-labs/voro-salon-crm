@@ -66,7 +66,7 @@ namespace VoroSalonCrm.Application.Services
             return clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate));
         }
 
-        public async Task<PagedResult<ClientDto>> GetPagedAsync(int page, int pageSize, string? search)
+        public async Task<PagedResult<ClientDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
         {
             var clients = await _clientRepository.GetAllAsync();
             var dtos = clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate));
@@ -81,6 +81,12 @@ namespace VoroSalonCrm.Application.Services
             }
 
             var list = dtos.ToList();
+            var desc = sortDirection?.ToLowerInvariant() == "desc";
+            list = (orderBy?.ToLowerInvariant()) switch
+            {
+                "name" or _ => desc ? list.OrderByDescending(c => c.Name).ToList() : list.OrderBy(c => c.Name).ToList(),
+            };
+
             var totalCount = list.Count;
             var items = list.Skip((page - 1) * pageSize).Take(pageSize);
 
