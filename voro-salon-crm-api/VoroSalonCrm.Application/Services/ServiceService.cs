@@ -76,7 +76,7 @@ namespace VoroSalonCrm.Application.Services
             });
         }
 
-        public async Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search)
+        public async Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
         {
             var dtos = (await GetAllAsync()).ToList();
 
@@ -88,6 +88,12 @@ namespace VoroSalonCrm.Application.Services
                     (s.Description?.ToLowerInvariant().Contains(term) ?? false))
                     .ToList();
             }
+
+            var desc = sortDirection?.ToLowerInvariant() == "desc";
+            dtos = (orderBy?.ToLowerInvariant()) switch
+            {
+                "name" or _ => desc ? dtos.OrderByDescending(s => s.Name).ToList() : dtos.OrderBy(s => s.Name).ToList(),
+            };
 
             var totalCount = dtos.Count;
             var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
