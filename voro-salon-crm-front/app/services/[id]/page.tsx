@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react"
+import { ArrowLeft, Loader2, Tag, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,6 +44,7 @@ export default function EditarServicoPage() {
     isLoading,
     isSaving,
     isDeleting,
+    activePromotion,
     updateService,
     deleteService,
   } = useServiceDetail(serviceId)
@@ -142,6 +143,20 @@ export default function EditarServicoPage() {
                   value={form.price}
                   onChange={(v) => setForm((p) => ({ ...p, price: v }))}
                 />
+                {activePromotion && (
+                  <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-950/30">
+                    <Tag className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+                    <span className="text-sm text-muted-foreground">
+                      Promoção hoje:{" "}
+                      <span className="line-through">
+                        R$ {form.price.toFixed(2).replace(".", ",")}
+                      </span>{" "}
+                      <span className="font-semibold text-green-700 dark:text-green-400">
+                        R$ {activePromotion.promotionalPrice.toFixed(2).replace(".", ",")}
+                      </span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">

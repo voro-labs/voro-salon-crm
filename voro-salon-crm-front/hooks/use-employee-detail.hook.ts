@@ -173,7 +173,7 @@ export function useEmployeeDetail(employeeId?: string) {
       }
       toast.success("Funcionário excluído.")
       mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
-      router.push("/employees")
+      router.replace("/employees")
       return true
     } catch {
       toast.error("Erro de conexão.")

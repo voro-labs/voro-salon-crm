@@ -68,7 +68,7 @@ export function useClientDetails(clientId: string) {
       if (res.hasError) throw new Error("Erro ao excluir cliente.")
       toast.success("Cliente excluído!")
       mutate(API_CONFIG.ENDPOINTS.CLIENTS)
-      router.push("/clients")
+      router.replace("/clients")
       return true
     } catch (err: any) {
       toast.error(err.message || "Erro de conexão.")

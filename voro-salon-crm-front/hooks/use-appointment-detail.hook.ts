@@ -180,7 +180,7 @@ export function useAppointmentDetail(appointmentId: string) {
         return false
       }
       toast.success("Agendamento excluído com sucesso!")
-      router.push("/appointments")
+      router.replace("/appointments")
       return true
     } catch {
       toast.error("Erro de conexão.")

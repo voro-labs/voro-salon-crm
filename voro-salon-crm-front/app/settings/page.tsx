@@ -133,69 +133,6 @@ export default function ConfiguracoesPage() {
   })()
   const activeTab = resolvedTab
 
-  // Business Hours state
-  const DAY_NAMES = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
-  type BusinessHoursDay = { dayOfWeek: number; isOpen: boolean; openTime: string; closeTime: string }
-  const DEFAULT_HOURS: BusinessHoursDay[] = Array.from({ length: 7 }, (_, i) => ({
-    dayOfWeek: i,
-    isOpen: i >= 1 && i <= 6, // Mon–Sat open by default, Sunday closed
-    openTime: "08:00",
-    closeTime: "18:00",
-  }))
-  const [businessHours, setBusinessHours] = useState<BusinessHoursDay[]>(DEFAULT_HOURS)
-  const [loadingHours, setLoadingHours] = useState(false)
-  const [savingHours, setSavingHours] = useState(false)
-
-  useEffect(() => {
-    if (!isSalonOwner) return
-    const fetchHours = async () => {
-      setLoadingHours(true)
-      try {
-        const { apiCall, API_CONFIG } = await import("@/lib/api")
-        const res = await apiCall<BusinessHoursDay[]>(API_CONFIG.ENDPOINTS.BUSINESS_HOURS)
-        if (!res.hasError && res.data && res.data.length > 0) {
-          // Merge returned days with defaults (some days may not exist yet)
-          setBusinessHours(DEFAULT_HOURS.map(def => {
-            const found = res.data!.find(d => d.dayOfWeek === def.dayOfWeek)
-            return found ?? def
-          }))
-        }
-      } catch { } finally {
-        setLoadingHours(false)
-      }
-    }
-    fetchHours()
-  }, [isSalonOwner]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleSaveHours = async () => {
-    // Validação: para dias abertos, closeTime deve ser maior que openTime
-    for (const day of businessHours) {
-      if (!day.isOpen) continue
-      if (day.closeTime <= day.openTime) {
-        toast.error(`${DAY_NAMES[day.dayOfWeek]}: o horário de fechamento deve ser após o de abertura.`)
-        return
-      }
-    }
-
-    setSavingHours(true)
-    try {
-      const { apiCall, API_CONFIG } = await import("@/lib/api")
-      const res = await apiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {
-        method: "PUT",
-        body: JSON.stringify({ days: businessHours }),
-      })
-      if (res.hasError) {
-        toast.error(res.message ?? "Erro ao salvar horários.")
-      } else {
-        toast.success("Horários salvos com sucesso!")
-      }
-    } catch {
-      toast.error("Erro de conexão ao salvar horários.")
-    } finally {
-      setSavingHours(false)
-    }
-  }
-
   const {
     tenant,
     modules,
@@ -674,70 +611,22 @@ export default function ConfiguracoesPage() {
                     <CardTitle>Horários de Funcionamento</CardTitle>
                   </div>
                   <CardDescription>
-                    Defina os horários de abertura e fechamento para cada dia da semana. Esses horários serão usados no agendamento online e no bot do WhatsApp.
+                    Defina os horários em que seu estabelecimento está aberto para receber agendamentos, com suporte a múltiplos intervalos por dia.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {loadingHours ? (
-                    <div className="flex flex-col gap-3">
-                      {Array.from({ length: 7 }).map((_, i) => (
-                        <div key={i} className="h-12 w-full animate-pulse rounded bg-muted" />
-                      ))}
+                <CardContent className="flex flex-col gap-6">
+                  <div className="p-4 rounded-lg border border-border bg-muted/20 flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-foreground">Gerenciar Horários</span>
+                      <span className="text-sm text-muted-foreground text-balance">Configure dias da semana, intervalos de abertura e fechamento</span>
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {businessHours.map((day, idx) => (
-                        <div key={day.dayOfWeek} className="flex flex-wrap items-center gap-3 py-2 border-b border-border last:border-0">
-                          <div className="w-24 shrink-0">
-                            <span className="text-sm font-medium text-foreground">{DAY_NAMES[day.dayOfWeek]}</span>
-                          </div>
-                          <Switch
-                            checked={day.isOpen}
-                            onCheckedChange={(checked) =>
-                              setBusinessHours(prev => prev.map((d, i) => i === idx ? { ...d, isOpen: checked } : d))
-                            }
-                          />
-                          <span className="text-xs text-muted-foreground w-14 shrink-0">
-                            {day.isOpen ? "Aberto" : "Fechado"}
-                          </span>
-                          {day.isOpen && (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <Label className="text-xs text-muted-foreground shrink-0">Abertura</Label>
-                                <Input
-                                  type="time"
-                                  value={day.openTime}
-                                  onChange={(e) =>
-                                    setBusinessHours(prev => prev.map((d, i) => i === idx ? { ...d, openTime: e.target.value } : d))
-                                  }
-                                  className="w-28 h-8 text-sm"
-                                />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Label className="text-xs text-muted-foreground shrink-0">Fechamento</Label>
-                                <Input
-                                  type="time"
-                                  value={day.closeTime}
-                                  onChange={(e) =>
-                                    setBusinessHours(prev => prev.map((d, i) => i === idx ? { ...d, closeTime: e.target.value } : d))
-                                  }
-                                  className={`w-28 h-8 text-sm ${day.closeTime <= day.openTime ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                                />
-                              </div>
-                              {day.closeTime <= day.openTime && (
-                                <span className="text-xs text-destructive">Fechamento deve ser após abertura</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      ))}
-                      <Button onClick={handleSaveHours} disabled={savingHours} className="w-fit mt-2">
-                        {savingHours && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Save className="mr-2 h-4 w-4" />
-                        Salvar Horários
-                      </Button>
-                    </div>
-                  )}
+                    <Button asChild>
+                      <Link href="/settings/business-hours">
+                        Abrir Editor
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
