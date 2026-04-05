@@ -171,9 +171,9 @@ export function NotificationsScreen({ rootPath = "/(tabs)" }: { rootPath?: strin
               return (
                 <View className={`flex-row items-center ${isSelected ? "bg-zinc-50" : "bg-white"}`}>
                   {selectionMode && (
-                    <Pressable 
+                    <Pressable
                        onPress={() => handleItemPress(item)}
-                       className="pl-5 pr-2 h-full justify-center"
+                       className="pl-5 pr-2 self-stretch justify-center"
                     >
                       <View className={`h-6 w-6 rounded-lg items-center justify-center border-2 ${isSelected ? "bg-zinc-900 border-zinc-900" : "border-zinc-200"}`}>
                         {isSelected && <Ionicons name="checkmark" size={14} color="white" />}

@@ -30,7 +30,7 @@ export function ClientFormScreen({ id }: { id?: string }) {
   const { primaryColor } = useTenantTheme()
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
       <ScreenHeader title={id ? "Editar Cliente" : "Novo Cliente"} showBack onBack={() => router.back()} />
       <KeyboardAwareScrollView
         className="flex-1"

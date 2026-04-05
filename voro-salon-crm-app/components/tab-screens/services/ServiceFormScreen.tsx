@@ -37,7 +37,7 @@ export function ServiceFormScreen({ id }: { id?: string }) {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top", "bottom"]}>
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
       <ScreenHeader title={id ? "Editar Serviço" : "Novo Serviço"} showBack onBack={() => router.back()} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
 

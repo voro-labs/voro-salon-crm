@@ -120,15 +120,17 @@ export default function BusinessHoursScreen() {
     fetcher
   )
 
-  // Local state – initialized from SWR data, editable without hitting the API
-  const [localHours, setLocalHours] = useState<BusinessHoursViewModel[]>([])
+  // Local state – initialized with defaults immediately so the form never blocks
+  const [localHours, setLocalHours] = useState<BusinessHoursViewModel[]>(
+    () => apiToViewModel([], DAYS_OF_WEEK)
+  )
   const [isSaving, setIsSaving] = useState<number | null>(null)
 
-  // Sync local state when remote data arrives (first load only, to avoid
-  // overwriting in-progress edits on revalidation)
+  // Sync local state when remote data arrives
   useEffect(() => {
-    if (businessHours) {
-      setLocalHours(apiToViewModel(businessHours, DAYS_OF_WEEK))
+    if (businessHours !== undefined) {
+      const arr = Array.isArray(businessHours) ? businessHours : []
+      setLocalHours(apiToViewModel(arr, DAYS_OF_WEEK))
     }
   }, [businessHours])
 
@@ -217,7 +219,7 @@ export default function BusinessHoursScreen() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  if (isLoading || localHours.length === 0) {
+  if (isLoading) {
     return (
       <View style={appStyles.centered}>
         <ActivityIndicator size="large" color={primaryColor} />
