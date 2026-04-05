@@ -66,9 +66,10 @@ const TIME_OPTIONS = Array.from({ length: 96 }, (_, i) => {
   return `${h}:${m}`
 })
 
-const DEFAULT_OPEN = "08:00"
-const DEFAULT_CLOSE = "18:00"
-const DEFAULT_RANGE: TimeRange = { openTime: DEFAULT_OPEN, closeTime: DEFAULT_CLOSE }
+const DEFAULT_RANGES: TimeRange[] = [
+  { openTime: "08:00", closeTime: "11:30" },
+  { openTime: "13:30", closeTime: "18:30" },
+]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,17 +85,17 @@ function apiToViewModel(
       return {
         dayOfWeek: d.day,
         isOpen: defaultIsOpen,
-        ranges: [{ ...DEFAULT_RANGE }],
+        ranges: DEFAULT_RANGES.map((r) => ({ ...r })),
       }
     }
 
     const ranges =
       setting.ranges && setting.ranges.length > 0
         ? setting.ranges.map((r) => ({
-            openTime: r.openTime ? r.openTime.slice(0, 5) : DEFAULT_OPEN,
-            closeTime: r.closeTime ? r.closeTime.slice(0, 5) : DEFAULT_CLOSE,
+            openTime: r.openTime ? r.openTime.slice(0, 5) : DEFAULT_RANGES[0].openTime,
+            closeTime: r.closeTime ? r.closeTime.slice(0, 5) : DEFAULT_RANGES[0].closeTime,
           }))
-        : [{ ...DEFAULT_RANGE }]
+        : DEFAULT_RANGES.map((r) => ({ ...r }))
 
     return {
       dayOfWeek: d.day,
@@ -167,7 +168,7 @@ function BusinessHoursContent() {
     setLocalHours((prev) =>
       prev.map((d) => {
         if (d.dayOfWeek !== dayOfWeek) return d
-        return { ...d, ranges: [...d.ranges, { ...DEFAULT_RANGE }] }
+        return { ...d, ranges: [...d.ranges, { openTime: "08:00", closeTime: "18:00" }] }
       })
     )
   }, [])
