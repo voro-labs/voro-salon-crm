@@ -25,8 +25,10 @@ export default function SubscriptionScreen() {
     fetcher
   )
 
-  const { data: clientsData } = useSWR<any[]>(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
-  const { data: employeesData } = useSWR<any[]>(API_CONFIG.ENDPOINTS.EMPLOYEES, fetcher)
+  const { data: _clientsData } = useSWR<any>(`${API_CONFIG.ENDPOINTS.CLIENTS}?pageSize=1`, fetcher)
+  const { data: _employeesData } = useSWR<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}?pageSize=1`, fetcher)
+  const clientsData = { length: _clientsData?.totalCount ?? (_clientsData?.items?.length ?? 0) }
+  const employeesData = { length: _employeesData?.totalCount ?? (_employeesData?.items?.length ?? 0) }
 
   const roleNames = user?.roles?.map((r: any) => r.name) ?? []
   const isSalonOwner = roleNames.includes("SalonOwner") || roleNames.includes("Owner")

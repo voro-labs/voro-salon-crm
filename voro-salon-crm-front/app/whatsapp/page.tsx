@@ -352,7 +352,8 @@ function ChatView({
 
 function SendTemplateModal({ onClose }: { onClose: () => void }) {
   const { data: templates } = useSWR<Template[]>(API_CONFIG.ENDPOINTS.WHATSAPP_TEMPLATES, fetcher)
-  const { data: clients } = useSWR<any[]>(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
+  const { data: _clientsRaw } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
+  const clients = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : undefined)
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
 
   const [selectedTemplate, setSelectedTemplate] = useState("")

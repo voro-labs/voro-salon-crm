@@ -30,7 +30,8 @@ export function useEmployeeDetail(employeeId?: string, onDeleted?: () => void) {
     !isNew ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/${employeeId}` : null,
     fetcher
   )
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _servicesRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const services = _servicesRaw?.items ?? (Array.isArray(_servicesRaw) ? _servicesRaw : undefined)
 
   const [form, setForm] = useState<EmployeeForm>(DEFAULT_FORM)
   const [isSaving, setIsSaving] = useState(false)

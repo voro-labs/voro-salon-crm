@@ -109,7 +109,8 @@ export function EmployeesScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { maxEmployees } = usePlanLimits()
-  const { data: services = [] } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _svcRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const services: any[] = _svcRaw?.items ?? (Array.isArray(_svcRaw) ? _svcRaw : [])
   const { items, isLoading, isLoadingMore, totalCount, search, setSearch, loadMore, refresh } =
     useDataList<Employee>(API_CONFIG.ENDPOINTS.EMPLOYEES)
 

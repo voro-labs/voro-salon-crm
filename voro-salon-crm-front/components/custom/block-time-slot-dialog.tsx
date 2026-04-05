@@ -42,7 +42,8 @@ export function BlockTimeSlotDialog({ onSuccess }: BlockTimeSlotDialogProps) {
   const now = new Date()
   const later = new Date(now.getTime() + 60 * 60 * 1000)
 
-  const { data: employees } = useSWR<any[]>(API_CONFIG.ENDPOINTS.EMPLOYEES, fetcher)
+  const { data: _empRaw } = useSWR(API_CONFIG.ENDPOINTS.EMPLOYEES + "?pageSize=500", fetcher)
+  const employees = _empRaw?.items ?? (Array.isArray(_empRaw) ? _empRaw : undefined)
   const isEmployeeMode = employees && employees.length > 0
 
   const [form, setForm] = useState({

@@ -30,8 +30,10 @@ const DEFAULT_FORM: NewAppointmentForm = {
 }
 
 export function useAppointmentForm(id?: string) {
-  const { data: clients, isLoading: loadingClients, mutate: mutateClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
-  const { data: services, isLoading: loadingServices, mutate: mutateServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _clientsRaw, isLoading: loadingClients, mutate: mutateClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
+  const { data: _servicesRaw, isLoading: loadingServices, mutate: mutateServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const clients = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : undefined)
+  const services = _servicesRaw?.items ?? (Array.isArray(_servicesRaw) ? _servicesRaw : undefined)
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const [form, setForm] = useState<NewAppointmentForm>(DEFAULT_FORM)
@@ -62,12 +64,13 @@ export function useAppointmentForm(id?: string) {
     })
   }, [id, existingAppointment])
 
-  const { data: employees, mutate: mutateEmployees } = useSWR(
+  const { data: _employeesRaw, mutate: mutateEmployees } = useSWR(
     form.serviceId !== "none" && form.serviceId !== ""
       ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
-      : API_CONFIG.ENDPOINTS.EMPLOYEES,
+      : `${API_CONFIG.ENDPOINTS.EMPLOYEES}?pageSize=500`,
     fetcher
   )
+  const employees = _employeesRaw?.items ?? (Array.isArray(_employeesRaw) ? _employeesRaw : undefined)
 
   const isModuleEnabled = (moduleId: number) =>
     modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true

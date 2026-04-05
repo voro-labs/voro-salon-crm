@@ -353,10 +353,11 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: modules } = useSWR<any[]>(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
-  const { data: appointments, mutate: mutateAppointments } = useSWR<any[]>(
-    API_CONFIG.ENDPOINTS.APPOINTMENTS,
+  const { data: appointmentsData, mutate: mutateAppointments } = useSWR<any>(
+    `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?pageSize=500`,
     fetcher
   )
+  const appointments: any[] = appointmentsData?.items ?? (Array.isArray(appointmentsData) ? appointmentsData : [])
 
   const [period, setPeriod] = useState<"today" | "week">("today")
   const [hasAutoSwitched, setHasAutoSwitched] = useState(false)

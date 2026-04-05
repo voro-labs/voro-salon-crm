@@ -33,7 +33,8 @@ interface SendResult {
 
 export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) {
   const { data: templates } = useSWR<Template[]>(visible ? API_CONFIG.ENDPOINTS.WHATSAPP_TEMPLATES : null, fetcher)
-  const { data: clients } = useSWR<any[]>(visible ? API_CONFIG.ENDPOINTS.CLIENTS : null, fetcher)
+  const { data: _clientsRaw } = useSWR<any>(visible ? API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500" : null, fetcher)
+  const clients: any[] | undefined = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : undefined)
   const { data: tenant } = useSWR<any>(visible ? API_CONFIG.ENDPOINTS.TENANT_ME : null, fetcher)
   const { primaryColor } = useTenantTheme()
 

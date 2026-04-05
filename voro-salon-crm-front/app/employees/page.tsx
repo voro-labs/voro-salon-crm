@@ -97,7 +97,8 @@ export default function EmployeesPage() {
     isLoading,
   } = useDataList(API_CONFIG.ENDPOINTS.EMPLOYEES, { pageSize: 20 })
 
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _svcRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const services = _svcRaw?.items ?? (Array.isArray(_svcRaw) ? _svcRaw : undefined)
   const { maxEmployees } = usePlanLimits()
 
   const getServiceName = (id: string) => {
