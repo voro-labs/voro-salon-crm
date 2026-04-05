@@ -88,6 +88,16 @@ export default function NovoClientePage() {
               </div>
 
               <div className="flex flex-col gap-2">
+                <Label htmlFor="birthDate">Data de Nascimento</Label>
+                <Input
+                  id="birthDate"
+                  type="date"
+                  value={form.birthDate}
+                  onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="notes">Observações</Label>
                 <Textarea
                   id="notes"

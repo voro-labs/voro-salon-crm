@@ -10,6 +10,7 @@ import { useClientForm } from "hooks/use-client-form.hook"
 import { ScreenHeader } from "components/ScreenHeader"
 import { PhoneInput } from "components/PhoneInput"
 import { CountrySelector } from "components/CountrySelector"
+import { DatePickerInput } from "components/DatePickerInput"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
 function FormField({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
@@ -73,6 +74,14 @@ export function ClientFormScreen({ id }: { id?: string }) {
                 onChangeText={(v) => setForm((p) => ({ ...p, email: v }))}
                 keyboardType="email-address"
                 autoCapitalize="none"
+              />
+            </FormField>
+
+            <FormField label="Data de Nascimento">
+              <DatePickerInput
+                value={form.birthDate}
+                onChange={(v) => setForm((p) => ({ ...p, birthDate: v ?? "" }))}
+                placeholder="Selecionar data"
               />
             </FormField>
 
