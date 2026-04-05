@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   View, Text, TextInput, Pressable, ScrollView, Modal, ActivityIndicator,
   Alert
@@ -115,8 +116,8 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-white">
-        <View className="flex-row items-center justify-between px-5 p-4 pt-6 pb-4 border-b border-zinc-100">
+      <SafeAreaView edges={["top"]} className="flex-1 bg-white">
+        <View className="flex-row items-center justify-between px-5 p-4 pb-4 border-b border-zinc-100">
           <View className="flex-row items-center gap-2">
             <Ionicons name="paper-plane" size={20} color={primaryColor} />
             <Text className="text-lg font-black text-zinc-900">Enviar Template</Text>
@@ -267,7 +268,7 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
             )}
           </Pressable>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   )
 }

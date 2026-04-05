@@ -102,7 +102,7 @@ export default function PremiumTabsLayout() {
           tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
-          swipeEnabled: true,
+          swipeEnabled: route.name !== "whatsapp",
           animationEnabled: true,
         } as any
       }}

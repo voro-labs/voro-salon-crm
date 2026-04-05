@@ -713,9 +713,21 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 14, fontWeight: "800", color: "#18181b" }}>{apt.clientName}</Text>
-                          <Text style={{ fontSize: 12, color: "#71717a" }}>
-                            {apt.serviceName ? `${apt.serviceName} · ` : ""}{formatTime(apt.scheduledDateTime ?? apt.date)}
-                          </Text>
+                          {apt.scheduledDateTime || apt.date ? (() => {
+                            const d = new Date(apt.scheduledDateTime ?? apt.date)
+                            const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+                            const day = DAYS[d.getDay()]
+                            const dateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`
+                            const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+                            return (
+                              <Text style={{ fontSize: 12, color: "#d97706", fontWeight: "700" }}>
+                                {day}, {dateStr} às {timeStr}
+                              </Text>
+                            )
+                          })() : null}
+                          {apt.serviceName ? (
+                            <Text style={{ fontSize: 12, color: "#71717a" }}>{apt.serviceName}</Text>
+                          ) : null}
                         </View>
                         <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: currentStatus.bg, borderWidth: 1, borderColor: currentStatus.border }}>
                           <Text style={{ fontSize: 11, fontWeight: "700", color: currentStatus.text }}>{currentStatus.label}</Text>

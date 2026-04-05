@@ -542,8 +542,9 @@ export function EmployeeDetailScreen({ id, rootPath = "/(tabs)" }: { id: string;
 
       {/* Create Access Modal */}
       <Modal visible={accessModalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAccessModalOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
-          <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
+        <SafeAreaView edges={["top"]} className="flex-1 bg-white">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
+          <View className="flex-row items-center justify-between px-5 pt-4 pb-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Criar Acesso ao Sistema</Text>
             <Pressable
               onPress={() => { setAccessModalOpen(false); setAccessEmail(""); setAccessPassword(""); setShowPassword(false) }}
@@ -627,6 +628,7 @@ export function EmployeeDetailScreen({ id, rootPath = "/(tabs)" }: { id: string;
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
 
       {/* Goal Modal */}

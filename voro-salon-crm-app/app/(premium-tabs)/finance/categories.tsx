@@ -79,7 +79,7 @@ export default function CategoriesScreen() {
   const expenseCount = (categories ?? []).filter((c: any) => c.type === TransactionType.Expense || c.type === 2).length
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top", "bottom"]}>
       {/* Header */}
       <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
         <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">

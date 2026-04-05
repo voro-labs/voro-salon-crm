@@ -1,5 +1,6 @@
 import React, { useCallback } from "react"
-import { View, Text, FlatList, Pressable, ActivityIndicator, Alert } from "react-native"
+import { View, Text, FlatList, Pressable, ActivityIndicator } from "react-native"
+import { ConfirmModal } from "components/ConfirmModal"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -66,6 +67,8 @@ export function NotificationsScreen({ rootPath = "/(tabs)" }: { rootPath?: strin
 
   const [selectionMode, setSelectionMode] = React.useState(false)
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set())
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const [batchDeleteOpen, setBatchDeleteOpen] = React.useState(false)
 
   const handleItemPress = useCallback(
     (item: UserNotification) => {
@@ -97,30 +100,12 @@ export function NotificationsScreen({ rootPath = "/(tabs)" }: { rootPath?: strin
 
   const handleDelete = (id: string) => {
     if (selectionMode) return
-    Alert.alert("Remover Notificação", "Deseja remover esta notificação?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Remover", style: "destructive", onPress: () => deleteNotification(id) },
-    ])
+    setDeletingId(id)
   }
 
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) return
-    Alert.alert(
-      "Remover selecionadas",
-      `Deseja remover as ${selectedIds.size} notificações selecionadas?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: async () => {
-            await deleteMultipleNotifications(Array.from(selectedIds))
-            setSelectedIds(new Set())
-            setSelectionMode(false)
-          },
-        },
-      ]
-    )
+    setBatchDeleteOpen(true)
   }
 
   const handleToggleSelection = () => {
@@ -237,6 +222,30 @@ export function NotificationsScreen({ rootPath = "/(tabs)" }: { rootPath?: strin
           )}
         </View>
       )}
+      <ConfirmModal
+        visible={!!deletingId}
+        title="Remover notificação?"
+        message="Esta notificação será removida permanentemente."
+        confirmLabel="Remover"
+        destructive
+        onConfirm={() => { deleteNotification(deletingId!); setDeletingId(null) }}
+        onCancel={() => setDeletingId(null)}
+      />
+
+      <ConfirmModal
+        visible={batchDeleteOpen}
+        title="Remover selecionadas?"
+        message={`As ${selectedIds.size} notificações selecionadas serão removidas permanentemente.`}
+        confirmLabel="Remover"
+        destructive
+        onConfirm={async () => {
+          setBatchDeleteOpen(false)
+          await deleteMultipleNotifications(Array.from(selectedIds))
+          setSelectedIds(new Set())
+          setSelectionMode(false)
+        }}
+        onCancel={() => setBatchDeleteOpen(false)}
+      />
     </SafeAreaView>
   )
 }
