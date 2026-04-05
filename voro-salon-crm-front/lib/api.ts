@@ -242,6 +242,10 @@ export async function apiCall<T>(endpoint: string, options: ApiOptions = {}): Pr
   }
 }
 
+// Expõe o tokenManager para que o auth.context possa usar o mesmo caminho
+// de renovação de token que o apiCall, evitando requests duplicados concorrentes.
+export { tokenManager }
+
 // Função específica para chamadas autenticadas (alias para apiCall, já que agora sempre inclui token)
 export async function authenticatedApiCall<T>(
   endpoint: string,

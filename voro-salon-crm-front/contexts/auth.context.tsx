@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG } from "@/lib/api"
+import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG, tokenManager } from "@/lib/api"
 import { AuthDto } from "@/types/DTOs/auth.interface"
 import { jwtDecode } from "jwt-decode"
 
@@ -75,35 +75,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
       }
 
-      // Tenta renovar o token silenciosamente usando o refresh token
-      // expiredToken: JWT expirado para o backend extrair o userId
+      // Tenta renovar o token silenciosamente usando o refresh token.
+      // Quando há um expiredToken, delega ao tokenManager compartilhado para
+      // evitar requests duplicados com o apiCall() que também pode estar tentando
+      // renovar ao mesmo tempo (ex.: SWR disparando chamadas logo após o reload).
       const attemptSilentRefresh = async (expiredToken?: string): Promise<boolean> => {
         const refreshToken = getRefreshToken()
         if (!refreshToken) return false
 
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 8000)
+        let newToken: string | null = null
 
-        try {
-          const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: expiredToken ?? "", refreshToken }),
-            signal: controller.signal,
-          })
-          const data = await res.json()
-          if (res.ok && !data.hasError && data.data?.token) {
-            const newToken = data.data.token
-            const newRefresh = data.data.refreshToken
-            setAuthToken(newToken)
-            if (newRefresh) setRefreshToken(newRefresh)
-            applyToken(newToken, newRefresh || refreshToken)
-            return true
+        if (expiredToken) {
+          // Usa o tokenManager para deduplicar com o refresh concorrente do apiCall().
+          // O _doRefresh() do manager faz exatamente o mesmo fetch, mas com Promise única.
+          newToken = await tokenManager.getValidToken()
+        } else {
+          // Sem access token nenhum: faz fetch direto (tokenManager retornaria null nesse caso).
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 8000)
+          try {
+            const res = await fetch(`${API_CONFIG.BASE_API_URL}${API_CONFIG.ENDPOINTS.REFRESH_TOKEN}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: "", refreshToken }),
+              signal: controller.signal,
+            })
+            const data = await res.json()
+            if (res.ok && !data.hasError && data.data?.token) {
+              newToken = data.data.token
+              setAuthToken(newToken)
+              if (data.data.refreshToken) setRefreshToken(data.data.refreshToken)
+            }
+          } catch {} finally {
+            clearTimeout(timeoutId)
           }
-        } catch {} finally {
-          clearTimeout(timeoutId)
         }
-        return false
+
+        if (!newToken) return false
+        applyToken(newToken, getRefreshToken() || undefined)
+        return true
       }
 
       if (!token) {
