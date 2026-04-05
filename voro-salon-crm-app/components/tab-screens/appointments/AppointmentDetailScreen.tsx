@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Modal } from "react-native"
+import { ConfirmModal } from "components/ConfirmModal"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -74,6 +75,7 @@ export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: stri
   const { primaryColor } = useTenantTheme()
 
   const [statusModal, setStatusModal] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   const appt = appointment as any
   if (isLoading) {
@@ -93,14 +95,7 @@ export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: stri
   const employeeName = appt.employeeName ?? appt.employee?.name ?? `${appt.employee?.firstName ?? ""} ${appt.employee?.lastName ?? ""}`.trim()
 
   function confirmDelete() {
-    Alert.alert(
-      "Excluir agendamento?",
-      "Essa ação não pode ser desfeita.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deleteAppointment() },
-      ]
-    )
+    setConfirmDeleteOpen(true)
   }
 
   return (
@@ -251,6 +246,17 @@ export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: stri
         onSubmit={handleRatingSubmit}
         clientName={clientName}
         isLoading={isSubmittingRating}
+      />
+
+      {/* Confirm: Excluir agendamento */}
+      <ConfirmModal
+        visible={confirmDeleteOpen}
+        title="Excluir agendamento?"
+        message="Essa ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { setConfirmDeleteOpen(false); deleteAppointment() }}
+        onCancel={() => setConfirmDeleteOpen(false)}
       />
     </SafeAreaView>
   )

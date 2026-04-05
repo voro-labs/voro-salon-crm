@@ -23,7 +23,7 @@ const DEFAULT_FORM: EmployeeForm = {
   commissionPercentage: undefined,
 }
 
-export function useEmployeeDetail(employeeId?: string) {
+export function useEmployeeDetail(employeeId?: string, onDeleted?: () => void) {
   const isNew = !employeeId || employeeId === "new"
 
   const { data: employee, isLoading: isLoadingEmp } = useSWR(
@@ -153,7 +153,11 @@ export function useEmployeeDetail(employeeId?: string) {
         return false
       }
       Toast.success("Funcionário excluído.")
-      router.back()
+      if (onDeleted) {
+        onDeleted()
+      } else {
+        router.back()
+      }
       return true
     } catch {
       Toast.error("Erro de conexão.")

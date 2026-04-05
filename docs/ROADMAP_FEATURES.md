@@ -17,17 +17,17 @@
 
 ### Funcionalidades
 
-- [ ] Histórico de agendamentos: remover estabelecimentos do storage que não existem mais na API
+- [x] Histórico de agendamentos: remover estabelecimentos do storage que não existem mais na API
 - [ ] Agendamentos passados (popup): mostrar os dias das ocorrências para melhor entendimento do usuário
-- [ ] StatusBar do celular acompanhar a cor do aplicativo (branco)
-- [ ] Limpar o histórico de navegação após exclusão de um item (evitar o usuário voltar para item excluído)
+- [x] StatusBar do celular acompanhar a cor do aplicativo (branco)
+- [x] Limpar o histórico de navegação após exclusão de um item (evitar o usuário voltar para item excluído)
 - [ ] Remover o swipe da página de WhatsApp (manter apenas os swipes do Kanban)
-- [ ] Permitir múltiplos horários no mesmo dia da semana (ex: 08:00–11:50 | 13:00–18:00)
+- [x] Permitir múltiplos horários no mesmo dia da semana (ex: 08:00–11:50 | 13:00–18:00)
 
 ### Inset Top (SafeAreaView faltando)
 
 - [ ] Editar cliente
-- [ ] Criar serviço
+- [x] Criar serviço
 - [ ] Criar acesso ao sistema
 - [ ] Editar funcionário
 - [ ] Nova categoria
@@ -36,11 +36,13 @@
 
 ### Modais customizados (substituir alerts nativos do Android)
 
-- [ ] Todos os modais de confirmação de exclusão que não estão no padrão visual do app
-- [ ] Modal de escolher foto do estabelecimento
+- [x] Confirmação de exclusão: categorias financeiras
+- [x] Confirmação de exclusão: horários bloqueados
+- [x] Modal de escolher foto (galeria / câmera) — bottom sheet customizado
+- [ ] Demais telas com Alert de confirmação não padronizado
 
 ### Padding Bottom em ScrollView
 
-- [ ] Tela de enviar template
+- [x] Tela de enviar template
 
 ---

@@ -5,6 +5,7 @@ import {
   Image
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { ConfirmModal } from "components/ConfirmModal"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import useSWR, { mutate } from "swr"
@@ -21,7 +22,7 @@ function formatDate(dateStr?: string) {
   return new Date(dateStr).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-export function EmployeeDetailScreen({ id }: { id: string }) {
+export function EmployeeDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; rootPath?: string }) {
   const router = useRouter()
   const {
     employee, services,
@@ -29,11 +30,15 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
     isLoading, isSaving, isDeleting,
     saveEmployee, deleteEmployee,
     handlePhotoUpload, isUploadingPhoto
-  } = useEmployeeDetail(id)
+  } = useEmployeeDetail(id, () => router.replace(`${rootPath}/employees` as any))
   const { primaryColor } = useTenantTheme()
 
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ ...form })
+
+  // Confirm modals
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmRevokeOpen, setConfirmRevokeOpen] = useState(false)
 
   // --- Acesso ao sistema ---
   const [accessModalOpen, setAccessModalOpen] = useState(false)
@@ -156,35 +161,27 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
   }
 
   function handleRevokeAccess() {
-    Alert.alert(
-      "Revogar acesso?",
-      "O funcionário perderá o acesso ao sistema. Esta ação não pode ser desfeita sem criar um novo acesso.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Revogar",
-          style: "destructive",
-          onPress: async () => {
-            setIsRevokingAccess(true)
-            try {
-              const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
-                method: "DELETE",
-              })
-              if (res.hasError) {
-                Alert.alert("Erro", res.message || "Erro ao revogar acesso.")
-                return
-              }
-              mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
-              mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
-            } catch {
-              Alert.alert("Erro", "Erro de conexão.")
-            } finally {
-              setIsRevokingAccess(false)
-            }
-          },
-        },
-      ]
-    )
+    setConfirmRevokeOpen(true)
+  }
+
+  async function executeRevokeAccess() {
+    setConfirmRevokeOpen(false)
+    setIsRevokingAccess(true)
+    try {
+      const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
+        method: "DELETE",
+      })
+      if (res.hasError) {
+        Alert.alert("Erro", res.message || "Erro ao revogar acesso.")
+        return
+      }
+      mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
+      mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
+    } catch {
+      Alert.alert("Erro", "Erro de conexão.")
+    } finally {
+      setIsRevokingAccess(false)
+    }
   }
 
   function openEdit() {
@@ -198,14 +195,7 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
   }
 
   function handleDelete() {
-    Alert.alert(
-      "Excluir funcionário?",
-      `Isso irá remover ${employee?.name} permanentemente. Essa ação não pode ser desfeita.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deleteEmployee() },
-      ]
-    )
+    setConfirmDeleteOpen(true)
   }
 
   if (isLoading) {
@@ -690,6 +680,28 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Confirm: Excluir funcionário */}
+      <ConfirmModal
+        visible={confirmDeleteOpen}
+        title="Excluir funcionário?"
+        message={`Isso irá remover ${employee?.name} permanentemente. Essa ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { setConfirmDeleteOpen(false); deleteEmployee() }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      {/* Confirm: Revogar acesso */}
+      <ConfirmModal
+        visible={confirmRevokeOpen}
+        title="Revogar acesso?"
+        message="O funcionário perderá o acesso ao sistema. Esta ação não pode ser desfeita sem criar um novo acesso."
+        confirmLabel="Revogar"
+        destructive
+        onConfirm={executeRevokeAccess}
+        onCancel={() => setConfirmRevokeOpen(false)}
+      />
 
       {/* Edit Modal */}
       <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditOpen(false)}>

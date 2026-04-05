@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Modal, TextInput, Switch, KeyboardAvoidingView, Platform } from "react-native"
+import { ConfirmModal } from "components/ConfirmModal"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -57,6 +58,8 @@ export function ServiceDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; 
   const [editingPromo, setEditingPromo] = useState<ServicePromotionDto | null>(null)
   const [promoForm, setPromoForm] = useState(emptyPromoForm)
   const [isSavingPromo, setIsSavingPromo] = useState(false)
+  const [confirmDeletePromoId, setConfirmDeletePromoId] = useState<string | null>(null)
+  const [confirmDeleteServiceOpen, setConfirmDeleteServiceOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -112,14 +115,16 @@ export function ServiceDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; 
   }
 
   function handleDeletePromo(promoId: string) {
-    Alert.alert("Excluir promoção?", "Esta ação não pode ser desfeita.", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Excluir", style: "destructive", onPress: async () => {
-        const res = await secureApiCall(`/ServicePromotion/${promoId}`, { method: "DELETE" })
-        if (res.hasError) { Alert.alert("Erro", res.message || "Erro ao excluir."); return }
-        setPromos(prev => prev.filter(p => p.id !== promoId))
-      }},
-    ])
+    setConfirmDeletePromoId(promoId)
+  }
+
+  async function executeDeletePromo() {
+    if (!confirmDeletePromoId) return
+    const promoId = confirmDeletePromoId
+    setConfirmDeletePromoId(null)
+    const res = await secureApiCall(`/ServicePromotion/${promoId}`, { method: "DELETE" })
+    if (res.hasError) { Alert.alert("Erro", res.message || "Erro ao excluir."); return }
+    setPromos(prev => prev.filter(p => p.id !== promoId))
   }
 
   if (isLoading) {
@@ -135,14 +140,7 @@ export function ServiceDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; 
   const svc = service as any
 
   function confirmDelete() {
-    Alert.alert(
-      "Excluir serviço?",
-      `"${svc.name}" será removido permanentemente.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deleteService() },
-      ]
-    )
+    setConfirmDeleteServiceOpen(true)
   }
 
   return (
@@ -386,6 +384,28 @@ export function ServiceDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; 
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Confirm: Excluir promoção */}
+      <ConfirmModal
+        visible={confirmDeletePromoId !== null}
+        title="Excluir promoção?"
+        message="Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={executeDeletePromo}
+        onCancel={() => setConfirmDeletePromoId(null)}
+      />
+
+      {/* Confirm: Excluir serviço */}
+      <ConfirmModal
+        visible={confirmDeleteServiceOpen}
+        title="Excluir serviço?"
+        message={`"${svc.name}" será removido permanentemente.`}
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { setConfirmDeleteServiceOpen(false); deleteService() }}
+        onCancel={() => setConfirmDeleteServiceOpen(false)}
+      />
     </SafeAreaView>
   )
 }

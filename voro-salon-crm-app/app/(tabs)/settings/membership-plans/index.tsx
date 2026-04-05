@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import { View, Text, ScrollView, ActivityIndicator, Pressable, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Switch } from "react-native"
+import { ConfirmModal } from "components/ConfirmModal"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -23,6 +24,7 @@ export default function MembershipPlansScreen() {
   } = useMembershipPlans()
 
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [confirmDeletePlan, setConfirmDeletePlan] = useState<MembershipPlan | null>(null)
 
   function openCreate() {
     setEditingId(null)
@@ -45,14 +47,7 @@ export default function MembershipPlansScreen() {
   }
 
   function confirmDelete(plan: MembershipPlan) {
-    Alert.alert(
-      "Excluir plano?",
-      `O plano "${plan.name}" será excluído. Assinaturas ativas não serão afetadas.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deletePlan(plan.id) }
-      ]
-    )
+    setConfirmDeletePlan(plan)
   }
 
   async function handleSave() {
@@ -161,6 +156,17 @@ export default function MembershipPlansScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Confirm: Excluir plano */}
+      <ConfirmModal
+        visible={confirmDeletePlan !== null}
+        title="Excluir plano?"
+        message={`O plano "${confirmDeletePlan?.name}" será excluído. Assinaturas ativas não serão afetadas.`}
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { const plan = confirmDeletePlan!; setConfirmDeletePlan(null); deletePlan(plan.id) }}
+        onCancel={() => setConfirmDeletePlan(null)}
+      />
 
       {/* Edit Modal */}
       <Modal visible={dialogOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setDialogOpen(false)}>

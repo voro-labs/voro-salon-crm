@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   View,
   Text,
@@ -20,12 +20,28 @@ import { fetcher } from "lib/fetcher"
 import { secureApiCall } from "lib/api"
 import { useAuth } from "contexts/auth.context"
 
+// ─── Data model ──────────────────────────────────────────────────────────────
+
+interface TimeRange {
+  openTime: string
+  closeTime: string
+}
+
 interface BusinessHoursViewModel {
+  dayOfWeek: number
+  isOpen: boolean
+  ranges: TimeRange[]
+}
+
+// Shape returned by the API (single range per day)
+interface ApiBusinessHours {
   dayOfWeek: number
   isOpen: boolean
   openTime: string
   closeTime: string
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const DAYS_OF_WEEK = [
   { day: 0, label: "Domingo" },
@@ -37,18 +53,51 @@ const DAYS_OF_WEEK = [
   { day: 6, label: "Sábado" },
 ]
 
-// Gera horários de 15 em 15 min
+// 15-minute increments from 00:00 to 23:45
 const TIME_OPTIONS = Array.from({ length: 96 }, (_, i) => {
   const h = Math.floor(i / 4).toString().padStart(2, "0")
   const m = ((i % 4) * 15).toString().padStart(2, "0")
   return `${h}:${m}`
 })
 
+const DEFAULT_OPEN = "08:00"
+const DEFAULT_CLOSE = "18:00"
+const DEFAULT_RANGE: TimeRange = { openTime: DEFAULT_OPEN, closeTime: DEFAULT_CLOSE }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function apiToViewModel(apiHours: ApiBusinessHours[], days: typeof DAYS_OF_WEEK): BusinessHoursViewModel[] {
+  return days.map((d) => {
+    const setting = apiHours.find((bh) => bh.dayOfWeek === d.day)
+    const defaultIsOpen = d.day >= 1 && d.day <= 6
+
+    if (!setting) {
+      return {
+        dayOfWeek: d.day,
+        isOpen: defaultIsOpen,
+        ranges: [{ ...DEFAULT_RANGE }],
+      }
+    }
+
+    return {
+      dayOfWeek: d.day,
+      isOpen: setting.isOpen,
+      ranges: [
+        {
+          openTime: setting.openTime ? setting.openTime.slice(0, 5) : DEFAULT_OPEN,
+          closeTime: setting.closeTime ? setting.closeTime.slice(0, 5) : DEFAULT_CLOSE,
+        },
+      ],
+    }
+  })
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function BusinessHoursScreen() {
   const { primaryColor } = useTenantTheme()
   const { user } = useAuth()
   const router = useRouter()
-  const [isSaving, setIsSaving] = useState<number | null>(null)
 
   const roleNames = user?.roles?.map((r: any) => r.name) ?? []
   const isSalonOwner = roleNames.includes("SalonOwner") || roleNames.includes("Owner")
@@ -58,59 +107,107 @@ export default function BusinessHoursScreen() {
       router.replace("/")
     }
   }, [user, isSalonOwner])
-  
-  const { data: businessHours, mutate, isLoading } = useSWR<BusinessHoursViewModel[]>(
+
+  const { data: businessHours, mutate, isLoading } = useSWR<ApiBusinessHours[]>(
     API_CONFIG.ENDPOINTS.BUSINESS_HOURS,
     fetcher
   )
 
-  const sortedHours = useMemo(() => {
-    return DAYS_OF_WEEK.map((d) => {
-      const setting = (businessHours || []).find((bh) => bh.dayOfWeek === d.day)
-      
-      // Se não houver configuração, usa o padrão: 08-18 e aberto se seg-sab (1-6)
-      const defaultIsOpen = d.day >= 1 && d.day <= 6
-      const defaultOpen = "08:00"
-      const defaultClose = "18:00"
+  // Local state – initialized from SWR data, editable without hitting the API
+  const [localHours, setLocalHours] = useState<BusinessHoursViewModel[]>([])
+  const [isSaving, setIsSaving] = useState<number | null>(null)
 
-      return {
-        ...d,
-        isOpen: setting?.isOpen ?? defaultIsOpen,
-        openTime: setting?.openTime ? setting.openTime.slice(0, 5) : defaultOpen,
-        closeTime: setting?.closeTime ? setting.closeTime.slice(0, 5) : defaultClose,
-      }
-    })
+  // Sync local state when remote data arrives (first load only, to avoid
+  // overwriting in-progress edits on revalidation)
+  useEffect(() => {
+    if (businessHours) {
+      setLocalHours(apiToViewModel(businessHours, DAYS_OF_WEEK))
+    }
   }, [businessHours])
 
-  const handleUpdate = async (day: number, updates: Partial<BusinessHoursViewModel>) => {
-    setIsSaving(day)
-    try {
-      const current = sortedHours.find(h => h.day === day)
-      const payload = {
-        dayOfWeek: day,
-        isOpen: updates.isOpen !== undefined ? updates.isOpen : current?.isOpen,
-        openTime: updates.openTime || current?.openTime || "09:00",
-        closeTime: updates.closeTime || current?.closeTime || "18:00",
-      }
+  // ─── Mutators ──────────────────────────────────────────────────────────────
 
-      const result = await secureApiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {
-        method: "PUT",
-        body: JSON.stringify(payload),
+  const toggleDay = useCallback((dayOfWeek: number, isOpen: boolean) => {
+    setLocalHours((prev) =>
+      prev.map((d) => (d.dayOfWeek === dayOfWeek ? { ...d, isOpen } : d))
+    )
+  }, [])
+
+  const updateRange = useCallback(
+    (dayOfWeek: number, rangeIndex: number, field: keyof TimeRange, value: string) => {
+      setLocalHours((prev) =>
+        prev.map((d) => {
+          if (d.dayOfWeek !== dayOfWeek) return d
+          const newRanges = d.ranges.map((r, i) =>
+            i === rangeIndex ? { ...r, [field]: value } : r
+          )
+          return { ...d, ranges: newRanges }
+        })
+      )
+    },
+    []
+  )
+
+  const addRange = useCallback((dayOfWeek: number) => {
+    setLocalHours((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d
+        return { ...d, ranges: [...d.ranges, { ...DEFAULT_RANGE }] }
       })
+    )
+  }, [])
 
-      if (!result.hasError) {
-        mutate()
-      } else {
-        Alert.alert("Erro", result.message || "Erro ao atualizar horário")
+  const removeRange = useCallback((dayOfWeek: number, rangeIndex: number) => {
+    setLocalHours((prev) =>
+      prev.map((d) => {
+        if (d.dayOfWeek !== dayOfWeek) return d
+        if (d.ranges.length <= 1) return d // keep at least 1
+        return { ...d, ranges: d.ranges.filter((_, i) => i !== rangeIndex) }
+      })
+    )
+  }, [])
+
+  // ─── Save ──────────────────────────────────────────────────────────────────
+
+  // API currently accepts a single openTime/closeTime per day.
+  // We send the first range for backward compatibility.
+  const saveDay = useCallback(
+    async (dayOfWeek: number) => {
+      const day = localHours.find((d) => d.dayOfWeek === dayOfWeek)
+      if (!day) return
+
+      setIsSaving(dayOfWeek)
+      try {
+        const firstRange = day.ranges[0] ?? DEFAULT_RANGE
+        const payload = {
+          dayOfWeek: day.dayOfWeek,
+          isOpen: day.isOpen,
+          openTime: firstRange.openTime,
+          closeTime: firstRange.closeTime,
+        }
+
+        const result = await secureApiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        })
+
+        if (!result.hasError) {
+          mutate()
+        } else {
+          Alert.alert("Erro", result.message || "Erro ao atualizar horário")
+        }
+      } catch {
+        Alert.alert("Erro", "Erro ao conectar ao servidor")
+      } finally {
+        setIsSaving(null)
       }
-    } catch (err) {
-      Alert.alert("Erro", "Erro ao conectar ao servidor")
-    } finally {
-      setIsSaving(null)
-    }
-  }
+    },
+    [localHours, mutate]
+  )
 
-  if (isLoading) {
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  if (isLoading || localHours.length === 0) {
     return (
       <View style={appStyles.centered}>
         <ActivityIndicator size="large" color={primaryColor} />
@@ -120,99 +217,174 @@ export default function BusinessHoursScreen() {
 
   return (
     <View style={appStyles.container}>
-      <ScreenHeader 
-        title="Horários de Funcionamento" 
-        showBack 
-        onBack={() => router.back()} 
+      <ScreenHeader
+        title="Horários de Funcionamento"
+        showBack
+        onBack={() => router.back()}
       />
-      
+
       <ScrollView contentContainerStyle={appStyles.scrollContent}>
         <View style={appStyles.infoBox}>
           <Ionicons name="information-circle-outline" size={20} color="#64748b" />
           <Text style={appStyles.infoText}>
             Defina os horários em que seu estabelecimento está aberto para receber agendamentos.
+            Você pode adicionar múltiplos intervalos por dia.
           </Text>
         </View>
 
-        {sortedHours.map((day) => (
-          <View key={day.day} style={appStyles.dayCard}>
-            <View style={appStyles.dayHeader}>
-              <View>
-                <Text style={appStyles.dayLabel}>{day.label}</Text>
-                <Text style={[appStyles.statusLabel, { color: day.isOpen ? "#10b981" : "#ef4444" }]}>
-                  {day.isOpen ? "Aberto" : "Fechado"}
-                </Text>
+        {localHours.map((day) => {
+          const dayMeta = DAYS_OF_WEEK.find((d) => d.day === day.dayOfWeek)!
+          const saving = isSaving === day.dayOfWeek
+
+          return (
+            <View key={day.dayOfWeek} style={appStyles.dayCard}>
+              {/* Day header row */}
+              <View style={appStyles.dayHeader}>
+                <View>
+                  <Text style={appStyles.dayLabel}>{dayMeta.label}</Text>
+                  <Text style={[appStyles.statusLabel, { color: day.isOpen ? "#10b981" : "#ef4444" }]}>
+                    {day.isOpen ? "Aberto" : "Fechado"}
+                  </Text>
+                </View>
+                <Switch
+                  value={day.isOpen}
+                  onValueChange={(val) => toggleDay(day.dayOfWeek, val)}
+                  trackColor={{ false: "#e2e8f0", true: primaryColor + "80" }}
+                  thumbColor={day.isOpen ? primaryColor : "#f8fafc"}
+                  disabled={saving}
+                />
               </View>
-              <Switch
-                value={day.isOpen}
-                onValueChange={(val) => handleUpdate(day.day, { isOpen: val })}
-                trackColor={{ false: "#e2e8f0", true: primaryColor + "80" }}
-                thumbColor={day.isOpen ? primaryColor : "#f8fafc"}
-                disabled={isSaving === day.day}
-              />
+
+              {/* Time ranges */}
+              {day.isOpen && (
+                <View style={appStyles.rangesContainer}>
+                  {day.ranges.map((range, rangeIndex) => (
+                    <View key={rangeIndex} style={appStyles.rangeRow}>
+                      {/* Open time */}
+                      <View style={appStyles.timeInputGroup}>
+                        <Text style={appStyles.timeLabel}>Início</Text>
+                        <TimeSelector
+                          value={range.openTime}
+                          onSelect={(time) => updateRange(day.dayOfWeek, rangeIndex, "openTime", time)}
+                          primaryColor={primaryColor}
+                          disabled={saving}
+                        />
+                      </View>
+
+                      <View style={appStyles.timeSeparator}>
+                        <Text style={appStyles.timeSeparatorText}>até</Text>
+                      </View>
+
+                      {/* Close time */}
+                      <View style={appStyles.timeInputGroup}>
+                        <Text style={appStyles.timeLabel}>Fim</Text>
+                        <TimeSelector
+                          value={range.closeTime}
+                          onSelect={(time) => updateRange(day.dayOfWeek, rangeIndex, "closeTime", time)}
+                          primaryColor={primaryColor}
+                          disabled={saving}
+                        />
+                      </View>
+
+                      {/* Delete range button — always rendered for layout, invisible when only 1 range */}
+                      <TouchableOpacity
+                        style={[
+                          appStyles.deleteRangeButton,
+                          day.ranges.length <= 1 && appStyles.deleteRangeButtonHidden,
+                        ]}
+                        onPress={() => removeRange(day.dayOfWeek, rangeIndex)}
+                        disabled={day.ranges.length <= 1 || saving}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  {/* Add range + Save row */}
+                  <View style={appStyles.actionsRow}>
+                    <TouchableOpacity
+                      style={appStyles.addRangeButton}
+                      onPress={() => addRange(day.dayOfWeek)}
+                      disabled={saving}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add-circle-outline" size={16} color={primaryColor} />
+                      <Text style={[appStyles.addRangeText, { color: primaryColor }]}>
+                        Adicionar horário
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[appStyles.saveButton, { backgroundColor: primaryColor }, saving && appStyles.saveButtonDisabled]}
+                      onPress={() => saveDay(day.dayOfWeek)}
+                      disabled={saving}
+                      activeOpacity={0.8}
+                    >
+                      {saving ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Text style={appStyles.saveButtonText}>Salvar</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* When day is closed, show Save button to persist the toggle */}
+              {!day.isOpen && (
+                <View style={appStyles.closedSaveRow}>
+                  <TouchableOpacity
+                    style={[appStyles.saveButton, { backgroundColor: primaryColor }, saving && appStyles.saveButtonDisabled]}
+                    onPress={() => saveDay(day.dayOfWeek)}
+                    disabled={saving}
+                    activeOpacity={0.8}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={appStyles.saveButtonText}>Salvar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {saving && (
+                <View style={appStyles.savingOverlay}>
+                  <ActivityIndicator size="small" color={primaryColor} />
+                </View>
+              )}
             </View>
-
-            {day.isOpen && (
-              <View style={appStyles.timeContainer}>
-                <View style={appStyles.timeInputGroup}>
-                  <Text style={appStyles.timeLabel}>Início</Text>
-                  <TimeSelector
-                    value={day.openTime}
-                    onSelect={(time) => handleUpdate(day.day, { openTime: time })}
-                    primaryColor={primaryColor}
-                    disabled={isSaving === day.day}
-                  />
-                </View>
-
-                <View style={appStyles.timeSeparator}>
-                  <Ionicons name="arrow-forward-outline" size={16} color="#94a3b8" />
-                </View>
-
-                <View style={appStyles.timeInputGroup}>
-                  <Text style={appStyles.timeLabel}>Fim</Text>
-                  <TimeSelector
-                    value={day.closeTime}
-                    onSelect={(time) => handleUpdate(day.day, { closeTime: time })}
-                    primaryColor={primaryColor}
-                    disabled={isSaving === day.day}
-                  />
-                </View>
-              </View>
-            )}
-
-            {isSaving === day.day && (
-              <View style={appStyles.savingOverlay}>
-                <ActivityIndicator size="small" color={primaryColor} />
-              </View>
-            )}
-          </View>
-        ))}
+          )
+        })}
       </ScrollView>
     </View>
   )
 }
 
-function TimeSelector({ 
-  value, 
-  onSelect, 
+// ─── TimeSelector ─────────────────────────────────────────────────────────────
+
+function TimeSelector({
+  value,
+  onSelect,
   primaryColor,
-  disabled 
-}: { 
-  value: string, 
-  onSelect: (val: string) => void,
-  primaryColor: string,
+  disabled,
+}: {
+  value: string
+  onSelect: (val: string) => void
+  primaryColor: string
   disabled?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
     <>
-      <TouchableOpacity 
-        style={[appStyles.timePickerTrigger, disabled && appStyles.disabled]} 
+      <TouchableOpacity
+        style={[appStyles.timePickerTrigger, disabled && appStyles.opacityDisabled]}
         onPress={() => !disabled && setIsOpen(true)}
         activeOpacity={0.7}
       >
-        <Ionicons name="time-outline" size={18} color="#64748b" style={{ marginRight: 8 }} />
+        <Ionicons name="time-outline" size={16} color="#64748b" style={{ marginRight: 6 }} />
         <Text style={appStyles.timePickerText}>{value}</Text>
       </TouchableOpacity>
 
@@ -222,9 +394,9 @@ function TimeSelector({
         animationType="fade"
         onRequestClose={() => setIsOpen(false)}
       >
-        <TouchableOpacity 
-          style={appStyles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={appStyles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setIsOpen(false)}
         >
           <View style={appStyles.timeModal}>
@@ -240,17 +412,19 @@ function TimeSelector({
                   key={time}
                   style={[
                     appStyles.timeOption,
-                    value === time && { backgroundColor: primaryColor + "15" }
+                    value === time && { backgroundColor: primaryColor + "15" },
                   ]}
                   onPress={() => {
                     onSelect(time)
                     setIsOpen(false)
                   }}
                 >
-                  <Text style={[
-                    appStyles.timeOptionText,
-                    value === time && { color: primaryColor, fontWeight: "bold" }
-                  ]}>
+                  <Text
+                    style={[
+                      appStyles.timeOptionText,
+                      value === time && { color: primaryColor, fontWeight: "bold" },
+                    ]}
+                  >
                     {time}
                   </Text>
                   {value === time && (
@@ -265,6 +439,8 @@ function TimeSelector({
     </>
   )
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const appStyles = StyleSheet.create({
   container: {
@@ -286,7 +462,7 @@ const appStyles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     marginBottom: 20,
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   infoText: {
     flex: 1,
@@ -295,6 +471,7 @@ const appStyles = StyleSheet.create({
     marginLeft: 8,
     lineHeight: 18,
   },
+  // ── Day card ──────────────────────────────────────────────────────────────
   dayCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -322,13 +499,18 @@ const appStyles = StyleSheet.create({
     marginTop: 2,
     fontWeight: "500",
   },
-  timeContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginTop: 16,
-    paddingTop: 16,
+  // ── Ranges ────────────────────────────────────────────────────────────────
+  rangesContainer: {
+    marginTop: 14,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: "#f1f5f9",
+    gap: 10,
+  },
+  rangeRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 6,
   },
   timeInputGroup: {
     flex: 1,
@@ -339,33 +521,87 @@ const appStyles = StyleSheet.create({
     textTransform: "uppercase",
     fontWeight: "bold",
     marginBottom: 6,
+    letterSpacing: 0.4,
   },
   timeSeparator: {
-    paddingHorizontal: 12,
-    paddingBottom: 14,
+    paddingBottom: 12,
   },
+  timeSeparatorText: {
+    fontSize: 13,
+    color: "#94a3b8",
+    fontWeight: "500",
+  },
+  deleteRangeButton: {
+    paddingBottom: 10,
+    paddingLeft: 4,
+  },
+  deleteRangeButtonHidden: {
+    opacity: 0,
+  },
+  // ── Actions row ───────────────────────────────────────────────────────────
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  addRangeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+  },
+  addRangeText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  saveButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  closedSaveRow: {
+    marginTop: 12,
+    alignItems: "flex-end",
+  },
+  // ── Misc ─────────────────────────────────────────────────────────────────
+  savingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.65)",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  opacityDisabled: {
+    opacity: 0.5,
+  },
+  // ── Time picker trigger ───────────────────────────────────────────────────
   timePickerTrigger: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f8fafc",
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
   timePickerText: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#1e293b",
     fontWeight: "500",
   },
-  savingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.7)",
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  // ── Time picker modal ─────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -410,7 +646,4 @@ const appStyles = StyleSheet.create({
     fontSize: 16,
     color: "#475569",
   },
-  disabled: {
-    opacity: 0.5,
-  }
 })

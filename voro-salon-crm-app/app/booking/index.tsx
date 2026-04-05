@@ -70,7 +70,27 @@ export default function BookingEntryScreen() {
         SecureStore.getItemAsync(KEY_HISTORY),
       ])
       if (historyRaw) {
-        try { setHistory(JSON.parse(historyRaw)) } catch {}
+        try {
+          const parsed: HistoryEntry[] = JSON.parse(historyRaw)
+          setHistory(parsed)
+          // Validate each entry in parallel — remove those that no longer exist
+          if (parsed.length > 0) {
+            const results = await Promise.allSettled(
+              parsed.map((entry) => fetchTenant(entry.slug))
+            )
+            let cleaned = parsed
+            for (let i = results.length - 1; i >= 0; i--) {
+              const result = results[i]
+              const failed =
+                result.status === "rejected" ||
+                (result.status === "fulfilled" && result.value === null)
+              if (failed) {
+                cleaned = await removeFromHistory(parsed[i].slug)
+              }
+            }
+            setHistory(cleaned)
+          }
+        } catch {}
       }
       if (s) {
         setSavedSlug(s)

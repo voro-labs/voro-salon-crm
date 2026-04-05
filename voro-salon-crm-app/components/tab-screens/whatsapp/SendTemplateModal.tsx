@@ -126,7 +126,7 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
           </Pressable>
         </View>
 
-        <KeyboardAwareScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <KeyboardAwareScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           
           {results ? (
             <View className="gap-2">

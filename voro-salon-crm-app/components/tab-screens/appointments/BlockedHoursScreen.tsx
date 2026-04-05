@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import {
   View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Modal, TextInput
 } from "react-native"
+import { ConfirmModal } from "components/ConfirmModal"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -20,6 +21,7 @@ export function BlockedHoursScreen() {
   const { primaryColor } = useTenantTheme()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const [date, setDate] = useState("")
   const [startTime, setStartTime] = useState("")
@@ -47,22 +49,20 @@ export function BlockedHoursScreen() {
   ]
 
   const handleDelete = (id: string) => {
-    Alert.alert("Confirmação", "Deseja remover este bloqueio?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Remover",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.TIME_SLOT_BLOCKS}/${id}`, { method: "DELETE" })
-            if (res.hasError) throw new Error(res.message || "Erro")
-            mutate()
-          } catch (e: any) {
-            Alert.alert("Erro", e.message || "Não foi possível remover o bloqueio.")
-          }
-        }
-      }
-    ])
+    setDeletingId(id)
+  }
+
+  const executeDelete = async () => {
+    if (!deletingId) return
+    const id = deletingId
+    setDeletingId(null)
+    try {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.TIME_SLOT_BLOCKS}/${id}`, { method: "DELETE" })
+      if (res.hasError) throw new Error(res.message || "Erro")
+      mutate()
+    } catch (e: any) {
+      Alert.alert("Erro", e.message || "Não foi possível remover o bloqueio.")
+    }
   }
 
   const handleSave = async () => {
@@ -171,6 +171,16 @@ export function BlockedHoursScreen() {
           </View>
         )}
       </ScrollView>
+
+      <ConfirmModal
+        visible={!!deletingId}
+        title="Remover bloqueio?"
+        message="Este horário bloqueado será removido permanentemente."
+        confirmLabel="Remover"
+        destructive
+        onConfirm={executeDelete}
+        onCancel={() => setDeletingId(null)}
+      />
 
       {/* Modal Novo Bloqueio */}
       <Modal visible={isModalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setIsModalOpen(false)}>
