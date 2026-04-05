@@ -1,12 +1,13 @@
 import React, { useState } from "react"
-import { View, Text, FlatList, Pressable, ActivityIndicator, TextInput } from "react-native"
+import { View, Text, FlatList, Pressable, ActivityIndicator, TextInput, Modal, TouchableOpacity, ScrollView } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import { useAuth } from "contexts/auth.context"
-import { useTransactions } from "hooks/use-transactions.hook"
+import { useTransactions } from "../../hooks/use-transactions.hook"
+import { useServiceRecords, ServiceRecordDto } from "../../hooks/use-service-records.hook"
 import { ScreenHeader } from "components/ScreenHeader"
-import { TransactionType, TransactionStatus } from "types/DTOs/financial.interface"
+import { TransactionType } from "types/DTOs/financial.interface"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { useModuleGuard } from "hooks/use-module-guard.hook"
 import { usePlanLimits } from "hooks/use-plan-limits.hook"
@@ -38,9 +39,6 @@ function fmtCurrency(v: number) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const TODAY = new Date().toISOString().split("T")[0]
-const MONTH_START = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0]
-
 interface FinanceScreenProps {
   rootPath?: string // e.g. "/(tabs)" or "/(premium-tabs)"
 }
@@ -51,19 +49,28 @@ export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { user } = useAuth()
-  
+
   const roleNames = user?.roles?.map((r: any) => r.name) ?? []
   const isSalonOwner = roleNames.includes("SalonOwner") || roleNames.includes("Owner")
 
-  const txOptions = React.useMemo(() => ({
-    startDate: MONTH_START,
-    endDate: TODAY
-  }), [])
-
-  const { transactions, isLoading } = useTransactions(txOptions)
+  // Fetch ALL transactions (no date filter) — same as web
+  const { transactions, isLoading, batchImport } = useTransactions()
+  const { serviceRecords } = useServiceRecords()
 
   const [filter, setFilter] = useState<FilterType>("all")
   const [search, setSearch] = useState("")
+
+  // Auto Revenue Modal state
+  const [showActionMenu, setShowActionMenu] = useState(false)
+  const [showAutoRevenue, setShowAutoRevenue] = useState(false)
+  const now0 = new Date()
+  const [arStartDate, setArStartDate] = useState(
+    `${now0.getFullYear()}-${String(now0.getMonth() + 1).padStart(2, "0")}-01`
+  )
+  const [arEndDate, setArEndDate] = useState(
+    new Date(now0.getFullYear(), now0.getMonth() + 1, 0).toISOString().split("T")[0]
+  )
+  const [isGenerating, setIsGenerating] = useState(false)
 
   if (isLoaded && !hasFinancial) return null
 
@@ -91,11 +98,50 @@ export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
   const balance = totalIncome - totalExpense
 
   const now = new Date()
-  const monthlyRevenue = (transactions ?? []).filter(t => {
+  const monthlyRevenue = (transactions ?? []).filter((t: any) => {
     if (!isIncome(t) || !t.dueDate) return false
     const d = new Date(t.dueDate)
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   }).reduce((s: number, t: any) => s + Math.abs(t.amount ?? 0), 0)
+
+  // Auto revenue: filter service records by selected period
+  const arFiltered = (serviceRecords ?? []).filter((r: ServiceRecordDto) => {
+    const d = new Date(r.serviceDate)
+    const start = new Date(arStartDate + "T00:00:00")
+    const end = new Date(arEndDate + "T23:59:59")
+    return d >= start && d <= end
+  })
+  const arTotal = arFiltered.reduce((s: number, r: ServiceRecordDto) => s + r.amount, 0)
+
+  const handleSetFullMonth = () => {
+    const n = new Date()
+    setArStartDate(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-01`)
+    setArEndDate(new Date(n.getFullYear(), n.getMonth() + 1, 0).toISOString().split("T")[0])
+  }
+
+  const handleGenerateRevenue = async () => {
+    if (arFiltered.length === 0) return
+    setIsGenerating(true)
+    try {
+      const items = arFiltered.map((r: ServiceRecordDto) => ({
+        description: r.description || r.serviceName || "Serviço concluído",
+        amount: r.amount,
+        type: 1 as const,
+        dueDate: r.serviceDate.includes("T") ? r.serviceDate : r.serviceDate + "T12:00:00.000Z",
+        paymentMethod: 99 as const,
+        notes: r.appointmentId ? `Agendamento #${r.appointmentId.slice(0, 8)}` : undefined,
+        dedupKey: r.id,
+      }))
+      const res = await batchImport!(items)
+      if (res.hasError) throw new Error(res.message || "Erro")
+      setShowAutoRevenue(false)
+      setShowActionMenu(false)
+    } catch (_) {
+      // silently fail on mobile
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -103,6 +149,13 @@ export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
         title="Finanças"
         right={
           <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => setShowActionMenu(true)}
+              className="h-9 px-3 bg-zinc-100 rounded-xl items-center justify-center flex-row gap-1.5 border border-zinc-200"
+            >
+              <Ionicons name="flash-outline" size={15} color="#ca8a04" />
+              <Text className="text-zinc-700 font-bold text-xs">Receita Auto</Text>
+            </Pressable>
             <Pressable
               onPress={() => router.push(`${rootPath}/finance/import-pdf` as any)}
               className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center border border-zinc-200"
@@ -119,6 +172,144 @@ export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
           </View>
         }
       />
+
+      {/* Action Menu Modal */}
+      <Modal transparent animationType="fade" visible={showActionMenu} onRequestClose={() => setShowActionMenu(false)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+          activeOpacity={1}
+          onPress={() => setShowActionMenu(false)}
+        >
+          <TouchableOpacity activeOpacity={1}>
+            <View className="bg-white rounded-t-3xl p-6 gap-3">
+              <Text className="text-zinc-900 font-black text-lg mb-1">Adicionar Receita</Text>
+              <Pressable
+                onPress={() => { setShowActionMenu(false); router.push(`${rootPath}/finance/new` as any) }}
+                className="flex-row items-center gap-3 p-4 bg-zinc-50 rounded-2xl border border-zinc-100"
+              >
+                <View className="h-10 w-10 rounded-xl bg-zinc-200 items-center justify-center">
+                  <Ionicons name="add" size={22} color="#52525b" />
+                </View>
+                <View>
+                  <Text className="text-zinc-900 font-bold text-sm">Lançamento manual</Text>
+                  <Text className="text-zinc-400 text-xs mt-0.5">Adicionar receita ou despesa manualmente</Text>
+                </View>
+              </Pressable>
+              <Pressable
+                onPress={() => { setShowAutoRevenue(true) }}
+                className="flex-row items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100"
+              >
+                <View className="h-10 w-10 rounded-xl bg-amber-100 items-center justify-center">
+                  <Ionicons name="flash" size={22} color="#d97706" />
+                </View>
+                <View>
+                  <Text className="text-zinc-900 font-bold text-sm">Gerar receita automática</Text>
+                  <Text className="text-zinc-400 text-xs mt-0.5">Importar serviços concluídos de um período</Text>
+                </View>
+              </Pressable>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Auto Revenue Modal */}
+      <Modal transparent animationType="slide" visible={showAutoRevenue} onRequestClose={() => setShowAutoRevenue(false)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+          activeOpacity={1}
+          onPress={() => setShowAutoRevenue(false)}
+        >
+          <TouchableOpacity activeOpacity={1}>
+            <View className="bg-white rounded-t-3xl p-6">
+              <View className="flex-row items-center gap-2 mb-1">
+                <Ionicons name="flash" size={20} color="#d97706" />
+                <Text className="text-zinc-900 font-black text-lg">Gerar Receita Automática</Text>
+              </View>
+              <Text className="text-zinc-400 text-xs mb-5">Importa agendamentos concluídos. Registros já existentes são ignorados.</Text>
+
+              {/* Atalho Mês inteiro */}
+              <Pressable
+                onPress={handleSetFullMonth}
+                className="flex-row items-center justify-center gap-2 py-2.5 mb-4 bg-zinc-50 rounded-2xl border border-zinc-200"
+              >
+                <Ionicons name="calendar-outline" size={15} color="#52525b" />
+                <Text className="text-zinc-700 font-bold text-sm">Mês inteiro</Text>
+              </Pressable>
+
+              {/* Datas */}
+              <View className="flex-row gap-3 mb-4">
+                <View className="flex-1">
+                  <Text className="text-zinc-500 text-xs font-bold mb-1 uppercase">De</Text>
+                  <TextInput
+                    className="bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-zinc-900 font-medium text-sm"
+                    value={arStartDate}
+                    onChangeText={setArStartDate}
+                    placeholder="AAAA-MM-DD"
+                    placeholderTextColor="#a1a1aa"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-zinc-500 text-xs font-bold mb-1 uppercase">Até</Text>
+                  <TextInput
+                    className="bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-zinc-900 font-medium text-sm"
+                    value={arEndDate}
+                    onChangeText={setArEndDate}
+                    placeholder="AAAA-MM-DD"
+                    placeholderTextColor="#a1a1aa"
+                  />
+                </View>
+              </View>
+
+              {/* Preview */}
+              <View className="bg-zinc-50 rounded-2xl border border-zinc-100 mb-5 overflow-hidden">
+                <View className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-100">
+                  <Text className="text-zinc-700 font-bold text-sm">{arFiltered.length} registro(s)</Text>
+                  <Text className="text-green-600 font-black text-sm">R$ {fmtCurrency(arTotal)}</Text>
+                </View>
+                {arFiltered.length === 0 ? (
+                  <View className="items-center py-6">
+                    <Ionicons name="calendar-outline" size={32} color="#d4d4d8" />
+                    <Text className="text-zinc-400 text-xs mt-2">Nenhum serviço neste período</Text>
+                  </View>
+                ) : (
+                  <ScrollView style={{ maxHeight: 160 }}>
+                    {arFiltered.slice(0, 15).map((r: ServiceRecordDto) => (
+                      <View key={r.id} className="flex-row items-center justify-between px-4 py-2.5 border-b border-zinc-50">
+                        <View className="flex-1 min-w-0">
+                          <Text className="text-zinc-800 font-semibold text-xs" numberOfLines={1}>
+                            {r.description || r.serviceName || "Serviço"}
+                          </Text>
+                          <Text className="text-zinc-400 text-[10px]">{formatDate(r.serviceDate)}</Text>
+                        </View>
+                        <Text className="text-green-600 font-bold text-xs ml-2">R$ {fmtCurrency(r.amount)}</Text>
+                      </View>
+                    ))}
+                    {arFiltered.length > 15 && (
+                      <View className="py-2 items-center">
+                        <Text className="text-zinc-400 text-xs">+ {arFiltered.length - 15} mais...</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                )}
+              </View>
+
+              <Pressable
+                onPress={handleGenerateRevenue}
+                disabled={isGenerating || arFiltered.length === 0}
+                className="py-3.5 rounded-2xl items-center justify-center flex-row gap-2"
+                style={{ backgroundColor: arFiltered.length === 0 ? "#d4d4d8" : "#d97706" }}
+              >
+                {isGenerating
+                  ? <ActivityIndicator color="white" size="small" />
+                  : <Ionicons name="flash" size={18} color="white" />}
+                <Text className="text-white font-black text-sm">
+                  {isGenerating ? "Gerando..." : `Gerar ${arFiltered.length} Receita(s)`}
+                </Text>
+              </Pressable>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Summary Section */}
       <View className="bg-white px-4 pt-4 pb-2 border-b border-zinc-100">
@@ -178,7 +369,7 @@ export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
             )}
           </View>
           <Pressable
-            onPress={() => router.push(`${rootPath}/finance/new` as any)}
+            onPress={() => setShowActionMenu(true)}
             className="h-11 w-11 rounded-2xl items-center justify-center"
             style={{ backgroundColor: primaryColor }}
           >

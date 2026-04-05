@@ -5,7 +5,9 @@ import {
   TransactionDto,
   CreateTransactionDto,
   UpdateTransactionDto,
-  PayTransactionDto
+  PayTransactionDto,
+  BatchImportTransactionItemDto,
+  BatchImportResultDto
 } from "types/DTOs/financial.interface"
 
 interface UseTransactionsOptions {
@@ -72,6 +74,15 @@ export function useTransactions(options?: UseTransactionsOptions) {
     return res
   }
 
+  const batchImport = async (items: BatchImportTransactionItemDto[]) => {
+    const res = await secureApiCall<BatchImportResultDto>(`${API_CONFIG.ENDPOINTS.TRANSACTIONS}/batch`, {
+      method: "POST",
+      body: JSON.stringify(items),
+    })
+    if (!res.hasError) mutate()
+    return res
+  }
+
   return {
     transactions: data,
     isLoading,
@@ -81,6 +92,7 @@ export function useTransactions(options?: UseTransactionsOptions) {
     updateTransaction,
     payTransaction,
     cancelTransaction,
-    deleteTransaction
+    deleteTransaction,
+    batchImport
   }
 }

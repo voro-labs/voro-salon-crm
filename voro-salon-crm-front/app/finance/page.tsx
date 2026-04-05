@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useTransactions } from "@/hooks/use-transactions.hook"
 import { TransactionDto, TransactionType, TransactionStatus, PaymentMethod } from "@/types/DTOs/financial.interface"
 import { Button } from "@/components/ui/button"
-import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp, FileUp } from "lucide-react"
+import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp, FileUp, Zap, Calendar, ChevronDown, ArrowRight } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -60,6 +60,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useTransactionCategories } from "@/hooks/use-transaction-categories.hook"
+import { useServiceRecords } from "@/hooks/use-service-records.hook"
+import { ServiceRecordDto } from "@/types/DTOs/service-record.interface"
 import { Loader2, MoreHorizontal, CheckCircle, Ban, Trash2 } from "lucide-react"
 import { CurrencyInput } from "@/components/currency-input"
 const formatCurrency = (value: number) => {
@@ -110,9 +112,16 @@ const getPaymentMethodName = (method: PaymentMethod) => {
 
 export default function FinancialPage() {
   const { transactions, isLoading, createTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions()
+  const { serviceRecords } = useServiceRecords()
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
   const [isPdfImportOpen, setIsPdfImportOpen] = useState(false)
+
+  // Auto Revenue State
+  const [isAutoRevenueOpen, setIsAutoRevenueOpen] = useState(false)
+  const [autoRevenueStartDate, setAutoRevenueStartDate] = useState(format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), "yyyy-MM-dd"))
+  const [autoRevenueEndDate, setAutoRevenueEndDate] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [isGeneratingRevenue, setIsGeneratingRevenue] = useState(false)
 
   // Form State
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -152,6 +161,52 @@ export default function FinancialPage() {
       paymentMethod: "4",
       notes: ""
     })
+  }
+
+  // Filtered service records for the selected period
+  const filteredServiceRecords = (serviceRecords || []).filter((r) => {
+    const d = new Date(r.serviceDate)
+    const start = new Date(autoRevenueStartDate + "T00:00:00")
+    const end = new Date(autoRevenueEndDate + "T23:59:59")
+    return d >= start && d <= end
+  })
+
+  const autoRevenueTotalAmount = filteredServiceRecords.reduce((acc, r) => acc + r.amount, 0)
+
+  const handleSetFullMonth = () => {
+    const now = new Date()
+    setAutoRevenueStartDate(format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd"))
+    setAutoRevenueEndDate(format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd"))
+  }
+
+  const handleGenerateRevenue = async () => {
+    if (filteredServiceRecords.length === 0) {
+      toast.error("Nenhum registro de serviço encontrado no período selecionado.")
+      return
+    }
+    setIsGeneratingRevenue(true)
+    try {
+      const items = filteredServiceRecords.map((r) => ({
+        description: r.description || r.serviceName || "Serviço concluído",
+        amount: r.amount,
+        type: 1 as const, // Income
+        dueDate: r.serviceDate.includes("T") ? r.serviceDate : r.serviceDate + "T12:00:00.000Z",
+        paymentMethod: 99 as const, // Other
+        notes: r.appointmentId ? `Agendamento #${r.appointmentId.slice(0, 8)}` : undefined,
+        dedupKey: r.id,
+      }))
+      const res = await batchImport(items)
+      if (res.hasError) throw new Error(res.message || "Erro")
+      const { imported, skipped } = res.data ?? { imported: 0, skipped: 0 }
+      toast.success(
+        `Receita gerada: ${imported} nova(s)${skipped > 0 ? `, ${skipped} já existia(m) e foram ignoradas` : ""}.`
+      )
+      setIsAutoRevenueOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao gerar receitas.")
+    } finally {
+      setIsGeneratingRevenue(false)
+    }
   }
 
   const handleOpenDialog = () => {
@@ -338,13 +393,18 @@ export default function FinancialPage() {
               </div>
 
               {/* Primário */}
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={handleOpenDialog} size="sm" className="w-full sm:w-auto h-9 order-1 sm:order-2 bg-primary hover:bg-primary/90">
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Novo Lançamento
-                  </Button>
-                </DialogTrigger>
+              <div className="flex items-center order-1 sm:order-2 w-full sm:w-auto">
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      onClick={handleOpenDialog}
+                      size="sm"
+                      className="h-9 rounded-r-none border-r border-primary-foreground/20 bg-primary hover:bg-primary/90 flex-1 sm:flex-none"
+                    >
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Novo Lançamento
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>Novo Lançamento</DialogTitle>
@@ -437,7 +497,27 @@ export default function FinancialPage() {
                     </div>
                   </form>
                 </DialogContent>
-              </Dialog>
+                </Dialog>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="h-9 w-8 rounded-l-none px-0 bg-primary hover:bg-primary/90">
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuLabel>Adicionar receita</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleOpenDialog}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Lançamento manual
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsAutoRevenueOpen(true)}>
+                      <Zap className="mr-2 h-4 w-4 text-amber-500" />
+                      Gerar receita automática
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           }
         />
@@ -730,6 +810,110 @@ export default function FinancialPage() {
         categories={categories || []}
         onImport={batchImport}
       />
+
+      {/* Auto Revenue Dialog */}
+      <Dialog open={isAutoRevenueOpen} onOpenChange={setIsAutoRevenueOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              Gerar Receita Automática
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Gera receitas a partir dos agendamentos concluídos no período. Registros já importados são ignorados automaticamente.
+            </p>
+
+            {/* Period */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Período</Label>
+                <button
+                  type="button"
+                  onClick={handleSetFullMonth}
+                  className="text-xs text-primary hover:underline font-medium"
+                >
+                  Mês inteiro
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={autoRevenueStartDate}
+                  onChange={(e) => setAutoRevenueStartDate(e.target.value)}
+                  className="flex-1"
+                />
+                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Input
+                  type="date"
+                  value={autoRevenueEndDate}
+                  onChange={(e) => setAutoRevenueEndDate(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="rounded-lg border bg-muted/30 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/50">
+                <span className="text-sm font-semibold">
+                  {filteredServiceRecords.length} registro(s) encontrado(s)
+                </span>
+                <span className="text-sm font-bold text-emerald-600">
+                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(autoRevenueTotalAmount)}
+                </span>
+              </div>
+              {filteredServiceRecords.length === 0 ? (
+                <div className="flex flex-col items-center py-8 gap-2 text-muted-foreground">
+                  <Calendar className="h-8 w-8 opacity-40" />
+                  <span className="text-sm">Nenhum serviço concluído neste período</span>
+                </div>
+              ) : (
+                <div className="max-h-48 overflow-y-auto divide-y">
+                  {filteredServiceRecords.slice(0, 20).map((r) => (
+                    <div key={r.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">{r.description || r.serviceName || "Serviço"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(r.serviceDate), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      </div>
+                      <span className="font-semibold text-emerald-600 shrink-0 ml-3">
+                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(r.amount)}
+                      </span>
+                    </div>
+                  ))}
+                  {filteredServiceRecords.length > 20 && (
+                    <div className="px-4 py-2 text-xs text-center text-muted-foreground">
+                      + {filteredServiceRecords.length - 20} mais...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setIsAutoRevenueOpen(false)} disabled={isGeneratingRevenue}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleGenerateRevenue}
+              disabled={isGeneratingRevenue || filteredServiceRecords.length === 0}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              {isGeneratingRevenue ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="mr-2 h-4 w-4" />
+              )}
+              Gerar {filteredServiceRecords.length} Receita(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthGuard>
   )
 }

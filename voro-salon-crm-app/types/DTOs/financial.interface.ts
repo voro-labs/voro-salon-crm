@@ -95,3 +95,9 @@ export interface BatchImportTransactionItemDto {
   notes?: string
   dedupKey?: string
 }
+
+export interface BatchImportResultDto {
+  imported: number
+  skipped: number
+  transactions: TransactionDto[]
+}
