@@ -453,6 +453,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             }
 
             await context.Transactions.AddRangeAsync(transactions);
+            await context.ServiceRecords.AddRangeAsync(serviceRecords);
         }
     }
 }
