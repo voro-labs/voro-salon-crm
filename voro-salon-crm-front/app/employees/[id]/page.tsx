@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { mutate } from "swr"
-import { ArrowLeft, Loader2, Save, Trash2, Camera, Upload, ShieldCheck, ShieldOff, Search, RefreshCw, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, Loader2, Save, Trash2, Camera, Upload, ShieldCheck, ShieldOff, Search, RefreshCw, Eye, EyeOff, Target, TrendingUp } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -102,9 +102,65 @@ export default function EmployeeDetailPage() {
   const [isRevokingAccess, setIsRevokingAccess] = useState(false)
   const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false)
 
-  // --- Commissions state ---
+  // --- Goals state ---
+  interface EmployeeGoalDto {
+    id: string
+    month: number
+    year: number
+    targetAmount: number
+    targetAppointments: number
+    actualAmount: number
+    actualAppointments: number
+    amountProgressPercent: number
+    appointmentsProgressPercent: number
+  }
+
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth() + 1
+
+  const [goalMonth, setGoalMonth] = useState(currentMonth)
+  const [goalYear, setGoalYear] = useState(currentYear)
+  const [goal, setGoal] = useState<EmployeeGoalDto | null>(null)
+  const [isFetchingGoal, setIsFetchingGoal] = useState(false)
+  const [goalModalOpen, setGoalModalOpen] = useState(false)
+  const [goalTargetAmount, setGoalTargetAmount] = useState(0)
+  const [goalTargetAppointments, setGoalTargetAppointments] = useState(0)
+  const [isSavingGoal, setIsSavingGoal] = useState(false)
+
+  useEffect(() => {
+    if (isNew || !id) return
+    setIsFetchingGoal(true)
+    secureApiCall<EmployeeGoalDto>(`/EmployeeGoal/${id}?month=${goalMonth}&year=${goalYear}`)
+      .then((res) => setGoal((!res.hasError && res.data) ? res.data : null))
+      .finally(() => setIsFetchingGoal(false))
+  }, [isNew, id, goalMonth, goalYear])
+
+  async function handleSaveGoal() {
+    if (!goalTargetAmount && !goalTargetAppointments) {
+      toast.error("Defina pelo menos uma meta (valor ou atendimentos).")
+      return
+    }
+    setIsSavingGoal(true)
+    try {
+      const body = JSON.stringify({
+        employeeId: id,
+        month: goalMonth,
+        year: goalYear,
+        targetAmount: goalTargetAmount,
+        targetAppointments: goalTargetAppointments,
+      })
+      const res = goal?.id
+        ? await secureApiCall<EmployeeGoalDto>(`/EmployeeGoal/${goal.id}`, { method: "PUT", body })
+        : await secureApiCall<EmployeeGoalDto>("/EmployeeGoal", { method: "POST", body })
+      if (res.hasError) { toast.error(res.message || "Erro ao salvar meta."); return }
+      toast.success("Meta salva com sucesso!")
+      if (res.data) setGoal(res.data)
+      setGoalModalOpen(false)
+    } catch { toast.error("Erro de conexão.") }
+    finally { setIsSavingGoal(false) }
+  }
+
+  // --- Commissions state ---
   const [commMonth, setCommMonth] = useState(currentMonth)
   const [commYear, setCommYear] = useState(currentYear)
   const [commissions, setCommissions] = useState<TransactionDto[]>([])
@@ -507,6 +563,109 @@ export default function EmployeeDetailPage() {
                 </CardContent>
               </Card>
             )}
+            {/* Goals Section */}
+            {!isNew && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-primary" />
+                      Metas
+                    </CardTitle>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setGoalTargetAmount(goal?.targetAmount ?? 0)
+                        setGoalTargetAppointments(goal?.targetAppointments ?? 0)
+                        setGoalModalOpen(true)
+                      }}
+                    >
+                      {goal ? "Editar Meta" : "Definir Meta"}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  {/* Month/Year navigation */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date(goalYear, goalMonth - 2)
+                        setGoalMonth(d.getMonth() + 1)
+                        setGoalYear(d.getFullYear())
+                      }}
+                      className="h-7 w-7 rounded-md border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground"
+                    >‹</button>
+                    <span className="text-sm font-medium min-w-[120px] text-center">
+                      {new Date(goalYear, goalMonth - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date(goalYear, goalMonth)
+                        setGoalMonth(d.getMonth() + 1)
+                        setGoalYear(d.getFullYear())
+                      }}
+                      className="h-7 w-7 rounded-md border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground"
+                    >›</button>
+                  </div>
+
+                  {isFetchingGoal ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin" />Carregando...
+                    </div>
+                  ) : !goal ? (
+                    <p className="text-sm text-muted-foreground italic py-4 text-center">
+                      Nenhuma meta definida para este período.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-5">
+                      {/* Amount progress */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <TrendingUp className="h-4 w-4 text-primary" />
+                            Faturamento
+                          </span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(goal.actualAmount)} / {formatCurrency(goal.targetAmount)}
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-primary rounded-full h-2 transition-all"
+                            style={{ width: `${Math.min(goal.amountProgressPercent, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground text-right">{Math.round(goal.amountProgressPercent)}%</span>
+                      </div>
+
+                      {/* Appointments progress */}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <Target className="h-4 w-4 text-blue-500" />
+                            Atendimentos
+                          </span>
+                          <span className="text-muted-foreground">
+                            {goal.actualAppointments} / {goal.targetAppointments}
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-blue-500 rounded-full h-2 transition-all"
+                            style={{ width: `${Math.min(goal.appointmentsProgressPercent, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground text-right">{Math.round(goal.appointmentsProgressPercent)}%</span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="flex flex-col gap-6">
@@ -671,6 +830,65 @@ export default function EmployeeDetailPage() {
                 >
                   {isCreatingAccess ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Confirmar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Goal Modal */}
+        {goalModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-sm rounded-lg border bg-background p-6 shadow-xl">
+              <h2 className="mb-1 text-lg font-semibold flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                {goal ? "Editar Meta" : "Definir Meta"}
+              </h2>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {new Date(goalYear, goalMonth - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+              </p>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="goal-amount">Meta de Faturamento (R$)</Label>
+                  <Input
+                    id="goal-amount"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="Ex: 5000"
+                    value={goalTargetAmount || ""}
+                    onChange={(e) => setGoalTargetAmount(Number(e.target.value))}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="goal-appointments">Meta de Atendimentos</Label>
+                  <Input
+                    id="goal-appointments"
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder="Ex: 40"
+                    value={goalTargetAppointments || ""}
+                    onChange={(e) => setGoalTargetAppointments(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setGoalModalOpen(false)}
+                  disabled={isSavingGoal}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveGoal}
+                  disabled={isSavingGoal}
+                >
+                  {isSavingGoal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Salvar
                 </Button>
               </div>
             </div>

@@ -1,7 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using VoroSalonCrm.Application.DTOs.Anamnesis;
 using VoroSalonCrm.Application.DTOs.CRM;
+using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
@@ -13,13 +17,21 @@ namespace VoroSalonCrm.Application.Services
         IAnamnesisSheetRepository sheetRepository,
         IClientRepository clientRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService) : IAnamnesisService
+        ICurrentUserService currentUserService,
+        IWhatsappService whatsappService,
+        ITenantRepository tenantRepository,
+        IConfiguration configuration,
+        ILogger<AnamnesisService> logger) : IAnamnesisService
     {
         private readonly IAnamnesisQuestionRepository _questionRepository = questionRepository;
         private readonly IAnamnesisSheetRepository _sheetRepository = sheetRepository;
         private readonly IClientRepository _clientRepository = clientRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly IWhatsappService _whatsappService = whatsappService;
+        private readonly ITenantRepository _tenantRepository = tenantRepository;
+        private readonly IConfiguration _configuration = configuration;
+        private readonly ILogger<AnamnesisService> _logger = logger;
 
         public async Task<IEnumerable<AnamnesisQuestionDto>> GetQuestionsAsync()
         {
@@ -269,6 +281,141 @@ namespace VoroSalonCrm.Application.Services
             if (sheet == null) return null;
 
             return MapToDto(sheet);
+        }
+
+        public async Task<string> GeneratePublicTokenAsync(Guid sheetId)
+        {
+            var sheet = await _sheetRepository.GetByIdAsync(false, sheetId)
+                ?? throw new KeyNotFoundException("Anamnesis sheet not found.");
+
+            sheet.PublicToken = Guid.NewGuid().ToString("N");
+            sheet.PublicTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(72);
+            sheet.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _sheetRepository.Update(sheet);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Send WhatsApp signing link to client
+            try
+            {
+                var sheetWithDetails = await _sheetRepository
+                    .Query(s => s.Id == sheetId)
+                    .Include(s => s.Client)
+                    .Include(s => s.Tenant)
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync();
+
+                if (sheetWithDetails?.Client?.Phone != null && sheetWithDetails.Tenant != null &&
+                    sheetWithDetails.Tenant.UseWhatsappBooking)
+                {
+                    var frontendUrl = _configuration["FrontendUrl"] ?? "https://app.vorosalon.com";
+                    var signingUrl = $"{frontendUrl}/anamnesis/sign/{sheet.PublicToken}";
+
+                    var templateMsg = new WhatsappTemplateMessageDto
+                    {
+                        To = sheetWithDetails.Client.Phone,
+                        Template = new()
+                        {
+                            Name = "anamnesis_signing_1",
+                            Components =
+                            [
+                                new() {
+                                    Type = "body",
+                                    Parameters =
+                                    [
+                                        new() { Type = "text", Text = sheetWithDetails.Client.Name },
+                                        new() { Type = "text", Text = sheetWithDetails.Tenant.Name }
+                                    ]
+                                },
+                                new() {
+                                    Type = "button",
+                                    SubType = "url",
+                                    Index = "0",
+                                    Parameters = [
+                                        new() { Type = "text", Text = "/" + sheet.PublicToken }
+                                    ]
+                                }
+                            ]
+                        }
+                    };
+
+                    await _whatsappService.SendTemplateMessageAsync(templateMsg, sheetWithDetails.Tenant.WhatsappPhoneNumberId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao enviar link de assinatura via WhatsApp para ficha {SheetId}.", sheetId);
+            }
+
+            return sheet.PublicToken;
+        }
+
+        public async Task<PublicAnamnesisSheetDto?> GetSheetByPublicTokenAsync(string token)
+        {
+            var sheet = await _sheetRepository
+                .Query(s => s.PublicToken == token && !s.IsDeleted)
+                .Include(s => s.Client)
+                .Include(s => s.Tenant)
+                .Include(s => s.Responses)
+                    .ThenInclude(r => r.Question)
+                .Include(s => s.Signatures)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (sheet == null) return null;
+            if (sheet.PublicTokenExpiresAt.HasValue && sheet.PublicTokenExpiresAt < DateTimeOffset.UtcNow)
+                return null; // token expired
+
+            var alreadySigned = sheet.Signatures.Any(sig =>
+                sig.Type == Domain.Enums.AnamnesisSignatureType.Client);
+
+            var questions = sheet.Responses
+                .Where(r => r.Question != null)
+                .Select(r => new PublicAnamnesisQuestionAnswerDto(r.Question.Text, r.Value));
+
+            return new PublicAnamnesisSheetDto(
+                sheet.Id,
+                sheet.Client?.Name ?? string.Empty,
+                sheet.Tenant?.Name ?? string.Empty,
+                sheet.Date,
+                sheet.Diagnosis,
+                sheet.TreatmentProtocol,
+                questions,
+                alreadySigned,
+                sheet.PublicTokenExpiresAt
+            );
+        }
+
+        public async Task<bool> SubmitPublicSignatureAsync(string token, SubmitPublicSignatureDto dto)
+        {
+            var sheet = await _sheetRepository
+                .Query(s => s.PublicToken == token && !s.IsDeleted)
+                .Include(s => s.Signatures)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (sheet == null) return false;
+            if (sheet.PublicTokenExpiresAt.HasValue && sheet.PublicTokenExpiresAt < DateTimeOffset.UtcNow)
+                throw new InvalidOperationException("O link de assinatura expirou. Solicite um novo link.");
+
+            if (sheet.Signatures.Any(sig => sig.Type == Domain.Enums.AnamnesisSignatureType.Client))
+                throw new InvalidOperationException("Este documento já foi assinado.");
+
+            sheet.Signatures.Add(new AnamnesisSignature
+            {
+                Id = Guid.NewGuid(),
+                SheetId = sheet.Id,
+                Type = Domain.Enums.AnamnesisSignatureType.Client,
+                SignatureData = dto.SignatureData,
+                SignedAt = DateTimeOffset.UtcNow
+            });
+
+            sheet.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _sheetRepository.Update(sheet);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
         }
 
         private static AnamnesisSheetDto MapToDto(AnamnesisSheet s)

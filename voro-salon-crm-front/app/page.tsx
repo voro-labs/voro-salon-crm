@@ -87,7 +87,8 @@ function formatCurrency(value: number) {
 
 export default function DashboardPage() {
   const { data, isLoading, mutate: mutateDashboard } = useSWR(API_CONFIG.ENDPOINTS.DASHBOARD, fetcher)
-  const { data: aptData, mutate: mutateApts } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS, fetcher)
+  const { data: _aptRaw, mutate: mutateApts } = useSWR(API_CONFIG.ENDPOINTS.APPOINTMENTS + "?pageSize=500", fetcher)
+  const aptData: any[] = _aptRaw?.items ?? (Array.isArray(_aptRaw) ? _aptRaw : [])
 
   const { data: tenant } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)

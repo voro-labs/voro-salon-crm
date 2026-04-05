@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { View, Text, Pressable, Image, ActivityIndicator, Alert } from "react-native"
+import { View, Text, Pressable, Image, ActivityIndicator, Alert, Modal } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
 import { useTenantTheme } from "contexts/tenant-theme.context"
@@ -37,6 +37,7 @@ export function ImagePickerInput({
   size = 80,
 }: ImagePickerInputProps) {
   const { primaryColor } = useTenantTheme()
+  const [pickerModalOpen, setPickerModalOpen] = useState(false)
 
   const pickImage = async () => {
     // Solicita permissão da galeria
@@ -66,36 +67,58 @@ export function ImagePickerInput({
     }
   }
 
+  const takePhoto = async () => {
+    setPickerModalOpen(false)
+    const { status } = await ImagePicker.requestCameraPermissionsAsync()
+    if (status !== "granted") {
+      Alert.alert("Permissão negada", "Precisamos de acesso à sua câmera.")
+      return
+    }
+    const res = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+    if (!res.canceled && res.assets && res.assets.length > 0) {
+      const asset = res.assets[0]
+      onChange({ uri: asset.uri, name: `camera_${Date.now()}.jpg`, type: "image/jpeg" })
+    }
+  }
+
   const handlePress = () => {
     if (isUploading) return
-    Alert.alert("Escolher foto", "Como deseja alterar a imagem?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Escolher da Galeria", onPress: pickImage },
-      {
-        text: "Tirar Foto",
-        onPress: async () => {
-          const { status } = await ImagePicker.requestCameraPermissionsAsync()
-          if (status !== "granted") {
-            Alert.alert("Permissão negada", "Precisamos de acesso à sua câmera.")
-            return
-          }
-          const res = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-          })
-          if (!res.canceled && res.assets && res.assets.length > 0) {
-            const asset = res.assets[0]
-            const name = `camera_${Date.now()}.jpg`
-            const type = "image/jpeg"
-            onChange({ uri: asset.uri, name, type })
-          }
-        },
-      },
-    ])
+    setPickerModalOpen(true)
   }
 
   return (
+    <>
+    <Modal visible={pickerModalOpen} transparent animationType="slide" onRequestClose={() => setPickerModalOpen(false)}>
+      <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setPickerModalOpen(false)}>
+        <Pressable className="bg-white rounded-t-3xl px-6 pt-6 pb-10 gap-3" onPress={() => {}}>
+          <Text className="text-zinc-900 font-black text-base text-center mb-2">Escolher foto</Text>
+          <Pressable
+            onPress={() => { setPickerModalOpen(false); setTimeout(pickImage, 300) }}
+            className="flex-row items-center gap-3 h-14 bg-zinc-50 rounded-2xl px-4 border border-zinc-100"
+          >
+            <Ionicons name="images-outline" size={22} color="#3f3f46" />
+            <Text className="text-zinc-800 font-bold text-base">Escolher da Galeria</Text>
+          </Pressable>
+          <Pressable
+            onPress={takePhoto}
+            className="flex-row items-center gap-3 h-14 bg-zinc-50 rounded-2xl px-4 border border-zinc-100"
+          >
+            <Ionicons name="camera-outline" size={22} color="#3f3f46" />
+            <Text className="text-zinc-800 font-bold text-base">Tirar Foto</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setPickerModalOpen(false)}
+            className="h-12 rounded-2xl items-center justify-center border border-zinc-200 mt-1"
+          >
+            <Text className="text-zinc-500 font-bold text-base">Cancelar</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
     <View className="flex-row items-center gap-4">
       <Pressable
         onPress={handlePress}
@@ -137,5 +160,6 @@ export function ImagePickerInput({
         )}
       </View>
     </View>
+    </>
   )
 }

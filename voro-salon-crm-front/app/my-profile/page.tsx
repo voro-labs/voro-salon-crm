@@ -20,7 +20,8 @@ import { PageHeader } from "@/components/ui/custom/page-header"
 export default function EmployeeProfilePage() {
   const { user } = useAuth()
   const { data: employee, isLoading } = useSWR(API_CONFIG.ENDPOINTS.EMPLOYEE_ME, fetcher)
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _svcRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const services = _svcRaw?.items ?? (Array.isArray(_svcRaw) ? _svcRaw : undefined)
 
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")

@@ -547,10 +547,22 @@ export default function PublicBookingPage() {
                   className="h-auto py-3 px-3 flex flex-col items-start gap-1 text-left bg-background hover:bg-primary/5 hover:border-primary hover:text-primary transition-all"
                   onClick={() => handleServiceSelect(s)}
                 >
-                  <span className="font-bold text-sm line-clamp-1 w-full text-left">{s.name}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {s.durationMinutes} min • R$ {s.price.toFixed(2)}
-                  </span>
+                  <div className="flex items-center gap-1.5 w-full">
+                    <span className="font-bold text-sm line-clamp-1 flex-1 text-left">{s.name}</span>
+                    {s.hasPromotion && (
+                      <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">PROMOÇÃO</span>
+                    )}
+                  </div>
+                  {s.hasPromotion && s.promotionalPrice ? (
+                    <span className="text-[10px]">
+                      <span className="line-through text-muted-foreground">{s.durationMinutes} min • R$ {s.price.toFixed(2)}</span>
+                      {" "}<span className="text-emerald-600 font-bold">R$ {s.promotionalPrice.toFixed(2)}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">
+                      {s.durationMinutes} min • R$ {s.price.toFixed(2)}
+                    </span>
+                  )}
                 </Button>
               ))}
             </div>
@@ -651,11 +663,20 @@ export default function PublicBookingPage() {
               {/* Resumo do agendamento */}
               {form.date && form.time && (
                 <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 flex flex-col gap-1.5">
-                  {form.serviceId && services.find(s => s.id === form.serviceId) && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-semibold text-foreground">{services.find(s => s.id === form.serviceId)?.name}</span>
-                    </div>
-                  )}
+                  {form.serviceId && services.find(s => s.id === form.serviceId) && (() => {
+                    const svc = services.find(s => s.id === form.serviceId)!
+                    return (
+                      <div className="flex items-center gap-2 text-sm flex-wrap">
+                        <span className="font-semibold text-foreground">{svc.name}</span>
+                        {svc.hasPromotion && svc.promotionalPrice ? (
+                          <span className="text-xs">
+                            <span className="line-through text-muted-foreground">R$ {svc.price.toFixed(2)}</span>
+                            {" "}<span className="text-emerald-600 font-bold">R$ {svc.promotionalPrice.toFixed(2)}</span>
+                          </span>
+                        ) : null}
+                      </div>
+                    )
+                  })()}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
                     <span>{format(new Date(`${form.date}T00:00:00`), "dd/MM/yyyy")} às {form.time}</span>

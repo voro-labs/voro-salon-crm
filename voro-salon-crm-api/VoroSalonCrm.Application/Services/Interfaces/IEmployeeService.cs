@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM.Financial;
 using VoroSalonCrm.Application.DTOs.Employee;
 
@@ -7,6 +8,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
     public interface IEmployeeService
     {
         Task<IEnumerable<EmployeeDto>> GetAllAsync();
+        Task<PagedResult<EmployeeDto>> GetPagedAsync(int page, int pageSize, string? search);
         Task<EmployeeDto?> GetByIdAsync(Guid id);
         Task<EmployeeDto?> GetByCurrentUserAsync();
         Task<EmployeeDto> CreateAsync(CreateEmployeeDto dto);

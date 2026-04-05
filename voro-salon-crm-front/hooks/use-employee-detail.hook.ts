@@ -35,7 +35,8 @@ export function useEmployeeDetail(employeeId?: string) {
     !isNew ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/${employeeId}` : null,
     fetcher
   )
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _svcRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const services = _svcRaw?.items ?? (Array.isArray(_svcRaw) ? _svcRaw : undefined)
 
   const [form, setForm] = useState<EmployeeForm>(DEFAULT_FORM)
   const [isSaving, setIsSaving] = useState(false)
@@ -172,7 +173,7 @@ export function useEmployeeDetail(employeeId?: string) {
       }
       toast.success("Funcionário excluído.")
       mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
-      router.push("/employees")
+      router.replace("/employees")
       return true
     } catch {
       toast.error("Erro de conexão.")

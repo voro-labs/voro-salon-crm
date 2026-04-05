@@ -13,5 +13,10 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<AnamnesisSheetDto> CreateClientWithAnamnesisAsync(CreateClientWithAnamnesisDto dto);
         Task<IEnumerable<AnamnesisSheetDto>> GetClientHistoryAsync(Guid clientId);
         Task<AnamnesisSheetDto?> GetByIdAsync(Guid id);
+
+        // Public signing (no auth required)
+        Task<string> GeneratePublicTokenAsync(Guid sheetId);
+        Task<PublicAnamnesisSheetDto?> GetSheetByPublicTokenAsync(string token);
+        Task<bool> SubmitPublicSignatureAsync(string token, SubmitPublicSignatureDto dto);
     }
 }

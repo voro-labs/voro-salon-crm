@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { View, Text, FlatList, Pressable, TextInput, ActivityIndicator, Alert, Modal } from "react-native"
+import { View, Text, FlatList, Pressable, TextInput, ActivityIndicator, Modal } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -7,6 +7,7 @@ import { useTransactionCategories } from "hooks/use-transaction-categories.hook"
 import { TransactionType } from "types/DTOs/financial.interface"
 import type { TransactionCategoryDto } from "types/DTOs/financial.interface"
 import { useTenantTheme } from "contexts/tenant-theme.context"
+import { ConfirmModal } from "components/ConfirmModal"
 
 type TabType = "all" | "income" | "expense"
 
@@ -28,6 +29,7 @@ export default function CategoriesScreen() {
   const [editName, setEditName] = useState("")
   const [editType, setEditType] = useState<TransactionType>(TransactionType.Expense)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [deletingCat, setDeletingCat] = useState<TransactionCategoryDto | null>(null)
 
   const filtered = (categories ?? []).filter((c: any) => {
     if (tab === "income")  return c.type === TransactionType.Income  || c.type === 1
@@ -70,21 +72,14 @@ export default function CategoriesScreen() {
   }
 
   function confirmDelete(cat: TransactionCategoryDto) {
-    Alert.alert(
-      "Excluir categoria?",
-      `"${cat.name}" será removida permanentemente.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deleteCategory(cat.id) },
-      ]
-    )
+    setDeletingCat(cat)
   }
 
   const incomeCount  = (categories ?? []).filter((c: any) => c.type === TransactionType.Income  || c.type === 1).length
   const expenseCount = (categories ?? []).filter((c: any) => c.type === TransactionType.Expense || c.type === 2).length
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["top", "bottom"]}>
       {/* Header */}
       <View className="bg-white px-5 pt-4 pb-4 border-b border-zinc-100 flex-row items-center gap-3">
         <Pressable onPress={() => router.back()} className="h-9 w-9 bg-zinc-50 rounded-xl items-center justify-center border border-zinc-100">
@@ -178,6 +173,16 @@ export default function CategoriesScreen() {
           }
         />
       )}
+
+      <ConfirmModal
+        visible={!!deletingCat}
+        title="Excluir categoria?"
+        message={`"${deletingCat?.name}" será removida permanentemente.`}
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { deleteCategory(deletingCat!.id); setDeletingCat(null) }}
+        onCancel={() => setDeletingCat(null)}
+      />
 
       {/* Create Modal */}
       <Modal visible={createOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setCreateOpen(false)}>

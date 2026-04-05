@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
@@ -8,10 +10,12 @@ namespace VoroSalonCrm.Application.Services
 {
     public class ServiceService(
         IServiceRepository serviceRepository,
+        IServicePromotionRepository servicePromotionRepository,
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService) : IServiceService
     {
         private readonly IServiceRepository _serviceRepository = serviceRepository;
+        private readonly IServicePromotionRepository _servicePromotionRepository = servicePromotionRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
 
@@ -49,7 +53,46 @@ namespace VoroSalonCrm.Application.Services
         public async Task<IEnumerable<ServiceDto>> GetAllAsync()
         {
             var services = await _serviceRepository.GetAllAsync();
-            return services.Select(s => new ServiceDto(s.Id, s.Name, s.Description, s.Price, s.DurationMinutes, s.CreatedAt));
+
+            var tenantId = _currentUserService.TenantId;
+            var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+            var todayDow = (int)today.DayOfWeek;
+
+            var promotions = await _servicePromotionRepository
+                .Query(p =>
+                    p.TenantId == tenantId &&
+                    p.IsActive &&
+                    p.DaysOfWeek.Contains(todayDow) &&
+                    (p.ValidFrom == null || p.ValidFrom <= today) &&
+                    (p.ValidUntil == null || p.ValidUntil >= today))
+                .IgnoreQueryFilters()
+                .ToListAsync();
+
+            return services.Select(s =>
+            {
+                var promo = promotions.FirstOrDefault(p => p.ServiceId == s.Id);
+                return new ServiceDto(s.Id, s.Name, s.Description, s.Price, s.DurationMinutes, s.CreatedAt,
+                    promo?.PromotionalPrice, promo != null);
+            });
+        }
+
+        public async Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search)
+        {
+            var dtos = (await GetAllAsync()).ToList();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                dtos = dtos.Where(s =>
+                    (s.Name?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (s.Description?.ToLowerInvariant().Contains(term) ?? false))
+                    .ToList();
+            }
+
+            var totalCount = dtos.Count;
+            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+
+            return new PagedResult<ServiceDto>(items, totalCount, page, pageSize);
         }
 
         public async Task<ServiceDto> UpdateAsync(Guid id, UpdateServiceDto dto)

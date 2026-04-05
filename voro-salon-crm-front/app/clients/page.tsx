@@ -24,17 +24,22 @@ import { ExportMenu } from "@/components/ui/custom/export-menu"
 export default function ClientesPage() {
   const router = useRouter()
   const [showLimitModal, setShowLimitModal] = useState(false)
-  const { filteredData: filtered, data, isLoading, search, setSearch } = useDataList(
-    API_CONFIG.ENDPOINTS.CLIENTS,
-    (c: any, q: string) =>
-      c.name.toLowerCase().includes(q) ||
-      c.phone.includes(q) ||
-      (c.email && c.email.toLowerCase().includes(q))
-  )
+
+  const {
+    items,
+    totalCount,
+    totalPages,
+    page,
+    setPage,
+    search,
+    setSearch,
+    isLoading,
+    mutate,
+  } = useDataList(API_CONFIG.ENDPOINTS.CLIENTS, { pageSize: 20 })
+
   const { maxClients } = usePlanLimits()
 
-  const currentCount = data.length
-  const isAtLimit = maxClients !== -1 && currentCount >= maxClients
+  const isAtLimit = maxClients !== -1 && totalCount >= maxClients
 
   const handleNewClient = () => {
     if (isAtLimit) {
@@ -60,12 +65,12 @@ export default function ClientesPage() {
             <div className="flex items-center gap-2">
               {maxClients !== -1 && (
                 <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
-                  {currentCount}/{maxClients}
+                  {totalCount}/{maxClients}
                 </span>
               )}
               <ExportMenu
                 size="sm"
-                rows={data}
+                rows={items}
                 filename="clientes"
                 columns={[
                   { header: "Nome", value: (c: any) => c.name },
@@ -96,8 +101,8 @@ export default function ClientesPage() {
 
         {isLoading ? (
           <ListSkeleton type="cards" count={5} />
-        ) : filtered.length === 0 ? (
-          <EmptyState 
+        ) : items.length === 0 ? (
+          <EmptyState
             icon={UserRound}
             title={search ? "Nenhum resultado encontrado" : "Nenhum cliente cadastrado"}
             description={search ? "Tente buscar por outro termo." : "Comece adicionando seu primeiro cliente."}
@@ -110,7 +115,7 @@ export default function ClientesPage() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {filtered.map(
+            {items.map(
               (client: {
                 id: string
                 name: string
@@ -158,6 +163,31 @@ export default function ClientesPage() {
                 </Link>
               )
             )}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-muted-foreground">{totalCount} registros</p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm">Página {page} de {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Próxima
+              </Button>
+            </div>
           </div>
         )}
       </div>

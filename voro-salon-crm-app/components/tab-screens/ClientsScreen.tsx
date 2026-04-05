@@ -1,5 +1,14 @@
 import React from "react"
-import { View, Text, TextInput, FlatList, Pressable, ActivityIndicator, Alert } from "react-native"
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
@@ -68,14 +77,11 @@ export function ClientsScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) {
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
   const { maxClients } = usePlanLimits()
-  const { filteredData, isLoading, search, setSearch } = useDataList<Client>(
-    API_CONFIG.ENDPOINTS.CLIENTS,
-    (c, q) => `${c.name} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(q)
-  )
+  const { items, isLoading, isLoadingMore, totalCount, search, setSearch, loadMore, refresh } =
+    useDataList<Client>(API_CONFIG.ENDPOINTS.CLIENTS)
 
   function handleAddClient() {
-    const totalClients = (filteredData ?? []).length
-    if (maxClients > 0 && totalClients >= maxClients) {
+    if (maxClients > 0 && totalCount >= maxClients) {
       Alert.alert(
         "Limite atingido",
         `Seu plano permite até ${maxClients} cliente${maxClients === 1 ? "" : "s"}. Faça upgrade para adicionar mais.`,
@@ -121,13 +127,32 @@ export function ClientsScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) {
         </View>
       ) : (
         <FlatList
-          data={filteredData}
+          data={items}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <ClientCard client={item} primaryColor={primaryColor} onPress={() => router.push(`${rootPath}/clients/${item.id}` as any)} />
+            <ClientCard
+              client={item}
+              primaryColor={primaryColor}
+              onPress={() => router.push(`${rootPath}/clients/${item.id}` as any)}
+            />
           )}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading && items.length > 0}
+              onRefresh={refresh}
+            />
+          }
+          ListFooterComponent={() =>
+            isLoadingMore ? (
+              <View style={{ paddingVertical: 16, alignItems: "center" }}>
+                <ActivityIndicator size="small" color={primaryColor} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View className="items-center py-16">
               <Ionicons name="people-outline" size={48} color="#d4d4d8" />
@@ -141,7 +166,6 @@ export function ClientsScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) {
           }
         />
       )}
-
     </SafeAreaView>
   )
 }

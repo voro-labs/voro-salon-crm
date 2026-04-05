@@ -168,5 +168,25 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        /// <summary>
+        /// Gera (ou renova) um token de acesso público para assinatura de uma ficha de anamnese.
+        /// O token tem validade de 72 horas.
+        /// </summary>
+        [HttpPost("{id:guid}/signing-token")]
+        public async Task<IActionResult> GenerateSigningToken([FromRoute] Guid id)
+        {
+            try
+            {
+                var token = await _anamnesisService.GeneratePublicTokenAsync(id);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Token gerado com sucesso.", new { token })
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

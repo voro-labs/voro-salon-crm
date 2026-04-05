@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, Pressable, ActivityIndicator,
   RefreshControl, Modal, TextInput, Alert, TouchableOpacity,
 } from "react-native"
+import { ConfirmModal } from "components/ConfirmModal"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
@@ -60,7 +61,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
     isLoading, isClientLoading, isAnamnesisLoading, isSaving,
     isDeleting, isAddingAnamnesis, isAddingService,
     updateClient, deleteClient, addAnamnesis, addService, deleteService,
-  } = useClientDetails(id, () => router.push(`${rootPath}/clients` as any))
+  } = useClientDetails(id, () => router.replace(`${rootPath}/clients` as any))
   const { primaryColor } = useTenantTheme()
   const { hasAnamnesis } = usePlanLimits()
 
@@ -84,6 +85,11 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
   const [selectedPlanId, setSelectedPlanId] = useState<string>("")
   const [isCreatingMembership, setIsCreatingMembership] = useState(false)
   const [cancellingMembershipId, setCancellingMembershipId] = useState<string | null>(null)
+
+  // Confirm modals
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmCancelMembershipId, setConfirmCancelMembershipId] = useState<string | null>(null)
+  const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<string | null>(null)
 
   const { data: memberships, mutate: mutateMemberships } = useSWR<any[]>(
     id ? `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/client/${id}` : null,
@@ -113,28 +119,22 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
   }
 
   function handleCancelMembership(membershipId: string) {
-    Alert.alert(
-      "Cancelar plano?",
-      "O plano será cancelado e o cliente perderá o acesso. Essa ação não pode ser desfeita.",
-      [
-        { text: "Voltar", style: "cancel" },
-        {
-          text: "Cancelar Plano",
-          style: "destructive",
-          onPress: async () => {
-            setCancellingMembershipId(membershipId)
-            try {
-              await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/${membershipId}/cancel`, {
-                method: "PATCH",
-              })
-              await mutateMemberships()
-            } finally {
-              setCancellingMembershipId(null)
-            }
-          },
-        },
-      ]
-    )
+    setConfirmCancelMembershipId(membershipId)
+  }
+
+  async function executeCancelMembership() {
+    if (!confirmCancelMembershipId) return
+    const membershipId = confirmCancelMembershipId
+    setConfirmCancelMembershipId(null)
+    setCancellingMembershipId(membershipId)
+    try {
+      await secureApiCall(`${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/${membershipId}/cancel`, {
+        method: "PATCH",
+      })
+      await mutateMemberships()
+    } finally {
+      setCancellingMembershipId(null)
+    }
   }
 
   function toggleSection(section: number) {
@@ -195,14 +195,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
   }
 
   function handleDelete() {
-    Alert.alert(
-      "Excluir cliente?",
-      `Isso irá remover ${(client as any)?.name} e todo o histórico de serviços. Essa ação não pode ser desfeita.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deleteClient() },
-      ]
-    )
+    setConfirmDeleteOpen(true)
   }
 
   async function handleAddService() {
@@ -221,10 +214,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
   }
 
   function handleDeleteService(serviceId: string) {
-    Alert.alert("Excluir serviço?", "Essa ação irá remover o registro permanentemente.", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Excluir", style: "destructive", onPress: () => deleteService(serviceId) },
-    ])
+    setConfirmDeleteServiceId(serviceId)
   }
 
   if (isClientLoading) {
@@ -963,6 +953,39 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
         </View>
       </Modal>
       )}
+
+      {/* Confirm: Excluir cliente */}
+      <ConfirmModal
+        visible={confirmDeleteOpen}
+        title="Excluir cliente?"
+        message={`Isso irá remover ${c?.name} e todo o histórico de serviços. Essa ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { setConfirmDeleteOpen(false); deleteClient() }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      {/* Confirm: Cancelar plano */}
+      <ConfirmModal
+        visible={confirmCancelMembershipId !== null}
+        title="Cancelar plano?"
+        message="O plano será cancelado e o cliente perderá o acesso. Essa ação não pode ser desfeita."
+        confirmLabel="Cancelar Plano"
+        destructive
+        onConfirm={executeCancelMembership}
+        onCancel={() => setConfirmCancelMembershipId(null)}
+      />
+
+      {/* Confirm: Excluir serviço do histórico */}
+      <ConfirmModal
+        visible={confirmDeleteServiceId !== null}
+        title="Excluir serviço?"
+        message="Essa ação irá remover o registro permanentemente."
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { const id = confirmDeleteServiceId!; setConfirmDeleteServiceId(null); deleteService(id) }}
+        onCancel={() => setConfirmDeleteServiceId(null)}
+      />
 
       {/* Modal: Assinar plano */}
       <Modal visible={membershipOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMembershipOpen(false)}>

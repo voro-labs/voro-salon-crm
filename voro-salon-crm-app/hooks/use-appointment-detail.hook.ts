@@ -6,6 +6,7 @@ import { Toast } from "toastify-react-native"
 import { API_CONFIG, secureApiCall } from "../lib/api"
 import { useWhatsApp } from "./use-whatsapp.hook"
 import { fetcher } from "../lib/fetcher"
+import { useClientRating } from "./use-client-rating.hook"
 
 export interface AppointmentForm {
   clientId: string
@@ -39,14 +40,19 @@ export function useAppointmentDetail(appointmentId: string) {
     appointmentId ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}` : null,
     fetcher
   )
-  const { data: clients, isLoading: loadingClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
-  const { data: services, isLoading: loadingServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _clientsRaw, isLoading: loadingClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
+  const { data: _servicesRaw, isLoading: loadingServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const clients = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : undefined)
+  const services = _servicesRaw?.items ?? (Array.isArray(_servicesRaw) ? _servicesRaw : undefined)
   const { data: tenant } = useSWR(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const [form, setForm] = useState<AppointmentForm>(DEFAULT_FORM)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showRatingModal, setShowRatingModal] = useState(false)
+
+  const { existingRating, isSubmitting: isSubmittingRating, submitRating } = useClientRating(appointmentId)
 
   const { data: employees } = useSWR(
     form.serviceId !== "none" && form.serviceId !== ""
@@ -134,7 +140,16 @@ export function useAppointmentDetail(appointmentId: string) {
       Toast.success(`Status atualizado para ${statusLabels[newStatus] ?? newStatus}`)
       mutate(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${appointmentId}`)
       mutate(API_CONFIG.ENDPOINTS.APPOINTMENTS)
-      if (appointment && !tenant?.useWhatsappBooking) {
+
+      // Ao concluir, oferecer avaliação manual do cliente (somente se ainda não avaliado)
+      if (newStatus === 2 && !existingRating) {
+        setShowRatingModal(true)
+      }
+
+      // O bot envia automaticamente apenas para Confirmado (1) e Cancelado (3)
+      // Para outros status, ou quando o bot está desativado, oferece envio manual
+      const botHandlesStatus = tenant?.useWhatsappBooking && (newStatus === 1 || newStatus === 3)
+      if (appointment && !botHandlesStatus) {
         Alert.alert(
           "Enviar via WhatsApp?",
           "Deseja notificar o cliente sobre a mudança de status pelo WhatsApp?",
@@ -153,6 +168,17 @@ export function useAppointmentDetail(appointmentId: string) {
     }
   }
 
+  async function handleRatingSubmit(stars: number, comment?: string): Promise<void> {
+    const success = await submitRating(stars, comment)
+    if (success) {
+      setShowRatingModal(false)
+    }
+  }
+
+  function handleRatingSkip(): void {
+    setShowRatingModal(false)
+  }
+
   async function deleteAppointment(): Promise<boolean> {
     setIsDeleting(true)
     try {
@@ -164,7 +190,7 @@ export function useAppointmentDetail(appointmentId: string) {
         return false
       }
       Toast.success("Agendamento excluído com sucesso!")
-      router.push("/appointments")
+      router.replace("/appointments")
       return true
     } catch {
       Toast.error("Erro de conexão.")
@@ -191,5 +217,9 @@ export function useAppointmentDetail(appointmentId: string) {
     updateAppointment,
     updateStatus,
     deleteAppointment,
+    showRatingModal,
+    isSubmittingRating,
+    handleRatingSubmit,
+    handleRatingSkip,
   }
 }

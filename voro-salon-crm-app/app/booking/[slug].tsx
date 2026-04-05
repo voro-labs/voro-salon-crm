@@ -43,6 +43,8 @@ interface Service {
   name: string
   price: number
   durationMinutes: number
+  promotionalPrice?: number
+  hasPromotion?: boolean
 }
 
 interface Employee {
@@ -453,13 +455,29 @@ export default function BookingScreen() {
                     <Ionicons name="cut-outline" size={22} color={primary} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-zinc-900 font-bold text-base">{s.name}</Text>
-                    <View className="flex-row gap-3 mt-0.5">
-                      {s.price != null && (
+                    <View className="flex-row items-center gap-2 flex-wrap">
+                      <Text className="text-zinc-900 font-bold text-base">{s.name}</Text>
+                      {s.hasPromotion && (
+                        <View className="bg-emerald-100 rounded-full px-2 py-0.5">
+                          <Text className="text-emerald-700 font-bold text-[10px]">PROMOÇÃO</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View className="flex-row gap-3 mt-0.5 flex-wrap">
+                      {s.hasPromotion && s.promotionalPrice != null ? (
+                        <>
+                          <Text className="text-zinc-400 font-medium text-sm line-through">
+                            R$ {s.price.toFixed(2)}
+                          </Text>
+                          <Text className="text-emerald-600 font-bold text-sm">
+                            R$ {s.promotionalPrice.toFixed(2)}
+                          </Text>
+                        </>
+                      ) : s.price != null ? (
                         <Text className="text-zinc-500 font-medium text-sm">
                           R$ {s.price.toFixed(2)}
                         </Text>
-                      )}
+                      ) : null}
                       {s.durationMinutes != null && (
                         <Text className="text-zinc-400 font-medium text-sm">
                           {s.durationMinutes} min

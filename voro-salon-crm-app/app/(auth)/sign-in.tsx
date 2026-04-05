@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useRef, useState } from "react"
 import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from "react-native"
 import { useRouter } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -14,6 +14,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
+  const passwordRef = useRef<TextInput>(null)
 
   function validate() {
     const errors: { email?: string; password?: string } = {}
@@ -41,7 +42,7 @@ export default function SignInScreen() {
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView className="flex-1 bg-zinc-50" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+        <ScrollView className="flex-1 bg-zinc-50" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <View className="bg-white px-8 pt-12 pb-10 rounded-b-[40px] shadow-sm shadow-zinc-200">
             <View className="items-center mb-10">
               <Pressable
@@ -76,6 +77,7 @@ export default function SignInScreen() {
                     autoCapitalize="none"
                     keyboardType="email-address"
                     returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
                     textContentType="emailAddress"
                     autoComplete="email"
                   />
@@ -92,6 +94,7 @@ export default function SignInScreen() {
                 >
                   <Ionicons name="lock-closed-outline" size={20} color={fieldErrors.password ? "#ef4444" : "#71717a"} />
                   <TextInput
+                    ref={passwordRef}
                     className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
                     placeholder="Senha"
                     placeholderTextColor="#a1a1aa"

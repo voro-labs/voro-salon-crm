@@ -21,7 +21,8 @@ export function useClientDetails(clientId: string, onDeleted?: () => void) {
     fetcher,
     { shouldRetryOnError: false }
   )
-  const { data: catalogServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _catalogRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const catalogServices = _catalogRaw?.items ?? (Array.isArray(_catalogRaw) ? _catalogRaw : undefined)
 
   const isLoading = isClientLoading || isServicesLoading
 

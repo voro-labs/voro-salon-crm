@@ -30,7 +30,8 @@ const fetcher = async (url: string) => {
 export function QuickCreateEmployee({ onSuccess }: QuickCreateEmployeeProps) {
 	const [open, setOpen] = useState(false)
 	const [loading, setLoading] = useState(false)
-	const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+	const { data: _svcRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+	const services = _svcRaw?.items ?? (Array.isArray(_svcRaw) ? _svcRaw : undefined)
 
 	const [form, setForm] = useState({
 		name: "",

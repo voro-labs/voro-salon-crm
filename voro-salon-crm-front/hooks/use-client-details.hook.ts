@@ -21,7 +21,8 @@ export function useClientDetails(clientId: string) {
     `${API_CONFIG.ENDPOINTS.ANAMNESIS}/client/${clientId}`,
     fetcher
   )
-  const { data: catalogServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _catalogRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const catalogServices = _catalogRaw?.items ?? (Array.isArray(_catalogRaw) ? _catalogRaw : undefined)
 
   const isLoading = isClientLoading || isServicesLoading || isAnamnesisLoading
 
@@ -67,7 +68,7 @@ export function useClientDetails(clientId: string) {
       if (res.hasError) throw new Error("Erro ao excluir cliente.")
       toast.success("Cliente excluído!")
       mutate(API_CONFIG.ENDPOINTS.CLIENTS)
-      router.push("/clients")
+      router.replace("/clients")
       return true
     } catch (err: any) {
       toast.error(err.message || "Erro de conexão.")

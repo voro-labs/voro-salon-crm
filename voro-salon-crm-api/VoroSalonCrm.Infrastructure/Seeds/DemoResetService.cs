@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Infrastructure.Factories;
 
 namespace VoroSalonCrm.Infrastructure.Seeds
@@ -12,14 +13,14 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             var demoTenants = await context.Tenants
                 .IgnoreQueryFilters()
                 .Where(t => t.IsDemo)
+                .OrderBy(t => t.Slug)
                 .ToListAsync();
 
-            foreach (var tenant in demoTenants)
+            for (int i = 0; i < demoTenants.Count; i++)
             {
-                var tenantId = tenant.Id;
-
+                var tenantId = demoTenants[i].Id;
                 await DeleteDemoDataAsync(tenantId);
-                await SeedDemoDefaultsAsync(tenantId);
+                await SeedDemoDefaultsAsync(tenantId, i);
             }
 
             await context.SaveChangesAsync();
@@ -116,35 +117,288 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 .ExecuteDeleteAsync();
         }
 
-        private async Task SeedDemoDefaultsAsync(Guid tenantId)
+        // ─── Dados por tenant (índice 0 = vorostarter, 1 = voropro, 2 = voropremium) ───
+
+        private static readonly string[][] ClientNamesByTenant =
+        [
+            // 0 – starter (10 clientes)
+            [
+                "Ana Beatriz Santos", "Bruno Carvalho", "Camila Ferreira",
+                "Diego Oliveira", "Eduarda Lima", "Felipe Souza",
+                "Gabriela Nunes", "Henrique Costa", "Isabela Mendes",
+                "João Victor Rocha"
+            ],
+            // 1 – pro (12 clientes)
+            [
+                "Karla Ribeiro", "Lucas Martins", "Mariana Alves",
+                "Nathan Pereira", "Odete Barros", "Paulo Henrique Silva",
+                "Quezia Monteiro", "Rafael Gomes", "Sabrina Teixeira",
+                "Thiago Azevedo", "Úrsula Machado", "Vinícius Castro"
+            ],
+            // 2 – premium (14 clientes)
+            [
+                "Wendy Corrêa", "Xisto Fernandes", "Yasmin Pinto",
+                "Zélia Rodrigues", "Amanda Freitas", "Bernardo Lopes",
+                "Cecília Borges", "Daniel Morais", "Elena Ribeiro",
+                "Fábio Cunha", "Glória Magalhães", "Hugo Saraiva",
+                "Ingrid Tavares", "Jefferson Guimarães"
+            ]
+        ];
+
+        private static readonly string[][] EmployeeNamesByTenant =
+        [
+            // 0 – starter (5 funcionários)
+            [ "Márcia Vidal", "Carlos Eduardo Ramos", "Patrícia Cristina Lima", "Roberto Nascimento", "Tatiana Borges" ],
+            // 1 – pro (5 funcionários)
+            [ "Fernanda Moraes", "Gustavo Henrique Sousa", "Priscila Almeida", "Renato Batista", "Simone Cavalcanti" ],
+            // 2 – premium (5 funcionários)
+            [ "Alexandre Melo", "Beatriz Duarte", "Cláudio Andrade", "Eliane Peixoto", "Marcos Vinícius Santos" ]
+        ];
+
+        // Serviços: (nome, duração em minutos, preços por tenant [starter, pro, premium])
+        private static readonly (string Name, int Duration, decimal[] Prices)[] ServiceCatalog =
+        [
+            ("Corte Feminino",       60,  [ 70m,  80m,  110m ]),
+            ("Corte Masculino",      30,  [ 40m,  50m,   70m ]),
+            ("Coloração",           120,  [130m, 150m,  200m ]),
+            ("Escova Progressiva",  180,  [180m, 210m,  280m ]),
+            ("Hidratação Profunda",  45,  [ 55m,  65m,   90m ]),
+            ("Escova",               45,  [ 50m,  60m,   80m ]),
+            ("Manicure",             40,  [ 30m,  35m,   50m ]),
+            ("Pedicure",             50,  [ 35m,  45m,   65m ]),
+            ("Design de Sobrancelha",30,  [ 25m,  30m,   45m ]),
+            ("Luzes / Mechas",      150,  [160m, 190m,  250m ]),
+            ("Tratamento Capilar",   60,  [ 70m,  85m,  120m ]),
+            ("Maquiagem",            60,  [ 90m, 110m,  160m ])
+        ];
+
+        private async Task SeedDemoDefaultsAsync(Guid tenantId, int tenantIndex)
         {
-            var services = new List<Service>
+            var idx = Math.Clamp(tenantIndex, 0, 2);
+            var now = DateTimeOffset.UtcNow;
+            var today = now.Date;
+
+            // ── Serviços ──────────────────────────────────────────────────────────
+            var services = ServiceCatalog.Select(s => new Service
             {
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Corte Feminino", Price = 80m, DurationMinutes = 60, CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Corte Masculino", Price = 50m, DurationMinutes = 30, CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Coloração", Price = 150m, DurationMinutes = 120, CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Escova Progressiva", Price = 200m, DurationMinutes = 180, CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Hidratação", Price = 60m, DurationMinutes = 45, CreatedAt = DateTimeOffset.UtcNow },
-            };
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Name = s.Name,
+                Price = s.Prices[idx],
+                DurationMinutes = s.Duration,
+                CreatedAt = now
+            }).ToList();
 
             await context.Services.AddRangeAsync(services);
 
-            var employees = new List<Employee>
+            // ── Funcionários ──────────────────────────────────────────────────────
+            var employeeNames = EmployeeNamesByTenant[idx];
+            var employees = employeeNames.Select(name => new Employee
             {
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Ana Costa", IsActive = true, HireDate = DateTimeOffset.UtcNow, CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Carlos Lima", IsActive = true, HireDate = DateTimeOffset.UtcNow, CreatedAt = DateTimeOffset.UtcNow },
-            };
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Name = name,
+                IsActive = true,
+                HireDate = now.AddMonths(-6),
+                CreatedAt = now
+            }).ToList();
 
             await context.Employees.AddRangeAsync(employees);
 
-            var clients = new List<Client>
+            // Especialidades: cada funcionário atende todos os serviços
+            var specialties = new List<EmployeeService>();
+            foreach (var emp in employees)
+                foreach (var svc in services)
+                    specialties.Add(new EmployeeService { EmployeeId = emp.Id, ServiceId = svc.Id });
+
+            await context.EmployeeServices.AddRangeAsync(specialties);
+
+            // ── Clientes ──────────────────────────────────────────────────────────
+            var clientNames = ClientNamesByTenant[idx];
+            var phoneBase = 11900000000L + (long)(idx + 1) * 1_000_000L;
+            var clients = clientNames.Select((name, i) => new Client
             {
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Maria Silva", Phone = "551187654321", Email = "maria@demo.com", CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "João Santos", Phone = "551112345678", Email = "joao@demo.com", CreatedAt = DateTimeOffset.UtcNow },
-                new() { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Fernanda Rocha", Phone = "551198765432", Email = "fernanda@demo.com", CreatedAt = DateTimeOffset.UtcNow },
-            };
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Name = name,
+                Phone = $"55{phoneBase + i:D11}",
+                CreatedAt = now.AddDays(-60 + i * 3)
+            }).ToList();
 
             await context.Clients.AddRangeAsync(clients);
+
+            // ── Categorias de transação ───────────────────────────────────────────
+            var catServicos   = new TransactionCategory { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Serviços",            Type = TransactionType.Income,  CreatedAt = now };
+            var catProdutos   = new TransactionCategory { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Venda de Produtos",   Type = TransactionType.Income,  CreatedAt = now };
+            var catAluguel    = new TransactionCategory { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Aluguel",             Type = TransactionType.Expense, CreatedAt = now };
+            var catSalarios   = new TransactionCategory { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Salários",            Type = TransactionType.Expense, CreatedAt = now };
+            var catMarketing  = new TransactionCategory { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Marketing",           Type = TransactionType.Expense, CreatedAt = now };
+            var catMateriais  = new TransactionCategory { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Materiais e Insumos", Type = TransactionType.Expense, CreatedAt = now };
+            var catContas     = new TransactionCategory { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Contas e Utilidades", Type = TransactionType.Expense, CreatedAt = now };
+
+            await context.TransactionCategories.AddRangeAsync(catServicos, catProdutos, catAluguel, catSalarios, catMarketing, catMateriais, catContas);
+
+            // ── Agendamentos e Transações de receita ──────────────────────────────
+            var appointments = new List<Appointment>();
+            var transactions = new List<Transaction>();
+
+            // Agendamentos passados (Completed) – últimos 45 dias
+            var pastSlots = new (int DaysAgo, int Hour)[]
+            {
+                (45, 9), (42, 10), (38, 14), (35, 11), (30, 15),
+                (28, 9), (25, 16), (22, 10), (18, 13), (15, 11),
+                (12, 14), (9, 10), (6, 15), (3, 9)
+            };
+
+            var payMethods = new[] { PaymentMethod.Pix, PaymentMethod.CreditCard, PaymentMethod.DebitCard, PaymentMethod.Cash };
+
+            for (int i = 0; i < pastSlots.Length && i < clients.Count; i++)
+            {
+                var (daysAgo, hour) = pastSlots[i];
+                var client = clients[i % clients.Count];
+                var svc    = services[i % services.Count];
+                var emp    = employees[i % employees.Count];
+                var scheduled = new DateTimeOffset(today.AddDays(-daysAgo).Add(TimeSpan.FromHours(hour)), TimeSpan.Zero);
+                var method = payMethods[i % payMethods.Length];
+
+                var appt = new Appointment
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ClientId = client.Id,
+                    ServiceId = svc.Id,
+                    EmployeeId = emp.Id,
+                    ScheduledDateTime = scheduled,
+                    DurationMinutes = svc.DurationMinutes,
+                    Amount = svc.Price,
+                    Status = AppointmentStatus.Completed,
+                    CreatedAt = scheduled.AddDays(-2)
+                };
+                appointments.Add(appt);
+
+                // Receita para cada agendamento concluído
+                transactions.Add(new Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CategoryId = catServicos.Id,
+                    Description = $"{svc.Name} – {client.Name}",
+                    Amount = svc.Price,
+                    PaidAmount = svc.Price,
+                    DueDate = scheduled,
+                    PaymentDate = scheduled.AddHours(1),
+                    Type = TransactionType.Income,
+                    PaymentMethod = method,
+                    Status = TransactionStatus.Paid,
+                    CreatedAt = scheduled
+                });
+            }
+
+            // Agendamentos futuros (Confirmed / Pending) – próximos 14 dias
+            var futureSlots = new (int DaysAhead, int Hour)[]
+            {
+                (1, 10), (2, 14), (3, 11), (5, 16), (7, 9),
+                (8, 15), (10, 10), (12, 14), (14, 11)
+            };
+
+            for (int i = 0; i < futureSlots.Length && i < clients.Count; i++)
+            {
+                var (daysAhead, hour) = futureSlots[i];
+                var client = clients[(i + 3) % clients.Count];
+                var svc    = services[(i + 2) % services.Count];
+                var emp    = employees[(i + 1) % employees.Count];
+                var scheduled = new DateTimeOffset(today.AddDays(daysAhead).Add(TimeSpan.FromHours(hour)), TimeSpan.Zero);
+                var status = i < 4 ? AppointmentStatus.Confirmed : AppointmentStatus.Pending;
+
+                appointments.Add(new Appointment
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ClientId = client.Id,
+                    ServiceId = svc.Id,
+                    EmployeeId = emp.Id,
+                    ScheduledDateTime = scheduled,
+                    DurationMinutes = svc.DurationMinutes,
+                    Amount = svc.Price,
+                    Status = status,
+                    CreatedAt = now.AddDays(-1)
+                });
+            }
+
+            await context.Appointments.AddRangeAsync(appointments);
+
+            // ── Transações de despesa ─────────────────────────────────────────────
+            decimal rentMult    = idx == 0 ? 1.0m : idx == 1 ? 1.4m : 2.0m;
+            decimal salaryMult  = rentMult;
+
+            var expenses = new List<(TransactionCategory Cat, string Desc, decimal Amount, int DaysAgo, PaymentMethod Method, TransactionStatus Status)>
+            {
+                (catAluguel,   "Aluguel – mês atual",          1_800m * rentMult,   5,  PaymentMethod.Boleto,     TransactionStatus.Paid),
+                (catAluguel,   "Aluguel – mês anterior",       1_800m * rentMult,  35,  PaymentMethod.Boleto,     TransactionStatus.Paid),
+                (catSalarios,  "Folha de pagamento",           4_500m * salaryMult,  3,  PaymentMethod.Other,      TransactionStatus.Paid),
+                (catSalarios,  "Folha de pagamento anterior",  4_500m * salaryMult, 33,  PaymentMethod.Other,      TransactionStatus.Paid),
+                (catMarketing,  "Anúncios redes sociais",        350m * rentMult,   8,  PaymentMethod.CreditCard, TransactionStatus.Paid),
+                (catMateriais, "Tintas e produtos químicos",    620m * rentMult,   14,  PaymentMethod.Pix,        TransactionStatus.Paid),
+                (catMateriais, "Esmaltes e acessórios",         280m * rentMult,   20,  PaymentMethod.Pix,        TransactionStatus.Paid),
+                (catContas,    "Energia elétrica",              310m,              12,  PaymentMethod.Boleto,     TransactionStatus.Paid),
+                (catContas,    "Internet e telefone",           150m,              10,  PaymentMethod.Boleto,     TransactionStatus.Paid),
+                (catMarketing, "Criação de conteúdo",           500m * rentMult,   25,  PaymentMethod.Pix,        TransactionStatus.Paid),
+                // despesas futuras / pendentes
+                (catAluguel,   "Aluguel – próximo mês",        1_800m * rentMult,  -25, PaymentMethod.Boleto,     TransactionStatus.Pending),
+                (catSalarios,  "Adiantamento salarial",        1_500m * salaryMult, -5, PaymentMethod.Pix,        TransactionStatus.Pending),
+                (catMateriais, "Pedido de materiais",           450m * rentMult,   -3,  PaymentMethod.Pix,        TransactionStatus.Pending),
+            };
+
+            foreach (var (cat, desc, amount, daysAgo, method, status) in expenses)
+            {
+                var dueDate = new DateTimeOffset(today.AddDays(-daysAgo), TimeSpan.Zero);
+                transactions.Add(new Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CategoryId = cat.Id,
+                    Description = desc,
+                    Amount = Math.Round(amount, 2),
+                    PaidAmount = status == TransactionStatus.Paid ? Math.Round(amount, 2) : 0m,
+                    DueDate = dueDate,
+                    PaymentDate = status == TransactionStatus.Paid ? dueDate : null,
+                    Type = TransactionType.Expense,
+                    PaymentMethod = method,
+                    Status = status,
+                    CreatedAt = now
+                });
+            }
+
+            // Venda de produtos (receita extra)
+            var productSales = new (string Desc, decimal Value, int DaysAgo)[]
+            {
+                ("Shampoo + condicionador",   85m, 7),
+                ("Kit tratamento capilar",   140m, 15),
+                ("Máscara hidratante",        65m, 22),
+                ("Óleo finalizador",          55m, 30),
+            };
+
+            foreach (var (desc, value, daysAgo) in productSales)
+            {
+                var saleDate = new DateTimeOffset(today.AddDays(-daysAgo), TimeSpan.Zero);
+                transactions.Add(new Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CategoryId = catProdutos.Id,
+                    Description = desc,
+                    Amount = Math.Round(value * rentMult, 2),
+                    PaidAmount = Math.Round(value * rentMult, 2),
+                    DueDate = saleDate,
+                    PaymentDate = saleDate,
+                    Type = TransactionType.Income,
+                    PaymentMethod = PaymentMethod.Pix,
+                    Status = TransactionStatus.Paid,
+                    CreatedAt = now
+                });
+            }
+
+            await context.Transactions.AddRangeAsync(transactions);
         }
     }
 }

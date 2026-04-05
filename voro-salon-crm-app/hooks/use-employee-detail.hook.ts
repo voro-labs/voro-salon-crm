@@ -23,14 +23,15 @@ const DEFAULT_FORM: EmployeeForm = {
   commissionPercentage: undefined,
 }
 
-export function useEmployeeDetail(employeeId?: string) {
+export function useEmployeeDetail(employeeId?: string, onDeleted?: () => void) {
   const isNew = !employeeId || employeeId === "new"
 
   const { data: employee, isLoading: isLoadingEmp } = useSWR(
     !isNew ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/${employeeId}` : null,
     fetcher
   )
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _servicesRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const services = _servicesRaw?.items ?? (Array.isArray(_servicesRaw) ? _servicesRaw : undefined)
 
   const [form, setForm] = useState<EmployeeForm>(DEFAULT_FORM)
   const [isSaving, setIsSaving] = useState(false)
@@ -153,7 +154,11 @@ export function useEmployeeDetail(employeeId?: string) {
         return false
       }
       Toast.success("Funcionário excluído.")
-      router.back()
+      if (onDeleted) {
+        onDeleted()
+      } else {
+        router.back()
+      }
       return true
     } catch {
       Toast.error("Erro de conexão.")

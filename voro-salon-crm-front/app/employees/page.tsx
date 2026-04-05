@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
@@ -16,6 +16,7 @@ import { fetcher } from "@/lib/fetcher"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PlanLimitModal } from "@/components/ui/custom/plan-limit-modal"
 import { PageHeader } from "@/components/ui/custom/page-header"
+import { useDataList } from "@/hooks/use-data-list.hook"
 
 function AuthenticatedImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
@@ -83,28 +84,28 @@ function AuthenticatedImage({ src, alt, className }: { src: string, alt: string,
 
 export default function EmployeesPage() {
   const router = useRouter()
-  const [search, setSearch] = useState("")
   const [showLimitModal, setShowLimitModal] = useState(false)
-  const { data: employees, isLoading } = useSWR(API_CONFIG.ENDPOINTS.EMPLOYEES, fetcher)
-  const { data: services } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
-  const { maxEmployees } = usePlanLimits()
 
-  const filtered = useCallback(() => {
-    if (!employees) return []
-    if (!search.trim()) return employees
-    const q = search.toLowerCase()
-    return employees.filter(
-      (e: any) =>
-        e.name.toLowerCase().includes(q)
-    )
-  }, [search, employees])
+  const {
+    items,
+    totalCount,
+    totalPages,
+    page,
+    setPage,
+    search,
+    setSearch,
+    isLoading,
+  } = useDataList(API_CONFIG.ENDPOINTS.EMPLOYEES, { pageSize: 20 })
+
+  const { data: _svcRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const services = _svcRaw?.items ?? (Array.isArray(_svcRaw) ? _svcRaw : undefined)
+  const { maxEmployees } = usePlanLimits()
 
   const getServiceName = (id: string) => {
     return services?.find((s: any) => s.id === id)?.name || "Serviço"
   }
 
-  const currentCount = employees?.length ?? 0
-  const isAtLimit = maxEmployees !== -1 && currentCount >= maxEmployees
+  const isAtLimit = maxEmployees !== -1 && totalCount >= maxEmployees
 
   const handleNewEmployee = () => {
     if (isAtLimit) {
@@ -124,15 +125,14 @@ export default function EmployeesPage() {
         />
       )}
       <div className="flex flex-col gap-6 p-6">
-        <PageHeader 
-          title="Funcionários" 
+        <PageHeader
+          title="Funcionários"
           action={
             <div className="flex flex-col gap-2 w-full sm:w-auto">
-              {/* Linha 2: ações — ícone-only nos secundários em mobile */}
               <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-end">
                 {maxEmployees !== -1 && (
                   <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
-                    {currentCount}/{maxEmployees}
+                    {totalCount}/{maxEmployees}
                   </span>
                 )}
                 <Button size="sm" onClick={handleNewEmployee}>
@@ -171,7 +171,7 @@ export default function EmployeesPage() {
               </Card>
             ))}
           </div>
-        ) : filtered().length === 0 ? (
+        ) : items.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <UserCircle className="mb-4 h-12 w-12 text-muted-foreground/50" />
@@ -185,7 +185,7 @@ export default function EmployeesPage() {
           </Card>
         ) : (
           <div className="flex flex-col gap-3">
-            {filtered().map((emp: any) => (
+            {items.map((emp: any) => (
               <Link key={emp.id} href={`/employees/${emp.id}`}>
                 <Card className="transition-colors hover:bg-accent/10">
                   <CardContent className="flex items-center gap-4 p-4">
@@ -228,6 +228,31 @@ export default function EmployeesPage() {
                 </Card>
               </Link>
             ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-muted-foreground">{totalCount} registros</p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm">Página {page} de {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Próxima
+              </Button>
+            </div>
           </div>
         )}
       </div>

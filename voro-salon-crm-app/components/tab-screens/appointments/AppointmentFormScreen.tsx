@@ -23,7 +23,7 @@ import { mutate } from "swr"
 
 export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: string; rootPath?: string }) {
   const router = useRouter()
-  const { clients, services, employees, form, setForm, isLoading, isCreating, handleServiceChange, createAppointment, isModuleEnabled } = useAppointmentForm(id)
+  const { clients, services, employees, form, setForm, isLoading, isCreating, handleServiceChange, createAppointment, isModuleEnabled, activePromotion } = useAppointmentForm(id)
   const { primaryColor } = useTenantTheme()
   const { user } = useAuth()
 
@@ -221,6 +221,21 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
                   placeholder="Selecionar serviço"
                   searchPlaceholder="Buscar serviço..."
                 />
+                {activePromotion && (
+                  <View className="mt-2 flex-row items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                    <Ionicons name="pricetag" size={15} color="#059669" />
+                    <Text className="text-sm text-emerald-800 flex-1 flex-wrap">
+                      Promoção aplicada:{" "}
+                      <Text className="line-through text-emerald-600/70">
+                        {activePromotion.originalPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </Text>
+                      {"  "}
+                      <Text className="font-black">
+                        {activePromotion.promotionalPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </Text>
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 

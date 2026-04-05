@@ -1,6 +1,6 @@
 import { Stack, useRouter, useSegments } from "expo-router"
 import { useEffect, useRef } from "react"
-import { View, ActivityIndicator, Platform } from "react-native"
+import { View, ActivityIndicator, Platform, StatusBar } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import { KeyboardProvider } from "react-native-keyboard-controller"
 import { AuthProvider, useAuth } from "contexts/auth.context"
@@ -142,6 +142,7 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
       <KeyboardProvider>
         <AuthProvider>
           <TenantThemeProvider>

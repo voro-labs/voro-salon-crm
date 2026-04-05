@@ -114,7 +114,7 @@ export function useServiceDetail(serviceId?: string) {
         return false
       }
       Toast.success("Serviço excluído com sucesso!")
-      router.push("/services")
+      router.replace("/services")
       return true
     } catch {
       Toast.error("Erro de conexão.")

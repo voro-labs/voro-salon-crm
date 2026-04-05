@@ -255,6 +255,12 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<Guid>("ProfessionalId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("PublicToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("PublicTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -270,6 +276,10 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("PublicToken")
+                        .IsUnique()
+                        .HasFilter("\"PublicToken\" IS NOT NULL");
 
                     b.HasIndex("TenantId");
 
@@ -397,6 +407,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("BirthDate")
+                        .HasColumnType("date");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -527,6 +540,48 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.ToTable("ClientMembershipPlans");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Stars")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId")
+                        .IsUnique();
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("ClientRatings");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Employee", b =>
                 {
                     b.Property<Guid>("Id")
@@ -582,6 +637,50 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Employees");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.EmployeeGoal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TargetAmount")
+                        .HasColumnType("NUMERIC(10,2)");
+
+                    b.Property<int>("TargetAppointments")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "EmployeeId", "Month", "Year")
+                        .IsUnique();
+
+                    b.ToTable("EmployeeGoals");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.EmployeeService", b =>
@@ -1026,6 +1125,55 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.ToTable("Services");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ServicePromotion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.PrimitiveCollection<int[]>("DaysOfWeek")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<decimal>("PromotionalPrice")
+                        .HasColumnType("NUMERIC(10,2)");
+
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("ValidFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ValidUntil")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServiceId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "ServiceId");
+
+                    b.ToTable("ServicePromotions");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ServiceRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1210,6 +1358,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BirthdayWhatsappTemplateName")
+                        .HasColumnType("text");
+
                     b.Property<string>("ContactEmail")
                         .HasColumnType("text");
 
@@ -1289,13 +1440,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("CloseTime")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(5)
-                        .HasColumnType("character varying(5)")
-                        .HasDefaultValue("18:00");
-
                     b.Property<int>("DayOfWeek")
                         .HasColumnType("integer");
 
@@ -1303,13 +1447,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
-
-                    b.Property<string>("OpenTime")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(5)
-                        .HasColumnType("character varying(5)")
-                        .HasDefaultValue("08:00");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -1322,6 +1459,41 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("TenantBusinessHours");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantBusinessHoursRange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessHoursId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CloseTime")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasDefaultValue("18:00");
+
+                    b.Property<string>("OpenTime")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasDefaultValue("08:00");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessHoursId");
+
+                    b.ToTable("TenantBusinessHoursRanges");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantModule", b =>
@@ -2060,6 +2232,33 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientRating", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Employee", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
@@ -2076,6 +2275,25 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.EmployeeGoal", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.EmployeeService", b =>
@@ -2158,6 +2376,25 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ServicePromotion", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Service");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ServiceRecord", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Appointment", "Appointment")
@@ -2199,6 +2436,17 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantBusinessHoursRange", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.TenantBusinessHours", "BusinessHours")
+                        .WithMany("Ranges")
+                        .HasForeignKey("BusinessHoursId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BusinessHours");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantModule", b =>
@@ -2397,6 +2645,11 @@ namespace VoroSalonCrm.Infrastructure.Migrations
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Tenant", b =>
                 {
                     b.Navigation("UserTenants");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantBusinessHours", b =>
+                {
+                    b.Navigation("Ranges");
                 });
 #pragma warning restore 612, 618
         }

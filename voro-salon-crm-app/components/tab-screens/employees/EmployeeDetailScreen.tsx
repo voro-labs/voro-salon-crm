@@ -5,6 +5,7 @@ import {
   Image
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
+import { ConfirmModal } from "components/ConfirmModal"
 import { Ionicons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 import useSWR, { mutate } from "swr"
@@ -21,7 +22,7 @@ function formatDate(dateStr?: string) {
   return new Date(dateStr).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-export function EmployeeDetailScreen({ id }: { id: string }) {
+export function EmployeeDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; rootPath?: string }) {
   const router = useRouter()
   const {
     employee, services,
@@ -29,11 +30,15 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
     isLoading, isSaving, isDeleting,
     saveEmployee, deleteEmployee,
     handlePhotoUpload, isUploadingPhoto
-  } = useEmployeeDetail(id)
+  } = useEmployeeDetail(id, () => router.replace(`${rootPath}/employees` as any))
   const { primaryColor } = useTenantTheme()
 
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({ ...form })
+
+  // Confirm modals
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmRevokeOpen, setConfirmRevokeOpen] = useState(false)
 
   // --- Acesso ao sistema ---
   const [accessModalOpen, setAccessModalOpen] = useState(false)
@@ -42,6 +47,50 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
   const [showPassword, setShowPassword] = useState(false)
   const [isCreatingAccess, setIsCreatingAccess] = useState(false)
   const [isRevokingAccess, setIsRevokingAccess] = useState(false)
+
+  // --- Goals ---
+  interface EmployeeGoalDto {
+    id: string; month: number; year: number
+    targetAmount: number; targetAppointments: number
+    actualAmount: number; actualAppointments: number
+    amountProgressPercent: number; appointmentsProgressPercent: number
+  }
+  const now0 = new Date()
+  const [goalMonth, setGoalMonth] = useState({ year: now0.getFullYear(), month: now0.getMonth() + 1 })
+  const [goal, setGoal] = useState<EmployeeGoalDto | null>(null)
+  const [isFetchingGoal, setIsFetchingGoal] = useState(false)
+  const [goalModalOpen, setGoalModalOpen] = useState(false)
+  const [goalTargetAmount, setGoalTargetAmount] = useState("")
+  const [goalTargetAppointments, setGoalTargetAppointments] = useState("")
+  const [isSavingGoal, setIsSavingGoal] = useState(false)
+
+  useEffect(() => {
+    if (!id) return
+    setIsFetchingGoal(true)
+    secureApiCall<EmployeeGoalDto>(`/EmployeeGoal/${id}?month=${goalMonth.month}&year=${goalMonth.year}`)
+      .then((res) => setGoal((!res.hasError && res.data) ? res.data : null))
+      .finally(() => setIsFetchingGoal(false))
+  }, [id, goalMonth.month, goalMonth.year])
+
+  async function handleSaveGoal() {
+    const amount = parseFloat(goalTargetAmount.replace(",", ".")) || 0
+    const appts = parseInt(goalTargetAppointments) || 0
+    if (!amount && !appts) {
+      Alert.alert("Atenção", "Defina pelo menos uma meta (valor ou atendimentos).")
+      return
+    }
+    setIsSavingGoal(true)
+    try {
+      const body = JSON.stringify({ employeeId: id, month: goalMonth.month, year: goalMonth.year, targetAmount: amount, targetAppointments: appts })
+      const res = goal?.id
+        ? await secureApiCall<EmployeeGoalDto>(`/EmployeeGoal/${goal.id}`, { method: "PUT", body })
+        : await secureApiCall<EmployeeGoalDto>("/EmployeeGoal", { method: "POST", body })
+      if (res.hasError) { Alert.alert("Erro", res.message || "Erro ao salvar meta."); return }
+      setGoal(res.data)
+      setGoalModalOpen(false)
+    } catch { Alert.alert("Erro", "Erro de conexão.") }
+    finally { setIsSavingGoal(false) }
+  }
 
   const [commissionMonth, setCommissionMonth] = useState(() => {
     const now = new Date()
@@ -112,35 +161,27 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
   }
 
   function handleRevokeAccess() {
-    Alert.alert(
-      "Revogar acesso?",
-      "O funcionário perderá o acesso ao sistema. Esta ação não pode ser desfeita sem criar um novo acesso.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Revogar",
-          style: "destructive",
-          onPress: async () => {
-            setIsRevokingAccess(true)
-            try {
-              const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
-                method: "DELETE",
-              })
-              if (res.hasError) {
-                Alert.alert("Erro", res.message || "Erro ao revogar acesso.")
-                return
-              }
-              mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
-              mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
-            } catch {
-              Alert.alert("Erro", "Erro de conexão.")
-            } finally {
-              setIsRevokingAccess(false)
-            }
-          },
-        },
-      ]
-    )
+    setConfirmRevokeOpen(true)
+  }
+
+  async function executeRevokeAccess() {
+    setConfirmRevokeOpen(false)
+    setIsRevokingAccess(true)
+    try {
+      const res = await secureApiCall<any>(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}/access`, {
+        method: "DELETE",
+      })
+      if (res.hasError) {
+        Alert.alert("Erro", res.message || "Erro ao revogar acesso.")
+        return
+      }
+      mutate(`${API_CONFIG.ENDPOINTS.EMPLOYEES}/${id}`)
+      mutate(API_CONFIG.ENDPOINTS.EMPLOYEES)
+    } catch {
+      Alert.alert("Erro", "Erro de conexão.")
+    } finally {
+      setIsRevokingAccess(false)
+    }
   }
 
   function openEdit() {
@@ -154,14 +195,7 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
   }
 
   function handleDelete() {
-    Alert.alert(
-      "Excluir funcionário?",
-      `Isso irá remover ${employee?.name} permanentemente. Essa ação não pode ser desfeita.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => deleteEmployee() },
-      ]
-    )
+    setConfirmDeleteOpen(true)
   }
 
   if (isLoading) {
@@ -380,6 +414,82 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
             )}
           </View>
         )}
+        {/* Metas */}
+        <View className="bg-white rounded-3xl border border-zinc-100 p-5 mt-4">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="trophy-outline" size={18} color="#18181b" />
+              <Text className="text-base font-black text-zinc-900">Metas</Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                setGoalTargetAmount(goal ? String(goal.targetAmount) : "")
+                setGoalTargetAppointments(goal ? String(goal.targetAppointments) : "")
+                setGoalModalOpen(true)
+              }}
+              className="h-8 px-3 bg-zinc-100 rounded-xl items-center justify-center"
+            >
+              <Text className="text-zinc-700 font-bold text-xs">{goal ? "Editar" : "Definir"}</Text>
+            </Pressable>
+          </View>
+
+          {/* Navegação mês */}
+          <View className="flex-row items-center justify-between mb-4">
+            <Pressable
+              onPress={() => setGoalMonth(p => { const d = new Date(p.year, p.month - 2); return { year: d.getFullYear(), month: d.getMonth() + 1 } })}
+              className="h-8 w-8 bg-zinc-100 rounded-xl items-center justify-center"
+            >
+              <Ionicons name="chevron-back" size={16} color="#52525b" />
+            </Pressable>
+            <Text className="font-bold text-zinc-700 text-sm">
+              {new Date(goalMonth.year, goalMonth.month - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+            </Text>
+            <Pressable
+              onPress={() => setGoalMonth(p => { const d = new Date(p.year, p.month); return { year: d.getFullYear(), month: d.getMonth() + 1 } })}
+              className="h-8 w-8 bg-zinc-100 rounded-xl items-center justify-center"
+            >
+              <Ionicons name="chevron-forward" size={16} color="#52525b" />
+            </Pressable>
+          </View>
+
+          {isFetchingGoal ? (
+            <ActivityIndicator color={primaryColor} />
+          ) : !goal ? (
+            <View className="items-center py-6">
+              <Ionicons name="trophy-outline" size={32} color="#d4d4d8" />
+              <Text className="text-zinc-400 font-semibold mt-2 text-sm">Nenhuma meta para este período</Text>
+              <Text className="text-zinc-300 text-xs mt-1">Toque em Definir para criar</Text>
+            </View>
+          ) : (
+            <View className="gap-4">
+              {/* Faturamento */}
+              <View className="gap-1.5">
+                <View className="flex-row justify-between">
+                  <Text className="text-sm font-bold text-zinc-700">Faturamento</Text>
+                  <Text className="text-sm text-zinc-500">
+                    {goal.actualAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} / {goal.targetAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </Text>
+                </View>
+                <View className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                  <View className="h-2 rounded-full" style={{ width: `${Math.min(goal.amountProgressPercent, 100)}%`, backgroundColor: primaryColor }} />
+                </View>
+                <Text className="text-xs text-zinc-400 text-right">{Math.round(goal.amountProgressPercent)}%</Text>
+              </View>
+              {/* Atendimentos */}
+              <View className="gap-1.5">
+                <View className="flex-row justify-between">
+                  <Text className="text-sm font-bold text-zinc-700">Atendimentos</Text>
+                  <Text className="text-sm text-zinc-500">{goal.actualAppointments} / {goal.targetAppointments}</Text>
+                </View>
+                <View className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                  <View className="h-2 rounded-full bg-blue-500" style={{ width: `${Math.min(goal.appointmentsProgressPercent, 100)}%` }} />
+                </View>
+                <Text className="text-xs text-zinc-400 text-right">{Math.round(goal.appointmentsProgressPercent)}%</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Acesso ao Sistema */}
         <View className="bg-white rounded-3xl border border-zinc-100 p-5 mt-4">
           <View className="flex-row items-center gap-2 mb-4">
@@ -432,8 +542,9 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
 
       {/* Create Access Modal */}
       <Modal visible={accessModalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAccessModalOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
-          <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
+        <SafeAreaView edges={["top"]} className="flex-1 bg-white">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
+          <View className="flex-row items-center justify-between px-5 pt-4 pb-4 border-b border-zinc-100">
             <Text className="text-lg font-black text-zinc-900">Criar Acesso ao Sistema</Text>
             <Pressable
               onPress={() => { setAccessModalOpen(false); setAccessEmail(""); setAccessPassword(""); setShowPassword(false) }}
@@ -517,7 +628,82 @@ export function EmployeeDetailScreen({ id }: { id: string }) {
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
+
+      {/* Goal Modal */}
+      <Modal visible={goalModalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setGoalModalOpen(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 bg-white">
+          <View className="flex-row items-center justify-between px-5 pt-6 pb-4 border-b border-zinc-100">
+            <Text className="text-lg font-black text-zinc-900">{goal ? "Editar Meta" : "Definir Meta"}</Text>
+            <Pressable onPress={() => setGoalModalOpen(false)} className="h-9 w-9 bg-zinc-100 rounded-xl items-center justify-center">
+              <Ionicons name="close" size={20} color="#71717a" />
+            </Pressable>
+          </View>
+          <ScrollView className="flex-1 px-5 py-5" keyboardShouldPersistTaps="handled">
+            <Text className="text-sm text-zinc-500 mb-5">
+              {new Date(goalMonth.year, goalMonth.month - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+            </Text>
+            <View className="mb-4">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Meta de Faturamento (R$)</Text>
+              <TextInput
+                className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base"
+                placeholder="Ex: 5000"
+                placeholderTextColor="#a1a1aa"
+                value={goalTargetAmount}
+                onChangeText={setGoalTargetAmount}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View className="mb-6">
+              <Text className="text-zinc-700 font-bold text-sm mb-1.5">Meta de Atendimentos</Text>
+              <TextInput
+                className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 text-zinc-900 font-semibold text-base"
+                placeholder="Ex: 40"
+                placeholderTextColor="#a1a1aa"
+                value={goalTargetAppointments}
+                onChangeText={setGoalTargetAppointments}
+                keyboardType="number-pad"
+              />
+            </View>
+          </ScrollView>
+          <View className="px-5 pb-8 pt-3 border-t border-zinc-100 flex-row gap-3">
+            <Pressable onPress={() => setGoalModalOpen(false)} disabled={isSavingGoal} className="flex-1 h-14 rounded-2xl items-center justify-center bg-zinc-100">
+              <Text className="text-zinc-700 font-black text-base">Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSaveGoal}
+              disabled={isSavingGoal}
+              className="flex-1 h-14 rounded-2xl items-center justify-center"
+              style={{ backgroundColor: isSavingGoal ? primaryColor + "99" : primaryColor }}
+            >
+              {isSavingGoal ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar</Text>}
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Confirm: Excluir funcionário */}
+      <ConfirmModal
+        visible={confirmDeleteOpen}
+        title="Excluir funcionário?"
+        message={`Isso irá remover ${employee?.name} permanentemente. Essa ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={() => { setConfirmDeleteOpen(false); deleteEmployee() }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      {/* Confirm: Revogar acesso */}
+      <ConfirmModal
+        visible={confirmRevokeOpen}
+        title="Revogar acesso?"
+        message="O funcionário perderá o acesso ao sistema. Esta ação não pode ser desfeita sem criar um novo acesso."
+        confirmLabel="Revogar"
+        destructive
+        onConfirm={executeRevokeAccess}
+        onCancel={() => setConfirmRevokeOpen(false)}
+      />
 
       {/* Edit Modal */}
       <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditOpen(false)}>

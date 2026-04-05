@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -24,7 +26,8 @@ namespace VoroSalonCrm.Application.Services
         IExpoPushNotificationService expoPushNotificationService,
         ITimeSlotBlockService timeSlotBlockService,
         ITenantBusinessHoursRepository businessHoursRepository,
-        ITransactionRepository transactionRepository) : IAppointmentService
+        ITransactionRepository transactionRepository,
+        IMemoryCache memoryCache) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -40,6 +43,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITimeSlotBlockService _timeSlotBlockService = timeSlotBlockService;
         private readonly ITenantBusinessHoursRepository _businessHoursRepository = businessHoursRepository;
         private readonly ITransactionRepository _transactionRepository = transactionRepository;
+        private readonly IMemoryCache _memoryCache = memoryCache;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -134,6 +138,36 @@ namespace VoroSalonCrm.Application.Services
             return appointments.Select(MapToDto);
         }
 
+        public async Task<PagedResult<AppointmentDto>> GetPagedAsync(int page, int pageSize, string? search, Guid? clientId = null)
+        {
+            var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
+                .Include(a => a.Employee!)
+                .Include(a => a.Membership!)
+                .ThenInclude(m => m.Plan)
+                .Where(a => !a.IsDeleted);
+
+            if (clientId.HasValue)
+                query = query.Where(a => a.ClientId == clientId.Value);
+
+            var appointments = await query.OrderBy(a => a.ScheduledDateTime).ToListAsync();
+            var dtos = appointments.Select(MapToDto).ToList();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                dtos = dtos.Where(a =>
+                    (a.ClientName?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (a.ServiceName?.ToLowerInvariant().Contains(term) ?? false) ||
+                    (a.Description?.ToLowerInvariant().Contains(term) ?? false))
+                    .ToList();
+            }
+
+            var totalCount = dtos.Count;
+            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+
+            return new PagedResult<AppointmentDto>(items, totalCount, page, pageSize);
+        }
+
         public async Task<AppointmentDto> UpdateAsync(Guid id, UpdateAppointmentDto dto)
         {
             var appointment = await _appointmentRepository.GetByIdAsync(false, id)
@@ -162,11 +196,12 @@ namespace VoroSalonCrm.Application.Services
             {
                 await CreateHistoryFromAppointmentAsync(appointment);
             }
-            // Se saiu de concluído para cancelado/pendente, remove o histórico
+            // Se saiu de concluído para cancelado/pendente, remove o histórico e reverte comissão/sessão
             else if (oldStatus == AppointmentStatus.Completed &&
                 (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
             {
                 await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
+                await ReverseCompletionAsync(appointment);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -221,6 +256,7 @@ namespace VoroSalonCrm.Application.Services
                 (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
             {
                 await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
+                await ReverseCompletionAsync(appointment);
             }
 
             await _unitOfWork.SaveChangesAsync();
@@ -287,6 +323,10 @@ namespace VoroSalonCrm.Application.Services
                 var tenant = await _tenantRepository.GetByIdAsync(false, appointment.TenantId);
                 if (tenant == null || !tenant.UseWhatsappBooking) return true;
 
+                // Anti-spam: skip if the same status notification was already sent within 5 minutes
+                var cacheKey = $"wa_status_{appointment.Id}_{status}";
+                if (_memoryCache.TryGetValue(cacheKey, out _)) return true;
+
                 var tenantName = tenant.Name;
                 var phone = appointment.Client.Phone;
 
@@ -325,6 +365,7 @@ namespace VoroSalonCrm.Application.Services
                     };
 
                     await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
+                    _memoryCache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
                 }
                 else if (status == AppointmentStatus.Cancelled)
                 {
@@ -358,6 +399,45 @@ namespace VoroSalonCrm.Application.Services
                     };
 
                     await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
+                    _memoryCache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
+                }
+                else if (status == AppointmentStatus.Completed && appointment.Client != null &&
+                    !string.IsNullOrWhiteSpace(appointment.Client.Phone))
+                {
+                    // Send rating request template after completion
+                    var ratingMsg = new WhatsappTemplateMessageDto
+                    {
+                        To = appointment.Client.Phone,
+                        Template = new()
+                        {
+                            Name = "service_rating_request_1",
+                            Components =
+                            [
+                                new() {
+                                    Type = "body",
+                                    Parameters =
+                                    [
+                                        new() { Type = "text", Text = appointment.Client.Name },
+                                        new() { Type = "text", Text = appointment.Service?.Name ?? "Serviço" }
+                                    ]
+                                },
+                                new() {
+                                    Type = "button",
+                                    SubType = "url",
+                                    Index = "0",
+                                    Parameters = [
+                                        new() { Type = "text", Text = "/" + appointment.Id.ToString() }
+                                    ]
+                                }
+                            ]
+                        }
+                    };
+
+                    try
+                    {
+                        await _whatsappService.SendTemplateMessageAsync(ratingMsg, tenant?.WhatsappPhoneNumberId);
+                    }
+                    catch (Exception) { /* Não falha o fluxo se o envio falhar */ }
                 }
             }
 
@@ -425,18 +505,23 @@ namespace VoroSalonCrm.Application.Services
             if (dayHours != null && !dayHours.IsOpen)
                 return [];
 
-            var openTimeParts = (dayHours?.OpenTime ?? "08:00").Split(':');
-            var closeTimeParts = (dayHours?.CloseTime ?? "18:00").Split(':');
-            int openHour = int.Parse(openTimeParts[0]);
-            int openMin = int.Parse(openTimeParts[1]);
-            int closeHour = int.Parse(closeTimeParts[0]);
-            int closeMin = int.Parse(closeTimeParts[1]);
+            // Build sorted ranges (or use default if none configured)
+            var orderedRanges = dayHours?.Ranges.OrderBy(r => r.SortOrder).ToList()
+                ?? [];
+            if (orderedRanges.Count == 0)
+                orderedRanges.Add(new TenantBusinessHoursRange { OpenTime = "08:00", CloseTime = "18:00" });
 
-            var startOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, openHour, openMin, 0, TimeSpan.FromHours(-3));
-            var endOfDay = new DateTimeOffset(date.Year, date.Month, date.Day, closeHour, closeMin, 0, TimeSpan.FromHours(-3));
+            // Compute full day window for appointment query (earliest start → latest end)
+            static DateTimeOffset ParseRangeTime(DateTime d, string time, TimeSpan tz)
+            {
+                var parts = time.Split(':');
+                return new DateTimeOffset(d.Year, d.Month, d.Day,
+                    int.Parse(parts[0]), int.Parse(parts[1]), 0, tz);
+            }
 
-            var startUtc = startOfDay.ToUniversalTime();
-            var endUtc = endOfDay.ToUniversalTime();
+            var tz = TimeSpan.FromHours(-3);
+            var dayStart = ParseRangeTime(date, orderedRanges.First().OpenTime, tz).ToUniversalTime();
+            var dayEnd   = ParseRangeTime(date, orderedRanges.Last().CloseTime, tz).ToUniversalTime();
 
             // Resolve service duration to properly check if a new booking fits without conflict
             var serviceDurationMinutes = 30;
@@ -449,21 +534,18 @@ namespace VoroSalonCrm.Application.Services
 
             var query = _appointmentRepository.Query(a =>
                 a.TenantId == tenantId &&
-                a.ScheduledDateTime >= startUtc &&
-                a.ScheduledDateTime < endUtc &&
+                a.ScheduledDateTime >= dayStart &&
+                a.ScheduledDateTime < dayEnd &&
                 !a.IsDeleted &&
                 a.Status != AppointmentStatus.Cancelled);
 
             if (employeeId.HasValue && employeeId.Value != Guid.Empty)
-            {
                 query = query.Where(a => a.EmployeeId == employeeId.Value);
-            }
 
             var appointments = await query.ToListAsync();
 
             // Get total active employees to handle "Any professional" case
             int activeEmployeesCount;
-
             if (employeeId.HasValue && employeeId.Value != Guid.Empty)
             {
                 activeEmployeesCount = 1;
@@ -483,67 +565,105 @@ namespace VoroSalonCrm.Application.Services
                     .CountAsync();
             }
 
-            // Load time blocks for this day
-            var blocks = (await _timeSlotBlockService.GetOverlappingAsync(startUtc, endUtc)).ToList();
+            // Salon-only Mode: treat salon as a single resource with capacity 1
+            if (activeEmployeesCount <= 0 && (!employeeId.HasValue || employeeId.Value == Guid.Empty))
+                activeEmployeesCount = 1;
+
+            // Load time blocks for the full day window
+            var blocks = (await _timeSlotBlockService.GetOverlappingAsync(dayStart, dayEnd)).ToList();
 
             var slots = new List<AvailabilitySlotDto>();
-            var current = startOfDay.ToUniversalTime();
 
-            // Salon-only Mode: If no active employees exist, treat the salon as a single resource with capacity 1
-            if (activeEmployeesCount <= 0 && (!employeeId.HasValue || employeeId.Value == Guid.Empty))
+            // Generate slots for each range (supports lunch break gaps)
+            foreach (var range in orderedRanges)
             {
-                activeEmployeesCount = 1;
-            }
+                var rangeStart = ParseRangeTime(date, range.OpenTime, tz);
+                var rangeEnd   = ParseRangeTime(date, range.CloseTime, tz);
+                var startUtc   = rangeStart.ToUniversalTime();
+                var endUtc     = rangeEnd.ToUniversalTime();
 
-            while (current < endUtc)
-            {
-                var next = current.AddMinutes(30); // iteration step
-                var slotEnd = current.AddMinutes(serviceDurationMinutes); // actual end for conflict check
-
-                // Check if slot is blocked
-                var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
-                if (overlappingBlock != null)
+                var current = startUtc;
+                while (current < endUtc)
                 {
-                    slots.Add(new AvailabilitySlotDto(current, next, false, true, overlappingBlock.Reason));
+                    var next     = current.AddMinutes(30);
+                    var slotEnd  = current.AddMinutes(serviceDurationMinutes);
+
+                    var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
+                    if (overlappingBlock != null)
+                    {
+                        slots.Add(new AvailabilitySlotDto(current, next, false, true, overlappingBlock.Reason));
+                        current = next;
+                        continue;
+                    }
+
+                    if (slotEnd > endUtc)
+                    {
+                        slots.Add(new AvailabilitySlotDto(current, next, false));
+                        current = next;
+                        continue;
+                    }
+
+                    bool isBusy;
+                    if (activeEmployeesCount <= 0)
+                    {
+                        isBusy = true;
+                    }
+                    else if (employeeId.HasValue && employeeId.Value != Guid.Empty)
+                    {
+                        isBusy = appointments.Any(a =>
+                            current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
+                            slotEnd > a.ScheduledDateTime);
+                    }
+                    else
+                    {
+                        var overlappingCount = appointments.Count(a =>
+                            current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
+                            slotEnd > a.ScheduledDateTime);
+                        isBusy = overlappingCount >= activeEmployeesCount;
+                    }
+
+                    slots.Add(new AvailabilitySlotDto(current, next, !isBusy));
                     current = next;
-                    continue;
                 }
-
-                // A slot is unavailable if the full service duration extends beyond end of day
-                if (slotEnd > endUtc)
-                {
-                    slots.Add(new AvailabilitySlotDto(current, next, false));
-                    current = next;
-                    continue;
-                }
-
-                bool isBusy;
-                if (activeEmployeesCount <= 0)
-                {
-                    isBusy = true;
-                }
-                else if (employeeId.HasValue && employeeId.Value != Guid.Empty)
-                {
-                    // For specific professional: check if the full service window overlaps any existing appointment
-                    isBusy = appointments.Any(a =>
-                        current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        slotEnd > a.ScheduledDateTime);
-                }
-                else
-                {
-                    // For "Any professional" or Salon-only mode, busy only if ALL capacity is occupied
-                    var overlappingCount = appointments.Count(a =>
-                        current < a.ScheduledDateTime.AddMinutes(a.DurationMinutes) &&
-                        slotEnd > a.ScheduledDateTime);
-
-                    isBusy = overlappingCount >= activeEmployeesCount;
-                }
-
-                slots.Add(new AvailabilitySlotDto(current, next, !isBusy));
-                current = next;
             }
 
             return slots;
+        }
+
+        private async Task ReverseCompletionAsync(Appointment appointment)
+        {
+            // Revert membership session if one was decremented
+            if (appointment.ClientMembershipId.HasValue)
+            {
+                var membership = await _clientMembershipRepository
+                    .GetByIdAsync(false, appointment.ClientMembershipId.Value);
+
+                if (membership != null && membership.RemainingSessions != null)
+                {
+                    membership.RemainingSessions += 1;
+                    if (membership.Status == ClientMembershipStatus.Expired && membership.RemainingSessions > 0)
+                        membership.Status = ClientMembershipStatus.Active;
+                    membership.UpdatedAt = DateTimeOffset.UtcNow;
+                    _clientMembershipRepository.Update(membership);
+                }
+
+                appointment.ClientMembershipId = null;
+                _appointmentRepository.Update(appointment);
+            }
+
+            // Delete the commission transaction generated on completion
+            if (appointment.EmployeeId.HasValue)
+            {
+                var appointmentIdStr = appointment.Id.ToString();
+                var commissions = await _transactionRepository
+                    .Query(t => t.TenantId == appointment.TenantId
+                        && t.EmployeeId == appointment.EmployeeId
+                        && t.Notes != null && t.Notes.Contains(appointmentIdStr)
+                        && t.Type == TransactionType.Expense)
+                    .ToListAsync();
+
+                _transactionRepository.DeleteRange(commissions);
+            }
         }
 
         private async Task DecrementMembershipSessionAsync(Appointment appointment)

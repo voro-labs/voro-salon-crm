@@ -71,7 +71,7 @@ export default function NewTransactionScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-50">
+    <SafeAreaView className="flex-1 bg-zinc-50" edges={["bottom"]}>
       <ScreenHeader title="Nova Transação" showBack onBack={() => router.back()} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
 

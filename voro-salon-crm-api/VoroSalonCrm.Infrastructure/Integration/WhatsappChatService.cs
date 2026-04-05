@@ -25,6 +25,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly ILogger<WhatsappChatService> _logger;
         private readonly IAppointmentRepository _appointmentRepository;
         private readonly IClientRepository _clientRepository;
+        private readonly IClientRatingRepository _clientRatingRepository;
 
         private const string CACHE_PREFIX = "wa_booking_";
 
@@ -38,7 +39,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             IMemoryCache cache,
             ILogger<WhatsappChatService> logger,
             IAppointmentRepository appointmentRepository,
-            IClientRepository clientRepository)
+            IClientRepository clientRepository,
+            IClientRatingRepository clientRatingRepository)
         {
             _whatsappService = whatsappService;
             _publicBookingService = publicBookingService;
@@ -50,6 +52,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             _logger = logger;
             _appointmentRepository = appointmentRepository;
             _clientRepository = clientRepository;
+            _clientRatingRepository = clientRatingRepository;
         }
 
         /// <summary>Salva mensagem enviada pelo bot no histórico da conversa.</summary>
@@ -142,6 +145,34 @@ namespace VoroSalonCrm.Infrastructure.Integration
             // Handle user response based on current state
             try
             {
+                // Global keyword: "reagendar" typed at any state routes back to appointment check
+                var incomingText = message.Type == "text" ? message.Text?.Body?.Trim().ToLower() : null;
+
+                // Feature 2: Rating via WhatsApp — detect "1"-"5" when session is idle/completed
+                if (incomingText != null && incomingText.Length == 1 && incomingText[0] >= '1' && incomingText[0] <= '5')
+                {
+                    var isIdleSession = session == null || session.State == "COMPLETED" || session.State == "CANCELLED";
+                    if (isIdleSession)
+                    {
+                        var rated = await TryHandleWhatsAppRatingAsync(from, incomingText[0] - '0', session, ct);
+                        if (rated)
+                        {
+                            _cache.Remove(sessionKey);
+                            return;
+                        }
+                    }
+                }
+                if (incomingText != null && incomingText.Contains("reagend") &&
+                    session.State != "AWAITING_APPOINTMENT_ACTION" &&
+                    session.State != "AWAITING_RESCHEDULE_CONFIRMATION" &&
+                    session.State != "AWAITING_CANCEL_CONFIRMATION")
+                {
+                    session.State = "START";
+                    await StartBookingFlowAsync(from, contactName, session, ct);
+                    _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
+                    return;
+                }
+
                 if (message.Type == "audio")
                 {
                     const string audioReply = "Ainda estou aprendendo a ouvir áudios! 🎧 Por favor, pode digitar sua mensagem?";
@@ -403,7 +434,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, cancelMsg);
                 session.State = "AWAITING_CANCEL_CONFIRMATION";
             }
-            else if (choice == "2" || choice?.ToLower().Contains("reaGend") == true || choice?.ToLower().Contains("reschedul") == true)
+            else if (choice == "2" || choice?.ToLower().Contains("reagend") == true || choice?.ToLower().Contains("reschedul") == true)
             {
                 var rescheduleMsg = "Deseja realmente trocar o horário do seu agendamento?\n\n1 - Sim, reagendar\n2 - Não, manter";
                 var buttons = new[]
@@ -457,7 +488,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 id = s.Id.ToString(),
                 title = s.Name.Length > 24 ? $"{s.Name[..21]}..." : s.Name,
-                description = s.Price > 0 ? $"R$ {s.Price:N2}" : (string?)null
+                description = s.HasPromotion && s.PromotionalPrice.HasValue
+                    ? $"R$ {s.PromotionalPrice.Value:N2} 🏷️ (era R$ {s.Price:N2})"
+                    : (s.Price > 0 ? $"R$ {s.Price:N2}" : (string?)null)
             }).Cast<object>().ToList();
 
             if (hasMore)
@@ -1092,6 +1125,85 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 await _whatsappService.SendTextMessageAsync(from, msg, session.WhatsappPhoneNumberId, ct);
                 await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, msg);
                 session.State = "COMPLETED";
+            }
+        }
+
+        private async Task<bool> TryHandleWhatsAppRatingAsync(string from, int stars, BookingSession? session, CancellationToken ct)
+        {
+            try
+            {
+                // Normalize phone to last 10 digits
+                var rawPhone = new string(from.Where(char.IsDigit).ToArray());
+                var phoneSuffix = rawPhone.Length > 10 ? rawPhone[^10..] : rawPhone;
+
+                // Find client by phone
+                var clients = await _clientRepository
+                    .Query(c => c.Phone != null)
+                    .IgnoreQueryFilters()
+                    .ToListAsync(ct);
+
+                var matchedClient = clients.FirstOrDefault(c =>
+                {
+                    var digits = new string(c.Phone!.Where(char.IsDigit).ToArray());
+                    var suffix = digits.Length > 10 ? digits[^10..] : digits;
+                    return suffix.Length >= 8 && suffix == phoneSuffix;
+                });
+
+                if (matchedClient == null) return false;
+
+                var cutoff = DateTimeOffset.UtcNow.AddHours(-48);
+                var appointment = await _appointmentRepository
+                    .Query(a =>
+                        a.ClientId == matchedClient.Id &&
+                        a.Status == AppointmentStatus.Completed &&
+                        a.ScheduledDateTime >= cutoff &&
+                        !a.IsDeleted)
+                    .IgnoreQueryFilters()
+                    .OrderByDescending(a => a.ScheduledDateTime)
+                    .FirstOrDefaultAsync(ct);
+
+                if (appointment == null) return false;
+
+                // Check not already rated
+                var existing = await _clientRatingRepository
+                    .Query(r => r.AppointmentId == appointment.Id)
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(ct);
+
+                if (existing != null) return false;
+
+                // Save rating
+                var rating = new ClientRating
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = appointment.TenantId,
+                    AppointmentId = appointment.Id,
+                    ClientId = matchedClient.Id,
+                    Stars = stars,
+                    Source = RatingSource.WhatsApp,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+
+                await _clientRatingRepository.AddAsync(rating);
+                await _unitOfWork.SaveChangesAsync();
+
+                var phoneNumberId = session?.WhatsappPhoneNumberId;
+                if (phoneNumberId == null)
+                {
+                    var tenant = await _tenantRepository.Query(t => t.Id == appointment.TenantId).IgnoreQueryFilters().FirstOrDefaultAsync(ct);
+                    phoneNumberId = tenant?.WhatsappPhoneNumberId;
+                }
+
+                var starsEmoji = new string('⭐', stars);
+                var thanksMsg = $"Obrigado pela sua avaliação {starsEmoji}! Sua opinião é muito importante para nós. Até a próxima! 😊";
+                await _whatsappService.SendTextMessageAsync(from, thanksMsg, phoneNumberId, ct);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha ao processar avaliação via WhatsApp para {From}.", from);
+                return false;
             }
         }
 

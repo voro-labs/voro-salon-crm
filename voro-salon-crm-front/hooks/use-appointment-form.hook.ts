@@ -33,12 +33,15 @@ const DEFAULT_FORM: NewAppointmentForm = {
 export function useAppointmentForm() {
   const router = useRouter()
 
-  const { data: clients, isLoading: loadingClients, mutate: mutateClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS, fetcher)
-  const { data: services, isLoading: loadingServices, mutate: mutateServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES, fetcher)
+  const { data: _clientsRaw, isLoading: loadingClients, mutate: mutateClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
+  const { data: _servicesRaw, isLoading: loadingServices, mutate: mutateServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const clients = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : undefined)
+  const services = _servicesRaw?.items ?? (Array.isArray(_servicesRaw) ? _servicesRaw : undefined)
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
 
   const [form, setForm] = useState<NewAppointmentForm>(DEFAULT_FORM)
   const [isCreating, setIsCreating] = useState(false)
+  const [activePromotion, setActivePromotion] = useState<{ serviceName: string; originalPrice: number; promotionalPrice: number } | null>(null)
 
   const { data: clientMemberships } = useSWR(
     form.clientId ? `${API_CONFIG.ENDPOINTS.CLIENT_MEMBERSHIPS}/client/${form.clientId}` : null,
@@ -49,23 +52,30 @@ export function useAppointmentForm() {
     (m: any) => m.status === 0 && new Date(m.endDate) >= new Date() && (m.remainingSessions === null || m.remainingSessions > 0)
   ) ?? null
 
-  const { data: employees, mutate: mutateEmployees } = useSWR(
+  const { data: _employeesRaw, mutate: mutateEmployees } = useSWR(
     form.serviceId !== "none" && form.serviceId !== ""
       ? `${API_CONFIG.ENDPOINTS.EMPLOYEES}/available-for-service/${form.serviceId}`
-      : API_CONFIG.ENDPOINTS.EMPLOYEES,
+      : `${API_CONFIG.ENDPOINTS.EMPLOYEES}?pageSize=500`,
     fetcher
   )
+  const employees = _employeesRaw?.items ?? (Array.isArray(_employeesRaw) ? _employeesRaw : undefined)
 
   const isModuleEnabled = (moduleId: number) =>
     modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
 
   function handleServiceChange(serviceId: string, serviceData?: any) {
     const selected = serviceData ?? services?.find((s: any) => s.id === serviceId)
+    const hasPromo = !!(selected?.hasPromotion && selected?.promotionalPrice)
+    setActivePromotion(hasPromo ? {
+      serviceName: selected.name,
+      originalPrice: selected.price,
+      promotionalPrice: selected.promotionalPrice,
+    } : null)
     setForm((p) => ({
       ...p,
       serviceId,
       employeeId: "none",
-      amount: selected?.price ?? p.amount,
+      amount: hasPromo ? selected.promotionalPrice : (selected?.price ?? p.amount),
       durationMinutes: selected?.durationMinutes ?? p.durationMinutes,
       description: p.description || selected?.name || "",
     }))
@@ -136,5 +146,6 @@ export function useAppointmentForm() {
     mutateServices,
     mutateEmployees,
     activeMembership,
+    activePromotion,
   }
 }

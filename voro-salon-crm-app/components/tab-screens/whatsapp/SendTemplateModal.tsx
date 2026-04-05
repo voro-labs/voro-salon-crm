@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { SafeAreaView } from "react-native-safe-area-context"
 import {
   View, Text, TextInput, Pressable, ScrollView, Modal, ActivityIndicator,
   Alert
@@ -32,7 +33,8 @@ interface SendResult {
 
 export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) {
   const { data: templates } = useSWR<Template[]>(visible ? API_CONFIG.ENDPOINTS.WHATSAPP_TEMPLATES : null, fetcher)
-  const { data: clients } = useSWR<any[]>(visible ? API_CONFIG.ENDPOINTS.CLIENTS : null, fetcher)
+  const { data: _clientsRaw } = useSWR<any>(visible ? API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500" : null, fetcher)
+  const clients: any[] | undefined = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : undefined)
   const { data: tenant } = useSWR<any>(visible ? API_CONFIG.ENDPOINTS.TENANT_ME : null, fetcher)
   const { primaryColor } = useTenantTheme()
 
@@ -115,8 +117,8 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-white">
-        <View className="flex-row items-center justify-between px-5 p-4 pt-6 pb-4 border-b border-zinc-100">
+      <SafeAreaView edges={["top"]} className="flex-1 bg-white">
+        <View className="flex-row items-center justify-between px-5 p-4 pb-4 border-b border-zinc-100">
           <View className="flex-row items-center gap-2">
             <Ionicons name="paper-plane" size={20} color={primaryColor} />
             <Text className="text-lg font-black text-zinc-900">Enviar Template</Text>
@@ -126,7 +128,7 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
           </Pressable>
         </View>
 
-        <KeyboardAwareScrollView className="flex-1 px-5 py-4" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <KeyboardAwareScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           
           {results ? (
             <View className="gap-2">
@@ -267,7 +269,7 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
             )}
           </Pressable>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   )
 }
