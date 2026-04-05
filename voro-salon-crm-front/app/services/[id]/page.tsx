@@ -154,11 +154,12 @@ export default function EditarServicoPage() {
   const promoKey = serviceId ? `${PROMOTIONS_ENDPOINT}?serviceId=${serviceId}` : null
   const { data: _promosRaw, mutate: mutatePromos } = useSWR(promoKey, fetcher)
   const promotions: ServicePromotionDto[] = (() => {
+    let all: ServicePromotionDto[] = []
     if (!_promosRaw) return []
-    if (Array.isArray(_promosRaw)) return _promosRaw
-    if (Array.isArray(_promosRaw?.items)) return _promosRaw.items
-    if (Array.isArray(_promosRaw?.data)) return _promosRaw.data
-    return []
+    if (Array.isArray(_promosRaw)) all = _promosRaw
+    else if (Array.isArray(_promosRaw?.items)) all = _promosRaw.items
+    else if (Array.isArray(_promosRaw?.data)) all = _promosRaw.data
+    return all.filter((p) => p.serviceId === serviceId)
   })()
 
   const [promoDialogOpen, setPromoDialogOpen] = useState(false)
