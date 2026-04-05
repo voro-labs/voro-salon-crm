@@ -54,6 +54,7 @@ import {
 import { CurrencyInput } from "@/components/currency-input"
 import { cn } from "@/lib/utils"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
+import { fetcher } from "@/lib/fetcher"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,14 +143,6 @@ async function fetchPromotions(): Promise<ServicePromotionDto[]> {
   return result.data ?? []
 }
 
-async function fetchServices(): Promise<ServiceDto[]> {
-  const result = await authenticatedApiCall<any>(SERVICES_ENDPOINT, {
-    method: "GET",
-  })
-  if (result.hasError) throw new Error(result.message ?? "Erro ao carregar serviços")
-  return result.data?.items ?? (Array.isArray(result.data) ? result.data : [])
-}
-
 // ---------------------------------------------------------------------------
 // Default form state
 // ---------------------------------------------------------------------------
@@ -183,7 +176,8 @@ export default function ServicePromotionsPage() {
     mutate,
   } = useSWR(PROMOTIONS_ENDPOINT, fetchPromotions)
 
-  const { data: services } = useSWR(SERVICES_ENDPOINT, fetchServices)
+  const { data: _servicesRaw } = useSWR(SERVICES_ENDPOINT, fetcher)
+  const services: ServiceDto[] = _servicesRaw?.items ?? (Array.isArray(_servicesRaw) ? _servicesRaw : [])
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
