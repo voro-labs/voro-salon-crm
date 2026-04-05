@@ -96,7 +96,7 @@ const DAY_LABELS: Record<number, string> = {
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
 
 const PROMOTIONS_ENDPOINT = "/ServicePromotion"
-const SERVICES_ENDPOINT = API_CONFIG.ENDPOINTS.SERVICES
+const SERVICES_ENDPOINT = API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -143,11 +143,11 @@ async function fetchPromotions(): Promise<ServicePromotionDto[]> {
 }
 
 async function fetchServices(): Promise<ServiceDto[]> {
-  const result = await authenticatedApiCall<ServiceDto[]>(SERVICES_ENDPOINT, {
+  const result = await authenticatedApiCall<any>(SERVICES_ENDPOINT, {
     method: "GET",
   })
   if (result.hasError) throw new Error(result.message ?? "Erro ao carregar serviços")
-  return result.data ?? []
+  return result.data?.items ?? (Array.isArray(result.data) ? result.data : [])
 }
 
 // ---------------------------------------------------------------------------
