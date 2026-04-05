@@ -45,3 +45,6 @@ http://192.168.1.72:9000/api/v1/ClientRating/7781d5b2-22ea-4f60-96ac-2ced166c23c
 as rotas parecem não condizer com a api:
 
 http://192.168.1.72:9000/api/v1/ClientRating/send-request/7781d5b2-22ea-4f60-96ac-2ced166c23c2
+
+# caso eu tenha o plano com whatsapp bot, mas o bot não está configurado ou ativado, ele deve aparecer o popup para enviar mensagem no whatsapp manual
+
