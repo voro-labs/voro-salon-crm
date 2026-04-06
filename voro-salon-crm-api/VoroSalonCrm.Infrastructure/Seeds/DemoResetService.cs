@@ -378,8 +378,6 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     CreatedAt = now.AddDays(-1)
                 };
 
-                appointments.Add(appt);
-
                 if (appt.Status == AppointmentStatus.Completed)
                 {
                     var historyDto = new ServiceRecord
@@ -429,6 +427,8 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                         }
                     }
                 }
+            
+                appointments.Add(appt);
             }
 
             await context.Appointments.AddRangeAsync(appointments);

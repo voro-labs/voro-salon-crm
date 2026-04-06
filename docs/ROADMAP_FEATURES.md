@@ -48,3 +48,6 @@ http://192.168.1.72:9000/api/v1/ClientRating/send-request/7781d5b2-22ea-4f60-96a
 
 # caso eu tenha o plano com whatsapp bot, mas o bot não está configurado ou ativado, ele deve aparecer o popup para enviar mensagem no whatsapp manual
 
+# no gerar receita automatica deve ser assim:
+    descrição: (Nome do serviço - Nome do cliente)
+    categoria: Serviços (se não tiver criar)
