@@ -206,7 +206,7 @@ export default function DashboardPage() {
 
     return true
   }).sort((a: any, b: any) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
-  .slice(0, 5)
+  .slice(0, 10)
 
   async function handleStatusUpdate(id: string, newStatus: string) {
     const apt = (aptData ?? []).find((a: any) => a.id === id)
@@ -294,7 +294,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {chartData.length > 0 ? (
-                <div className="h-[300px] w-full min-w-0">
+                <div className="h-[376px] w-full min-w-0">
                   <ResponsiveContainer width="99%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid
@@ -358,8 +358,8 @@ export default function DashboardPage() {
                   </Tabs>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="flex flex-col divide-y divide-border/40">
+              <CardContent className="p-0 flex flex-col" style={{ height: 376 }}>
+                <div className="flex-1 overflow-y-auto divide-y divide-border/40 min-h-0">
                   {filteredApts.length > 0 ? (
                     filteredApts.map((apt: any) => {
                       const date = new Date(apt.scheduledDateTime)
@@ -398,7 +398,7 @@ export default function DashboardPage() {
                                 onValueChange={(v) => handleStatusUpdate(apt.id, v)}
                                 disabled={isAptUpdating}
                               >
-                                <SelectTrigger className="h-7 w-[100px] text-[10px] bg-transparent border-border/40 shrink-0">
+                                <SelectTrigger className="h-7 w-[110px] text-[10px] bg-transparent border-border/40 shrink-0">
                                   {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <SelectValue />}
                                 </SelectTrigger>
                                 <SelectContent className="min-w-[120px]">
@@ -426,7 +426,7 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                <div className="p-3 bg-muted/20 border-t border-border/40">
+                <div className="shrink-0 p-3 bg-muted/20 border-t border-border/40">
                   <Button asChild size="sm" className="w-full">
                     <Link href="/appointments">
                       Ver todos os agendamentos

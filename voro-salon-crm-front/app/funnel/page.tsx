@@ -240,7 +240,7 @@ export default function FunnelPage() {
                         <span className="text-xs font-bold tabular-nums">{items.length}</span>
                       </div>
 
-                      <div className="flex flex-col gap-2 min-h-[3.75rem]">
+                      <div className="flex flex-col gap-2 min-h-15">
                         {items.length === 0 ? (
                           <p className="text-[11px] text-muted-foreground text-center py-4">Nenhum agendamento</p>
                         ) : (
