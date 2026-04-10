@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import useSWR from "swr"
 import {
-  MessageCircle, RefreshCw, Loader2, User, CalendarCheck, Send, X,
-  CheckCircle, AlertCircle, LayoutGrid, MessageSquare, ExternalLink, ChevronRight, Settings2,
+  MessageCircle, RefreshCw, Loader2, User, Send, X,
+  CheckCircle, AlertCircle, ExternalLink, ChevronRight, Settings2,
+  MessageSquare,
 } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -62,86 +63,6 @@ interface WhatsAppMessage {
   whatsAppMessageId: string | null
   status: string
   timestamp: string
-}
-
-// ─── Kanban config ───────────────────────────────────────────────────────────
-
-const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor: string }[] = [
-  { state: "START",                  label: "Novo Contato",            color: "border-slate-300",   headerColor: "bg-slate-100 text-slate-700" },
-  { state: "AWAITING_TENANT",        label: "Escolhendo Unidade",      color: "border-zinc-300",    headerColor: "bg-zinc-100 text-zinc-700" },
-  { state: "AWAITING_SERVICE",       label: "Escolhendo Serviço",      color: "border-blue-300",    headerColor: "bg-blue-100 text-blue-700" },
-  { state: "AWAITING_EMPLOYEE",      label: "Escolhendo Profissional", color: "border-violet-300",  headerColor: "bg-violet-100 text-violet-700" },
-  { state: "AWAITING_DATE",          label: "Escolhendo Data",         color: "border-amber-300",   headerColor: "bg-amber-100 text-amber-700" },
-  { state: "AWAITING_TIME",          label: "Escolhendo Horário",      color: "border-orange-300",  headerColor: "bg-orange-100 text-orange-700" },
-  { state: "AWAITING_DESCRIPTION",   label: "Aguardando Descrição",    color: "border-purple-300",  headerColor: "bg-purple-100 text-purple-700" },
-  { state: "AWAITING_CONFIRMATION",  label: "Aguardando Confirmação",  color: "border-rose-300",    headerColor: "bg-rose-100 text-rose-700" },
-  { state: "AWAITING_REMINDER_TIME", label: "Definindo Lembrete",     color: "border-indigo-300",  headerColor: "bg-indigo-100 text-indigo-700" },
-  { state: "COMPLETED",              label: "Agendado",                color: "border-emerald-300", headerColor: "bg-emerald-100 text-emerald-700" },
-  { state: "CANCELLED",              label: "Cancelado",               color: "border-gray-300",    headerColor: "bg-gray-100 text-gray-700" },
-]
-
-// ─── Kanban card ─────────────────────────────────────────────────────────────
-
-function ConversationCard({
-  conv,
-  onClick,
-}: {
-  conv: WhatsAppConversation
-  onClick?: () => void
-}) {
-  const router = useRouter()
-  const isScheduled = conv.state === "COMPLETED" && conv.appointmentId
-
-  const handleClientClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (conv.clientId) router.push(`/clients/${conv.clientId}`)
-  }
-
-  return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "flex flex-col gap-2 p-3 rounded-xl border bg-card shadow-sm hover:shadow-md transition-shadow",
-        isScheduled ? "border-emerald-200 bg-emerald-50/40" : "border-border",
-        onClick && "cursor-pointer"
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={cn(
-            "shrink-0 rounded-full p-1.5",
-            isScheduled ? "bg-emerald-100 text-emerald-600" : "bg-muted text-muted-foreground"
-          )}>
-            {isScheduled ? <CalendarCheck className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold truncate">
-              {conv.contactName !== "Cliente" ? conv.contactName : conv.phoneNumber}
-            </p>
-            {conv.contactName !== "Cliente" && (
-              <p className="text-[10px] text-muted-foreground font-mono truncate">{conv.phoneNumber}</p>
-            )}
-          </div>
-        </div>
-        {conv.clientId && (
-          <button
-            onClick={handleClientClick}
-            className="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
-          >
-            Ver cliente <ExternalLink className="h-2.5 w-2.5" />
-          </button>
-        )}
-      </div>
-
-      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-        {conv.lastMessageBody || "—"}
-      </p>
-
-      <p className="text-[10px] text-muted-foreground/70 text-right">
-        {formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: true, locale: ptBR })}
-      </p>
-    </div>
-  )
 }
 
 // ─── Chat view ───────────────────────────────────────────────────────────────
@@ -571,28 +492,14 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type ViewMode = "kanban" | "chat"
-
-export default function WhatsAppKanbanPage() {
+export default function WhatsAppPage() {
   const [showSendModal, setShowSendModal] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>("kanban")
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [chatHeight, setChatHeight] = useState(0)
 
-  // Garante que mobile nunca fique preso na view de chat
-  useEffect(() => {
-    const check = () => {
-      if (window.innerWidth < 768) setViewMode("kanban")
-    }
-    window.addEventListener("resize", check)
-    return () => window.removeEventListener("resize", check)
-  }, [])
-
   // Calcula a altura disponível para o chat com base na posição real do container no DOM
   useEffect(() => {
-    if (viewMode !== "chat") return
-
     const updateHeight = () => {
       if (chatContainerRef.current) {
         const top = chatContainerRef.current.getBoundingClientRect().top
@@ -600,23 +507,19 @@ export default function WhatsAppKanbanPage() {
       }
     }
 
-    // Pequeno delay para aguardar o render do PageHeader
     const id = requestAnimationFrame(updateHeight)
     window.addEventListener("resize", updateHeight)
     return () => {
       cancelAnimationFrame(id)
       window.removeEventListener("resize", updateHeight)
     }
-  }, [viewMode])
+  }, [])
 
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
     fetcher,
     { refreshInterval: 30000 }
   )
-
-  const getColumnConversations = (state: string) =>
-    (conversations ?? []).filter((c) => c.state === state)
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
@@ -629,7 +532,7 @@ export default function WhatsAppKanbanPage() {
             <div className="flex flex-col gap-2 max-w-sm">
               <h1 className="text-2xl font-bold text-foreground">Funcionalidade Desativada</h1>
               <p className="text-muted-foreground">
-                O Agendamento pelo WhatsApp está atualmente desativado para o seu estabelecimento. 
+                O Agendamento pelo WhatsApp está atualmente desativado para o seu estabelecimento.
                 Para utilizar o Bot e acompanhar os atendimentos, você precisa ativar esta opção nas configurações.
               </p>
             </div>
@@ -643,87 +546,58 @@ export default function WhatsAppKanbanPage() {
             </div>
           </div>
         ) : (
-          <div className={cn("flex flex-col p-4 sm:p-6", viewMode === "chat" ? "gap-4" : "gap-6 h-full")}>
-          <PageHeader
-            title="WhatsApp — Atendimentos"
-            description="Acompanhe em qual etapa do agendamento cada contato está."
-            action={
-              <div className="flex items-center gap-2">
-                {/* Toggle de visualização — só tablet+ */}
-                <div className="hidden md:flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
-                  <button
-                    onClick={() => setViewMode("kanban")}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
-                      viewMode === "kanban"
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                    Kanban
-                  </button>
-                  <button
-                    onClick={() => setViewMode("chat")}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
-                      viewMode === "chat"
-                        ? "bg-background shadow-sm text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    Chat
-                  </button>
+          <div className="flex flex-col gap-4 p-4 sm:p-6">
+            <PageHeader
+              title="WhatsApp — Mensagens"
+              description="Gerencie as conversas com seus clientes."
+              action={
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
+                    <Send className="mr-2 h-4 w-4" />
+                    Enviar Template
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => mutate()}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Atualizar
+                  </Button>
                 </div>
+              }
+            />
 
-                <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
-                  <Send className="mr-2 h-4 w-4" />
-                  Enviar Template
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => mutate()}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Atualizar
-                </Button>
-              </div>
-            }
-          />
-
-          {/* Banner: configuração incompleta do WhatsApp */}
-          {tenant !== undefined && (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappBusinessAccountId) && (
-            <div className="border border-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-1 min-w-0">
-                  <p className="font-bold text-sm text-amber-900 dark:text-amber-200">
-                    Integração WhatsApp não configurada
-                  </p>
-                  <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                    Os IDs do WhatsApp Business ainda não foram configurados para este estabelecimento. O bot não está ativo.
-                  </p>
+            {/* Banner: configuração incompleta do WhatsApp */}
+            {tenant !== undefined && (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappBusinessAccountId) && (
+              <div className="border border-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <p className="font-bold text-sm text-amber-900 dark:text-amber-200">
+                      Integração WhatsApp não configurada
+                    </p>
+                    <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                      Os IDs do WhatsApp Business ainda não foram configurados para este estabelecimento. O bot não está ativo.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                    asChild
+                  >
+                    <a
+                      href={`mailto:suporte@vorolabs.com.br?subject=Solicitar%20configuração%20WhatsApp&body=Olá%2C%20preciso%20configurar%20o%20WhatsApp%20Bot%20para%20o%20estabelecimento%3A%20${encodeURIComponent(tenant?.name ?? "")}%20(${encodeURIComponent(tenant?.id ?? "")})`}
+                    >
+                      Solicitar configuração
+                    </a>
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-amber-700 dark:text-amber-300 text-xs" asChild>
+                    <a href="/settings?tab=whatsapp">Configurar agora</a>
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/30"
-                  asChild
-                >
-                  <a
-                    href={`mailto:suporte@vorolabs.com.br?subject=Solicitar%20configuração%20WhatsApp&body=Olá%2C%20preciso%20configurar%20o%20WhatsApp%20Bot%20para%20o%20estabelecimento%3A%20${encodeURIComponent(tenant?.name ?? "")}%20(${encodeURIComponent(tenant?.id ?? "")})`}
-                  >
-                    Solicitar configuração
-                  </a>
-                </Button>
-                <Button size="sm" variant="ghost" className="text-amber-700 dark:text-amber-300 text-xs" asChild>
-                  <a href="/settings?tab=whatsapp">Configurar agora</a>
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
 
-          {viewMode === "chat" ? (
             <div
               ref={chatContainerRef}
               className="overflow-hidden"
@@ -731,52 +605,7 @@ export default function WhatsAppKanbanPage() {
             >
               <ChatView conversations={conversations ?? []} isLoading={isLoading} />
             </div>
-          ) : isLoading ? (
-            <div className="flex items-center justify-center py-24 text-muted-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Carregando conversas...
-            </div>
-          ) : (conversations ?? []).length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center border rounded-xl border-dashed">
-              <div className="rounded-full bg-primary/10 p-4 mb-4">
-                <MessageCircle className="h-7 w-7 text-primary" />
-              </div>
-              <p className="font-semibold">Nenhuma conversa ainda</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                As conversas via WhatsApp aparecerão aqui conforme os clientes interagirem.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto pb-4">
-              <div className="flex gap-3 min-w-max">
-                {KANBAN_COLUMNS.map((col) => {
-                  const items = getColumnConversations(col.state)
-                  return (
-                    <div
-                      key={col.state}
-                      className={cn("flex flex-col gap-3 w-56 shrink-0 rounded-xl border-2 p-3", col.color)}
-                    >
-                      <div className={cn("flex items-center justify-between rounded-lg px-2.5 py-1.5", col.headerColor)}>
-                        <span className="text-xs font-semibold">{col.label}</span>
-                        <span className="text-xs font-bold tabular-nums">{items.length}</span>
-                      </div>
-
-                      <div className="flex flex-col gap-2 min-h-15">
-                        {items.length === 0 ? (
-                          <p className="text-[11px] text-muted-foreground text-center py-4">Nenhum contato</p>
-                        ) : (
-                          items.map((conv) => (
-                            <ConversationCard key={conv.id} conv={conv} />
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
         )}
 
         {showSendModal && <SendTemplateModal onClose={() => setShowSendModal(false)} />}

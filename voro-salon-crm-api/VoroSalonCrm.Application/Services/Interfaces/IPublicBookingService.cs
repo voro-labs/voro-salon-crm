@@ -11,6 +11,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<PublicBookingResponseDto> CreateBookingAsync(PublicBookingCreateDto dto);
         Task<IEnumerable<DTOs.CRM.AvailabilitySlotDto>> GetAvailableSlotsAsync(string tenantSlug, DateTime date, Guid? serviceId = null, Guid? employeeId = null);
         Task<PublicReceiptDto?> GetAppointmentReceiptAsync(Guid id);
+        Task TrackFunnelStepAsync(PublicBookingTrackDto dto);
     }
 
     public record PublicBookingResponseDto(bool Success, string Message, Guid? AppointmentId);

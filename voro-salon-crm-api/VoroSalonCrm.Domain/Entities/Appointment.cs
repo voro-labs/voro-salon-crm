@@ -31,6 +31,9 @@ namespace VoroSalonCrm.Domain.Entities
 
         public bool IsEncaixe { get; set; }
 
+        /// <summary>Canal pelo qual o agendamento foi criado.</summary>
+        public AppointmentSource Source { get; set; } = AppointmentSource.Internal;
+
         /// <summary>Minutos antes do agendamento para enviar lembrete ao cliente (null = sem lembrete).</summary>
         public int? ReminderMinutes { get; set; }
 

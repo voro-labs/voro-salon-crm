@@ -36,6 +36,21 @@ export default function PublicBookingPage() {
   const [employees, setEmployees] = useState<any[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
 
+  // Session ID único para rastrear o funil desta visita
+  const [sessionId] = useState(() =>
+    (typeof crypto !== "undefined" && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
+  )
+
+  // Fire-and-forget: salva etapa do funil sem bloquear o fluxo
+  const trackFunnelStep = (funnelState: string, extra?: Record<string, unknown>) => {
+    apiCall(API_CONFIG.ENDPOINTS.PUBLIC_BOOKING_TRACK, {
+      method: "POST",
+      body: JSON.stringify({ tenantSlug: slug, sessionId, funnelState, ...extra }),
+    }).catch(() => {})
+  }
+
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -118,6 +133,7 @@ export default function PublicBookingPage() {
         // Initial bot message
         addBotMessage(`Olá! Bem-vindo ao ${res.data.name}. Qual serviço você gostaria de agendar hoje?`)
         setStep('SERVICE')
+        trackFunnelStep('AWAITING_SERVICE')
       } catch (err) {
         toast.error("Erro ao carregar dados do estabelecimento.")
       } finally {
@@ -151,6 +167,7 @@ export default function PublicBookingPage() {
     addUserMessage(`Meu nome é ${form.name}`)
     addBotMessage(`Prazer em te conhecer, ${form.name}! Agora, qual seu WhatsApp para que possamos entrar em contato?`)
     setStep('PHONE')
+    trackFunnelStep('AWAITING_CONFIRMATION', { clientName: form.name })
   }
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
@@ -198,9 +215,11 @@ export default function PublicBookingPage() {
       if (empRes.data && empRes.data.length > 0) {
         addBotMessage("Você tem preferência por algum profissional?")
         setStep('PROFESSIONAL')
+        trackFunnelStep('AWAITING_EMPLOYEE', { serviceId: service.id })
       } else {
         addBotMessage("Perfeito. Agora, qual dia e hora você prefere?")
         setStep('DATETIME')
+        trackFunnelStep('AWAITING_DATE', { serviceId: service.id })
       }
     } catch {
       toast.error("Erro ao buscar profissionais.")
@@ -215,6 +234,7 @@ export default function PublicBookingPage() {
     addUserMessage(emp ? emp.name : "Qualquer um")
     addBotMessage("Ótimo. Agora, escolha o dia e horário que melhor funciona para você.")
     setStep('DATETIME')
+    trackFunnelStep('AWAITING_DATE', { employeeId })
   }
 
   // Fetch availability when date or professional changes
@@ -243,6 +263,7 @@ export default function PublicBookingPage() {
     addUserMessage(`${format(displayDate, "dd/MM/yyyy")} às ${form.time}`)
     addBotMessage("Perfeito! Para finalizar, qual o seu nome?")
     setStep('NAME')
+    trackFunnelStep('AWAITING_DESCRIPTION', { date: form.date, time: form.time })
   }
 
   const handleFinalSubmit = async (e: React.FormEvent) => {
@@ -277,6 +298,7 @@ export default function PublicBookingPage() {
         setAppointmentId(res.data.appointmentId)
       }
       setStep('SUCCESS')
+      trackFunnelStep('COMPLETED', { appointmentId: res.data?.appointmentId })
       addBotMessage("Tudo certo! Seu agendamento foi solicitado e o estabelecimento foi notificado. Você receberá uma confirmação em breve.")
     } catch {
       toast.error("Erro de conexão.")

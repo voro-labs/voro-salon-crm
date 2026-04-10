@@ -94,5 +94,25 @@ namespace VoroSalonCrm.Application.Services
 
             return conversations;
         }
+
+        public async Task DeleteByPhoneAsync(Guid tenantId, string phone)
+        {
+            var messages = await repository
+                .Query(m => m.TenantId == tenantId && (m.From == phone || m.To == phone))
+                .ToListAsync();
+
+            foreach (var m in messages)
+                repository.Delete(m);
+
+            var conversations = await conversationRepository
+                .Query(c => c.TenantId == tenantId && c.PhoneNumber == phone)
+                .ToListAsync();
+
+            foreach (var c in conversations)
+                conversationRepository.Delete(c);
+
+            if (messages.Count > 0 || conversations.Count > 0)
+                await unitOfWork.SaveChangesAsync();
+        }
     }
 }

@@ -27,6 +27,7 @@ namespace VoroSalonCrm.Application.Services
         ITimeSlotBlockService timeSlotBlockService,
         ITenantBusinessHoursRepository businessHoursRepository,
         ITransactionRepository transactionRepository,
+        ITransactionCategoryRepository transactionCategoryRepository,
         IMemoryCache memoryCache) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
@@ -43,6 +44,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITimeSlotBlockService _timeSlotBlockService = timeSlotBlockService;
         private readonly ITenantBusinessHoursRepository _businessHoursRepository = businessHoursRepository;
         private readonly ITransactionRepository _transactionRepository = transactionRepository;
+        private readonly ITransactionCategoryRepository _transactionCategoryRepository = transactionCategoryRepository;
         private readonly IMemoryCache _memoryCache = memoryCache;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
@@ -64,6 +66,7 @@ namespace VoroSalonCrm.Application.Services
                 Amount = dto.Amount,
                 Notes = dto.Notes,
                 IsEncaixe = dto.IsEncaixe,
+                Source = dto.Source,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -696,11 +699,15 @@ namespace VoroSalonCrm.Application.Services
 
         private async Task CreateHistoryFromAppointmentAsync(Appointment appointment)
         {
+            // Evita duplicata: se já existe um service record para este agendamento, não cria outro
+            var alreadyExists = await _serviceRecordService.ExistsByAppointmentIdAsync(appointment.Id);
+            if (alreadyExists) return;
+
             var historyDto = new CreateServiceRecordDto(
                 appointment.ClientId,
                 appointment.ServiceId,
                 appointment.Id,
-                DateTimeOffset.UtcNow,
+                appointment.ScheduledDateTime,
                 appointment.Description ?? "Serviço via agendamento",
                 appointment.Amount,
                 $"Agendamento ID: {appointment.Id}\nNotas: {appointment.Notes}"
@@ -708,12 +715,71 @@ namespace VoroSalonCrm.Application.Services
 
             await _serviceRecordService.CreateAsync(historyDto);
 
+            // Gera receita (income) automaticamente ao concluir agendamento
+            if (appointment.Amount > 0)
+            {
+                var serviceName = appointment.Service?.Name ?? "Serviço";
+                var clientName = appointment.Client?.Name ?? "Cliente";
+
+                // Busca ou cria a categoria "Serviços" (Income) para o tenant
+                var servicosCategory = await _transactionCategoryRepository
+                    .Query(c => c.TenantId == appointment.TenantId
+                        && c.Name == "Serviços"
+                        && c.Type == TransactionType.Income
+                        && !c.IsDeleted, asNoTracking: false)
+                    .FirstOrDefaultAsync();
+
+                if (servicosCategory == null)
+                {
+                    servicosCategory = new TransactionCategory
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = appointment.TenantId,
+                        Name = "Serviços",
+                        Type = TransactionType.Income,
+                        IsActive = true,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+                    await _transactionCategoryRepository.AddAsync(servicosCategory);
+                }
+
+                var incomeTx = new Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = appointment.TenantId,
+                    CategoryId = servicosCategory.Id,
+                    Description = $"{serviceName} - {clientName}",
+                    Amount = appointment.Amount,
+                    PaidAmount = appointment.Amount,
+                    DueDate = appointment.ScheduledDateTime,
+                    PaymentDate = appointment.ScheduledDateTime,
+                    Type = TransactionType.Income,
+                    PaymentMethod = PaymentMethod.Other,
+                    Status = TransactionStatus.Paid,
+                    Notes = $"Receita gerada automaticamente — Agendamento {appointment.Id}",
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+
+                await _transactionRepository.AddAsync(incomeTx);
+            }
+
             // Gera comissão automaticamente se o funcionário tiver percentual configurado
             if (appointment.EmployeeId.HasValue && appointment.Amount > 0)
             {
                 var employee = await _employeeRepository.GetByIdAsync(true, appointment.EmployeeId.Value);
                 if (employee?.CommissionPercentage is > 0)
                 {
+                    // Evita duplicata: verifica se comissão já foi gerada para este agendamento
+                    var appointmentIdStr = appointment.Id.ToString();
+                    var commissionExists = await _transactionRepository
+                        .Query(t => t.TenantId == appointment.TenantId
+                            && t.EmployeeId == appointment.EmployeeId
+                            && t.Notes != null && t.Notes.Contains(appointmentIdStr)
+                            && t.Type == TransactionType.Expense)
+                        .AnyAsync();
+
+                    if (commissionExists) return;
+
                     var commissionAmount = Math.Round(appointment.Amount * (employee.CommissionPercentage.Value / 100m), 2);
                     var dueDate = new DateTimeOffset(
                         appointment.ScheduledDateTime.Year,
@@ -742,6 +808,22 @@ namespace VoroSalonCrm.Application.Services
             }
         }
 
+        public async Task<IEnumerable<AppointmentDto>> GetPublicSourceAppointmentsAsync(int days = 30)
+        {
+            var since = DateTimeOffset.UtcNow.AddDays(-days);
+            var appointments = await _appointmentRepository
+                .Include(a => a.Client, a => a.Service!)
+                .Include(a => a.Employee!)
+                .Where(a =>
+                    !a.IsDeleted &&
+                    a.Source != Domain.Enums.AppointmentSource.Internal &&
+                    a.ScheduledDateTime >= since)
+                .OrderByDescending(a => a.ScheduledDateTime)
+                .ToListAsync();
+
+            return appointments.Select(MapToDto);
+        }
+
         private static AppointmentDto MapToDto(Appointment a)
         {
             return new AppointmentDto(
@@ -763,7 +845,8 @@ namespace VoroSalonCrm.Application.Services
                 a.Membership?.Plan?.Name,
                 a.Membership?.RemainingSessions,
                 a.EmployeeId,
-                a.Employee?.Name
+                a.Employee?.Name,
+                a.Source
             );
         }
     }

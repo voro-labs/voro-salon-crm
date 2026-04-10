@@ -11,7 +11,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Description,
         decimal Amount,
         string? Notes,
-        bool IsEncaixe = false
+        bool IsEncaixe = false,
+        AppointmentSource Source = AppointmentSource.Internal
     );
 
     public record UpdateAppointmentDto
@@ -47,7 +48,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? MembershipPlanName = null,
         int? MembershipRemainingSessions = null,
         Guid? EmployeeId = null,
-        string? EmployeeName = null
+        string? EmployeeName = null,
+        AppointmentSource Source = AppointmentSource.Internal
     );
 
     public record AvailabilitySlotDto(

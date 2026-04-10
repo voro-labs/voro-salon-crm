@@ -23,7 +23,8 @@ namespace VoroSalonCrm.Application.Services
         ITenantSubscriptionRepository tenantSubscriptionRepository,
         ITenantBusinessHoursRepository businessHoursRepository,
         IServicePromotionRepository servicePromotionRepository,
-        IClientRatingRepository clientRatingRepository) : IPublicBookingService
+        IClientRatingRepository clientRatingRepository,
+        IBookingFunnelSessionRepository funnelRepository) : IPublicBookingService
     {
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
@@ -32,6 +33,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository = tenantSubscriptionRepository;
         private readonly IServicePromotionRepository _servicePromotionRepository = servicePromotionRepository;
         private readonly IClientRatingRepository _clientRatingRepository = clientRatingRepository;
+        private readonly IBookingFunnelSessionRepository _funnelRepository = funnelRepository;
 
         public async Task<PublicTenantDto?> GetTenantBySlugAsync(string slug)
         {
@@ -163,6 +165,7 @@ namespace VoroSalonCrm.Application.Services
                 Description = dto.Description,
                 Notes = dto.Notes,
                 ReminderMinutes = dto.ReminderMinutes,
+                Source = dto.Source,
             };
 
             await appointmentRepository.AddAsync(appointment);
@@ -398,6 +401,45 @@ namespace VoroSalonCrm.Application.Services
                 existingRating?.Stars,
                 canRate
             );
+        }
+
+        public async Task TrackFunnelStepAsync(PublicBookingTrackDto dto)
+        {
+            var tenant = await tenantRepository.Query(t => t.Slug == dto.TenantSlug && t.IsActive)
+                .FirstOrDefaultAsync();
+            if (tenant == null) return;
+
+            var existing = await _funnelRepository
+                .Query(s => s.TenantId == tenant.Id && s.SessionId == dto.SessionId)
+                .FirstOrDefaultAsync();
+
+            if (existing == null)
+            {
+                await _funnelRepository.AddAsync(new BookingFunnelSession
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenant.Id,
+                    SessionId = dto.SessionId,
+                    FunnelState = dto.FunnelState,
+                    Source = 3,
+                    ContactName = dto.ContactName,
+                    PhoneNumber = dto.PhoneNumber,
+                    AppointmentId = dto.AppointmentId,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+            else
+            {
+                existing.FunnelState = dto.FunnelState;
+                if (!string.IsNullOrEmpty(dto.ContactName)) existing.ContactName = dto.ContactName;
+                if (!string.IsNullOrEmpty(dto.PhoneNumber)) existing.PhoneNumber = dto.PhoneNumber;
+                if (dto.AppointmentId.HasValue) existing.AppointmentId = dto.AppointmentId;
+                existing.UpdatedAt = DateTimeOffset.UtcNow;
+                _funnelRepository.Update(existing);
+            }
+
+            await unitOfWork.CommitAsync();
         }
     }
 }

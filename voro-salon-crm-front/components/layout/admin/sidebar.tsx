@@ -18,6 +18,7 @@ import {
   MessageCircle,
   DollarSign,
   User,
+  GitBranch,
 } from "lucide-react"
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
@@ -93,6 +94,13 @@ const navItems = [
     icon: MessageCircle,
     roles: ["SalonOwner", "Owner"],
     moduleId: 9 // WhatsappBot
+  },
+  {
+    title: "Funil",
+    href: "/funnel",
+    icon: GitBranch,
+    roles: ["SalonOwner", "Owner"],
+    moduleId: 9
   },
   {
     title: "Perfil",

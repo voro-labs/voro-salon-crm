@@ -1,20 +1,36 @@
-import React, { useRef, useState } from "react"
-import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from "react-native"
+import React, { useEffect, useRef, useState } from "react"
+import {
+  View, Text, TextInput, Pressable, KeyboardAvoidingView,
+  Platform, ActivityIndicator, ScrollView,
+  NativeSyntheticEvent, TextInputKeyPressEventData,
+} from "react-native"
 import { useRouter } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useSignIn } from "hooks/use-sign-in.hook"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 
+const CODE_LENGTH = 6
+
 export default function SignInScreen() {
   const router = useRouter()
-  const { signIn, loading, error, clearError } = useSignIn()
+  const { signIn, verifyTwoFactor, loading, error, clearError } = useSignIn()
   const { primaryColor } = useTenantTheme()
+
+  // ── Credentials step ────────────────────────────────────────────────────────
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const passwordRef = useRef<TextInput>(null)
+
+  // ── 2FA step (inline — mesma tela para autofill funcionar) ──────────────────
+  const [step, setStep] = useState<"credentials" | "twoFactor">("credentials")
+  const [pendingToken, setPendingToken] = useState<string | null>(null)
+  const [twoFactorEmail, setTwoFactorEmail] = useState<string | null>(null)
+  const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""))
+  const [verifySuccess, setVerifySuccess] = useState(false)
+  const inputRefs = useRef<(TextInput | null)[]>([])
 
   function validate() {
     const errors: { email?: string; password?: string } = {}
@@ -36,123 +52,278 @@ export default function SignInScreen() {
       return
     }
     setFieldErrors({})
-    await signIn({ email: email.trim(), password })
+    const result = await signIn({ email: email.trim(), password })
+    if (result?.requiresTwoFactor && result.pendingToken) {
+      setPendingToken(result.pendingToken)
+      setTwoFactorEmail(result.email ?? email.trim())
+      setStep("twoFactor")
+      setTimeout(() => inputRefs.current[0]?.focus(), 150)
+    }
   }
+
+  // ── 2FA digit handlers ──────────────────────────────────────────────────────
+
+  function handleDigitChange(index: number, value: string) {
+    const cleaned = value.replace(/\D/g, "")
+    clearError()
+
+    if (cleaned.length > 1) {
+      const pasted = cleaned.slice(0, CODE_LENGTH).split("")
+      const next = Array(CODE_LENGTH).fill("")
+      pasted.forEach((d, i) => { next[i] = d })
+      setDigits(next)
+      const lastIndex = Math.min(pasted.length - 1, CODE_LENGTH - 1)
+      setTimeout(() => inputRefs.current[lastIndex]?.focus(), 10)
+      return
+    }
+
+    const digit = cleaned.slice(-1)
+    const next = [...digits]
+    next[index] = digit
+    setDigits(next)
+
+    if (digit && index < CODE_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  function handleDigitKeyPress(index: number, e: NativeSyntheticEvent<TextInputKeyPressEventData>) {
+    if (e.nativeEvent.key === "Backspace") {
+      if (digits[index]) {
+        const next = [...digits]
+        next[index] = ""
+        setDigits(next)
+      } else if (index > 0) {
+        inputRefs.current[index - 1]?.focus()
+      }
+    }
+  }
+
+  const handleVerify = async () => {
+    const code = digits.join("")
+    if (code.length < CODE_LENGTH || digits.includes("")) return
+    if (!pendingToken) return
+
+    const result = await verifyTwoFactor(pendingToken, code)
+    if (result.success) {
+      setVerifySuccess(true)
+    } else {
+      setDigits(Array(CODE_LENGTH).fill(""))
+      setTimeout(() => inputRefs.current[0]?.focus(), 50)
+    }
+  }
+
+  // Auto-submit ao preencher todos os dígitos
+  const code = digits.join("")
+  useEffect(() => {
+    if (step === "twoFactor" && code.length === CODE_LENGTH && !digits.includes("") && pendingToken && !loading && !verifySuccess) {
+      handleVerify()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code])
+
+  function backToCredentials() {
+    setStep("credentials")
+    setDigits(Array(CODE_LENGTH).fill(""))
+    setPendingToken(null)
+    clearError()
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-        <ScrollView className="flex-1 bg-zinc-50" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          className="flex-1 bg-zinc-50"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <View className="bg-white px-8 pt-12 pb-10 rounded-b-[40px] shadow-sm shadow-zinc-200">
+
+            {/* Back button */}
+            <Pressable
+              onPress={step === "twoFactor" ? backToCredentials : () => router.replace("/(auth)/welcome")}
+              className="self-start mb-4 flex-row items-center gap-1"
+              disabled={loading}
+            >
+              <Ionicons name="chevron-back" size={18} color="#71717a" />
+              <Text className="text-zinc-400 font-semibold text-sm">
+                {step === "twoFactor" ? "Voltar ao login" : "Voltar"}
+              </Text>
+            </Pressable>
+
+            {/* Logo */}
             <View className="items-center mb-10">
-              <Pressable
-                onPress={() => router.replace("/(auth)/welcome")}
-                className="self-start mb-4 flex-row items-center gap-1"
-              >
-                <Ionicons name="chevron-back" size={18} color="#71717a" />
-                <Text className="text-zinc-400 font-semibold text-sm">Voltar</Text>
-              </Pressable>
               <View className="h-20 w-20 rounded-3xl items-center justify-center shadow-lg" style={{ backgroundColor: primaryColor }}>
-                <Ionicons name="cut" size={40} color="white" />
+                <Ionicons name={step === "twoFactor" ? "shield-checkmark" : "cut"} size={40} color="white" />
               </View>
               <Text className="text-3xl font-black text-zinc-900 mt-6 tracking-tighter">
-                Voro <Text style={{ color: primaryColor }}>Salon</Text>
+                {step === "twoFactor"
+                  ? "Verificação"
+                  : <Text>Voro <Text style={{ color: primaryColor }}>Salon</Text></Text>
+                }
               </Text>
-              <Text className="text-zinc-500 font-medium mt-2">Entre para gerenciar seu salão</Text>
+              <Text className="text-zinc-500 font-medium mt-2 text-center">
+                {step === "twoFactor"
+                  ? "Autenticação em duas etapas"
+                  : "Entre para gerenciar seu salão"
+                }
+              </Text>
             </View>
 
-            <View className="space-y-6 gap-2">
-              <View className="gap-1">
-                <View
-                  className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
-                  style={{ borderWidth: 1, borderColor: fieldErrors.email ? "#fca5a5" : "#f4f4f5" }}
-                >
-                  <Ionicons name="mail-outline" size={20} color={fieldErrors.email ? "#ef4444" : "#71717a"} />
-                  <TextInput
-                    className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
-                    placeholder="E-mail"
-                    placeholderTextColor="#a1a1aa"
-                    value={email}
-                    onChangeText={(t) => { setEmail(t); clearError(); setFieldErrors((p) => ({ ...p, email: undefined })) }}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    textContentType="emailAddress"
-                    autoComplete="email"
-                  />
+            {/* ── STEP 1: Credenciais ─────────────────────────────────────────── */}
+            {step === "credentials" && (
+              <View className="space-y-6 gap-2">
+                <View className="gap-1">
+                  <View
+                    className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
+                    style={{ borderWidth: 1, borderColor: fieldErrors.email ? "#fca5a5" : "#f4f4f5" }}
+                  >
+                    <Ionicons name="mail-outline" size={20} color={fieldErrors.email ? "#ef4444" : "#71717a"} />
+                    <TextInput
+                      className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
+                      placeholder="E-mail"
+                      placeholderTextColor="#a1a1aa"
+                      value={email}
+                      onChangeText={(t) => { setEmail(t); clearError(); setFieldErrors((p) => ({ ...p, email: undefined })) }}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordRef.current?.focus()}
+                      textContentType="emailAddress"
+                      autoComplete="email"
+                    />
+                  </View>
+                  {fieldErrors.email && (
+                    <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.email}</Text>
+                  )}
                 </View>
-                {fieldErrors.email && (
-                  <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.email}</Text>
-                )}
+
+                <View className="gap-1">
+                  <View
+                    className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
+                    style={{ borderWidth: 1, borderColor: fieldErrors.password ? "#fca5a5" : "#f4f4f5" }}
+                  >
+                    <Ionicons name="lock-closed-outline" size={20} color={fieldErrors.password ? "#ef4444" : "#71717a"} />
+                    <TextInput
+                      ref={passwordRef}
+                      className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
+                      placeholder="Senha"
+                      placeholderTextColor="#a1a1aa"
+                      secureTextEntry={!showPassword}
+                      value={password}
+                      onChangeText={(t) => { setPassword(t); clearError(); setFieldErrors((p) => ({ ...p, password: undefined })) }}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                      onSubmitEditing={handleSignIn}
+                      textContentType="password"
+                      autoComplete="current-password"
+                    />
+                    <Pressable onPress={() => setShowPassword(v => !v)} className="ml-2 p-1">
+                      <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#71717a" />
+                    </Pressable>
+                  </View>
+                  {fieldErrors.password && (
+                    <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.password}</Text>
+                  )}
+                </View>
+
+                <Pressable onPress={() => router.push("/(auth)/forgot-password")} className="self-end">
+                  <Text className="text-xs font-black uppercase tracking-wider" style={{ color: primaryColor }}>Esqueceu a senha?</Text>
+                </Pressable>
               </View>
+            )}
 
-              <View className="gap-1">
-                <View
-                  className="bg-zinc-50 rounded-2xl px-4 py-3 flex-row items-center"
-                  style={{ borderWidth: 1, borderColor: fieldErrors.password ? "#fca5a5" : "#f4f4f5" }}
-                >
-                  <Ionicons name="lock-closed-outline" size={20} color={fieldErrors.password ? "#ef4444" : "#71717a"} />
-                  <TextInput
-                    ref={passwordRef}
-                    className="flex-1 ml-3 text-zinc-900 font-semibold text-base py-0"
-                    placeholder="Senha"
-                    placeholderTextColor="#a1a1aa"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={(t) => { setPassword(t); clearError(); setFieldErrors((p) => ({ ...p, password: undefined })) }}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    returnKeyType="done"
-                    onSubmitEditing={handleSignIn}
-                    textContentType="password"
-                    autoComplete="current-password"
-                  />
-                  <Pressable onPress={() => setShowPassword(v => !v)} className="ml-2 p-1">
-                    <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#71717a" />
-                  </Pressable>
-                </View>
-                {fieldErrors.password && (
-                  <Text className="text-red-500 text-xs font-semibold ml-1">{fieldErrors.password}</Text>
+            {/* ── STEP 2: Código 2FA (inline, mesma tela) ────────────────────── */}
+            {step === "twoFactor" && (
+              <View className="gap-4">
+                {twoFactorEmail && (
+                  <View className="flex-row items-center gap-2 bg-zinc-50 rounded-2xl px-4 py-3 border border-zinc-100">
+                    <Ionicons name="mail-outline" size={16} color="#71717a" />
+                    <Text className="text-sm text-zinc-500 flex-1 flex-wrap">
+                      Código enviado para{" "}
+                      <Text className="font-bold text-zinc-900">{twoFactorEmail}</Text>
+                    </Text>
+                  </View>
                 )}
-              </View>
 
-              <Pressable onPress={() => router.push("/(auth)/forgot-password")} className="self-end">
-                <Text className="text-xs font-black uppercase tracking-wider" style={{ color: primaryColor }}>Esqueceu a senha?</Text>
-              </Pressable>
-
-              {error && (
-                <View className="bg-red-50 p-4 rounded-2xl flex-row items-center border border-red-100">
-                  <Ionicons name="alert-circle" size={20} color="#ef4444" />
-                  <Text className="ml-3 text-red-600 text-sm font-bold flex-1">{error}</Text>
+                <View className="flex-row justify-center gap-2">
+                  {digits.map((digit, i) => (
+                    <TextInput
+                      key={i}
+                      ref={(el) => { inputRefs.current[i] = el }}
+                      value={digit}
+                      onChangeText={(v) => handleDigitChange(i, v)}
+                      onKeyPress={(e) => handleDigitKeyPress(i, e)}
+                      keyboardType="number-pad"
+                      maxLength={i === 0 ? CODE_LENGTH : 1}
+                      editable={!loading && !verifySuccess}
+                      selectTextOnFocus
+                      textContentType="oneTimeCode"
+                      autoComplete="sms-otp"
+                      className="text-center text-2xl font-black text-zinc-900"
+                      style={{
+                        width: 44,
+                        height: 56,
+                        borderRadius: 14,
+                        borderWidth: 2,
+                        borderColor: error ? "#fca5a5" : digit ? primaryColor : "#e4e4e7",
+                        backgroundColor: digit ? `${primaryColor}10` : "#fafafa",
+                        opacity: loading || verifySuccess ? 0.5 : 1,
+                      }}
+                    />
+                  ))}
                 </View>
-              )}
-            </View>
+
+                <Text className="text-xs text-zinc-400 text-center">
+                  O código expira em <Text className="font-bold">10 minutos</Text>.{"\n"}
+                  Verifique também a pasta de spam.
+                </Text>
+              </View>
+            )}
+
+            {/* Error */}
+            {error && (
+              <View className="bg-red-50 p-4 rounded-2xl flex-row items-center border border-red-100 mt-4">
+                <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                <Text className="ml-3 text-red-600 text-sm font-bold flex-1">{error}</Text>
+              </View>
+            )}
+
+            {/* Success (2FA) */}
+            {verifySuccess && (
+              <View className="bg-green-50 p-4 rounded-2xl flex-row items-center border border-green-100 mt-4">
+                <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+                <Text className="ml-3 text-green-700 text-sm font-bold flex-1">Verificado! Entrando...</Text>
+              </View>
+            )}
           </View>
 
+          {/* Footer: botão de ação */}
           <View className="px-8 mt-10 flex-1 justify-between pb-8">
             <Pressable
-              onPress={handleSignIn}
-              disabled={loading}
+              onPress={step === "twoFactor" ? handleVerify : handleSignIn}
+              disabled={loading || verifySuccess || (step === "twoFactor" && digits.includes(""))}
               className="h-16 rounded-2xl items-center justify-center"
-              style={{ backgroundColor: primaryColor, opacity: loading ? 0.6 : 1 }}
+              style={{
+                backgroundColor: primaryColor,
+                opacity: loading || verifySuccess || (step === "twoFactor" && digits.includes("")) ? 0.5 : 1,
+              }}
             >
               {loading ? (
                 <ActivityIndicator color="white" />
               ) : (
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-white text-lg font-black">Entrar</Text>
-                  <Ionicons name="arrow-forward" size={20} color="white" />
+                  <Text className="text-white text-lg font-black">
+                    {step === "twoFactor" ? (verifySuccess ? "Verificado!" : "Verificar Código") : "Entrar"}
+                  </Text>
+                  {!verifySuccess && <Ionicons name="arrow-forward" size={20} color="white" />}
                 </View>
               )}
             </Pressable>
-
-            {/* <View className="flex-row justify-center mt-12">
-              <Text className="text-zinc-500 font-bold text-base">Não tem conta? </Text>
-              <Pressable onPress={() => router.push("/(auth)/sign-up")}>
-                <Text className="text-base font-black" style={{ color: primaryColor }}>Cadastre-se</Text>
-              </Pressable>
-            </View> */}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

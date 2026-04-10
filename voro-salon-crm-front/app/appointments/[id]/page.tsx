@@ -558,6 +558,30 @@ export default function AppointmentDetailPage() {
               </CardContent>
             </Card>
 
+            {!tenant?.useWhatsappBooking && !!appointment.clientPhone && appointment.status < 2 && (
+              <Card className="border-emerald-200/60">
+                <CardContent className="p-4 flex flex-col gap-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-emerald-600" />
+                    Notificar via WhatsApp
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Envie uma mensagem diretamente para o WhatsApp do cliente.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                    onClick={() => sendWhatsAppMessage(appointment, appointment.status, false)}
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Abrir WhatsApp
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {appointment.status === 2 && (
               <Card>
                 <CardContent className="p-4 flex flex-col gap-3">

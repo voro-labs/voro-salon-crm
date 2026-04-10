@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using VoroSalonCrm.Infrastructure.Factories;
@@ -11,9 +12,11 @@ using VoroSalonCrm.Infrastructure.Factories;
 namespace VoroSalonCrm.Infrastructure.Migrations
 {
     [DbContext(typeof(JasmimDbContext))]
-    partial class JasmimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260410124423_AddAppointmentSource")]
+    partial class AddAppointmentSource
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -403,50 +406,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasIndex("TenantId", "ScheduledDateTime");
 
                     b.ToTable("Appointments");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.BookingFunnelSession", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("AppointmentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ContactName")
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FunnelState")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
-
-                    b.Property<string>("SessionId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Source")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AppointmentId");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("BookingFunnelSessions");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Client", b =>
@@ -2226,23 +2185,6 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Membership");
 
                     b.Navigation("Service");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.BookingFunnelSession", b =>
-                {
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Appointment", "Appointment")
-                        .WithMany()
-                        .HasForeignKey("AppointmentId");
-
-                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Appointment");
 
                     b.Navigation("Tenant");
                 });

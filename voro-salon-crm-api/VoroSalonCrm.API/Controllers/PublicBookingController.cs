@@ -121,5 +121,19 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpPost("track")]
+        public async Task<IActionResult> TrackFunnelStep([FromBody] PublicBookingTrackDto dto)
+        {
+            try
+            {
+                await _service.TrackFunnelStepAsync(dto);
+                return ResponseViewModel<object>.SuccessWithMessage("ok", null).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
@@ -241,6 +242,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             // ── Agendamentos e Transações de receita ──────────────────────────────
             var appointments = new List<Appointment>();
             var transactions = new List<Transaction>();
+            var serviceRecords = new List<ServiceRecord>();
 
             // Agendamentos passados (Completed) – últimos 45 dias
             var pastSlots = new (int DaysAgo, int Hour)[]
@@ -274,6 +276,58 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     Status = AppointmentStatus.Completed,
                     CreatedAt = scheduled.AddDays(-2)
                 };
+
+                #warning "A lógica de geração de histórico e comissão pode ser validada pelo claude code. Se estiver ok, pode ser movida para um método separado e reutilizada na finalização de agendamento real."
+                if (appt.Status == AppointmentStatus.Completed)
+                {
+                    var historyDto = new ServiceRecord
+                    {
+                        ClientId = appt.ClientId,
+                        TenantId = appt.TenantId,
+                        ServiceId = appt.ServiceId,
+                        AppointmentId = appt.Id,
+                        ServiceDate = DateTimeOffset.UtcNow,
+                        Description = appt.Description ?? "Serviço via agendamento",
+                        Amount = appt.Amount,
+                        Notes = $"Agendamento ID: {appt.Id}\nNotas: {appt.Notes}",
+                        
+                    };
+
+                    serviceRecords.Add(historyDto);
+
+                    // Gera comissão automaticamente se o funcionário tiver percentual configurado
+                    if (appt.EmployeeId.HasValue && appt.Amount > 0)
+                    {
+                        if (emp?.CommissionPercentage is > 0)
+                        {
+                            var commissionAmount = Math.Round(appt.Amount * (emp.CommissionPercentage.Value / 100m), 2);
+                            var dueDate = new DateTimeOffset(
+                                appt.ScheduledDateTime.Year,
+                                appt.ScheduledDateTime.Month,
+                                DateTime.DaysInMonth(appt.ScheduledDateTime.Year, appt.ScheduledDateTime.Month),
+                                23, 59, 59, TimeSpan.Zero);
+
+                            var commissionTx = new Transaction
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = appt.TenantId,
+                                Description = $"Comissão – {emp.Name} – {appt.Service?.Name ?? "Serviço"}",
+                                Amount = commissionAmount,
+                                PaidAmount = 0,
+                                DueDate = dueDate,
+                                Type = TransactionType.Expense,
+                                PaymentMethod = PaymentMethod.Other,
+                                Status = TransactionStatus.Pending,
+                                EmployeeId = emp.Id,
+                                Notes = $"Comissão de {emp.CommissionPercentage}% sobre agendamento {appt.Id}",
+                                CreatedAt = DateTimeOffset.UtcNow
+                            };
+
+                            transactions.Add(commissionTx);
+                        }
+                    }
+                }
+
                 appointments.Add(appt);
 
                 // Receita para cada agendamento concluído
@@ -310,7 +364,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 var scheduled = new DateTimeOffset(today.AddDays(daysAhead).Add(TimeSpan.FromHours(hour)), TimeSpan.FromHours(-3)).ToUniversalTime();
                 var status = i < 4 ? AppointmentStatus.Confirmed : AppointmentStatus.Pending;
 
-                appointments.Add(new Appointment
+                var appt = new Appointment
                 {
                     Id = Guid.NewGuid(),
                     TenantId = tenantId,
@@ -322,7 +376,59 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     Amount = svc.Price,
                     Status = status,
                     CreatedAt = now.AddDays(-1)
-                });
+                };
+
+                if (appt.Status == AppointmentStatus.Completed)
+                {
+                    var historyDto = new ServiceRecord
+                    {
+                        ClientId = appt.ClientId,
+                        TenantId = appt.TenantId,
+                        ServiceId = appt.ServiceId,
+                        AppointmentId = appt.Id,
+                        ServiceDate = DateTimeOffset.UtcNow,
+                        Description = appt.Description ?? "Serviço via agendamento",
+                        Amount = appt.Amount,
+                        Notes = $"Agendamento ID: {appt.Id}\nNotas: {appt.Notes}",
+                        
+                    };
+
+                    serviceRecords.Add(historyDto);
+
+                    // Gera comissão automaticamente se o funcionário tiver percentual configurado
+                    if (appt.EmployeeId.HasValue && appt.Amount > 0)
+                    {
+                        if (emp?.CommissionPercentage is > 0)
+                        {
+                            var commissionAmount = Math.Round(appt.Amount * (emp.CommissionPercentage.Value / 100m), 2);
+                            var dueDate = new DateTimeOffset(
+                                appt.ScheduledDateTime.Year,
+                                appt.ScheduledDateTime.Month,
+                                DateTime.DaysInMonth(appt.ScheduledDateTime.Year, appt.ScheduledDateTime.Month),
+                                23, 59, 59, TimeSpan.Zero);
+
+                            var commissionTx = new Transaction
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = appt.TenantId,
+                                Description = $"Comissão – {emp.Name} – {appt.Service?.Name ?? "Serviço"}",
+                                Amount = commissionAmount,
+                                PaidAmount = 0,
+                                DueDate = dueDate,
+                                Type = TransactionType.Expense,
+                                PaymentMethod = PaymentMethod.Other,
+                                Status = TransactionStatus.Pending,
+                                EmployeeId = emp.Id,
+                                Notes = $"Comissão de {emp.CommissionPercentage}% sobre agendamento {appt.Id}",
+                                CreatedAt = DateTimeOffset.UtcNow
+                            };
+
+                            transactions.Add(commissionTx);
+                        }
+                    }
+                }
+            
+                appointments.Add(appt);
             }
 
             await context.Appointments.AddRangeAsync(appointments);
@@ -399,6 +505,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             }
 
             await context.Transactions.AddRangeAsync(transactions);
+            await context.ServiceRecords.AddRangeAsync(serviceRecords);
         }
     }
 }
