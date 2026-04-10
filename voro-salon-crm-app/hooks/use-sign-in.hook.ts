@@ -1,5 +1,3 @@
-"use client"
-
 import { useAuth } from "contexts/auth.context"
 import { API_CONFIG, apiCall } from "lib/api"
 import { useTenantTheme } from "contexts/tenant-theme.context"
@@ -9,15 +7,38 @@ import { useState } from "react"
 import { useRouter } from "expo-router"
 import * as SecureStore from "expo-secure-store"
 
-export const TWO_FACTOR_PENDING_KEY = "voro_2fa_pending_token"
-export const TWO_FACTOR_EMAIL_KEY = "voro_2fa_email"
-
 export function useSignIn() {
   const { login } = useAuth()
   const router = useRouter()
   const { reload: reloadTheme } = useTenantTheme()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  async function _completeLogin(data: AuthDto) {
+    const hasPostLoginSteps =
+      data.requiresPasswordChange ||
+      data.requiresTermsAcceptance ||
+      data.requiresProfileCompletion
+
+    if (hasPostLoginSteps) {
+      await SecureStore.setItemAsync("post_login_flags", JSON.stringify({
+        requiresPasswordChange: !!data.requiresPasswordChange,
+        requiresTermsAcceptance: !!data.requiresTermsAcceptance,
+        requiresProfileCompletion: !!data.requiresProfileCompletion,
+      }))
+    }
+
+    await login(data.token!, data.refreshToken, data.tenants)
+    reloadTheme()
+
+    if (data.requiresPasswordChange) {
+      router.replace("/(onboarding)/change-password")
+    } else if (data.requiresTermsAcceptance) {
+      router.replace("/(onboarding)/terms")
+    } else if (data.requiresProfileCompletion) {
+      router.replace("/(onboarding)/complete-profile")
+    }
+  }
 
   const signIn = async (data: SignInDto) => {
     setLoading(true)
@@ -26,68 +47,64 @@ export function useSignIn() {
     try {
       const response = await apiCall<AuthDto>(API_CONFIG.ENDPOINTS.SIGNIN, {
         method: "POST",
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password
-        }),
+        body: JSON.stringify({ email: data.email, password: data.password }),
       })
 
       if (response.hasError) {
         setError(response.message ?? "Erro ao fazer login")
-        return { success: false, error: response.message ?? "Erro ao fazer login" }
+        return { success: false, error: response.message }
       }
 
       if (!response.data) {
-        const errorMessage = "Dados de usuário não encontrados na resposta"
-        setError(errorMessage)
-        return { success: false, error: errorMessage }
+        setError("Dados de usuário não encontrados na resposta")
+        return { success: false }
       }
 
-      // Verificação em duas etapas: salva token temporário e redireciona
+      // 2FA necessário: retorna o token pendente para o componente exibir inline
       if (response.data.requiresTwoFactor && response.data.twoFactorPendingToken) {
-        await SecureStore.setItemAsync(TWO_FACTOR_PENDING_KEY, response.data.twoFactorPendingToken)
-        await SecureStore.setItemAsync(TWO_FACTOR_EMAIL_KEY, data.email)
-        router.push("/(auth)/verify-2fa")
-        return { success: false, requiresTwoFactor: true }
+        return {
+          success: false,
+          requiresTwoFactor: true as const,
+          pendingToken: response.data.twoFactorPendingToken,
+          email: data.email,
+        }
       }
 
       if (response.data.token) {
-        // Armazenar flags pós-login antes de chamar login (evita race condition)
-        const hasPostLoginSteps =
-          response.data.requiresPasswordChange ||
-          response.data.requiresTermsAcceptance ||
-          response.data.requiresProfileCompletion
-
-        if (hasPostLoginSteps) {
-          await SecureStore.setItemAsync("post_login_flags", JSON.stringify({
-            requiresPasswordChange: !!response.data.requiresPasswordChange,
-            requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
-            requiresProfileCompletion: !!response.data.requiresProfileCompletion,
-          }))
-        }
-
-        await login(response.data.token, response.data.refreshToken, response.data.tenants)
-        reloadTheme()
-
-        // Navegar para a tela de onboarding correta
-        if (response.data.requiresPasswordChange) {
-          router.replace("/(onboarding)/change-password")
-        } else if (response.data.requiresTermsAcceptance) {
-          router.replace("/(onboarding)/terms")
-        } else if (response.data.requiresProfileCompletion) {
-          router.replace("/(onboarding)/complete-profile")
-        }
-
+        await _completeLogin(response.data)
         return { success: true }
       }
 
-      const errorMessage = "Dados de usuário não encontrados na resposta"
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
+      setError("Dados de usuário não encontrados na resposta")
+      return { success: false }
     } catch {
-      const errorMessage = "Erro inesperado ao fazer login"
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
+      setError("Erro inesperado ao fazer login")
+      return { success: false }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const verifyTwoFactor = async (pendingToken: string, code: string) => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await apiCall<AuthDto>(API_CONFIG.ENDPOINTS.VERIFY_2FA, {
+        method: "POST",
+        body: JSON.stringify({ pendingToken, code }),
+      })
+
+      if (response.hasError || !response.data?.token) {
+        setError(response.message ?? "Código inválido. Tente novamente.")
+        return { success: false }
+      }
+
+      await _completeLogin(response.data)
+      return { success: true }
+    } catch {
+      setError("Erro inesperado. Tente novamente.")
+      return { success: false }
     } finally {
       setLoading(false)
     }
@@ -95,6 +112,7 @@ export function useSignIn() {
 
   return {
     signIn,
+    verifyTwoFactor,
     loading,
     error,
     clearError: () => setError(null),
