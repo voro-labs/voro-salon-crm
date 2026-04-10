@@ -65,6 +65,21 @@ function CalendarWeekView({
 }) {
   const router = useRouter()
   const [blockedKey, setBlockedKey] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileDayIdx, setMobileDayIdx] = useState<number>(() => {
+    const today = new Date()
+    const diff = Math.floor((today.getTime() - startOfWeek(today, { weekStartsOn: 0 }).getTime()) / 86400000)
+    return Math.min(Math.max(diff, 0), 6)
+  })
+
+  useEffect(() => {
+    function checkMobile() {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
+  }, [])
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const hours = Array.from({ length: calEndHour - calStartHour }, (_, i) => calStartHour + i)
@@ -110,6 +125,123 @@ function CalendarWeekView({
     onSlotClick(date, hour)
   }
 
+  // ── Mobile: single-day view ──────────────────────────────────────────────────
+  if (isMobile) {
+    const visibleDay = days[mobileDayIdx]
+    const closed = isDayClosed(visibleDay)
+    const dayAppts = appointments.filter((a) => isSameDay(new Date(a.scheduledDateTime), visibleDay))
+
+    return (
+      <div className="border rounded-xl overflow-hidden bg-card">
+        {/* Mobile header with prev/next */}
+        <div className="flex items-center justify-between px-3 h-12 border-b bg-muted/30 sticky top-0 z-10">
+          <button
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-30"
+            onClick={() => setMobileDayIdx((i) => Math.max(i - 1, 0))}
+            disabled={mobileDayIdx === 0}
+            aria-label="Dia anterior"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <div className="flex flex-col items-center">
+            <span
+              className={`text-sm font-semibold capitalize ${
+                isToday(visibleDay) ? "text-primary" : "text-foreground"
+              }`}
+            >
+              {format(visibleDay, "EEE, dd MMM", { locale: ptBR })}
+            </span>
+            {closed && (
+              <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider leading-none">
+                fechado
+              </span>
+            )}
+          </div>
+
+          <button
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-30"
+            onClick={() => setMobileDayIdx((i) => Math.min(i + 1, 6))}
+            disabled={mobileDayIdx === 6}
+            aria-label="Próximo dia"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Mobile grid body */}
+        <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)" }}>
+          <div className="grid grid-cols-2" style={{ minHeight: totalHeight }}>
+            {/* Hour labels */}
+            <div className="border-r">
+              {hours.map((h) => (
+                <div
+                  key={h}
+                  className="border-b text-[10px] text-muted-foreground text-right pr-2 flex items-start pt-1"
+                  style={{ height: HOUR_HEIGHT }}
+                >
+                  {String(h).padStart(2, "0")}:00
+                </div>
+              ))}
+            </div>
+
+            {/* Single day column */}
+            <div
+              className={`relative ${isToday(visibleDay) ? "bg-primary/5" : ""}`}
+              style={{ height: totalHeight }}
+            >
+              {hours.map((h) => {
+                const inBH = isInBusinessHours(visibleDay, h)
+                const slotKey = `${visibleDay.toISOString()}_${h}`
+                const isBlocked = blockedKey === slotKey
+
+                return (
+                  <div
+                    key={h}
+                    className={`absolute w-full border-b border-border/40 transition-colors duration-150 ${
+                      isBlocked
+                        ? "bg-red-100 dark:bg-red-900/30"
+                        : closed || !inBH
+                        ? "bg-muted/30 cursor-default"
+                        : "cursor-pointer hover:bg-accent/10"
+                    }`}
+                    style={{ top: (h - calStartHour) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                    onClick={() => handleSlotClick(visibleDay, h)}
+                  />
+                )
+              })}
+
+              {dayAppts.map((apt: any) => {
+                const date = new Date(apt.scheduledDateTime)
+                const startMin = (date.getHours() - calStartHour) * 60 + date.getMinutes()
+                const top = (startMin / 60) * HOUR_HEIGHT
+                const height = Math.max((apt.durationMinutes / 60) * HOUR_HEIGHT, 22)
+                const colorClass = STATUS_COLORS[apt.status] ?? STATUS_COLORS[0]
+                return (
+                  <div
+                    key={apt.id}
+                    className={`absolute inset-x-0.5 rounded border text-[10px] px-1 py-0.5 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 ${colorClass}`}
+                    style={{ top, height }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/appointments/${apt.id}`)
+                    }}
+                  >
+                    <p className="font-semibold truncate leading-tight">{apt.clientName}</p>
+                    {height > 30 && apt.serviceName && (
+                      <p className="truncate text-[9px] opacity-70">{apt.serviceName}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Desktop: full 7-day view ─────────────────────────────────────────────────
   return (
     <div className="border rounded-xl overflow-hidden bg-card">
       {/* Day headers */}
