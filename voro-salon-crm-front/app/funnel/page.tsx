@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
-import { LayoutGrid, Loader2, RefreshCw } from "lucide-react"
+import { LayoutGrid, Loader2, RefreshCw, Info, X, Rows3 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { API_CONFIG } from "@/lib/api"
@@ -27,7 +27,7 @@ interface KanbanAppointment {
   amount: number
   source: number // 1=WhatsAppBot 2=App 3=Website
   employeeName?: string
-  funnelState?: string // etapa do funil (START, AWAITING_SERVICE, COMPLETED, etc.)
+  funnelState?: string
   sessionId?: string
 }
 
@@ -54,8 +54,11 @@ function AppointmentKanbanCard({ apt }: { apt: KanbanAppointment }) {
   const router = useRouter()
   return (
     <div
-      onClick={() => router.push(`/appointments/${apt.id}`)}
-      className="flex flex-col gap-1.5 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => apt.sessionId ? undefined : router.push(`/appointments/${apt.id}`)}
+      className={cn(
+        "flex flex-col gap-1.5 p-3 rounded-xl border border-border bg-card shadow-sm transition-shadow",
+        !apt.sessionId && "cursor-pointer hover:shadow-md"
+      )}
     >
       <div className="flex items-center justify-between gap-1 min-w-0">
         <p className="text-xs font-semibold truncate min-w-0">{apt.clientName}</p>
@@ -64,32 +67,80 @@ function AppointmentKanbanCard({ apt }: { apt: KanbanAppointment }) {
       {apt.serviceName && (
         <p className="text-[11px] text-muted-foreground truncate">{apt.serviceName}</p>
       )}
-      <p className="text-[10px] text-muted-foreground font-mono">
-        {format(new Date(apt.scheduledDateTime), "dd/MM HH:mm", { locale: ptBR })}
-      </p>
+      {apt.scheduledDateTime ? (
+        <p className="text-[10px] text-muted-foreground font-mono">
+          {format(new Date(apt.scheduledDateTime), "dd/MM HH:mm", { locale: ptBR })}
+        </p>
+      ) : (
+        <p className="text-[10px] text-muted-foreground italic">Em andamento...</p>
+      )}
     </div>
   )
 }
 
 // ─── Kanban config ───────────────────────────────────────────────────────────
 
-const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor: string }[] = [
-  { state: "START",                  label: "Novo Contato",            color: "border-slate-300",   headerColor: "bg-slate-100 text-slate-700" },
-  { state: "AWAITING_TENANT",        label: "Escolhendo Unidade",      color: "border-zinc-300",    headerColor: "bg-zinc-100 text-zinc-700" },
-  { state: "AWAITING_SERVICE",       label: "Escolhendo Serviço",      color: "border-blue-300",    headerColor: "bg-blue-100 text-blue-700" },
-  { state: "AWAITING_EMPLOYEE",      label: "Escolhendo Profissional", color: "border-violet-300",  headerColor: "bg-violet-100 text-violet-700" },
-  { state: "AWAITING_DATE",          label: "Escolhendo Data",         color: "border-amber-300",   headerColor: "bg-amber-100 text-amber-700" },
-  { state: "AWAITING_TIME",          label: "Escolhendo Horário",      color: "border-orange-300",  headerColor: "bg-orange-100 text-orange-700" },
-  { state: "AWAITING_DESCRIPTION",   label: "Aguardando Descrição",    color: "border-purple-300",  headerColor: "bg-purple-100 text-purple-700" },
-  { state: "AWAITING_CONFIRMATION",  label: "Aguardando Confirmação",  color: "border-rose-300",    headerColor: "bg-rose-100 text-rose-700" },
-  { state: "AWAITING_REMINDER_TIME", label: "Definindo Lembrete",      color: "border-indigo-300",  headerColor: "bg-indigo-100 text-indigo-700" },
-  { state: "COMPLETED",              label: "Agendado",                color: "border-emerald-300", headerColor: "bg-emerald-100 text-emerald-700" },
-  { state: "CANCELLED",              label: "Cancelado",               color: "border-gray-300",    headerColor: "bg-gray-100 text-gray-700" },
+const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor: string; description: string }[] = [
+  { state: "START",                  label: "Novo Contato",            color: "border-slate-300",   headerColor: "bg-slate-100 text-slate-700",   description: "Visitante acabou de iniciar o fluxo de agendamento." },
+  { state: "AWAITING_TENANT",        label: "Escolhendo Unidade",      color: "border-zinc-300",    headerColor: "bg-zinc-100 text-zinc-700",     description: "Está escolhendo qual unidade/estabelecimento quer atender." },
+  { state: "AWAITING_SERVICE",       label: "Escolhendo Serviço",      color: "border-blue-300",    headerColor: "bg-blue-100 text-blue-700",     description: "Está selecionando o serviço desejado." },
+  { state: "AWAITING_EMPLOYEE",      label: "Escolhendo Profissional", color: "border-violet-300",  headerColor: "bg-violet-100 text-violet-700", description: "Está escolhendo com qual profissional quer ser atendido." },
+  { state: "AWAITING_DATE",          label: "Escolhendo Data",         color: "border-amber-300",   headerColor: "bg-amber-100 text-amber-700",   description: "Está navegando pelo calendário para escolher a data." },
+  { state: "AWAITING_TIME",          label: "Escolhendo Horário",      color: "border-orange-300",  headerColor: "bg-orange-100 text-orange-700", description: "Está selecionando o horário disponível na data escolhida." },
+  { state: "AWAITING_DESCRIPTION",   label: "Aguardando Descrição",    color: "border-purple-300",  headerColor: "bg-purple-100 text-purple-700", description: "Está preenchendo informações complementares (nome, observações)." },
+  { state: "AWAITING_CONFIRMATION",  label: "Aguardando Confirmação",  color: "border-rose-300",    headerColor: "bg-rose-100 text-rose-700",     description: "Revisando o resumo do agendamento antes de confirmar." },
+  { state: "AWAITING_REMINDER_TIME", label: "Definindo Lembrete",      color: "border-indigo-300",  headerColor: "bg-indigo-100 text-indigo-700", description: "Configurando quando quer receber o lembrete do agendamento." },
+  { state: "COMPLETED",              label: "Agendado",                color: "border-emerald-300", headerColor: "bg-emerald-100 text-emerald-700", description: "Agendamento criado com sucesso via Bot, App ou Site." },
+  { state: "CANCELLED",              label: "Cancelado",               color: "border-gray-300",    headerColor: "bg-gray-100 text-gray-700",     description: "Agendamento cancelado ou o visitante abandonou o fluxo." },
 ]
+
+// ─── Legend modal ─────────────────────────────────────────────────────────────
+
+function LegendModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-primary" />
+            <h2 className="font-bold text-sm text-foreground">Legenda das Colunas</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-4 flex flex-col gap-2">
+          {KANBAN_COLUMNS.map((col) => (
+            <div key={col.state} className="flex items-start gap-3 p-2.5 rounded-lg border border-border/50">
+              <div className={cn("shrink-0 rounded-md px-2 py-1 text-[10px] font-bold whitespace-nowrap", col.headerColor)}>
+                {col.label}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed pt-0.5">{col.description}</p>
+            </div>
+          ))}
+          <div className="mt-2 pt-3 border-t border-border/50">
+            <p className="text-xs font-semibold text-foreground mb-2">Canais de origem</p>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full border bg-emerald-100 text-emerald-700 border-emerald-200">Bot — WhatsApp</span>
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full border bg-blue-100 text-blue-700 border-blue-200">App — Aplicativo mobile</span>
+              <span className="text-[10px] font-bold px-2 py-1 rounded-full border bg-violet-100 text-violet-700 border-violet-200">Site — Booking online</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function FunnelPage() {
+  const [showAll, setShowAll] = useState(false)
+  const [showLegend, setShowLegend] = useState(false)
+
   const { data: kanbanAppointments, isLoading, mutate } = useSWR<KanbanAppointment[]>(
     API_CONFIG.ENDPOINTS.FUNNEL_APPOINTMENTS,
     fetcher,
@@ -107,6 +158,35 @@ export default function FunnelPage() {
             description="Acompanhe os agendamentos por canal de origem."
             action={
               <div className="flex items-center gap-2">
+                {/* Toggle: colunas com itens vs todas */}
+                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
+                  <button
+                    onClick={() => setShowAll(false)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-medium transition-colors",
+                      !showAll ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="h-3 w-3" />
+                    Com itens
+                  </button>
+                  <button
+                    onClick={() => setShowAll(true)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-medium transition-colors",
+                      showAll ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Rows3 className="h-3 w-3" />
+                    Todas
+                  </button>
+                </div>
+
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(true)}>
+                  <Info className="mr-1.5 h-4 w-4" />
+                  Legenda
+                </Button>
+
                 <Button variant="outline" size="sm" onClick={() => mutate()}>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Atualizar
@@ -120,7 +200,7 @@ export default function FunnelPage() {
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Carregando agendamentos...
             </div>
-          ) : totalCount === 0 ? (
+          ) : totalCount === 0 && !showAll ? (
             <div className="flex flex-col items-center justify-center py-24 text-center border rounded-xl border-dashed">
               <div className="rounded-full bg-primary/10 p-4 mb-4">
                 <LayoutGrid className="h-7 w-7 text-primary" />
@@ -129,23 +209,26 @@ export default function FunnelPage() {
               <p className="text-sm text-muted-foreground mt-1">
                 Os agendamentos originados pelo Bot, App ou Site aparecerão aqui.
               </p>
+              <button
+                onClick={() => setShowAll(true)}
+                className="mt-3 text-xs text-primary underline underline-offset-2"
+              >
+                Ver todas as colunas
+              </button>
             </div>
           ) : (
             <div className="overflow-x-auto pb-4">
               <div className="flex gap-3 min-w-max">
                 {KANBAN_COLUMNS.map((col) => {
                   const items = (kanbanAppointments ?? []).filter((a) => {
-                    // Use funnelState when available (site/app bookings tracked via /track endpoint)
                     if (a.funnelState) return a.funnelState === col.state
-                    // Fallback: map appointment status to terminal columns
                     if (col.state === "COMPLETED") return a.status === 1 || a.status === 2
                     if (col.state === "CANCELLED") return a.status === 3 || a.status === 4
                     return false
                   })
 
-                  // Only render columns that have items, or always render COMPLETED and CANCELLED
                   const alwaysShow = col.state === "COMPLETED" || col.state === "CANCELLED"
-                  if (!alwaysShow && items.length === 0) return null
+                  if (!showAll && !alwaysShow && items.length === 0) return null
 
                   return (
                     <div
@@ -157,12 +240,12 @@ export default function FunnelPage() {
                         <span className="text-xs font-bold tabular-nums">{items.length}</span>
                       </div>
 
-                      <div className="flex flex-col gap-2 min-h-15">
+                      <div className="flex flex-col gap-2 min-h-[3.75rem]">
                         {items.length === 0 ? (
                           <p className="text-[11px] text-muted-foreground text-center py-4">Nenhum agendamento</p>
                         ) : (
                           items.map((apt) => (
-                            <AppointmentKanbanCard key={apt.id} apt={apt} />
+                            <AppointmentKanbanCard key={apt.id ?? apt.sessionId} apt={apt} />
                           ))
                         )}
                       </div>
@@ -173,6 +256,8 @@ export default function FunnelPage() {
             </div>
           )}
         </div>
+
+        {showLegend && <LegendModal onClose={() => setShowLegend(false)} />}
       </ModuleGuard>
     </AuthGuard>
   )
