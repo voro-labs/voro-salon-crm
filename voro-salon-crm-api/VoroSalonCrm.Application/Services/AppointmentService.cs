@@ -696,11 +696,15 @@ namespace VoroSalonCrm.Application.Services
 
         private async Task CreateHistoryFromAppointmentAsync(Appointment appointment)
         {
+            // Evita duplicata: se já existe um service record para este agendamento, não cria outro
+            var alreadyExists = await _serviceRecordService.ExistsByAppointmentIdAsync(appointment.Id);
+            if (alreadyExists) return;
+
             var historyDto = new CreateServiceRecordDto(
                 appointment.ClientId,
                 appointment.ServiceId,
                 appointment.Id,
-                DateTimeOffset.UtcNow,
+                appointment.ScheduledDateTime,
                 appointment.Description ?? "Serviço via agendamento",
                 appointment.Amount,
                 $"Agendamento ID: {appointment.Id}\nNotas: {appointment.Notes}"
@@ -714,6 +718,17 @@ namespace VoroSalonCrm.Application.Services
                 var employee = await _employeeRepository.GetByIdAsync(true, appointment.EmployeeId.Value);
                 if (employee?.CommissionPercentage is > 0)
                 {
+                    // Evita duplicata: verifica se comissão já foi gerada para este agendamento
+                    var appointmentIdStr = appointment.Id.ToString();
+                    var commissionExists = await _transactionRepository
+                        .Query(t => t.TenantId == appointment.TenantId
+                            && t.EmployeeId == appointment.EmployeeId
+                            && t.Notes != null && t.Notes.Contains(appointmentIdStr)
+                            && t.Type == TransactionType.Expense)
+                        .AnyAsync();
+
+                    if (commissionExists) return;
+
                     var commissionAmount = Math.Round(appointment.Amount * (employee.CommissionPercentage.Value / 100m), 2);
                     var dueDate = new DateTimeOffset(
                         appointment.ScheduledDateTime.Year,

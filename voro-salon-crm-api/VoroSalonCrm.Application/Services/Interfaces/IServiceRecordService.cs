@@ -15,5 +15,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<bool> UpdateStatusAsync(Guid id, AppointmentStatus status);
         Task<bool> DeleteAsync(Guid id);
         Task<bool> DeleteByAppointmentIdAsync(Guid appointmentId);
+        Task<bool> ExistsByAppointmentIdAsync(Guid appointmentId);
     }
 }

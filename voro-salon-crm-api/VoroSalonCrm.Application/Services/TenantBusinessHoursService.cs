@@ -43,7 +43,9 @@ namespace VoroSalonCrm.Application.Services
 
                 record.IsOpen = day.IsOpen;
 
-                // Replace ranges: remove old, add new
+                // Remove os ranges antigos diretamente do contexto para evitar conflito de tracking
+                await repository.DeleteRangesByBusinessHoursIdAsync(record.Id);
+
                 record.Ranges.Clear();
                 var sortOrder = 0;
                 foreach (var range in day.Ranges ?? new List<TimeRangeDto>())

@@ -18,5 +18,15 @@ namespace VoroSalonCrm.Infrastructure.Repositories
                 .OrderBy(bh => bh.DayOfWeek)
                 .ToListAsync();
         }
+
+        public async Task DeleteRangesByBusinessHoursIdAsync(Guid businessHoursId)
+        {
+            var ranges = await context.TenantBusinessHoursRanges
+                .Where(r => r.BusinessHoursId == businessHoursId)
+                .ToListAsync();
+
+            if (ranges.Count > 0)
+                context.TenantBusinessHoursRanges.RemoveRange(ranges);
+        }
     }
 }

@@ -126,6 +126,13 @@ namespace VoroSalonCrm.Application.Services
             return true;
         }
 
+        public async Task<bool> ExistsByAppointmentIdAsync(Guid appointmentId)
+        {
+            var records = await _serviceRecordRepository.GetAllAsync(
+                r => r.AppointmentId == appointmentId && !r.IsDeleted, asNoTracking: true);
+            return records.Any();
+        }
+
         public async Task<bool> DeleteByAppointmentIdAsync(Guid appointmentId)
         {
             var records = await _serviceRecordRepository.GetAllAsync(r => r.AppointmentId == appointmentId && !r.IsDeleted, false);

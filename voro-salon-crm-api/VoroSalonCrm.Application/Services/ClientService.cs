@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
@@ -13,13 +14,15 @@ namespace VoroSalonCrm.Application.Services
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         ITenantSubscriptionRepository subscriptionRepository,
-        IUserNotificationService userNotificationService) : IClientService
+        IUserNotificationService userNotificationService,
+        IWhatsAppMessageService whatsAppMessageService) : IClientService
     {
         private readonly IClientRepository _clientRepository = clientRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly ITenantSubscriptionRepository _subscriptionRepository = subscriptionRepository;
         private readonly IUserNotificationService _userNotificationService = userNotificationService;
+        private readonly IWhatsAppMessageService _whatsAppMessageService = whatsAppMessageService;
 
         public async Task<ClientDto> CreateAsync(CreateClientDto dto)
         {
@@ -117,6 +120,9 @@ namespace VoroSalonCrm.Application.Services
             var client = await _clientRepository.GetByIdAsync(false, id);
             if (client is null) return false;
 
+            var clientPhone = client.Phone;
+            var tenantId = client.TenantId;
+
             client.IsDeleted = true;
             client.DeletedAt = DateTimeOffset.UtcNow;
 
@@ -124,6 +130,9 @@ namespace VoroSalonCrm.Application.Services
             await _unitOfWork.SaveChangesAsync();
 
             await _userNotificationService.DeleteByRelatedEntityIdAsync(id);
+
+            if (!string.IsNullOrWhiteSpace(clientPhone))
+                await _whatsAppMessageService.DeleteByPhoneAsync(tenantId, clientPhone);
 
             return true;
         }

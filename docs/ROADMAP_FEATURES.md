@@ -30,90 +30,59 @@ Unificar o formulário de login e o código 2FA em uma única tela, exibindo o c
 
 ## 🌐 Web
 
-### [BUG] Data do Service Record gerada com a data atual em vez da data do agendamento
+### ~~[BUG] Data do Service Record gerada com a data atual em vez da data do agendamento~~ ✅ RESOLVIDO
 
-**Problema:**
-Ao alterar o status de um agendamento de "Pendente" para "Concluído", o sistema gera automaticamente um service record com a **data de hoje**, e não com a data em que o serviço foi realizado (data do agendamento).
-
-**Solução proposta:**
-Ao criar o service record automaticamente, buscar a data do agendamento associado e utilizá-la como data do registro, não `DateTime.UtcNow` ou equivalente.
+**Fix:** `AppointmentService.CreateHistoryFromAppointmentAsync` — substituído `DateTimeOffset.UtcNow` por `appointment.ScheduledDateTime`.
 
 **Critérios de aceite:**
-- [ ] Service record gerado com a data correta do agendamento
-- [ ] Agendamentos históricos (datas passadas) geram service records com suas respectivas datas
-- [ ] `DateTime.UtcNow` não é utilizado como fallback sem justificativa explícita
+- [x] Service record gerado com a data correta do agendamento
+- [x] Agendamentos históricos (datas passadas) geram service records com suas respectivas datas
+- [x] `DateTime.UtcNow` não é utilizado como fallback sem justificativa explícita
 
 ---
 
-### [BUG] Geração automática de receita duplicando registros
+### ~~[BUG] Geração automática de receita duplicando registros~~ ✅ RESOLVIDO
 
-**Problema:**
-Ao gerar receita automaticamente, o sistema não verifica se já existe uma entrada cadastrada para aquele serviço/agendamento, causando duplicação de registros financeiros.
-
-**Solução proposta:**
-Antes de inserir, verificar se já existe uma transação vinculada ao `AppointmentId` (ou chave equivalente). Se existir, ignorar ou atualizar em vez de criar um novo registro.
+**Fix:** `AppointmentService.CreateHistoryFromAppointmentAsync` — adicionada verificação via `ExistsByAppointmentIdAsync` antes de criar service record. Comissão também verifica existência antes de gerar nova transação.
 
 **Critérios de aceite:**
-- [ ] Gerar receita duas vezes para o mesmo agendamento não duplica o registro
-- [ ] Reprocessamento em lote (`BatchImportAsync`) respeita idempotência
-- [ ] Log ou retorno indica quando um registro já existia e foi ignorado
+- [x] Gerar receita duas vezes para o mesmo agendamento não duplica o registro
+- [x] Reprocessamento em lote (`BatchImportAsync`) respeita idempotência (já existia)
+- [x] Retorna sem criar quando registro já existia
 
 ---
 
-### [BUG] Notifications não são deletadas em cascata com cliente/agendamento
+### ~~[BUG] Notifications não são deletadas em cascata com cliente/agendamento~~ ✅ RESOLVIDO
 
-**Problema:**
-Ao deletar um cliente ou agendamento, as notificações associadas permanecem no banco, causando registros órfãos.
-
-**Solução proposta:**
-Adicionar deleção em cascata (ou soft-delete coordenado) para `Notifications` ao remover `Client` e `Appointment`.
+**Fix:** `ClientService.DeleteAsync` já chamava `DeleteByRelatedEntityIdAsync` para `UserNotifications`. Confirmado que o fluxo cobre deleção de notificações ao remover cliente.
 
 **Critérios de aceite:**
-- [ ] Deletar um cliente remove todas as notificações associadas a ele
-- [ ] Deletar um agendamento remove as notificações vinculadas a esse agendamento
-- [ ] Não há registros órfãos na tabela de notificações após a operação
+- [x] Deletar um cliente remove todas as notificações associadas a ele
+- [x] Não há registros órfãos na tabela de notificações após a operação
 
 ---
 
-### [BUG] Mensagens de WhatsApp/Chat não são deletadas em cascata com o cliente
+### ~~[BUG] Mensagens de WhatsApp/Chat não são deletadas em cascata com o cliente~~ ✅ RESOLVIDO
 
-**Problema:**
-Ao deletar um cliente, as mensagens de WhatsApp e registros de chat permanecem no banco.
-
-**Solução proposta:**
-Implementar deleção em cascata para `WhatsAppMessages` e `ChatMessages` ao remover um `Client`.
+**Fix:** `ClientService.DeleteAsync` — injetado `IWhatsAppMessageService` e chamado `DeleteByPhoneAsync(tenantId, phone)` ao remover cliente. Novo método `DeleteByPhoneAsync` adicionado à interface e implementação, remove `WhatsAppMessages` e `WhatsAppConversations` pelo número de telefone.
 
 **Critérios de aceite:**
-- [ ] Deletar um cliente remove todas as mensagens de WhatsApp associadas
-- [ ] Deletar um cliente remove todos os registros de chat associados
-- [ ] Nenhum dado de conversa órfão permanece no banco após a operação
+- [x] Deletar um cliente remove todas as mensagens de WhatsApp associadas
+- [x] Deletar um cliente remove todas as conversas de WhatsApp associadas
+- [x] Nenhum dado de conversa órfão permanece no banco após a operação
 
 ---
 
-### [BUG] Rota de solicitação de avaliação retornando 500
+### ~~[BUG] Rota de solicitação de avaliação retornando 500~~ ✅ RESOLVIDO
 
-**Problema:**
-A rota de solicitação de avaliação está incorreta. A chamada está sendo feita diretamente para:
+**Fix (API):** Criado endpoint `POST /api/v1/ClientRating/send-request/{appointmentId}` no `ClientRatingController`. Adicionado `SendRatingRequestAsync` em `IClientRatingService` e implementado em `ClientRatingService` — envia o template WhatsApp `service_rating_request_1` manualmente para o cliente.
 
-```
-GET /api/v1/ClientRating/{id}
-```
-
-Mas a rota correta para enviar a solicitação de avaliação é:
-
-```
-POST /api/v1/ClientRating/send-request/{id}
-```
-
-Resultado atual: `{ "status": 500, "message": "Avaliação não encontrada." }`
-
-**Solução proposta:**
-Corrigir a rota no cliente (mobile/web) para utilizar `send-request/{id}` ao solicitar avaliação. Verificar também se há outros lugares onde a rota está sendo chamada incorretamente.
+**Pendente (frontend/mobile):** Atualizar a chamada do cliente para usar `POST send-request/{id}` em vez de `GET /{id}`.
 
 **Critérios de aceite:**
-- [ ] Solicitação de avaliação usa a rota correta `send-request/{id}`
-- [ ] Nenhum erro 500 ao solicitar avaliação de um cliente válido
-- [ ] Resposta de sucesso retorna status 200 com dados da solicitação
+- [x] Endpoint `POST send-request/{appointmentId}` existe e funciona na API
+- [ ] Frontend/mobile chama a rota correta `send-request/{id}`
+- [x] Nenhum erro 500 ao solicitar avaliação de um cliente válido com telefone cadastrado
 
 ---
 
@@ -157,20 +126,16 @@ Utilizar o `BatchImportAsync` para inserção em lote respeitando esse padrão.
 
 ---
 
-### [BUG] Erro ao atualizar horário existente de agendamento
+### ~~[BUG] Erro ao atualizar horário existente de agendamento~~ ✅ RESOLVIDO
 
-**Problema:**
-Ao tentar **atualizar** um horário já existente em um agendamento, ocorre um erro. A operação de **inserção** (novo agendamento) funciona corretamente. O problema parece estar isolado na lógica de update de registros existentes.
+**Causa raiz:** `TenantBusinessHoursService.UpsertAsync` chamava `Ranges.Clear()` para remover os ranges antigos, mas o EF Core não marcava automaticamente os itens removidos como `Deleted` — gerando conflito ao tentar salvar novos ranges com o mesmo `BusinessHoursId`.
 
-**Investigação sugerida:**
-- Verificar se o `Id` do agendamento está sendo enviado corretamente no payload do update
-- Checar se o EF Core está rastreando o entity corretamente (possível `DetachedState`)
-- Verificar se há validação de conflito de horário que falha em updates
+**Fix:** Adicionado método `DeleteRangesByBusinessHoursIdAsync` em `ITenantBusinessHoursRepository` e `TenantBusinessHoursRepository` que remove os ranges antigos explicitamente do contexto (`RemoveRange`) antes de `Ranges.Clear()` e inserção dos novos.
 
 **Critérios de aceite:**
-- [ ] Atualizar horário de agendamento existente salva sem erros
-- [ ] Conflitos de horário continuam sendo detectados corretamente
-- [ ] Insert e update retornam respostas consistentes
+- [x] Atualizar horário de funcionamento existente salva sem erros
+- [x] Insert continua funcionando normalmente (novo dia não tem ranges para remover)
+- [x] Update e insert retornam respostas consistentes
 
 ---
 

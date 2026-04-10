@@ -53,6 +53,32 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         /// <summary>
+        /// Enviar manualmente a solicitação de avaliação via WhatsApp para um agendamento.
+        /// </summary>
+        [HttpPost("send-request/{appointmentId:guid}")]
+        [Authorize]
+        public async Task<IActionResult> SendRequest(Guid appointmentId)
+        {
+            try
+            {
+                await ratingService.SendRatingRequestAsync(appointmentId);
+                return ResponseViewModel<object>.SuccessWithMessage("Solicitação de avaliação enviada.", null).ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        /// <summary>
         /// Buscar avaliação de um agendamento específico.
         /// </summary>
         [HttpGet("{appointmentId:guid}")]
