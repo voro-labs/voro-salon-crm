@@ -355,7 +355,7 @@ export default function FinancialPage() {
           title="Financeiro"
           description="Fluxo de caixa, despesas e receitas."
           action={
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap justify-end items-center gap-2 w-full sm:w-auto">
               {/* Secundários */}
               <div className="flex items-center gap-2 w-full sm:w-auto order-2 sm:order-1">
                 <Button variant="outline" size="sm" asChild className="flex-1 sm:flex-none h-9">
@@ -543,7 +543,7 @@ export default function FinancialPage() {
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">Contas e gastos</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 xs:col-span-2 md:col-span-1">
+          <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium">Saldo Previsto</CardTitle>
               <Landmark className={`h-4 w-4 shrink-0 ${saldoPrevisto >= 0 ? 'text-primary' : 'text-rose-500'}`} />
@@ -555,7 +555,7 @@ export default function FinancialPage() {
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">Balanço do pedido</p>
             </CardContent>
           </Card>
-          <Card className="min-w-0 sm:col-span-2 lg:col-span-1">
+          <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium">
                 Receita do Mês
