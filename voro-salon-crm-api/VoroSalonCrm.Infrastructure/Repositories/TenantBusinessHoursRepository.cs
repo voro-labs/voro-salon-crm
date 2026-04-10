@@ -21,18 +21,12 @@ namespace VoroSalonCrm.Infrastructure.Repositories
 
         public async Task DeleteRangesByBusinessHoursIdAsync(Guid businessHoursId)
         {
-            // Desanexa do tracker quaisquer ranges já carregadas para evitar conflito de estado
-            var tracked = context.ChangeTracker.Entries<TenantBusinessHoursRange>()
-                .Where(e => e.Entity.BusinessHoursId == businessHoursId)
-                .ToList();
-
-            foreach (var entry in tracked)
-                entry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
-
-            // Deleta diretamente no banco (bypassa o tracker — sem Deleted entries no contexto)
-            await context.TenantBusinessHoursRanges
+            var ranges = await context.TenantBusinessHoursRanges
                 .Where(r => r.BusinessHoursId == businessHoursId)
-                .ExecuteDeleteAsync();
+                .ToListAsync();
+
+            if (ranges.Count > 0)
+                context.TenantBusinessHoursRanges.RemoveRange(ranges);
         }
     }
 }
