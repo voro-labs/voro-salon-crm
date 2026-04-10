@@ -71,6 +71,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<RouteAuditLog> RouteAuditLogs { get; set; }
         public DbSet<IntegrationAuditLog> IntegrationAuditLogs { get; set; }
 
+        public DbSet<BookingFunnelSession> BookingFunnelSessions { get; set; }
+
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var entries = ChangeTracker.Entries()

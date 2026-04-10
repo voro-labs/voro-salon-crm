@@ -61,4 +61,40 @@ namespace VoroSalonCrm.Application.DTOs.Public
         int? Rating = null,
         bool CanRate = false
     );
+
+    public record PublicBookingTrackDto(
+        string TenantSlug,
+        string SessionId,
+        string FunnelState,
+        string? ContactName = null,
+        string? PhoneNumber = null,
+        Guid? AppointmentId = null
+    );
+
+    public record FunnelSessionDto(
+        Guid Id,
+        string SessionId,
+        string FunnelState,
+        int Source,
+        string? ContactName,
+        string? PhoneNumber,
+        Guid? AppointmentId,
+        DateTimeOffset CreatedAt,
+        DateTimeOffset UpdatedAt
+    );
+
+    public record FunnelItemDto(
+        Guid Id,
+        string ClientName,
+        string? ClientPhone,
+        string? ServiceName,
+        string? ScheduledDateTime,
+        int? DurationMinutes,
+        int? Status,
+        decimal? Amount,
+        int Source,
+        string? EmployeeName,
+        string FunnelState,
+        string? SessionId
+    );
 }

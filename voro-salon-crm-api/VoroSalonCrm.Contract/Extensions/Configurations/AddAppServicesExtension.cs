@@ -127,6 +127,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IServicePromotionService, ServicePromotionService>();
             services.AddScoped<IClientRatingRepository, ClientRatingRepository>();
             services.AddScoped<IClientRatingService, ClientRatingService>();
+            services.AddScoped<IBookingFunnelSessionRepository, BookingFunnelSessionRepository>();
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();
