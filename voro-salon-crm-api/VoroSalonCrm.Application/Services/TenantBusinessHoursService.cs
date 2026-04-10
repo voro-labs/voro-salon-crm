@@ -63,6 +63,10 @@ namespace VoroSalonCrm.Application.Services
 
             await unitOfWork.SaveChangesAsync();
 
+            // Limpa o tracker para que o AuditMiddleware (que chama SaveChangesAsync depois da resposta)
+            // não encontre nenhuma entidade em estado pendente além do RouteAuditLog que ele mesmo adiciona.
+            unitOfWork.ClearTracker();
+
             var updated = await repository.GetByTenantAsync(tenantId);
             return updated.Select(MapToDto);
         }
