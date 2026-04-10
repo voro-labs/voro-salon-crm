@@ -24,11 +24,12 @@ namespace VoroSalonCrm.Application.Services
             if (tenantId == Guid.Empty)
                 throw new UnauthorizedAccessException("Tenant invalid or not found in context.");
 
-            var existing = (await repository.GetByTenantAsync(tenantId)).ToList();
+            var existing = (await repository.GetByTenantAsync(tenantId, false)).ToList();
 
             foreach (var day in dto.Days)
             {
                 var record = existing.FirstOrDefault(h => h.DayOfWeek == day.DayOfWeek);
+                
                 if (record == null)
                 {
                     record = new TenantBusinessHours
@@ -43,22 +44,18 @@ namespace VoroSalonCrm.Application.Services
 
                 record.IsOpen = day.IsOpen;
 
-                // Remove os ranges antigos diretamente do contexto para evitar conflito de tracking
                 await repository.DeleteRangesByBusinessHoursIdAsync(record.Id);
 
-                record.Ranges.Clear();
-                var sortOrder = 0;
-                foreach (var range in day.Ranges ?? new List<TimeRangeDto>())
+                var newRanges = (day.Ranges ?? []).Select((r, i) => new TenantBusinessHoursRange
                 {
-                    record.Ranges.Add(new TenantBusinessHoursRange
-                    {
-                        Id = Guid.NewGuid(),
-                        BusinessHoursId = record.Id,
-                        OpenTime = range.OpenTime,
-                        CloseTime = range.CloseTime,
-                        SortOrder = sortOrder++,
-                    });
-                }
+                    Id = Guid.NewGuid(),
+                    BusinessHoursId = record.Id,
+                    OpenTime = r.OpenTime,
+                    CloseTime = r.CloseTime,
+                    SortOrder = i
+                });
+
+                await repository.AddRangesAsync(newRanges);
             }
 
             await unitOfWork.SaveChangesAsync();
