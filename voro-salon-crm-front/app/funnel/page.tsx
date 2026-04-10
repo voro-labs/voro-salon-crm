@@ -27,6 +27,8 @@ interface KanbanAppointment {
   amount: number
   source: number // 1=WhatsAppBot 2=App 3=Website
   employeeName?: string
+  funnelState?: string // etapa do funil (START, AWAITING_SERVICE, COMPLETED, etc.)
+  sessionId?: string
 }
 
 // ─── Source badge ────────────────────────────────────────────────────────────
@@ -89,18 +91,10 @@ const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor
 
 export default function FunnelPage() {
   const { data: kanbanAppointments, isLoading, mutate } = useSWR<KanbanAppointment[]>(
-    API_CONFIG.ENDPOINTS.WHATSAPP_KANBAN_APPOINTMENTS,
+    API_CONFIG.ENDPOINTS.FUNNEL_APPOINTMENTS,
     fetcher,
     { refreshInterval: 60000 }
   )
-
-  const getColumnAppointments = (state: string) => {
-    if (state === "COMPLETED") {
-      return (kanbanAppointments ?? []).filter((a) => a.status === 1 || a.status === 2)
-    }
-    // For non-completed columns we show nothing — the funnel endpoint only returns scheduled/confirmed
-    return []
-  }
 
   const totalCount = (kanbanAppointments ?? []).length
 
@@ -141,7 +135,9 @@ export default function FunnelPage() {
               <div className="flex gap-3 min-w-max">
                 {KANBAN_COLUMNS.map((col) => {
                   const items = (kanbanAppointments ?? []).filter((a) => {
-                    // Map appointment status numbers to column states
+                    // Use funnelState when available (site/app bookings tracked via /track endpoint)
+                    if (a.funnelState) return a.funnelState === col.state
+                    // Fallback: map appointment status to terminal columns
                     if (col.state === "COMPLETED") return a.status === 1 || a.status === 2
                     if (col.state === "CANCELLED") return a.status === 3 || a.status === 4
                     return false
