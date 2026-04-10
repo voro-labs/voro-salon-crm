@@ -59,7 +59,9 @@ namespace VoroSalonCrm.API.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
-            [FromQuery] Guid? clientId = null)
+            [FromQuery] Guid? clientId = null,
+            [FromQuery] DateTimeOffset? dateFrom = null,
+            [FromQuery] DateTimeOffset? dateTo = null)
         {
             try
             {
@@ -76,6 +78,12 @@ namespace VoroSalonCrm.API.Controllers
 
                     // For SalonEmployee, scope results to their own appointments and apply pagination/search in-memory
                     var all = (await _appointmentService.GetAllAsync(clientId, employee.Id)).ToList();
+
+                    if (dateFrom.HasValue)
+                        all = all.Where(a => a.ScheduledDateTime >= dateFrom.Value).ToList();
+
+                    if (dateTo.HasValue)
+                        all = all.Where(a => a.ScheduledDateTime <= dateTo.Value).ToList();
 
                     if (!string.IsNullOrWhiteSpace(search))
                     {
@@ -96,7 +104,7 @@ namespace VoroSalonCrm.API.Controllers
                         .ToActionResult();
                 }
 
-                var result = await _appointmentService.GetPagedAsync(page, pageSize, search, clientId);
+                var result = await _appointmentService.GetPagedAsync(page, pageSize, search, clientId, dateFrom, dateTo);
                 return ResponseViewModel<PagedResult<AppointmentDto>>
                     .SuccessWithMessage("Appointments retrieved.", result)
                     .ToActionResult();

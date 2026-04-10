@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useTransactions } from "@/hooks/use-transactions.hook"
 import { TransactionDto, TransactionType, TransactionStatus, PaymentMethod } from "@/types/DTOs/financial.interface"
@@ -116,6 +116,10 @@ export default function FinancialPage() {
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
   const [isPdfImportOpen, setIsPdfImportOpen] = useState(false)
+  const [txPage, setTxPage] = useState(1)
+  const [txPageSize, setTxPageSize] = useState(10)
+
+  useEffect(() => { setTxPage(1) }, [searchTerm])
 
   // Auto Revenue State
   const [isAutoRevenueOpen, setIsAutoRevenueOpen] = useState(false)
@@ -335,6 +339,11 @@ export default function FinancialPage() {
     t.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.category?.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
+
+  const txTotalCount = filteredTransactions.length
+  const txTotalPages = Math.max(1, Math.ceil(txTotalCount / txPageSize))
+  const txSafePage = Math.min(txPage, txTotalPages)
+  const paginatedTransactions = filteredTransactions.slice((txSafePage - 1) * txPageSize, txSafePage * txPageSize)
 
   // Calculando totais rápidos
   const totalReceitas = transactions?.filter(t => t.type === TransactionType.Income && t.status !== TransactionStatus.Cancelled).reduce((acc, t) => acc + t.amount, 0) || 0
@@ -617,7 +626,7 @@ export default function FinancialPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredTransactions.map((tx) => (
+                      paginatedTransactions.map((tx) => (
                         <TableRow key={tx.id}>
                           <TableCell className="pl-4 font-medium">
                             {format(new Date(tx.dueDate), "dd/MM/yyyy", { locale: ptBR })}
@@ -699,6 +708,54 @@ export default function FinancialPage() {
             </div>
           </CardContent>
         </Card>
+
+        {txTotalCount > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">{txTotalCount} registro{txTotalCount !== 1 ? "s" : ""}</p>
+              <span className="text-muted-foreground/40 text-sm">·</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-muted-foreground">Por página:</span>
+                <div className="flex items-center gap-1">
+                  {[5, 10, 20, 25, 50].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { setTxPageSize(n); setTxPage(1) }}
+                      className={`h-6 min-w-7 px-1.5 rounded text-xs font-medium transition-colors ${
+                        txPageSize === n
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {txTotalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={txSafePage === 1}
+                  onClick={() => setTxPage((p) => p - 1)}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm">Página {txSafePage} de {txTotalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={txSafePage >= txTotalPages}
+                  onClick={() => setTxPage((p) => p + 1)}
+                >
+                  Próxima
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>

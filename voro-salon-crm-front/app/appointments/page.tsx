@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, isSameDay, addWeeks, subWeeks } from "date-fns"
+import { format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, isSameDay, addWeeks, subWeeks, isToday } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import type { PagedResult } from "@/hooks/use-data-list.hook"
 
@@ -389,10 +389,13 @@ export default function AppointmentsPage() {
     totalPages,
     page,
     setPage,
+    pageSize,
+    setPageSize,
     search,
     setSearch,
+    setExtraParams,
     isLoading,
-  } = useDataList<AppointmentItem>(API_CONFIG.ENDPOINTS.APPOINTMENTS, { pageSize: 20 })
+  } = useDataList<AppointmentItem>(API_CONFIG.ENDPOINTS.APPOINTMENTS, { pageSize: 10 })
 
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
   const { plan } = useSubscription()
@@ -431,12 +434,23 @@ export default function AppointmentsPage() {
     return { calStartHour: Math.max(minH - 1, 0), calEndHour: Math.min(maxH + 1, 24) }
   }, [businessHours])
 
-  // If there are no appointments today in the current page, show week automatically
+  // Sync extraParams with periodFilter for server-side date filtering
   useEffect(() => {
-    if (isLoading) return
-    const hasToday = items.some((a: any) => isToday(new Date(a.scheduledDateTime)))
-    if (!hasToday) setPeriodFilter("week")
-  }, [isLoading])
+    const now = new Date()
+    if (periodFilter === "today") {
+      setExtraParams({
+        dateFrom: startOfDay(now).toISOString(),
+        dateTo: endOfDay(now).toISOString(),
+      })
+    } else if (periodFilter === "week") {
+      setExtraParams({
+        dateFrom: startOfDay(now).toISOString(),
+        dateTo: endOfDay(addDays(now, 7)).toISOString(),
+      })
+    } else {
+      setExtraParams({})
+    }
+  }, [periodFilter])
 
   const isModuleEnabled = (moduleId: number) => {
     return modules?.find((m: any) => m.module === moduleId)?.isEnabled ?? true
@@ -448,7 +462,7 @@ export default function AppointmentsPage() {
     const weekEnd = endOfWeek(now, { locale: ptBR })
     return items.filter((a: any) => {
       const d = new Date(a.scheduledDateTime)
-      return isWithinInterval(d, { start: weekStart, end: weekEnd })
+      return d >= weekStart && d <= weekEnd
     }).length
   }, [items])
 
@@ -466,28 +480,8 @@ export default function AppointmentsPage() {
 
   const showWhatsAppUpsell = plan !== undefined && plan.hasWhatsAppBot === false && !upsellDismissed
 
-  // Client-side period filter applied on top of the server-paginated results
-  const finalFiltered = useMemo(() => {
-    let result = items
-    const now = new Date()
-
-    if (periodFilter === "today") {
-      result = result.filter((a: any) => isToday(new Date(a.scheduledDateTime)))
-    } else if (periodFilter === "week") {
-      result = result.filter((a: any) =>
-        isWithinInterval(new Date(a.scheduledDateTime), {
-          start: startOfDay(now),
-          end: endOfDay(addDays(now, 7)),
-        })
-      )
-    }
-
-    return result.sort(
-      (a: any, b: any) =>
-        new Date(a.scheduledDateTime).getTime() -
-        new Date(b.scheduledDateTime).getTime()
-    )
-  }, [items, periodFilter])
+  // Items already filtered server-side; just expose as-is (server returns ordered by scheduledDateTime)
+  const finalFiltered = items
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
@@ -701,28 +695,51 @@ export default function AppointmentsPage() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">{totalCount} registros</p>
+        {(totalPages > 1 || totalCount > 0) && (
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Anterior
-              </Button>
-              <span className="text-sm">Página {page} de {totalPages}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Próxima
-              </Button>
+              <p className="text-sm text-muted-foreground">{totalCount} registro{totalCount !== 1 ? "s" : ""}</p>
+              <span className="text-muted-foreground/40 text-sm">·</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-muted-foreground">Por página:</span>
+                <div className="flex items-center gap-1">
+                  {[5, 10, 20, 25, 50].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setPageSize(n)}
+                      className={`h-6 min-w-[28px] px-1.5 rounded text-xs font-medium transition-colors ${
+                        pageSize === n
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm">Página {page} de {totalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Próxima
+                </Button>
+              </div>
+            )}
           </div>
         )}
         </>

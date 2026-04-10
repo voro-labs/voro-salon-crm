@@ -28,14 +28,13 @@ export function useDataList<T>(
     extraParams?: Record<string, string>
   }
 ) {
-  const pageSize = options?.pageSize ?? 20
-  const extraParams = options?.extraParams ?? {}
-
+  const [pageSize, setPageSize] = useState(options?.pageSize ?? 20)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
+  const [extraParams, setExtraParams] = useState<Record<string, string>>(options?.extraParams ?? {})
   const debouncedSearch = useDebounce(search, 300)
 
-  // Reset to page 1 whenever the debounced search term changes
+  // Reset to page 1 whenever the debounced search term or extraParams change
   const isFirstRender = useRef(true)
   useEffect(() => {
     if (isFirstRender.current) {
@@ -43,7 +42,12 @@ export function useDataList<T>(
       return
     }
     setPage(1)
-  }, [debouncedSearch])
+  }, [debouncedSearch, extraParams])
+
+  // Reset to page 1 when pageSize changes
+  useEffect(() => {
+    setPage(1)
+  }, [pageSize])
 
   const params = new URLSearchParams({
     page: String(page),
@@ -62,8 +66,11 @@ export function useDataList<T>(
     page,
     setPage,
     pageSize,
+    setPageSize,
     search,
     setSearch,
+    extraParams,
+    setExtraParams,
     isLoading,
     error,
     mutate,

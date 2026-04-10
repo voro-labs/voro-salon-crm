@@ -141,7 +141,7 @@ namespace VoroSalonCrm.Application.Services
             return appointments.Select(MapToDto);
         }
 
-        public async Task<PagedResult<AppointmentDto>> GetPagedAsync(int page, int pageSize, string? search, Guid? clientId = null)
+        public async Task<PagedResult<AppointmentDto>> GetPagedAsync(int page, int pageSize, string? search, Guid? clientId = null, DateTimeOffset? dateFrom = null, DateTimeOffset? dateTo = null)
         {
             var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
                 .Include(a => a.Employee!)
@@ -151,6 +151,12 @@ namespace VoroSalonCrm.Application.Services
 
             if (clientId.HasValue)
                 query = query.Where(a => a.ClientId == clientId.Value);
+
+            if (dateFrom.HasValue)
+                query = query.Where(a => a.ScheduledDateTime >= dateFrom.Value);
+
+            if (dateTo.HasValue)
+                query = query.Where(a => a.ScheduledDateTime <= dateTo.Value);
 
             var appointments = await query.OrderBy(a => a.ScheduledDateTime).ToListAsync();
             var dtos = appointments.Select(MapToDto).ToList();
