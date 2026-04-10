@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2, Calendar as CalendarIcon, Zap, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -64,6 +65,23 @@ export default function NovoAgendamentoPage() {
   const { user } = useAuth()
   const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
 
+  const searchParams = useSearchParams()
+
+  // Pre-fill date/time from calendar slot click
+  useEffect(() => {
+    const dateParam = searchParams.get("date")
+    const hourParam = searchParams.get("hour")
+    if (!dateParam || !hourParam) return
+    const hour = parseInt(hourParam, 10)
+    const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:00:00`)
+    if (isNaN(dateObj.getTime())) return
+    setSelectedDate(dateObj)
+    const tzOffset = dateObj.getTimezoneOffset() * 60000
+    const localISOTime = new Date(dateObj.getTime() - tzOffset).toISOString().slice(0, 16)
+    setForm((p) => ({ ...p, scheduledDateTime: localISOTime }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const { data: myEmployee } = useSWR<any>(
     isSalonEmployee ? API_CONFIG.ENDPOINTS.EMPLOYEE_ME : null,
     fetcher
@@ -86,8 +104,9 @@ export default function NovoAgendamentoPage() {
     }
   }, [myEmployee?.id])
 
-  // Set default date/time to now (rounded to next 30 min)
+  // Set default date/time to now (rounded to next 30 min) — skip when URL params pre-fill
   useEffect(() => {
+    if (searchParams.get("date") && searchParams.get("hour")) return
     const now = new Date()
     now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30)
     now.setSeconds(0)

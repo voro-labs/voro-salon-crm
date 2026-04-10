@@ -26,10 +26,16 @@ import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { StatusBadge } from "@/components/ui/custom/status-badge"
 import { fetcher } from "@/lib/fetcher"
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface BusinessHoursDay {
+  dayOfWeek: number
+  isOpen: boolean
+  ranges: { openTime: string; closeTime: string }[]
+}
+
 // ─── Calendar constants ───────────────────────────────────────────────────────
 
-const CAL_START_HOUR = 8
-const CAL_END_HOUR = 20
 const HOUR_HEIGHT = 64 // px per hour
 
 const STATUS_COLORS: Record<number, string> = {
@@ -46,36 +52,92 @@ function CalendarWeekView({
   weekStart,
   appointments,
   onSlotClick,
+  businessHours,
+  calStartHour,
+  calEndHour,
 }: {
   weekStart: Date
   appointments: any[]
   onSlotClick: (date: Date, hour: number) => void
+  businessHours?: BusinessHoursDay[]
+  calStartHour: number
+  calEndHour: number
 }) {
   const router = useRouter()
+  const [blockedKey, setBlockedKey] = useState<string | null>(null)
+
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-  const hours = Array.from({ length: CAL_END_HOUR - CAL_START_HOUR }, (_, i) => CAL_START_HOUR + i)
+  const hours = Array.from({ length: calEndHour - calStartHour }, (_, i) => calStartHour + i)
   const totalHeight = hours.length * HOUR_HEIGHT
+
+  function isDayClosed(date: Date) {
+    if (!businessHours?.length) return false
+    const dow = date.getDay()
+    const bh = businessHours.find((d) => d.dayOfWeek === dow)
+    return !bh || !bh.isOpen
+  }
+
+  function isInBusinessHours(date: Date, hour: number) {
+    if (!businessHours?.length) return true
+    const dow = date.getDay()
+    const bh = businessHours.find((d) => d.dayOfWeek === dow)
+    if (!bh || !bh.isOpen) return false
+    return bh.ranges.some((r) => {
+      const oh = parseInt(r.openTime.split(":")[0], 10)
+      const ch = parseInt(r.closeTime.split(":")[0], 10)
+      return hour >= oh && hour < ch
+    })
+  }
+
+  function hasConflict(date: Date, hour: number) {
+    return appointments.some((apt) => {
+      if (!isSameDay(new Date(apt.scheduledDateTime), date)) return false
+      const aptStart = new Date(apt.scheduledDateTime)
+      const aptStartMin = aptStart.getHours() * 60 + aptStart.getMinutes()
+      const aptEndMin = aptStartMin + (apt.durationMinutes || 30)
+      const slotMin = hour * 60
+      return slotMin < aptEndMin && slotMin + 60 > aptStartMin
+    })
+  }
+
+  function handleSlotClick(date: Date, hour: number) {
+    const key = `${date.toISOString()}_${hour}`
+    if (isDayClosed(date) || !isInBusinessHours(date, hour) || hasConflict(date, hour)) {
+      setBlockedKey(key)
+      setTimeout(() => setBlockedKey(null), 700)
+      return
+    }
+    onSlotClick(date, hour)
+  }
 
   return (
     <div className="border rounded-xl overflow-hidden bg-card">
       {/* Day headers */}
       <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
         <div className="h-12 border-r" />
-        {days.map((day) => (
-          <div
-            key={day.toISOString()}
-            className={`h-12 flex flex-col items-center justify-center text-xs border-r last:border-r-0 ${
-              isToday(day) ? "bg-primary/10" : ""
-            }`}
-          >
-            <span className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">
-              {format(day, "EEE", { locale: ptBR })}
-            </span>
-            <span className={`text-sm font-bold ${isToday(day) ? "text-primary" : "text-foreground"}`}>
-              {format(day, "dd")}
-            </span>
-          </div>
-        ))}
+        {days.map((day) => {
+          const closed = isDayClosed(day)
+          return (
+            <div
+              key={day.toISOString()}
+              className={`h-12 flex flex-col items-center justify-center text-xs border-r last:border-r-0 ${
+                isToday(day) ? "bg-primary/10" : ""
+              } ${closed ? "opacity-50" : ""}`}
+            >
+              <span className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">
+                {format(day, "EEE", { locale: ptBR })}
+              </span>
+              <span className={`text-sm font-bold ${isToday(day) ? "text-primary" : "text-foreground"}`}>
+                {format(day, "dd")}
+              </span>
+              {closed && (
+                <span className="text-[8px] text-muted-foreground/60 uppercase tracking-wider leading-none">
+                  fechado
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* Grid body */}
@@ -97,6 +159,7 @@ function CalendarWeekView({
           {/* Day columns */}
           {days.map((day) => {
             const dayAppts = appointments.filter((a) => isSameDay(new Date(a.scheduledDateTime), day))
+            const closed = isDayClosed(day)
             return (
               <div
                 key={day.toISOString()}
@@ -104,19 +167,31 @@ function CalendarWeekView({
                 style={{ height: totalHeight }}
               >
                 {/* Hour grid lines + click targets */}
-                {hours.map((h) => (
-                  <div
-                    key={h}
-                    className="absolute w-full border-b border-border/40 cursor-pointer hover:bg-accent/10 transition-colors"
-                    style={{ top: (h - CAL_START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                    onClick={() => onSlotClick(day, h)}
-                  />
-                ))}
+                {hours.map((h) => {
+                  const inBH = isInBusinessHours(day, h)
+                  const slotKey = `${day.toISOString()}_${h}`
+                  const isBlocked = blockedKey === slotKey
+
+                  return (
+                    <div
+                      key={h}
+                      className={`absolute w-full border-b border-border/40 transition-colors duration-150 ${
+                        isBlocked
+                          ? "bg-red-100 dark:bg-red-900/30"
+                          : closed || !inBH
+                          ? "bg-muted/30 cursor-default"
+                          : "cursor-pointer hover:bg-accent/10"
+                      }`}
+                      style={{ top: (h - calStartHour) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                      onClick={() => handleSlotClick(day, h)}
+                    />
+                  )
+                })}
 
                 {/* Appointment blocks */}
                 {dayAppts.map((apt: any) => {
                   const date = new Date(apt.scheduledDateTime)
-                  const startMin = (date.getHours() - CAL_START_HOUR) * 60 + date.getMinutes()
+                  const startMin = (date.getHours() - calStartHour) * 60 + date.getMinutes()
                   const top = (startMin / 60) * HOUR_HEIGHT
                   const height = Math.max((apt.durationMinutes / 60) * HOUR_HEIGHT, 22)
                   const colorClass = STATUS_COLORS[apt.status] ?? STATUS_COLORS[0]
@@ -125,7 +200,10 @@ function CalendarWeekView({
                       key={apt.id}
                       className={`absolute inset-x-0.5 rounded border text-[10px] px-1 py-0.5 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 ${colorClass}`}
                       style={{ top, height }}
-                      onClick={(e) => { e.stopPropagation(); router.push(`/appointments/${apt.id}`) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(`/appointments/${apt.id}`)
+                      }}
                     >
                       <p className="font-semibold truncate leading-tight">{apt.clientName}</p>
                       {height > 30 && apt.serviceName && (
@@ -148,6 +226,17 @@ function CalendarWeekView({
 export default function AppointmentsPage() {
   const router = useRouter()
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
+
+  useEffect(() => {
+    const saved = localStorage.getItem("apt_view_mode") as "list" | "calendar" | null
+    if (saved === "list" || saved === "calendar") setViewMode(saved)
+  }, [])
+
+  function handleSetViewMode(mode: "list" | "calendar") {
+    setViewMode(mode)
+    localStorage.setItem("apt_view_mode", mode)
+  }
+
   const [calendarWeek, setCalendarWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }))
   const [periodFilter, setPeriodFilter] = useState("today")
 
@@ -186,6 +275,29 @@ export default function AppointmentsPage() {
     fetcher
   )
   const calendarItems = calendarRaw?.items ?? []
+
+  // Business hours for calendar grid
+  const { data: businessHours } = useSWR<BusinessHoursDay[]>(
+    API_CONFIG.ENDPOINTS.BUSINESS_HOURS,
+    fetcher
+  )
+
+  const { calStartHour, calEndHour } = useMemo(() => {
+    if (!businessHours?.length) return { calStartHour: 8, calEndHour: 20 }
+    let minH = 23, maxH = 1
+    businessHours.forEach((day) => {
+      if (!day.isOpen) return
+      day.ranges.forEach((r) => {
+        const oh = parseInt(r.openTime.split(":")[0], 10)
+        const ch = parseInt(r.closeTime.split(":")[0], 10)
+        if (oh < minH) minH = oh
+        if (ch > maxH) maxH = ch
+      })
+    })
+    // Clamp to reasonable defaults if no ranges found
+    if (minH > maxH) return { calStartHour: 8, calEndHour: 20 }
+    return { calStartHour: Math.max(minH - 1, 0), calEndHour: Math.min(maxH + 1, 24) }
+  }, [businessHours])
 
   // If there are no appointments today in the current page, show week automatically
   useEffect(() => {
@@ -312,14 +424,14 @@ export default function AppointmentsPage() {
                 )}
                 <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40 shrink-0">
                   <button
-                    onClick={() => setViewMode("list")}
+                    onClick={() => handleSetViewMode("list")}
                     className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     <List className="h-3 w-3" />
                     Lista
                   </button>
                   <button
-                    onClick={() => setViewMode("calendar")}
+                    onClick={() => handleSetViewMode("calendar")}
                     className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     <LayoutGrid className="h-3 w-3" />
@@ -373,6 +485,9 @@ export default function AppointmentsPage() {
           <CalendarWeekView
             weekStart={calendarWeek}
             appointments={calendarItems}
+            businessHours={businessHours}
+            calStartHour={calStartHour}
+            calEndHour={calEndHour}
             onSlotClick={(date, hour) => {
               const iso = format(date, "yyyy-MM-dd")
               router.push(`/appointments/new?date=${iso}&hour=${hour}`)
