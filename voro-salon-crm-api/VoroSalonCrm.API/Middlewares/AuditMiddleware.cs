@@ -31,6 +31,11 @@ namespace VoroSalonCrm.API.Middlewares
                 TenantId = currentUserService.TenantId != Guid.Empty ? currentUserService.TenantId : null
             };
 
+            // Limpa qualquer estado pendente deixado pela lógica de negócio antes de salvar
+            // apenas o RouteAuditLog. Sem isso, entidades modificadas/deletadas durante
+            // a requisição podem ser re-processadas aqui causando DbUpdateConcurrencyException.
+            dbContext.ChangeTracker.Clear();
+
             dbContext.RouteAuditLogs.Add(auditLog);
             await dbContext.SaveChangesAsync();
         }
