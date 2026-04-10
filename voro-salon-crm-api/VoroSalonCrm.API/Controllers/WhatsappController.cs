@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -197,6 +198,23 @@ namespace VoroSalonCrm.API.Controllers
 
         private static string NormalizePhone(string phone) =>
             new string(phone.Where(char.IsDigit).ToArray());
+
+        [HttpGet("kanban-appointments")]
+        [Authorize]
+        public async Task<IActionResult> GetKanbanAppointments(
+            [FromServices] IAppointmentService appointmentService,
+            [FromQuery] int days = 30)
+        {
+            try
+            {
+                var appointments = await appointmentService.GetPublicSourceAppointmentsAsync(days);
+                return ResponseViewModel<IEnumerable<AppointmentDto>>.Success(appointments).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
 
         [HttpGet("templates")]
         [Authorize]

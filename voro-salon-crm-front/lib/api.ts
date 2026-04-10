@@ -61,6 +61,7 @@ export const API_CONFIG = {
     WHATSAPP_CONVERSATIONS: "/whatsapp/conversations",
     WHATSAPP_TEMPLATES: "/whatsapp/templates",
     WHATSAPP_SEND_TEMPLATE: "/whatsapp/send-template",
+    WHATSAPP_KANBAN_APPOINTMENTS: "/whatsapp/kanban-appointments",
     CLIENT_MEMBERSHIP_PLANS: "/clientmemberships/plans",
     CLIENT_MEMBERSHIPS: "/clientmemberships",
   },

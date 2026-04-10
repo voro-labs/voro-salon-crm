@@ -979,7 +979,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     Notes = session.AppointmentDescription,
                     ServiceId = session.ServiceId!.Value,
                     EmployeeId = session.EmployeeId,
-                    ScheduledDateTime = scheduledDateTimeOffset
+                    ScheduledDateTime = scheduledDateTimeOffset,
+                    Source = Domain.Enums.AppointmentSource.WhatsAppBot,
                 };
 
                 var result = await _publicBookingService.CreateBookingAsync(dto);

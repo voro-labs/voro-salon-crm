@@ -13,5 +13,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<bool> DeleteAsync(Guid id);
         Task<bool> UpdateStatusAsync(Guid id, Domain.Enums.AppointmentStatus status);
         Task<IEnumerable<AvailabilitySlotDto>> GetAvailableSlotsAsync(DateTime date, Guid? serviceId = null, Guid? employeeId = null);
+        Task<IEnumerable<AppointmentDto>> GetPublicSourceAppointmentsAsync(int days = 30);
     }
 }

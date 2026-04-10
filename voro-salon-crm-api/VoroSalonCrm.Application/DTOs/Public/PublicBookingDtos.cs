@@ -44,6 +44,7 @@ namespace VoroSalonCrm.Application.DTOs.Public
         public Guid? EmployeeId { get; init; }
         public DateTimeOffset ScheduledDateTime { get; init; }
         public int? ReminderMinutes { get; init; }
+        public VoroSalonCrm.Domain.Enums.AppointmentSource Source { get; init; } = VoroSalonCrm.Domain.Enums.AppointmentSource.Website;
     }
 
     public record PublicReceiptDto(

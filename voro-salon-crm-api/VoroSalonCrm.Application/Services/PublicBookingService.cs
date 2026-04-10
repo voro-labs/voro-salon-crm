@@ -163,6 +163,7 @@ namespace VoroSalonCrm.Application.Services
                 Description = dto.Description,
                 Notes = dto.Notes,
                 ReminderMinutes = dto.ReminderMinutes,
+                Source = dto.Source,
             };
 
             await appointmentRepository.AddAsync(appointment);

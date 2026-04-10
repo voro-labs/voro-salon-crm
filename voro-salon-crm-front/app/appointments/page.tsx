@@ -1,16 +1,18 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X } from "lucide-react"
+import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns"
+import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, isSameDay, addWeeks, subWeeks } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import type { PagedResult } from "@/hooks/use-data-list.hook"
 
 import { API_CONFIG } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
@@ -24,7 +26,129 @@ import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { StatusBadge } from "@/components/ui/custom/status-badge"
 import { fetcher } from "@/lib/fetcher"
 
+// ─── Calendar constants ───────────────────────────────────────────────────────
+
+const CAL_START_HOUR = 8
+const CAL_END_HOUR = 20
+const HOUR_HEIGHT = 64 // px per hour
+
+const STATUS_COLORS: Record<number, string> = {
+  0: "bg-amber-100 border-amber-300 text-amber-900",
+  1: "bg-blue-100 border-blue-300 text-blue-900",
+  2: "bg-emerald-100 border-emerald-300 text-emerald-900",
+  3: "bg-red-100 border-red-300 text-red-900",
+  4: "bg-gray-100 border-gray-300 text-gray-700",
+}
+
+// ─── Calendar week view ───────────────────────────────────────────────────────
+
+function CalendarWeekView({
+  weekStart,
+  appointments,
+  onSlotClick,
+}: {
+  weekStart: Date
+  appointments: any[]
+  onSlotClick: (date: Date, hour: number) => void
+}) {
+  const router = useRouter()
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const hours = Array.from({ length: CAL_END_HOUR - CAL_START_HOUR }, (_, i) => CAL_START_HOUR + i)
+  const totalHeight = hours.length * HOUR_HEIGHT
+
+  return (
+    <div className="border rounded-xl overflow-hidden bg-card">
+      {/* Day headers */}
+      <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
+        <div className="h-12 border-r" />
+        {days.map((day) => (
+          <div
+            key={day.toISOString()}
+            className={`h-12 flex flex-col items-center justify-center text-xs border-r last:border-r-0 ${
+              isToday(day) ? "bg-primary/10" : ""
+            }`}
+          >
+            <span className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">
+              {format(day, "EEE", { locale: ptBR })}
+            </span>
+            <span className={`text-sm font-bold ${isToday(day) ? "text-primary" : "text-foreground"}`}>
+              {format(day, "dd")}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Grid body */}
+      <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)" }}>
+        <div className="grid grid-cols-8" style={{ minHeight: totalHeight }}>
+          {/* Hour labels */}
+          <div className="border-r">
+            {hours.map((h) => (
+              <div
+                key={h}
+                className="border-b text-[10px] text-muted-foreground text-right pr-2 flex items-start pt-1"
+                style={{ height: HOUR_HEIGHT }}
+              >
+                {String(h).padStart(2, "0")}:00
+              </div>
+            ))}
+          </div>
+
+          {/* Day columns */}
+          {days.map((day) => {
+            const dayAppts = appointments.filter((a) => isSameDay(new Date(a.scheduledDateTime), day))
+            return (
+              <div
+                key={day.toISOString()}
+                className={`relative border-r last:border-r-0 ${isToday(day) ? "bg-primary/5" : ""}`}
+                style={{ height: totalHeight }}
+              >
+                {/* Hour grid lines + click targets */}
+                {hours.map((h) => (
+                  <div
+                    key={h}
+                    className="absolute w-full border-b border-border/40 cursor-pointer hover:bg-accent/10 transition-colors"
+                    style={{ top: (h - CAL_START_HOUR) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                    onClick={() => onSlotClick(day, h)}
+                  />
+                ))}
+
+                {/* Appointment blocks */}
+                {dayAppts.map((apt: any) => {
+                  const date = new Date(apt.scheduledDateTime)
+                  const startMin = (date.getHours() - CAL_START_HOUR) * 60 + date.getMinutes()
+                  const top = (startMin / 60) * HOUR_HEIGHT
+                  const height = Math.max((apt.durationMinutes / 60) * HOUR_HEIGHT, 22)
+                  const colorClass = STATUS_COLORS[apt.status] ?? STATUS_COLORS[0]
+                  return (
+                    <div
+                      key={apt.id}
+                      className={`absolute inset-x-0.5 rounded border text-[10px] px-1 py-0.5 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 ${colorClass}`}
+                      style={{ top, height }}
+                      onClick={(e) => { e.stopPropagation(); router.push(`/appointments/${apt.id}`) }}
+                    >
+                      <p className="font-semibold truncate leading-tight">{apt.clientName}</p>
+                      {height > 30 && apt.serviceName && (
+                        <p className="truncate text-[9px] opacity-70">{apt.serviceName}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function AppointmentsPage() {
+  const router = useRouter()
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
+  const [calendarWeek, setCalendarWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }))
   const [periodFilter, setPeriodFilter] = useState("today")
 
   interface AppointmentItem {
@@ -53,6 +177,15 @@ export default function AppointmentsPage() {
   const { plan } = useSubscription()
   const { user } = useAuth()
   const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
+
+  // Calendar: fetch a broader window of appointments
+  const { data: calendarRaw } = useSWR<PagedResult<AppointmentItem>>(
+    viewMode === "calendar"
+      ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?page=1&pageSize=500`
+      : null,
+    fetcher
+  )
+  const calendarItems = calendarRaw?.items ?? []
 
   // If there are no appointments today in the current page, show week automatically
   useEffect(() => {
@@ -151,15 +284,48 @@ export default function AppointmentsPage() {
                   </Link>
                 </Button>
               </div>
-              {/* Linha 1: filtro de período */}
-              <div className="flex justify-end w-full">
-                <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
-                  <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
-                    <TabsTrigger value="today" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Hoje</TabsTrigger>
-                    <TabsTrigger value="week" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Semana</TabsTrigger>
-                    <TabsTrigger value="all" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Tudo</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+              {/* Linha 1: filtro de período + toggle de visualização */}
+              <div className="flex items-center justify-between w-full gap-2">
+                {viewMode === "list" ? (
+                  <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
+                    <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
+                      <TabsTrigger value="today" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Hoje</TabsTrigger>
+                      <TabsTrigger value="week" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Semana</TabsTrigger>
+                      <TabsTrigger value="all" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Tudo</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => subWeeks(w, 1))}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                      {format(calendarWeek, "dd MMM", { locale: ptBR })} — {format(addDays(calendarWeek, 6), "dd MMM yyyy", { locale: ptBR })}
+                    </span>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => addWeeks(w, 1))}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs text-primary" onClick={() => setCalendarWeek(startOfWeek(new Date(), { weekStartsOn: 0 }))}>
+                      Hoje
+                    </Button>
+                  </div>
+                )}
+                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40 shrink-0">
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <List className="h-3 w-3" />
+                    Lista
+                  </button>
+                  <button
+                    onClick={() => setViewMode("calendar")}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <LayoutGrid className="h-3 w-3" />
+                    Calendário
+                  </button>
+                </div>
               </div>
             </div>
           }
@@ -203,6 +369,17 @@ export default function AppointmentsPage() {
           </div>
         )}
 
+        {viewMode === "calendar" ? (
+          <CalendarWeekView
+            weekStart={calendarWeek}
+            appointments={calendarItems}
+            onSlotClick={(date, hour) => {
+              const iso = format(date, "yyyy-MM-dd")
+              router.push(`/appointments/new?date=${iso}&hour=${hour}`)
+            }}
+          />
+        ) : (
+        <>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -300,6 +477,8 @@ export default function AppointmentsPage() {
               </Button>
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </AuthGuard>

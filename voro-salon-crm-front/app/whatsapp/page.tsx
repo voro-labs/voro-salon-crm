@@ -26,6 +26,19 @@ import { toast } from "sonner"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+interface KanbanAppointment {
+  id: string
+  clientName: string
+  clientPhone?: string
+  serviceName?: string
+  scheduledDateTime: string
+  durationMinutes: number
+  status: number
+  amount: number
+  source: number // 1=WhatsAppBot 2=App 3=Website
+  employeeName?: string
+}
+
 interface Template {
   name: string
   label: string
@@ -62,6 +75,46 @@ interface WhatsAppMessage {
   whatsAppMessageId: string | null
   status: string
   timestamp: string
+}
+
+// ─── Source badge ────────────────────────────────────────────────────────────
+
+function SourceBadge({ source }: { source: number }) {
+  const config: Record<number, { label: string; className: string }> = {
+    1: { label: "Bot", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+    2: { label: "App", className: "bg-blue-100 text-blue-700 border-blue-200" },
+    3: { label: "Site", className: "bg-violet-100 text-violet-700 border-violet-200" },
+  }
+  const c = config[source]
+  if (!c) return null
+  return (
+    <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0", c.className)}>
+      {c.label}
+    </span>
+  )
+}
+
+// ─── Appointment kanban card ──────────────────────────────────────────────────
+
+function AppointmentKanbanCard({ apt }: { apt: KanbanAppointment }) {
+  const router = useRouter()
+  return (
+    <div
+      onClick={() => router.push(`/appointments/${apt.id}`)}
+      className="flex flex-col gap-1.5 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+    >
+      <div className="flex items-center justify-between gap-1 min-w-0">
+        <p className="text-xs font-semibold truncate min-w-0">{apt.clientName}</p>
+        <SourceBadge source={apt.source} />
+      </div>
+      {apt.serviceName && (
+        <p className="text-[11px] text-muted-foreground truncate">{apt.serviceName}</p>
+      )}
+      <p className="text-[10px] text-muted-foreground font-mono">
+        {format(new Date(apt.scheduledDateTime), "dd/MM HH:mm", { locale: ptBR })}
+      </p>
+    </div>
+  )
 }
 
 // ─── Kanban config ───────────────────────────────────────────────────────────
@@ -615,6 +668,19 @@ export default function WhatsAppKanbanPage() {
     { refreshInterval: 30000 }
   )
 
+  const { data: kanbanAppointments } = useSWR<KanbanAppointment[]>(
+    API_CONFIG.ENDPOINTS.WHATSAPP_KANBAN_APPOINTMENTS,
+    fetcher,
+    { refreshInterval: 60000 }
+  )
+
+  const kanbanApptIdsInConversations = new Set(
+    (conversations ?? []).filter(c => c.appointmentId).map(c => c.appointmentId!)
+  )
+  const extraKanbanAppts = (kanbanAppointments ?? []).filter(
+    a => !kanbanApptIdsInConversations.has(a.id)
+  )
+
   const getColumnConversations = (state: string) =>
     (conversations ?? []).filter((c) => c.state === state)
 
@@ -750,7 +816,9 @@ export default function WhatsAppKanbanPage() {
             <div className="overflow-x-auto pb-4">
               <div className="flex gap-3 min-w-max">
                 {KANBAN_COLUMNS.map((col) => {
-                  const items = getColumnConversations(col.state)
+                  const convItems = getColumnConversations(col.state)
+                  const apptItems = col.state === "COMPLETED" ? extraKanbanAppts : []
+                  const totalCount = convItems.length + apptItems.length
                   return (
                     <div
                       key={col.state}
@@ -758,16 +826,21 @@ export default function WhatsAppKanbanPage() {
                     >
                       <div className={cn("flex items-center justify-between rounded-lg px-2.5 py-1.5", col.headerColor)}>
                         <span className="text-xs font-semibold">{col.label}</span>
-                        <span className="text-xs font-bold tabular-nums">{items.length}</span>
+                        <span className="text-xs font-bold tabular-nums">{totalCount}</span>
                       </div>
 
                       <div className="flex flex-col gap-2 min-h-15">
-                        {items.length === 0 ? (
+                        {totalCount === 0 ? (
                           <p className="text-[11px] text-muted-foreground text-center py-4">Nenhum contato</p>
                         ) : (
-                          items.map((conv) => (
-                            <ConversationCard key={conv.id} conv={conv} />
-                          ))
+                          <>
+                            {convItems.map((conv) => (
+                              <ConversationCard key={conv.id} conv={conv} />
+                            ))}
+                            {apptItems.map((apt) => (
+                              <AppointmentKanbanCard key={apt.id} apt={apt} />
+                            ))}
+                          </>
                         )}
                       </div>
                     </div>
