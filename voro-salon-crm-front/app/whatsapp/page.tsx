@@ -7,6 +7,7 @@ import useSWR from "swr"
 import {
   MessageCircle, RefreshCw, Loader2, User, CalendarCheck, Send, X,
   CheckCircle, AlertCircle, ExternalLink, ChevronRight, Settings2,
+  MessageSquare,
 } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
