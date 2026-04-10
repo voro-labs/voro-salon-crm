@@ -335,7 +335,8 @@ export default function NovoAgendamentoPage() {
                     ) : (
                       <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
                         {visibleSlots.map((slot: any) => {
-                          const isSelected = form.scheduledDateTime.slice(0, 16) === slot.startTime.slice(0, 16)
+                          const formTime = form.scheduledDateTime ? new Date(form.scheduledDateTime).getTime() : NaN
+                          const isSelected = !isNaN(formTime) && new Date(slot.startTime).getTime() === formTime
                           const canSelect = slot.isAvailable || (isEncaixe && !slot.isBlocked)
                           return (
                             <Button
