@@ -73,29 +73,31 @@ export default function ClientesPage() {
         <PageHeader
           title="Clientes"
           action={
-            <div className="flex items-center gap-2">
-              {maxClients !== -1 && (
-                <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
-                  {totalCount}/{maxClients}
-                </span>
-              )}
-              <ExportMenu
-                size="sm"
-                rows={items}
-                filename="clientes"
-                columns={[
-                  { header: "Nome", value: (c: any) => c.name },
-                  { header: "Telefone", value: (c: any) => c.phone ?? "" },
-                  { header: "E-mail", value: (c: any) => c.email ?? "" },
-                  { header: "Observações", value: (c: any) => c.notes ?? "" },
-                  { header: "Qtd. Serviços", value: (c: any) => c.serviceCount ?? 0 },
-                ]}
-              />
-              <Button size="sm" onClick={handleNewClient}>
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Novo Cliente</span>
-                <span className="sm:hidden">Novo</span>
-              </Button>
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-end">
+                {maxClients !== -1 && (
+                  <span className={`text-sm font-medium tabular-nums ${isAtLimit ? "text-destructive" : "text-muted-foreground"}`}>
+                    {totalCount}/{maxClients}
+                  </span>
+                )}
+                <ExportMenu
+                  size="sm"
+                  rows={items}
+                  filename="clientes"
+                  columns={[
+                    { header: "Nome", value: (c: any) => c.name },
+                    { header: "Telefone", value: (c: any) => c.phone ?? "" },
+                    { header: "E-mail", value: (c: any) => c.email ?? "" },
+                    { header: "Observações", value: (c: any) => c.notes ?? "" },
+                    { header: "Qtd. Serviços", value: (c: any) => c.serviceCount ?? 0 },
+                  ]}
+                />
+                <Button size="sm" onClick={handleNewClient}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span className="hidden sm:inline">Novo Cliente</span>
+                  <span className="sm:hidden">Novo</span>
+                </Button>
+              </div>
             </div>
           }
         />
