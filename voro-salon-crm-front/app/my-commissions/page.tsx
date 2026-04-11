@@ -32,7 +32,7 @@ export default function MyCommissionsPage() {
     API_CONFIG.ENDPOINTS.EMPLOYEE_ME,
     async (url) => {
       const res = await secureApiCall<any>(url, { method: "GET" })
-      if (res.hasError) throw new Error(res.message)
+      if (res.hasError) throw new Error(res.message ?? "Failed to fetch employee data")
       return res.data
     }
   )
@@ -53,7 +53,7 @@ export default function MyCommissionsPage() {
     commissionsKey,
     async (url) => {
       const res = await secureApiCall<any[]>(url, { method: "GET" })
-      if (res.hasError) throw new Error(res.message)
+      if (res.hasError) throw new Error(res.message ?? "Failed to fetch commissions")
       return res.data ?? []
     }
   )

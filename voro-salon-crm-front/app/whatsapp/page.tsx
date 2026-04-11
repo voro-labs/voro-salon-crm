@@ -523,7 +523,7 @@ export default function WhatsAppPage() {
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
-      <ModuleGuard moduleId={9}>
+      <ModuleGuard moduleId={[9]}>
         {tenant !== undefined && !tenant?.useWhatsappBooking ? (
           <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center gap-6">
             <div className="h-20 w-20 rounded-full bg-rose-100 flex items-center justify-center">

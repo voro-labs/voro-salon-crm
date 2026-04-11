@@ -661,9 +661,9 @@ export default function ConfiguracoesPage() {
                       </>
                     ) : (
                       <div className="flex gap-3">
-                        <div className="h-9 w-[88px] animate-pulse rounded bg-muted" />
-                        <div className="h-9 w-[96px] animate-pulse rounded bg-muted" />
-                        <div className="h-9 w-[104px] animate-pulse rounded bg-muted" />
+                        <div className="h-9 w-22 animate-pulse rounded bg-muted" />
+                        <div className="h-9 w-24 animate-pulse rounded bg-muted" />
+                        <div className="h-9 w-26 animate-pulse rounded bg-muted" />
                       </div>
                     )}
                   </div>

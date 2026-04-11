@@ -21,6 +21,15 @@ import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { PlanLimitModal } from "@/components/ui/custom/plan-limit-modal"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 
+interface ClientItem {
+  id: string
+  name: string
+  phone: string
+  email: string
+  notes: string
+  serviceCount: number
+}
+
 export default function ClientesPage() {
   const router = useRouter()
   const [showLimitModal, setShowLimitModal] = useState(false)
@@ -37,7 +46,7 @@ export default function ClientesPage() {
     setSearch,
     isLoading,
     mutate,
-  } = useDataList(API_CONFIG.ENDPOINTS.CLIENTS, { pageSize: 10 })
+  } = useDataList<ClientItem>(API_CONFIG.ENDPOINTS.CLIENTS, { pageSize: 10 })
 
   const { maxClients } = usePlanLimits()
 
@@ -151,15 +160,7 @@ export default function ClientesPage() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {items.map(
-              (client: {
-                id: string
-                name: string
-                phone: string
-                email: string
-                notes: string
-                serviceCount: number
-              }) => (
+            {items.map((client) => (
                 <Link key={client.id} href={`/clients/${client.id}`}>
                   <Card className="transition-colors hover:bg-accent/10">
                     <CardContent className="flex items-center gap-4 p-4">

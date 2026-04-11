@@ -412,7 +412,7 @@ export default function ClienteDetailPage() {
                       Excluir
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="sm:max-w-[425px]">
+                  <AlertDialogContent className="sm:max-w-106.25">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -609,7 +609,7 @@ export default function ClienteDetailPage() {
                     return (
                       <div className="relative pl-6">
                         {/* Linha vertical da timeline */}
-                        <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border" />
+                        <div className="absolute left-2.75 top-2 bottom-2 w-px bg-border" />
                         <div className="space-y-6">
                           {Object.entries(groups).map(([month, svcs]) => (
                             <div key={month}>
@@ -626,7 +626,7 @@ export default function ClienteDetailPage() {
                                 {svcs.map((svc, i) => (
                                   <div key={svc.id} className="relative">
                                     {/* Dot da timeline */}
-                                    <div className={`absolute -left-6 mt-[14px] h-2.5 w-2.5 rounded-full border-2 border-background z-10 ${isRecent(svc.serviceDate) ? "bg-primary" : "bg-border"}`} />
+                                    <div className={`absolute -left-6 mt-3.5 h-2.5 w-2.5 rounded-full border-2 border-background z-10 ${isRecent(svc.serviceDate) ? "bg-primary" : "bg-border"}`} />
                                     <div className={`group flex items-start gap-3 rounded-lg border p-3 transition-colors ${isRecent(svc.serviceDate) ? "border-primary/30 bg-primary/5" : "border-border hover:bg-accent/40"}`}>
                                       <div className="flex flex-1 flex-col gap-0.5 overflow-hidden min-w-0">
                                         <div className="flex items-center justify-between gap-2">
@@ -709,7 +709,7 @@ export default function ClienteDetailPage() {
                       Nova Avaliação
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] h-[80vh] flex flex-col p-0">
+                  <DialogContent className="sm:max-w-150 h-[80vh] flex flex-col p-0">
                     <DialogHeader className="px-6 py-4 border-b">
                       <DialogTitle>Nova Ficha de Anamnese</DialogTitle>
                     </DialogHeader>

@@ -381,12 +381,12 @@ export function PdfStatementImport({ open, onOpenChange, categories, onImport }:
               <Table>
                 <TableHeader className="sticky top-0 bg-muted/60 backdrop-blur">
                   <TableRow>
-                    <TableHead className="w-[100px]">Data</TableHead>
+                    <TableHead className="w-25">Data</TableHead>
                     <TableHead>Descrição</TableHead>
-                    <TableHead className="w-[120px]">Valor</TableHead>
-                    <TableHead className="w-[100px]">Tipo</TableHead>
-                    <TableHead className="w-[160px]">Categoria</TableHead>
-                    <TableHead className="w-[40px]"></TableHead>
+                    <TableHead className="w-30">Valor</TableHead>
+                    <TableHead className="w-25">Tipo</TableHead>
+                    <TableHead className="w-40">Categoria</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -397,7 +397,7 @@ export function PdfStatementImport({ open, onOpenChange, categories, onImport }:
                           type="date"
                           value={row.date}
                           onChange={e => updateRow(row.id, { date: e.target.value })}
-                          className="h-8 text-xs w-[120px]"
+                          className="h-8 text-xs w-30"
                         />
                       </TableCell>
                       <TableCell>
@@ -413,7 +413,7 @@ export function PdfStatementImport({ open, onOpenChange, categories, onImport }:
                           step="0.01"
                           value={row.amount}
                           onChange={e => updateRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
-                          className="h-8 text-xs w-[110px]"
+                          className="h-8 text-xs w-27.5"
                         />
                       </TableCell>
                       <TableCell>
@@ -421,7 +421,7 @@ export function PdfStatementImport({ open, onOpenChange, categories, onImport }:
                           value={row.type.toString()}
                           onValueChange={v => updateRow(row.id, { type: parseInt(v) as TransactionType })}
                         >
-                          <SelectTrigger className="h-8 text-xs w-[90px]">
+                          <SelectTrigger className="h-8 text-xs w-22.5">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -435,7 +435,7 @@ export function PdfStatementImport({ open, onOpenChange, categories, onImport }:
                           value={row.categoryId ?? "none"}
                           onValueChange={v => updateRow(row.id, { categoryId: v === "none" ? undefined : v })}
                         >
-                          <SelectTrigger className="h-8 text-xs w-[150px]">
+                          <SelectTrigger className="h-8 text-xs w-37.5">
                             <SelectValue placeholder="Sem categoria" />
                           </SelectTrigger>
                           <SelectContent>

@@ -470,7 +470,7 @@ export default function FinancialPage() {
                       Novo Lançamento
                     </Button>
                   </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-106.25">
                   <DialogHeader>
                     <DialogTitle>Novo Lançamento</DialogTitle>
                   </DialogHeader>
@@ -691,11 +691,11 @@ export default function FinancialPage() {
           </CardHeader>
           <CardContent className="p-0 overflow-hidden">
             <div className="overflow-x-auto no-scrollbar">
-              <div className="min-w-[600px]">
+              <div className="min-w-150">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="w-[100px] pl-4">Vencimento</TableHead>
+                      <TableHead className="w-25 pl-4">Vencimento</TableHead>
                       <TableHead>Descrição</TableHead>
                       <TableHead>Categoria</TableHead>
                       <TableHead>Valor / Pago</TableHead>
@@ -850,7 +850,7 @@ export default function FinancialPage() {
       </div>
 
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle>Registrar Pagamento</DialogTitle>
           </DialogHeader>
@@ -953,7 +953,7 @@ export default function FinancialPage() {
       </AlertDialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle>Editar Lançamento</DialogTitle>
           </DialogHeader>
@@ -1066,7 +1066,7 @@ export default function FinancialPage() {
 
       {/* Auto Revenue Dialog */}
       <Dialog open={isAutoRevenueOpen} onOpenChange={setIsAutoRevenueOpen}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-130">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-amber-500" />

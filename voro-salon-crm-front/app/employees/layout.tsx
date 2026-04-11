@@ -8,7 +8,7 @@ export default function EmployeesLayout({
 }) {
   return (
     <AuthGuard requiredRoles={["Owner", "SalonOwner"]}>
-      <ModuleGuard moduleId={4}>{children}</ModuleGuard>
+      <ModuleGuard moduleId={[4]}>{children}</ModuleGuard>
     </AuthGuard>
   )
 }

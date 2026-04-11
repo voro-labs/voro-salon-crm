@@ -132,7 +132,7 @@ export default function BlockedSlotsPage() {
                       <TableHead>Período</TableHead>
                       <TableHead>Motivo (interno)</TableHead>
                       <TableHead>Mensagem ao cliente</TableHead>
-                      <TableHead className="w-[60px]"></TableHead>
+                      <TableHead className="w-15"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

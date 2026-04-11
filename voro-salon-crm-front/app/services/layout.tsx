@@ -8,7 +8,7 @@ export default function ServicesLayout({
 }) {
     return (
         <AuthGuard requiredRoles={["Owner", "SalonOwner"]}>
-            <ModuleGuard moduleId={3}>{children}</ModuleGuard>
+            <ModuleGuard moduleId={[3]}>{children}</ModuleGuard>
         </AuthGuard>
     )
 }

@@ -8,7 +8,7 @@ export default function FinancesLayout({
 }) {
   return (
     <AuthGuard requiredRoles={["Owner", "SalonOwner"]}>
-      <ModuleGuard moduleId={5}>{children}</ModuleGuard>
+      <ModuleGuard moduleId={[5]}>{children}</ModuleGuard>
     </AuthGuard>
   )
 }

@@ -282,7 +282,7 @@ export default function MembershipPlansPage() {
 
         {/* Create / Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-[480px]">
+          <DialogContent className="sm:max-w-120">
             <DialogHeader>
               <DialogTitle>{editingId ? "Editar Plano" : "Novo Plano"}</DialogTitle>
             </DialogHeader>

@@ -146,7 +146,7 @@ export default function FinancialCategoriesPage() {
               Nova Categoria
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-106.25">
             <DialogHeader>
               <DialogTitle>{editingCategory ? "Editar Categoria" : "Nova Categoria"}</DialogTitle>
             </DialogHeader>
@@ -228,7 +228,7 @@ export default function FinancialCategoriesPage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
+                    <TableHead className="w-25">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

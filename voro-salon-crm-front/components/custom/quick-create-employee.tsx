@@ -109,7 +109,7 @@ export function QuickCreateEmployee({ onSuccess }: QuickCreateEmployeeProps) {
 					<Plus className="h-4 w-4" />
 				</Button>
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-[425px]">
+			<DialogContent className="sm:max-w-106.25">
 				<DialogHeader>
 					<DialogTitle>Novo Funcionário</DialogTitle>
 				</DialogHeader>
@@ -162,7 +162,7 @@ export function QuickCreateEmployee({ onSuccess }: QuickCreateEmployeeProps) {
 
 					<div className="flex flex-col gap-2">
 						<Label>Especialidades (Opcional)</Label>
-						<div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto p-1 border rounded-md">
+						<div className="flex flex-wrap gap-2 max-h-50 overflow-y-auto p-1 border rounded-md">
 							{services?.map((s: any) => (
 								<Button
 									key={s.id}

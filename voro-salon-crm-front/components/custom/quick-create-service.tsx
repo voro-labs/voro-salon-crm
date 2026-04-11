@@ -103,7 +103,7 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
           <Plus className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>Novo Serviço</DialogTitle>
         </DialogHeader>
