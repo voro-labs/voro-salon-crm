@@ -584,18 +584,53 @@ export default function FinancialPage() {
 
         <Card className="min-w-0 w-full overflow-hidden">
           <CardHeader className="pb-3 border-b">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="text-lg">Transações</CardTitle>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar lançamento..."
-                  className="w-full pl-8 h-10 text-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-lg">Transações</CardTitle>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Buscar lançamento..."
+                    className="w-full pl-8 h-10 text-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
+              {txTotalCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">{txTotalCount} registro{txTotalCount !== 1 ? "s" : ""}</p>
+                    <span className="text-muted-foreground/40 text-sm">·</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-muted-foreground">Por página:</span>
+                      <div className="flex items-center gap-1">
+                        {[5, 10, 20, 25, 50].map((n) => (
+                          <button
+                            key={n}
+                            onClick={() => { setTxPageSize(n); setTxPage(1) }}
+                            className={`h-6 min-w-7 px-1.5 rounded text-xs font-medium transition-colors ${
+                              txPageSize === n
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {txTotalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" disabled={txSafePage === 1} onClick={() => setTxPage((p) => p - 1)}>Anterior</Button>
+                      <span className="text-sm">Página {txSafePage} de {txTotalPages}</span>
+                      <Button variant="outline" size="sm" disabled={txSafePage >= txTotalPages} onClick={() => setTxPage((p) => p + 1)}>Próxima</Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-0 overflow-hidden">

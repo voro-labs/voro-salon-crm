@@ -31,11 +31,13 @@ export default function ClientesPage() {
     totalPages,
     page,
     setPage,
+    pageSize,
+    setPageSize,
     search,
     setSearch,
     isLoading,
     mutate,
-  } = useDataList(API_CONFIG.ENDPOINTS.CLIENTS, { pageSize: 20 })
+  } = useDataList(API_CONFIG.ENDPOINTS.CLIENTS, { pageSize: 10 })
 
   const { maxClients } = usePlanLimits()
 
@@ -98,6 +100,40 @@ export default function ClientesPage() {
             className="pl-10"
           />
         </div>
+
+        {!isLoading && totalCount > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">{totalCount} registro{totalCount !== 1 ? "s" : ""}</p>
+              <span className="text-muted-foreground/40 text-sm">·</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-muted-foreground">Por página:</span>
+                <div className="flex items-center gap-1">
+                  {[5, 10, 20, 25, 50].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setPageSize(n)}
+                      className={`h-6 min-w-7 px-1.5 rounded text-xs font-medium transition-colors ${
+                        pageSize === n
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Anterior</Button>
+                <span className="text-sm">Página {page} de {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Próxima</Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <ListSkeleton type="cards" count={5} />
@@ -166,28 +202,51 @@ export default function ClientesPage() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">{totalCount} registros</p>
+        {totalCount > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Anterior
-              </Button>
-              <span className="text-sm">Página {page} de {totalPages}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Próxima
-              </Button>
+              <p className="text-sm text-muted-foreground">{totalCount} registro{totalCount !== 1 ? "s" : ""}</p>
+              <span className="text-muted-foreground/40 text-sm">·</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-muted-foreground">Por página:</span>
+                <div className="flex items-center gap-1">
+                  {[5, 10, 20, 25, 50].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setPageSize(n)}
+                      className={`h-6 min-w-7 px-1.5 rounded text-xs font-medium transition-colors ${
+                        pageSize === n
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm">Página {page} de {totalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Próxima
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
