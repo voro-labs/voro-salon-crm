@@ -97,6 +97,19 @@ export default function NovoAgendamentoPage() {
     fetcher
   )
 
+  // Clear scheduledDateTime when availability loads with no future slots
+  useEffect(() => {
+    if (loadingAvailability || !availability || !selectedDate) return
+    const now = new Date()
+    const isToday = selectedDate.toDateString() === now.toDateString()
+    const hasVisible = (availability as any[]).some((slot) =>
+      isToday ? new Date(slot.startTime) > now : true
+    )
+    if (!hasVisible) {
+      setForm((p) => ({ ...p, scheduledDateTime: "" }))
+    }
+  }, [availability, loadingAvailability, selectedDate])
+
   // Auto-set employee for SalonEmployee role
   useEffect(() => {
     if (myEmployee?.id) {
@@ -361,7 +374,9 @@ export default function NovoAgendamentoPage() {
                       </div>
                     )}
                     {visibleSlots.length === 0 && !loadingAvailability && (
-                      <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data.</p>
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                        Nenhum horário disponível para esta data. Selecione outro dia ou ative o modo <strong>Encaixe</strong> abaixo.
+                      </div>
                     )}
                   </div>
                 )
@@ -418,7 +433,12 @@ export default function NovoAgendamentoPage() {
                 <Button type="button" variant="outline" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
                   <Link href="/appointments">Cancelar</Link>
                 </Button>
-                <Button type="submit" disabled={isCreating} className="w-full sm:w-auto h-11 text-sm sm:text-base">
+                <Button
+                  type="submit"
+                  disabled={isCreating || !form.scheduledDateTime}
+                  title={!form.scheduledDateTime ? "Selecione um horário disponível" : undefined}
+                  className="w-full sm:w-auto h-11 text-sm sm:text-base"
+                >
                   {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Confirmar Agendamento
                 </Button>
