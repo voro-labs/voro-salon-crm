@@ -156,12 +156,12 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 border-border/60 min-w-0">
             <CardContent className="pt-6">
-              <Skeleton className="h-[300px] w-full bg-muted" />
+              <Skeleton className="h-75 w-full bg-muted" />
             </CardContent>
           </Card>
           <Card className="border-border/60 min-w-0">
             <CardContent className="pt-6">
-              <Skeleton className="h-[300px] w-full bg-muted" />
+              <Skeleton className="h-75 w-full bg-muted" />
             </CardContent>
           </Card>
         </div>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {chartData.length > 0 ? (
-                <div className="h-[376px] w-full min-w-0">
+                <div className="h-94 w-full min-w-0">
                   <ResponsiveContainer width="99%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid
@@ -337,7 +337,7 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                <div className="h-75 flex items-center justify-center text-muted-foreground text-sm">
                   Nenhum dado de receita encontrado
                 </div>
               )}
@@ -398,10 +398,10 @@ export default function DashboardPage() {
                                 onValueChange={(v) => handleStatusUpdate(apt.id, v)}
                                 disabled={isAptUpdating}
                               >
-                                <SelectTrigger className="h-7 w-[110px] text-[10px] bg-transparent border-border/40 shrink-0">
+                                <SelectTrigger className="h-7 w-27.5 text-[10px] bg-transparent border-border/40 shrink-0">
                                   {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <SelectValue />}
                                 </SelectTrigger>
-                                <SelectContent className="min-w-[120px]">
+                                <SelectContent className="min-w-30">
                                   {Object.entries(appointmentStatusConfig).map(([key, cfg]) => (
                                     <SelectItem key={key} value={key} className="text-[10px]">
                                       {cfg.label}
@@ -532,7 +532,7 @@ export default function DashboardPage() {
             </p>
           </DialogHeader>
 
-          <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto py-1 pr-1">
+          <div className="flex flex-col gap-2 max-h-90 overflow-y-auto py-1 pr-1">
             {pastAppointments.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">

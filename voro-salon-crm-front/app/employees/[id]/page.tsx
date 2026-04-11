@@ -598,7 +598,7 @@ export default function EmployeeDetailPage() {
                       }}
                       className="h-7 w-7 rounded-md border bg-background hover:bg-muted flex items-center justify-center text-muted-foreground"
                     >‹</button>
-                    <span className="text-sm font-medium min-w-[120px] text-center">
+                    <span className="text-sm font-medium min-w-30 text-center">
                       {new Date(goalYear, goalMonth - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
                     </span>
                     <button

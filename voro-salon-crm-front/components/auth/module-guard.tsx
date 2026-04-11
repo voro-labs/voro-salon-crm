@@ -9,7 +9,7 @@ import { LoadingSimple } from "../ui/custom/loading/loading-simple"
 
 interface ModuleGuardProps {
     children: React.ReactNode
-    moduleId: number
+    moduleId: number[]
 }
 
 export function ModuleGuard({ children, moduleId }: ModuleGuardProps) {

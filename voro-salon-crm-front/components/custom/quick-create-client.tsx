@@ -132,7 +132,7 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
           <Plus className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-125 p-0 overflow-hidden flex flex-col max-h-[90vh]">
         <DialogHeader className="p-6 pb-2 border-b">
           <DialogTitle>Novo Cliente</DialogTitle>
         </DialogHeader>

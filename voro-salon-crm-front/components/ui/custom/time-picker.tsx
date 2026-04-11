@@ -299,7 +299,7 @@ export function TimePicker({
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 min-w-[300px]">
+        <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 min-w-75">
           {/* Time Picker Content */}
           {renderTimePicker()}
 

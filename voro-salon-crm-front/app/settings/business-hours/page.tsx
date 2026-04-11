@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { ArrowLeft, Plus, X, Clock, Info, Loader2, Save } from "lucide-react"
+import { ArrowLeft, Plus, X, Clock, Info, Loader2, Save, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 
 import { fetcher } from "@/lib/fetcher"
@@ -22,6 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 // ─── Data model ──────────────────────────────────────────────────────────────
 
@@ -70,6 +81,28 @@ const DEFAULT_RANGES: TimeRange[] = [
   { openTime: "08:00", closeTime: "11:30" },
   { openTime: "13:30", closeTime: "18:30" },
 ]
+
+// Configuração padrão: Dom fechado, Seg–Sáb aberto com DEFAULT_RANGES
+const DEFAULT_SCHEDULE: BusinessHoursViewModel[] = DAYS_OF_WEEK.map((d) => ({
+  dayOfWeek: d.day,
+  isOpen: d.day >= 1 && d.day <= 6,
+  ranges: DEFAULT_RANGES.map((r) => ({ ...r })),
+}))
+
+function isScheduleDefault(localHours: BusinessHoursViewModel[]): boolean {
+  return DEFAULT_SCHEDULE.every((def) => {
+    const local = localHours.find((l) => l.dayOfWeek === def.dayOfWeek)
+    if (!local) return false
+    if (local.isOpen !== def.isOpen) return false
+    if (!local.isOpen) return true // fechado == fechado, ranges irrelevantes
+    if (local.ranges.length !== def.ranges.length) return false
+    return def.ranges.every(
+      (r, i) =>
+        local.ranges[i].openTime === r.openTime &&
+        local.ranges[i].closeTime === r.closeTime
+    )
+  })
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +166,7 @@ function BusinessHoursContent() {
 
   const [localHours, setLocalHours] = useState<BusinessHoursViewModel[]>([])
   const [savingDay, setSavingDay] = useState<number | null>(null)
+  const [resetting, setResetting] = useState(false)
 
   // Initialise local state from SWR data (first load only)
   useEffect(() => {
@@ -239,25 +273,99 @@ function BusinessHoursContent() {
     [localHours, mutate]
   )
 
+  // ─── Reset to default ──────────────────────────────────────────────────────
+
+  const resetToDefault = useCallback(async () => {
+    setResetting(true)
+    setLocalHours(DEFAULT_SCHEDULE.map((d) => ({ ...d, ranges: d.ranges.map((r) => ({ ...r })) })))
+    try {
+      const payload = {
+        days: DEFAULT_SCHEDULE.map((d) => ({
+          dayOfWeek: d.dayOfWeek,
+          isOpen: d.isOpen,
+          ranges: d.ranges.map((r) => ({ openTime: r.openTime, closeTime: r.closeTime })),
+        })),
+      }
+      const result = await secureApiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      })
+      if (!result.hasError) {
+        toast.success("Horários restaurados para o padrão!")
+        mutate()
+      } else {
+        toast.error(result.message || "Erro ao restaurar horários.")
+      }
+    } catch {
+      toast.error("Erro ao conectar ao servidor.")
+    } finally {
+      setResetting(false)
+    }
+  }, [mutate])
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col gap-6 pb-10">
       {/* Page header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild className="shrink-0">
-          <Link href="/settings">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Horários de Funcionamento
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Configure os dias e horários em que seu estabelecimento está aberto.
-          </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
+            <Link href="/settings">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Horários de Funcionamento
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Configure os dias e horários em que seu estabelecimento está aberto.
+            </p>
+          </div>
         </div>
+
+        {localHours.length > 0 && !isScheduleDefault(localHours) && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 mt-1 gap-1.5 text-muted-foreground hover:text-foreground"
+                disabled={resetting || savingDay !== null}
+              >
+                {resetting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3.5 w-3.5" />
+                )}
+                Restaurar padrão
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <RotateCcw className="h-5 w-5 text-muted-foreground" />
+                  Restaurar horários padrão?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Isso vai sobrescrever todos os horários com a configuração padrão:
+                  <br /><br />
+                  <span className="font-medium text-foreground">Dom:</span> Fechado<br />
+                  <span className="font-medium text-foreground">Seg–Sáb:</span> 08:00–11:30 e 13:30–18:30
+                  <br /><br />
+                  Essa ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={resetToDefault}>
+                  Restaurar padrão
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Info banner */}

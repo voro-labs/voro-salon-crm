@@ -14,7 +14,8 @@ import {
   MessageCircle,
   MessageSquare,
   Star,
-  Send
+  Send,
+  Ban,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,7 +55,7 @@ import { CurrencyInput } from "@/components/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+import { format, isPast } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import useSWR from "swr"
 import { toast } from "sonner"
@@ -172,6 +173,9 @@ export default function AppointmentDetailPage() {
     setPendingStatus(null)
   }
 
+  // Bloqueia toda a edição enquanto o agendamento estiver cancelado
+  const isFormLocked = form.status === 3
+
   if (isLoading || !appointment || !clients || !services) {
     return (
       <div className="flex flex-col gap-6 p-6">
@@ -232,23 +236,30 @@ export default function AppointmentDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <CardTitle className="text-foreground">Editar Registros</CardTitle>
+                {isFormLocked && (
+                  <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/40 px-3 py-2 text-sm text-red-700 dark:text-red-400 mt-2">
+                    <Ban className="h-4 w-4 shrink-0" />
+                    <span>Agendamento cancelado. Altere o status para liberar a edição.</span>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
-                <form 
-                  onSubmit={async (e) => { 
-                    e.preventDefault(); 
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (isFormLocked) return
                     const originalTime = new Date(appointment.scheduledDateTime).getTime();
                     const newTime = new Date(form.scheduledDateTime).getTime();
                     const isRescheduling = originalTime !== newTime;
 
                     const success = await updateAppointment(form);
-                    
+
                     if (success && isRescheduling && !tenant?.useWhatsappBooking) {
                       setRescheduleDialogOpen(true);
                     }
-                  }} 
+                  }}
                   className="flex flex-col gap-5"
                 >
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -258,6 +269,7 @@ export default function AppointmentDetailPage() {
                         key={`client-${form.clientId}`}
                         value={form.clientId}
                         onValueChange={(v) => setForm((p) => ({ ...p, clientId: v }))}
+                        disabled={isFormLocked}
                       >
                         <SelectTrigger id="clientId" className="w-full">
                           <SelectValue placeholder="Selecione um cliente" />
@@ -277,6 +289,7 @@ export default function AppointmentDetailPage() {
                           key={`service-${form.serviceId}`}
                           value={form.serviceId}
                           onValueChange={handleServiceChange}
+                          disabled={isFormLocked}
                         >
                           <SelectTrigger id="serviceId" className="w-full">
                             <SelectValue placeholder="Selecione um serviço" />
@@ -300,6 +313,7 @@ export default function AppointmentDetailPage() {
                           key={`employee-${form.employeeId}`}
                           value={form.employeeId}
                           onValueChange={(v) => setForm((p) => ({ ...p, employeeId: v }))}
+                          disabled={isFormLocked}
                         >
                           <SelectTrigger id="employeeId" className="w-full">
                             <SelectValue placeholder="Selecione um funcionário" />
@@ -320,6 +334,7 @@ export default function AppointmentDetailPage() {
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
+                            disabled={isFormLocked}
                             className={cn("w-full justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
@@ -347,6 +362,7 @@ export default function AppointmentDetailPage() {
                         key={`duration-${form.durationMinutes}`}
                         value={form.durationMinutes.toString()}
                         onValueChange={(v) => setForm((p) => ({ ...p, durationMinutes: parseInt(v) }))}
+                        disabled={isFormLocked}
                       >
                         <SelectTrigger id="durationMinutes" className="w-full">
                           <SelectValue />
@@ -363,7 +379,7 @@ export default function AppointmentDetailPage() {
                     </div>
                   </div>
 
-                  {selectedDate && (() => {
+                  {selectedDate && !isFormLocked && (() => {
                     const now = new Date()
                     const isToday = selectedDate.toDateString() === now.toDateString()
                     const visibleSlots = (availability ?? []).filter((slot: any) => {
@@ -449,7 +465,7 @@ export default function AppointmentDetailPage() {
                   })()}
 
                   <div className="flex items-center gap-3 py-1">
-                    <Switch id="encaixe-edit" checked={isEncaixe} onCheckedChange={setIsEncaixe} />
+                    <Switch id="encaixe-edit" checked={isEncaixe} onCheckedChange={setIsEncaixe} disabled={isFormLocked} />
                     <div>
                       <Label htmlFor="encaixe-edit" className="flex items-center gap-1.5 cursor-pointer">
                         <Zap className="h-3.5 w-3.5 text-amber-500" />
@@ -466,6 +482,7 @@ export default function AppointmentDetailPage() {
                         id="amount"
                         value={form.amount}
                         onChange={(v) => setForm((p) => ({ ...p, amount: v }))}
+                        disabled={isFormLocked}
                       />
                     </div>
 
@@ -476,6 +493,7 @@ export default function AppointmentDetailPage() {
                         placeholder={placeholders.name}
                         value={form.description}
                         onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                        disabled={isFormLocked}
                       />
                     </div>
                   </div>
@@ -488,14 +506,15 @@ export default function AppointmentDetailPage() {
                       rows={3}
                       value={form.notes}
                       onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+                      disabled={isFormLocked}
                     />
                   </div>
 
                   <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
                     <Button type="button" variant="outline" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
-                      <Link href="/appointments">Cancelar</Link>
+                      <Link href="/appointments">Voltar</Link>
                     </Button>
-                    <Button type="submit" disabled={isSaving} className="w-full sm:w-auto h-11 text-sm sm:text-base">
+                    <Button type="submit" disabled={isSaving || isFormLocked} className="w-full sm:w-auto h-11 text-sm sm:text-base">
                       {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Salvar Alterações
                     </Button>

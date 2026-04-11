@@ -5,5 +5,5 @@ export default function AppointmentsLayout({
 }: {
     children: React.ReactNode
 }) {
-    return <ModuleGuard moduleId={2}>{children}</ModuleGuard>
+    return <ModuleGuard moduleId={[2]}>{children}</ModuleGuard>
 }

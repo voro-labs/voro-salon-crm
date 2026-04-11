@@ -498,7 +498,7 @@ export default function ServicePromotionsPage() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-130">
           <DialogHeader>
             <DialogTitle>
               {editingId ? "Editar Promoção" : "Nova Promoção"}

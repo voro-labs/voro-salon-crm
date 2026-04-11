@@ -25,6 +25,7 @@ interface CurrencyInputProps {
   id?: string
   placeholder?: string
   required?: boolean
+  disabled?: boolean
 }
 
 export function CurrencyInput({
@@ -33,6 +34,7 @@ export function CurrencyInput({
   id,
   placeholder = "0,00",
   required,
+  disabled,
 }: CurrencyInputProps) {
   const display = value > 0
     ? value.toLocaleString("pt-BR", {
@@ -59,6 +61,7 @@ export function CurrencyInput({
         value={display}
         onChange={handleChange}
         required={required}
+        disabled={disabled}
         className="pl-10"
       />
     </div>
