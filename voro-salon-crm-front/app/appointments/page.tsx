@@ -58,7 +58,7 @@ function CalendarWeekView({
 }: {
   weekStart: Date
   appointments: any[]
-  onSlotClick: (date: Date, hour: number) => void
+  onSlotClick: (date: Date, hour: number, minute: number) => void
   businessHours?: BusinessHoursDay[]
   calStartHour: number
   calEndHour: number
@@ -104,25 +104,48 @@ function CalendarWeekView({
     })
   }
 
-  function hasConflict(date: Date, hour: number) {
+  function hasConflict(date: Date, hour: number, minute: number) {
+    const slotMin = hour * 60 + minute
+    const now = new Date()
     return appointments.some((apt) => {
       if (!isSameDay(new Date(apt.scheduledDateTime), date)) return false
+      // Cancelados no futuro liberam o slot para novo agendamento
+      if (apt.status === 3 && new Date(apt.scheduledDateTime) > now) return false
       const aptStart = new Date(apt.scheduledDateTime)
       const aptStartMin = aptStart.getHours() * 60 + aptStart.getMinutes()
       const aptEndMin = aptStartMin + (apt.durationMinutes || 30)
-      const slotMin = hour * 60
-      return slotMin < aptEndMin && slotMin + 60 > aptStartMin
+      return slotMin < aptEndMin && slotMin + 30 > aptStartMin
     })
   }
 
-  function handleSlotClick(date: Date, hour: number) {
-    const key = `${date.toISOString()}_${hour}`
-    if (isDayClosed(date) || !isInBusinessHours(date, hour) || hasConflict(date, hour)) {
+  function getAvailableMinutesFromSlot(date: Date, slotStartMin: number): number {
+    const now = new Date()
+    const dayAppts = appointments
+      .filter((a) => {
+        if (!isSameDay(new Date(a.scheduledDateTime), date)) return false
+        if (a.status === 3 && new Date(a.scheduledDateTime) > now) return false
+        return true
+      })
+      .sort((a, b) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
+
+    const next = dayAppts.find((a) => {
+      const startMin = new Date(a.scheduledDateTime).getHours() * 60 + new Date(a.scheduledDateTime).getMinutes()
+      return startMin > slotStartMin
+    })
+
+    if (!next) return Infinity
+    const nextStartMin = new Date(next.scheduledDateTime).getHours() * 60 + new Date(next.scheduledDateTime).getMinutes()
+    return nextStartMin - slotStartMin
+  }
+
+  function handleSlotClick(date: Date, hour: number, minute: number) {
+    const key = `${date.toISOString()}_${hour}_${minute}`
+    if (isDayClosed(date) || !isInBusinessHours(date, hour) || hasConflict(date, hour, minute)) {
       setBlockedKey(key)
       setTimeout(() => setBlockedKey(null), 700)
       return
     }
-    onSlotClick(date, hour)
+    onSlotClick(date, hour, minute)
   }
 
   // ── Mobile: single-day view ──────────────────────────────────────────────────
@@ -190,26 +213,38 @@ function CalendarWeekView({
               className={`relative ${isToday(visibleDay) ? "bg-primary/5" : ""}`}
               style={{ height: totalHeight }}
             >
-              {hours.map((h) => {
-                const inBH = isInBusinessHours(visibleDay, h)
-                const slotKey = `${visibleDay.toISOString()}_${h}`
-                const isBlocked = blockedKey === slotKey
+              {hours.flatMap((h) =>
+                [0, 30].map((m) => {
+                  const inBH = isInBusinessHours(visibleDay, h)
+                  const slotKey = `${visibleDay.toISOString()}_${h}_${m}`
+                  const isBlocked = blockedKey === slotKey
+                  const topOffset = (h - calStartHour) * HOUR_HEIGHT + (m === 30 ? HOUR_HEIGHT / 2 : 0)
+                  const availMins = (!closed && inBH && !hasConflict(visibleDay, h, m))
+                    ? getAvailableMinutesFromSlot(visibleDay, h * 60 + m)
+                    : Infinity
 
-                return (
-                  <div
-                    key={h}
-                    className={`absolute w-full border-b border-border/40 transition-colors duration-150 ${
-                      isBlocked
-                        ? "bg-red-100 dark:bg-red-900/30"
-                        : closed || !inBH
-                        ? "bg-muted/30 cursor-default"
-                        : "cursor-pointer hover:bg-accent/10"
-                    }`}
-                    style={{ top: (h - calStartHour) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                    onClick={() => handleSlotClick(visibleDay, h)}
-                  />
-                )
-              })}
+                  return (
+                    <div
+                      key={`${h}_${m}`}
+                      className={`absolute w-full transition-colors duration-150 ${
+                        m === 0 ? "border-b border-border/40" : "border-b border-dashed border-border/20"
+                      } ${
+                        isBlocked
+                          ? "bg-red-100 dark:bg-red-900/30"
+                          : closed || !inBH
+                          ? "bg-muted/30 cursor-default"
+                          : hasConflict(visibleDay, h, m)
+                          ? "bg-muted/20 cursor-default"
+                          : availMins < 30
+                          ? "bg-amber-50/40 cursor-default"
+                          : "cursor-pointer hover:bg-accent/10"
+                      }`}
+                      style={{ top: topOffset, height: HOUR_HEIGHT / 2 }}
+                      onClick={() => handleSlotClick(visibleDay, h, m)}
+                    />
+                  )
+                })
+              )}
 
               {dayAppts.map((apt: any) => {
                 const date = new Date(apt.scheduledDateTime)
@@ -298,27 +333,39 @@ function CalendarWeekView({
                 className={`relative border-r last:border-r-0 ${isToday(day) ? "bg-primary/5" : ""}`}
                 style={{ height: totalHeight }}
               >
-                {/* Hour grid lines + click targets */}
-                {hours.map((h) => {
-                  const inBH = isInBusinessHours(day, h)
-                  const slotKey = `${day.toISOString()}_${h}`
-                  const isBlocked = blockedKey === slotKey
+                {/* Hour grid lines + click targets (30-min slots) */}
+                {hours.flatMap((h) =>
+                  [0, 30].map((m) => {
+                    const inBH = isInBusinessHours(day, h)
+                    const slotKey = `${day.toISOString()}_${h}_${m}`
+                    const isBlocked = blockedKey === slotKey
+                    const topOffset = (h - calStartHour) * HOUR_HEIGHT + (m === 30 ? HOUR_HEIGHT / 2 : 0)
+                    const availMins = (!closed && inBH && !hasConflict(day, h, m))
+                      ? getAvailableMinutesFromSlot(day, h * 60 + m)
+                      : Infinity
 
-                  return (
-                    <div
-                      key={h}
-                      className={`absolute w-full border-b border-border/40 transition-colors duration-150 ${
-                        isBlocked
-                          ? "bg-red-100 dark:bg-red-900/30"
-                          : closed || !inBH
-                          ? "bg-muted/30 cursor-default"
-                          : "cursor-pointer hover:bg-accent/10"
-                      }`}
-                      style={{ top: (h - calStartHour) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                      onClick={() => handleSlotClick(day, h)}
-                    />
-                  )
-                })}
+                    return (
+                      <div
+                        key={`${h}_${m}`}
+                        className={`absolute w-full transition-colors duration-150 ${
+                          m === 0 ? "border-b border-border/40" : "border-b border-dashed border-border/20"
+                        } ${
+                          isBlocked
+                            ? "bg-red-100 dark:bg-red-900/30"
+                            : closed || !inBH
+                            ? "bg-muted/30 cursor-default"
+                            : hasConflict(day, h, m)
+                            ? "bg-muted/20 cursor-default"
+                            : availMins < 30
+                            ? "bg-amber-50/40 cursor-default"
+                            : "cursor-pointer hover:bg-accent/10"
+                        }`}
+                        style={{ top: topOffset, height: HOUR_HEIGHT / 2 }}
+                        onClick={() => handleSlotClick(day, h, m)}
+                      />
+                    )
+                  })
+                )}
 
                 {/* Appointment blocks */}
                 {dayAppts.map((apt: any) => {
@@ -614,9 +661,9 @@ export default function AppointmentsPage() {
             businessHours={businessHours}
             calStartHour={calStartHour}
             calEndHour={calEndHour}
-            onSlotClick={(date, hour) => {
+            onSlotClick={(date, hour, minute) => {
               const iso = format(date, "yyyy-MM-dd")
-              router.push(`/appointments/new?date=${iso}&hour=${hour}`)
+              router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
             }}
           />
         ) : (

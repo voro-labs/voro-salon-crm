@@ -74,7 +74,8 @@ export default function NovoAgendamentoPage() {
     const hourParam = searchParams.get("hour")
     if (!dateParam || !hourParam) return
     const hour = parseInt(hourParam, 10)
-    const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:00:00`)
+    const minute = parseInt(searchParams.get("minute") ?? "0", 10)
+    const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`)
     if (isNaN(dateObj.getTime())) return
     setSelectedDate(dateObj)
     const tzOffset = dateObj.getTimezoneOffset() * 60000
@@ -120,7 +121,7 @@ export default function NovoAgendamentoPage() {
 
   // Set default date/time to now (rounded to next 30 min) — skip when URL params pre-fill
   useEffect(() => {
-    if (searchParams.get("date") && searchParams.get("hour")) return
+    if (searchParams.get("date") && searchParams.get("hour") != null) return
     const now = new Date()
     now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30)
     now.setSeconds(0)

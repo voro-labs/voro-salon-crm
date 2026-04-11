@@ -54,7 +54,7 @@ import { CurrencyInput } from "@/components/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+import { format, isPast } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import useSWR from "swr"
 import { toast } from "sonner"
@@ -172,6 +172,9 @@ export default function AppointmentDetailPage() {
     setPendingStatus(null)
   }
 
+  // TASK-002: impede troca de cliente em agendamento cancelado que já passou
+  const clientFieldLocked = appointment != null && appointment.status === 3 && isPast(new Date(appointment.scheduledDateTime))
+
   if (isLoading || !appointment || !clients || !services) {
     return (
       <div className="flex flex-col gap-6 p-6">
@@ -253,13 +256,19 @@ export default function AppointmentDetailPage() {
                 >
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="clientId">Cliente *</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="clientId">Cliente *</Label>
+                        {clientFieldLocked && (
+                          <span className="text-[10px] text-muted-foreground">Cancelado no passado — não editável</span>
+                        )}
+                      </div>
                       <Select
                         key={`client-${form.clientId}`}
                         value={form.clientId}
                         onValueChange={(v) => setForm((p) => ({ ...p, clientId: v }))}
+                        disabled={clientFieldLocked}
                       >
-                        <SelectTrigger id="clientId" className="w-full">
+                        <SelectTrigger id="clientId" className="w-full" title={clientFieldLocked ? "Não é possível alterar o cliente de um agendamento cancelado no passado" : undefined}>
                           <SelectValue placeholder="Selecione um cliente" />
                         </SelectTrigger>
                         <SelectContent>
