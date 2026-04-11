@@ -69,6 +69,7 @@ export interface AnamnesisSheet {
   id: string;
   clientId: string;
   professionalId: string;
+  professionalName?: string;
   date: string;
   diagnosis?: string;
   treatmentProtocol?: string;

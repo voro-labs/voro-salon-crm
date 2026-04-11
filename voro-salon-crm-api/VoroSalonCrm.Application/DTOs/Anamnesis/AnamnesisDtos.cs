@@ -68,6 +68,7 @@ namespace VoroSalonCrm.Application.DTOs.Anamnesis
         Guid Id,
         Guid ClientId,
         Guid ProfessionalId,
+        string? ProfessionalName,
         DateTimeOffset Date,
         string? Diagnosis,
         string? TreatmentProtocol,

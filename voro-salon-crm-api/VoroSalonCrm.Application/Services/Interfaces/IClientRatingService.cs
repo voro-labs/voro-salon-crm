@@ -14,6 +14,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<ClientRatingDto?> GetByAppointmentAsync(Guid appointmentId);
 
         /// <summary>Manually send a WhatsApp rating request for a completed appointment.</summary>
-        Task SendRatingRequestAsync(Guid appointmentId);
+        Task<SendRatingRequestResultDto> SendRatingRequestAsync(Guid appointmentId);
     }
 }

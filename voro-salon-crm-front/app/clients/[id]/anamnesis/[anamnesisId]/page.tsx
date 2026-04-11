@@ -4,18 +4,20 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import useSWR from "swr"
-import { 
-  ArrowLeft, 
-  Printer, 
-  User, 
-  Calendar, 
-  ClipboardList, 
+import {
+  ArrowLeft,
+  Printer,
+  User,
+  Calendar,
+  ClipboardList,
   Stethoscope,
   ChevronDown,
   ChevronUp,
   Image as ImageIcon,
   PenTool,
-  Loader2
+  Loader2,
+  Phone,
+  Cake,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,6 +33,7 @@ import {
   AnamnesisFieldType
 } from "@/types/anamnesis.types"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
+import { formatPhone } from "@/lib/mask-utils"
 
 export default function AnamnesisDetailPage() {
   const params = useParams()
@@ -137,6 +140,20 @@ export default function AnamnesisDetailPage() {
               <div className="overflow-hidden">
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider">Cliente</p>
                 <p className="text-lg font-bold truncate">{client?.name || "Carregando..."}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                  {client?.phone && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      {formatPhone(client.phone)}
+                    </span>
+                  )}
+                  {client?.birthDate && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Cake className="h-3 w-3" />
+                      {new Date(client.birthDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+                    </span>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -160,7 +177,7 @@ export default function AnamnesisDetailPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Profissional</p>
-                <p className="text-lg font-bold">Voro Labs</p> 
+                <p className="text-lg font-bold">{anamnesis.professionalName || "—"}</p>
               </div>
             </CardContent>
           </Card>

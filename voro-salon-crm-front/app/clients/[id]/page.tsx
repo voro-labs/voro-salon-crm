@@ -20,6 +20,7 @@ import {
   CreditCard,
   Infinity,
   XCircle,
+  Cake,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -388,6 +389,12 @@ export default function ClienteDetailPage() {
                       <span className="flex items-center gap-1.5 truncate">
                         <Mail className="h-3.5 w-3.5" />
                         {client.email}
+                      </span>
+                    )}
+                    {client.birthDate && (
+                      <span className="flex items-center gap-1.5 whitespace-nowrap">
+                        <Cake className="h-3.5 w-3.5" />
+                        {new Date(client.birthDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
                       </span>
                     )}
                   </div>

@@ -61,8 +61,9 @@ namespace VoroSalonCrm.API.Controllers
         {
             try
             {
-                await ratingService.SendRatingRequestAsync(appointmentId);
-                return ResponseViewModel<object>.SuccessWithMessage("Solicitação de avaliação enviada.", null).ToActionResult();
+                var result = await ratingService.SendRatingRequestAsync(appointmentId);
+                var message = result.SentViaBot ? "Solicitação de avaliação enviada via bot." : "Abra o WhatsApp para enviar a solicitação.";
+                return ResponseViewModel<SendRatingRequestResultDto>.SuccessWithMessage(message, result).ToActionResult();
             }
             catch (KeyNotFoundException ex)
             {

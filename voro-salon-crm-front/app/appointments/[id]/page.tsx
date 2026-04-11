@@ -54,6 +54,7 @@ import { Switch } from "@/components/ui/switch"
 import { CurrencyInput } from "@/components/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Badge } from "@/components/ui/badge"
+import { SearchableSelect } from "@/components/ui/custom/searchable-select"
 import { cn } from "@/lib/utils"
 import { format, isPast } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -123,9 +124,26 @@ export default function AppointmentDetailPage() {
   async function handleSendRatingRequest() {
     setIsSendingRating(true)
     try {
-      const res = await secureApiCall(`/ClientRating/send-request/${appointmentId}`, { method: "POST" })
+      const res = await secureApiCall<{
+        sentViaBot: boolean
+        requiresManualSend: boolean
+        clientPhone?: string
+        clientName?: string
+        serviceName?: string
+      }>(`/ClientRating/send-request/${appointmentId}`, { method: "POST" })
       if (res.hasError) { toast.error(res.message || "Erro ao enviar solicitação."); return }
-      toast.success("Solicitação de avaliação enviada via WhatsApp!")
+
+      if (res.data?.requiresManualSend) {
+        const phone = (res.data.clientPhone ?? "").replace(/\D/g, "")
+        const clientName = res.data.clientName ?? "cliente"
+        const serviceName = res.data.serviceName ?? "serviço"
+        const message = `Olá ${clientName}! Ficamos felizes em atendê-lo(a) no ${serviceName}. Que tal nos deixar sua avaliação? Sua opinião é muito importante para nós! 😊`
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
+        toast.info("WhatsApp aberto com solicitação de avaliação.")
+      } else {
+        toast.success("Solicitação de avaliação enviada via WhatsApp!")
+      }
+
       setRatingRequestSent(true)
     } catch { toast.error("Erro de conexão.") }
     finally { setIsSendingRating(false) }
@@ -265,42 +283,32 @@ export default function AppointmentDetailPage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex flex-col gap-2">
                       <Label htmlFor="clientId">Cliente *</Label>
-                      <Select
-                        key={`client-${form.clientId}`}
+                      <SearchableSelect
+                        id="clientId"
                         value={form.clientId}
                         onValueChange={(v) => setForm((p) => ({ ...p, clientId: v }))}
+                        options={clients?.map((c: any) => ({ value: c.id, label: c.name })) ?? []}
+                        placeholder="Selecione um cliente"
+                        searchPlaceholder="Buscar cliente..."
                         disabled={isFormLocked}
-                      >
-                        <SelectTrigger id="clientId" className="w-full">
-                          <SelectValue placeholder="Selecione um cliente" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {clients?.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
 
                     {isModuleEnabled(3) && (
                       <div className="flex flex-col gap-2">
                         <Label htmlFor="serviceId">Serviço (Opcional)</Label>
-                        <Select
-                          key={`service-${form.serviceId}`}
+                        <SearchableSelect
+                          id="serviceId"
                           value={form.serviceId}
                           onValueChange={handleServiceChange}
+                          options={[
+                            { value: "none", label: "Nenhum" },
+                            ...(services?.map((s: any) => ({ value: s.id, label: s.name })) ?? []),
+                          ]}
+                          placeholder="Selecione um serviço"
+                          searchPlaceholder="Buscar serviço..."
                           disabled={isFormLocked}
-                        >
-                          <SelectTrigger id="serviceId" className="w-full">
-                            <SelectValue placeholder="Selecione um serviço" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nenhum</SelectItem>
-                            {services?.map((s: any) => (
-                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
                     )}
                   </div>
@@ -309,22 +317,18 @@ export default function AppointmentDetailPage() {
                     {isModuleEnabled(4) && (
                       <div className="flex flex-col gap-2">
                         <Label htmlFor="employeeId">Funcionário (Opcional)</Label>
-                        <Select
-                          key={`employee-${form.employeeId}`}
+                        <SearchableSelect
+                          id="employeeId"
                           value={form.employeeId}
                           onValueChange={(v) => setForm((p) => ({ ...p, employeeId: v }))}
+                          options={[
+                            { value: "none", label: "Qualquer um" },
+                            ...(employees?.map((e: any) => ({ value: e.id, label: e.name })) ?? []),
+                          ]}
+                          placeholder="Selecione um funcionário"
+                          searchPlaceholder="Buscar funcionário..."
                           disabled={isFormLocked}
-                        >
-                          <SelectTrigger id="employeeId" className="w-full">
-                            <SelectValue placeholder="Selecione um funcionário" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Qualquer um</SelectItem>
-                            {employees?.map((e: any) => (
-                              <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
                     )}
 

@@ -8,6 +8,7 @@ using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
 namespace VoroSalonCrm.Application.Services
@@ -21,7 +22,8 @@ namespace VoroSalonCrm.Application.Services
         IWhatsappService whatsappService,
         ITenantRepository tenantRepository,
         IConfiguration configuration,
-        ILogger<AnamnesisService> logger) : IAnamnesisService
+        ILogger<AnamnesisService> logger,
+        IUserRepository userRepository) : IAnamnesisService
     {
         private readonly IAnamnesisQuestionRepository _questionRepository = questionRepository;
         private readonly IAnamnesisSheetRepository _sheetRepository = sheetRepository;
@@ -32,6 +34,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IConfiguration _configuration = configuration;
         private readonly ILogger<AnamnesisService> _logger = logger;
+        private readonly IUserRepository _userRepository = userRepository;
 
         public async Task<IEnumerable<AnamnesisQuestionDto>> GetQuestionsAsync()
         {
@@ -166,7 +169,7 @@ namespace VoroSalonCrm.Application.Services
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 ClientId = dto.ClientId,
-                ProfessionalId = dto.ProfessionalId,
+                ProfessionalId = _currentUserService.UserId,
                 Date = dto.Date,
                 Diagnosis = dto.Diagnosis,
                 TreatmentProtocol = dto.TreatmentProtocol,
@@ -261,12 +264,22 @@ namespace VoroSalonCrm.Application.Services
                               .Include(s => s.Evidences)
                               .Include(s => s.Signatures));
 
-            var dtos = new List<AnamnesisSheetDto>();
-            foreach (var s in sheets.OrderByDescending(s => s.Date))
+            var orderedSheets = sheets.OrderByDescending(s => s.Date).ToList();
+
+            var professionalIds = orderedSheets
+                .Where(s => s.ProfessionalId != Guid.Empty)
+                .Select(s => s.ProfessionalId)
+                .Distinct()
+                .ToList();
+
+            var users = await _userRepository.GetAllAsync(u => professionalIds.Contains(u.Id));
+            var userNames = users.ToDictionary(u => u.Id, u => $"{u.FirstName} {u.LastName}".Trim());
+
+            return orderedSheets.Select(s =>
             {
-                dtos.Add(MapToDto(s));
-            }
-            return dtos;
+                userNames.TryGetValue(s.ProfessionalId, out var name);
+                return MapToDto(s, name);
+            });
         }
 
         public async Task<AnamnesisSheetDto?> GetByIdAsync(Guid id)
@@ -280,7 +293,15 @@ namespace VoroSalonCrm.Application.Services
 
             if (sheet == null) return null;
 
-            return MapToDto(sheet);
+            string? professionalName = null;
+            if (sheet.ProfessionalId != Guid.Empty)
+            {
+                var user = await _userRepository.GetByIdAsync(false, sheet.ProfessionalId);
+                if (user != null)
+                    professionalName = $"{user.FirstName} {user.LastName}".Trim();
+            }
+
+            return MapToDto(sheet, professionalName);
         }
 
         public async Task<string> GeneratePublicTokenAsync(Guid sheetId)
@@ -418,12 +439,13 @@ namespace VoroSalonCrm.Application.Services
             return true;
         }
 
-        private static AnamnesisSheetDto MapToDto(AnamnesisSheet s)
+        private static AnamnesisSheetDto MapToDto(AnamnesisSheet s, string? professionalName = null)
         {
             return new AnamnesisSheetDto(
                 s.Id,
                 s.ClientId,
                 s.ProfessionalId,
+                professionalName,
                 s.Date,
                 s.Diagnosis,
                 s.TreatmentProtocol,

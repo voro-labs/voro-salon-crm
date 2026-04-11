@@ -18,4 +18,12 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Comment,
         RatingSource Source
     );
+
+    public record SendRatingRequestResultDto(
+        bool SentViaBot,
+        bool RequiresManualSend,
+        string? ClientPhone,
+        string? ClientName,
+        string? ServiceName
+    );
 }
