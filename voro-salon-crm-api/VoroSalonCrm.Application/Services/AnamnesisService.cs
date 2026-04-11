@@ -337,7 +337,7 @@ namespace VoroSalonCrm.Application.Services
                         To = sheetWithDetails.Client.Phone,
                         Template = new()
                         {
-                            Name = "anamnesis_signing_1",
+                            Name = "anamnesis_signing_3",
                             Components =
                             [
                                 new() {
@@ -353,7 +353,7 @@ namespace VoroSalonCrm.Application.Services
                                     SubType = "url",
                                     Index = "0",
                                     Parameters = [
-                                        new() { Type = "text", Text = "/" + sheet.PublicToken }
+                                        new() { Type = "text", Text = "sign/" + sheet.PublicToken }
                                     ]
                                 }
                             ]
@@ -431,6 +431,158 @@ namespace VoroSalonCrm.Application.Services
                 SignedAt = DateTimeOffset.UtcNow
             });
 
+            sheet.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _sheetRepository.Update(sheet);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<SendFillRequestResultDto> CreateFillRequestAsync(Guid clientId)
+        {
+            var tenantId = _currentUserService.TenantId;
+            if (tenantId == Guid.Empty)
+                throw new UnauthorizedAccessException("Tenant inválido.");
+
+            var client = await _clientRepository.GetByIdAsync(c => c.Id == clientId)
+                ?? throw new KeyNotFoundException("Cliente não encontrado.");
+
+            var sheet = new AnamnesisSheet
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                ClientId = clientId,
+                ProfessionalId = _currentUserService.UserId,
+                Date = DateTimeOffset.UtcNow,
+                Status = Domain.Enums.AnamnesisSheetStatus.Draft,
+                PublicToken = Guid.NewGuid().ToString("N"),
+                PublicTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(72),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            await _sheetRepository.AddAsync(sheet);
+            await _unitOfWork.SaveChangesAsync();
+
+            var tenant = await _tenantRepository.GetByIdAsync(false, tenantId);
+            var frontendUrl = _configuration["FrontendUrl"] ?? "https://app.vorosalon.com";
+            var fillUrl = $"{frontendUrl}/anamnesis/fill/{sheet.PublicToken}";
+
+            if (tenant != null && tenant.UseWhatsappBooking && !string.IsNullOrWhiteSpace(tenant.WhatsappPhoneNumberId) &&
+                !string.IsNullOrWhiteSpace(client.Phone))
+            {
+                try
+                {
+                    var templateMsg = new WhatsappTemplateMessageDto
+                    {
+                        To = client.Phone,
+                        Template = new()
+                        {
+                            Name = "anamnesis_signing_3",
+                            Components =
+                            [
+                                new() {
+                                    Type = "body",
+                                    Parameters =
+                                    [
+                                        new() { Type = "text", Text = client.Name },
+                                        new() { Type = "text", Text = tenant.Name }
+                                    ]
+                                },
+                                new() {
+                                    Type = "button",
+                                    SubType = "url",
+                                    Index = "0",
+                                    Parameters = [ new() { Type = "text", Text = "fill/" + sheet.PublicToken } ]
+                                }
+                            ]
+                        }
+                    };
+                    await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant.WhatsappPhoneNumberId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Falha ao enviar link de preenchimento via WhatsApp para ficha {SheetId}.", sheet.Id);
+                }
+
+                return new SendFillRequestResultDto(true, false, null, null, null);
+            }
+
+            return new SendFillRequestResultDto(false, true, client.Phone, client.Name, sheet.PublicToken);
+        }
+
+        public async Task<PublicAnamnesisFillSheetDto?> GetFillSheetByTokenAsync(string token)
+        {
+            var sheet = await _sheetRepository
+                .Query(s => s.PublicToken == token && !s.IsDeleted)
+                .Include(s => s.Client)
+                .Include(s => s.Tenant)
+                .Include(s => s.Responses)
+                .Include(s => s.Signatures)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (sheet == null) return null;
+            if (sheet.Status != Domain.Enums.AnamnesisSheetStatus.Draft) return null;
+            if (sheet.PublicTokenExpiresAt.HasValue && sheet.PublicTokenExpiresAt < DateTimeOffset.UtcNow) return null;
+
+            var alreadyFilled = sheet.Responses.Any();
+
+            var questions = await _questionRepository
+                .Query(q => q.TenantId == sheet.TenantId && !q.IsDeleted)
+                .OrderBy(q => q.Section)
+                .ThenBy(q => q.Order)
+                .ToListAsync();
+
+            return new PublicAnamnesisFillSheetDto(
+                sheet.Client?.Name ?? string.Empty,
+                sheet.Tenant?.Name ?? string.Empty,
+                sheet.PublicTokenExpiresAt,
+                questions.Select(q => new PublicAnamnesisQuestionForFillDto(
+                    q.Id, q.Text, q.Placeholder, q.FieldType, q.Options, q.IsRequired, q.Section, q.Order)),
+                alreadyFilled
+            );
+        }
+
+        public async Task<bool> FillAndSignAsync(string token, ClientFillAndSignDto dto)
+        {
+            var sheet = await _sheetRepository
+                .Query(s => s.PublicToken == token && !s.IsDeleted)
+                .Include(s => s.Responses)
+                .Include(s => s.Signatures)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (sheet == null) return false;
+            if (sheet.Status != Domain.Enums.AnamnesisSheetStatus.Draft)
+                throw new InvalidOperationException("Esta ficha não está disponível para preenchimento.");
+            if (sheet.PublicTokenExpiresAt.HasValue && sheet.PublicTokenExpiresAt < DateTimeOffset.UtcNow)
+                throw new InvalidOperationException("O link de preenchimento expirou. Solicite um novo link.");
+            if (sheet.Responses.Any())
+                throw new InvalidOperationException("Esta ficha já foi preenchida.");
+
+            foreach (var resp in dto.Responses)
+            {
+                sheet.Responses.Add(new AnamnesisResponse
+                {
+                    Id = Guid.NewGuid(),
+                    SheetId = sheet.Id,
+                    QuestionId = resp.QuestionId,
+                    Value = resp.Value
+                });
+            }
+
+            sheet.Signatures.Add(new AnamnesisSignature
+            {
+                Id = Guid.NewGuid(),
+                SheetId = sheet.Id,
+                Type = Domain.Enums.AnamnesisSignatureType.Client,
+                SignatureData = dto.SignatureData,
+                SignedAt = DateTimeOffset.UtcNow
+            });
+
+            sheet.Status = Domain.Enums.AnamnesisSheetStatus.Completed;
+            sheet.Date = DateTimeOffset.UtcNow;
             sheet.UpdatedAt = DateTimeOffset.UtcNow;
 
             _sheetRepository.Update(sheet);

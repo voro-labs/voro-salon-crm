@@ -18,5 +18,10 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<string> GeneratePublicTokenAsync(Guid sheetId);
         Task<PublicAnamnesisSheetDto?> GetSheetByPublicTokenAsync(string token);
         Task<bool> SubmitPublicSignatureAsync(string token, SubmitPublicSignatureDto dto);
+
+        // Public fill + sign (client fills the form themselves)
+        Task<SendFillRequestResultDto> CreateFillRequestAsync(Guid clientId);
+        Task<PublicAnamnesisFillSheetDto?> GetFillSheetByTokenAsync(string token);
+        Task<bool> FillAndSignAsync(string token, ClientFillAndSignDto dto);
     }
 }

@@ -60,5 +60,53 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        /// <summary>
+        /// Retorna a ficha em branco (rascunho) para o cliente preencher.
+        /// </summary>
+        [HttpGet("fill/{token}")]
+        public async Task<IActionResult> GetFillSheet([FromRoute] string token)
+        {
+            try
+            {
+                var sheet = await anamnesisService.GetFillSheetByTokenAsync(token);
+                if (sheet == null)
+                    return ResponseViewModel<object>.Fail("Link inválido, expirado ou ficha já preenchida.").ToActionResult();
+
+                return ResponseViewModel<PublicAnamnesisFillSheetDto>
+                    .SuccessWithMessage("Ficha encontrada.", sheet)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        /// <summary>
+        /// Recebe as respostas e assinatura do cliente, completa a ficha de anamnese.
+        /// </summary>
+        [HttpPost("fill/{token}")]
+        public async Task<IActionResult> FillAndSign([FromRoute] string token, [FromBody] ClientFillAndSignDto dto)
+        {
+            try
+            {
+                var success = await anamnesisService.FillAndSignAsync(token, dto);
+                if (!success)
+                    return ResponseViewModel<object>.Fail("Link inválido ou expirado.").ToActionResult();
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Ficha preenchida e assinada com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

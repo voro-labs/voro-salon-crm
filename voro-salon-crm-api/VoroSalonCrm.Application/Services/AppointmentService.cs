@@ -435,7 +435,7 @@ namespace VoroSalonCrm.Application.Services
                                     SubType = "url",
                                     Index = "0",
                                     Parameters = [
-                                        new() { Type = "text", Text = "/" + appointment.Id.ToString() }
+                                        new() { Type = "text", Text = appointment.Id.ToString() }
                                     ]
                                 }
                             ]

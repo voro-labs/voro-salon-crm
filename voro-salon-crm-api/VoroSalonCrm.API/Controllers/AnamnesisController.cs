@@ -188,5 +188,27 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        /// <summary>
+        /// Cria uma ficha de anamnese em rascunho e envia o link de preenchimento para o cliente.
+        /// </summary>
+        [HttpPost("send-fill-request/{clientId:guid}")]
+        public async Task<IActionResult> SendFillRequest([FromRoute] Guid clientId)
+        {
+            try
+            {
+                var result = await _anamnesisService.CreateFillRequestAsync(clientId);
+                var message = result.SentViaBot ? "Link enviado via WhatsApp." : "Abra o WhatsApp para enviar o link.";
+                return ResponseViewModel<SendFillRequestResultDto>.SuccessWithMessage(message, result).ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }
