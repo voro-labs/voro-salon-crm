@@ -16,6 +16,7 @@ export function useDataList<T>(
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [search, setSearchRaw] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [extraParams, setExtraParams] = useState<Record<string, string>>({})
 
   // Debounce: 300ms delay before committing search to API
   useEffect(() => {
@@ -25,13 +26,13 @@ export function useDataList<T>(
 
   const setSearch = setSearchRaw
 
-  // Reset and re-fetch whenever the debounced search or endpoint changes
+  // Reset and re-fetch whenever the debounced search, endpoint or extraParams change
   useEffect(() => {
     setItems([])
     setPage(1)
     fetchPage(1, debouncedSearch, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, endpoint])
+  }, [debouncedSearch, endpoint, JSON.stringify(extraParams)])
 
   async function fetchPage(p: number, q: string, replace: boolean) {
     if (replace) {
@@ -46,6 +47,7 @@ export function useDataList<T>(
         pageSize: String(PAGE_SIZE),
       })
       if (q) params.set("search", q)
+      Object.entries(extraParams).forEach(([k, v]) => params.set(k, v))
 
       const res = await secureApiCall<{
         items: T[]
@@ -88,6 +90,8 @@ export function useDataList<T>(
     totalCount,
     search,
     setSearch,
+    extraParams,
+    setExtraParams,
     loadMore,
     refresh,
     // Backward-compat aliases

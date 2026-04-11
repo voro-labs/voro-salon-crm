@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import {
   View,
   Text,
@@ -143,6 +143,18 @@ function AppointmentCard({ item, onPress, primaryColor }: { item: Appointment; o
   )
 }
 
+type PeriodFilter = "today" | "week" | "all"
+
+function startOfDay(d: Date) {
+  const r = new Date(d); r.setHours(0, 0, 0, 0); return r
+}
+function endOfDay(d: Date) {
+  const r = new Date(d); r.setHours(23, 59, 59, 999); return r
+}
+function addDays(d: Date, n: number) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r
+}
+
 export function AppointmentsScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) {
   useModuleGuard("appointments")
   const router = useRouter()
@@ -150,8 +162,37 @@ export function AppointmentsScreen({ rootPath = "/(tabs)" }: { rootPath?: string
   const { user } = useAuth()
   const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
 
-  const { items, isLoading, isLoadingMore, search, setSearch, loadMore, refresh } =
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("today")
+  const [autoSwitched, setAutoSwitched] = useState(false)
+
+  const { items, isLoading, isLoadingMore, totalCount, search, setSearch, setExtraParams, loadMore, refresh } =
     useDataList<Appointment>(API_CONFIG.ENDPOINTS.APPOINTMENTS)
+
+  // Sync extraParams with periodFilter
+  useEffect(() => {
+    const now = new Date()
+    if (periodFilter === "today") {
+      setExtraParams({
+        dateFrom: startOfDay(now).toISOString(),
+        dateTo: endOfDay(now).toISOString(),
+      })
+    } else if (periodFilter === "week") {
+      setExtraParams({
+        dateFrom: startOfDay(now).toISOString(),
+        dateTo: endOfDay(addDays(now, 7)).toISOString(),
+      })
+    } else {
+      setExtraParams({})
+    }
+  }, [periodFilter])
+
+  // Auto-switch today → week if today has no results
+  useEffect(() => {
+    if (!isLoading && periodFilter === "today" && items.length === 0 && totalCount === 0 && !autoSwitched) {
+      setAutoSwitched(true)
+      setPeriodFilter("week")
+    }
+  }, [isLoading, items.length, totalCount, periodFilter, autoSwitched])
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-50" edges={[]}>
@@ -183,6 +224,22 @@ export function AppointmentsScreen({ rootPath = "/(tabs)" }: { rootPath?: string
           </Pressable>
         </View>
 
+        {/* Period filters */}
+        <View className="flex-row gap-2">
+          {(["today", "week", "all"] as PeriodFilter[]).map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => { setAutoSwitched(true); setPeriodFilter(f) }}
+              className="px-4 py-2 rounded-xl"
+              style={{ backgroundColor: periodFilter === f ? primaryColor : "#f4f4f5" }}
+            >
+              <Text className={`text-xs font-bold ${periodFilter === f ? "text-white" : "text-zinc-600"}`}>
+                {f === "today" ? "Hoje" : f === "week" ? "Semana" : "Todos"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         {!isSalonEmployee && (
           <View className="flex-row items-center gap-2">
             <Pressable
@@ -195,6 +252,16 @@ export function AppointmentsScreen({ rootPath = "/(tabs)" }: { rootPath?: string
           </View>
         )}
       </View>
+
+      {!isLoading && totalCount > 0 && (
+        <View className="px-5 py-2 bg-white border-b border-zinc-100">
+          <Text className="text-xs text-zinc-400 font-medium">
+            {items.length < totalCount
+              ? `Mostrando ${items.length} de ${totalCount} agendamento${totalCount !== 1 ? "s" : ""}`
+              : `${totalCount} agendamento${totalCount !== 1 ? "s" : ""}`}
+          </Text>
+        </View>
+      )}
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">

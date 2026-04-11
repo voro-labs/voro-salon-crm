@@ -68,7 +68,7 @@ export function ServicesScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) 
   useModuleGuard("services")
   const router = useRouter()
   const { primaryColor } = useTenantTheme()
-  const { items, isLoading, isLoadingMore, search, setSearch, loadMore, refresh } =
+  const { items, isLoading, isLoadingMore, totalCount, search, setSearch, loadMore, refresh } =
     useDataList<Service>(API_CONFIG.ENDPOINTS.SERVICES)
 
   const { data: _promosRaw } = useSWR("/ServicePromotion", fetcher)
@@ -107,6 +107,16 @@ export function ServicesScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) 
           <Ionicons name="add" size={24} color="white" />
         </Pressable>
       </View>
+
+      {!isLoading && totalCount > 0 && (
+        <View className="px-5 py-2 bg-white border-b border-zinc-100">
+          <Text className="text-xs text-zinc-400 font-medium">
+            {items.length < totalCount
+              ? `Mostrando ${items.length} de ${totalCount} serviço${totalCount !== 1 ? "s" : ""}`
+              : `${totalCount} serviço${totalCount !== 1 ? "s" : ""}`}
+          </Text>
+        </View>
+      )}
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">

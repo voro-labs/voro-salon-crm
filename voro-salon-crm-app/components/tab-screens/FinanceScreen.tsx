@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { View, Text, FlatList, Pressable, ActivityIndicator, TextInput, Modal, TouchableOpacity, ScrollView } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -59,6 +59,11 @@ export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
 
   const [filter, setFilter] = useState<FilterType>("all")
   const [search, setSearch] = useState("")
+  const PAGE_SIZE = 20
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  // Reset pagination when filter or search changes
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [filter, search])
 
   // Auto Revenue Modal state
   const [showActionMenu, setShowActionMenu] = useState(false)
@@ -393,9 +398,32 @@ export function FinanceScreen({ rootPath = "/(tabs)" }: FinanceScreenProps) {
         </View>
       </View>
 
+      {filtered.length > 0 && (
+        <View className="px-5 py-2 bg-white border-b border-zinc-100">
+          <Text className="text-xs text-zinc-400 font-medium">
+            {Math.min(visibleCount, filtered.length) < filtered.length
+              ? `Mostrando ${Math.min(visibleCount, filtered.length)} de ${filtered.length} registro${filtered.length !== 1 ? "s" : ""}`
+              : `${filtered.length} registro${filtered.length !== 1 ? "s" : ""}`}
+          </Text>
+        </View>
+      )}
+
       <FlatList
-        data={filtered}
+        data={filtered.slice(0, visibleCount)}
         keyExtractor={(item: any, i) => item.id ?? String(i)}
+        onEndReached={() => {
+          if (visibleCount < filtered.length) {
+            setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filtered.length))
+          }
+        }}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={() =>
+          visibleCount < filtered.length ? (
+            <View style={{ paddingVertical: 16, alignItems: "center" }}>
+              <ActivityIndicator size="small" color={primaryColor} />
+            </View>
+          ) : null
+        }
         renderItem={({ item }: { item: any }) => {
           const income = isIncome(item)
           const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG[1]

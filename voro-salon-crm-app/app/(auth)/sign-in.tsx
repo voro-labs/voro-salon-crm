@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react"
 import {
   View, Text, TextInput, Pressable, KeyboardAvoidingView,
-  Platform, ActivityIndicator, ScrollView,
+  Platform, ActivityIndicator, ScrollView, Animated,
   NativeSyntheticEvent, TextInputKeyPressEventData,
 } from "react-native"
-import { useRouter } from "expo-router"
+import { useRouter, useLocalSearchParams } from "expo-router"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useSignIn } from "hooks/use-sign-in.hook"
@@ -12,8 +12,17 @@ import { useTenantTheme } from "contexts/tenant-theme.context"
 
 const CODE_LENGTH = 6
 
+const ESTABLISHMENTS = [
+  { word: "Salon", icon: "cut" as const, sub: "Entre para gerenciar seu salão" },
+  { word: "Barbearia", icon: "cut" as const, sub: "Entre para gerenciar sua barbearia" },
+  { word: "Unhas & Cílios", icon: "color-palette-outline" as const, sub: "Entre para gerenciar seu estúdio" },
+  { word: "Estética", icon: "flower-outline" as const, sub: "Entre para gerenciar sua clínica" },
+  { word: "Spa", icon: "leaf-outline" as const, sub: "Entre para gerenciar seu spa" },
+]
+
 export default function SignInScreen() {
   const router = useRouter()
+  const { estIndex: estIndexParam } = useLocalSearchParams<{ estIndex?: string }>()
   const { signIn, verifyTwoFactor, loading, error, clearError } = useSignIn()
   const { primaryColor } = useTenantTheme()
 
@@ -23,6 +32,33 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const passwordRef = useRef<TextInput>(null)
+
+  // ── Establishment cycling animation ─────────────────────────────────────────
+  const [estIndex, setEstIndex] = useState(() => {
+    const parsed = parseInt(estIndexParam ?? "0")
+    return isNaN(parsed) ? 0 : parsed % ESTABLISHMENTS.length
+  })
+  const fadeAnim = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }).start(() => {
+        setEstIndex((prev) => (prev + 1) % ESTABLISHMENTS.length)
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }).start()
+      })
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [fadeAnim])
+
+  const current = ESTABLISHMENTS[estIndex]
 
   // ── 2FA step (inline — mesma tela para autofill funcionar) ──────────────────
   const [step, setStep] = useState<"credentials" | "twoFactor">("credentials")
@@ -144,7 +180,7 @@ export default function SignInScreen() {
 
             {/* Back button */}
             <Pressable
-              onPress={step === "twoFactor" ? backToCredentials : () => router.replace("/(auth)/welcome")}
+              onPress={step === "twoFactor" ? backToCredentials : () => router.back()}
               className="self-start mb-4 flex-row items-center gap-1"
               disabled={loading}
             >
@@ -156,21 +192,31 @@ export default function SignInScreen() {
 
             {/* Logo */}
             <View className="items-center mb-10">
-              <View className="h-20 w-20 rounded-3xl items-center justify-center shadow-lg" style={{ backgroundColor: primaryColor }}>
-                <Ionicons name={step === "twoFactor" ? "shield-checkmark" : "cut"} size={40} color="white" />
-              </View>
+              <Animated.View
+                className="h-20 w-20 rounded-3xl items-center justify-center shadow-lg"
+                style={{ backgroundColor: primaryColor, opacity: step === "credentials" ? fadeAnim : 1 }}
+              >
+                <Ionicons
+                  name={step === "twoFactor" ? "shield-checkmark" : current.icon}
+                  size={40}
+                  color="white"
+                />
+              </Animated.View>
               <Text className="text-3xl font-black text-zinc-900 mt-6 tracking-tighter">
                 {step === "twoFactor"
                   ? "Verificação"
-                  : <Text>Voro <Text style={{ color: primaryColor }}>Salon</Text></Text>
+                  : <>Voro{" "}<Animated.Text style={{ color: primaryColor, opacity: fadeAnim }}>{current.word}</Animated.Text></>
                 }
               </Text>
-              <Text className="text-zinc-500 font-medium mt-2 text-center">
+              <Animated.Text
+                className="text-zinc-500 font-medium mt-2 text-center"
+                style={step === "credentials" ? { opacity: fadeAnim } : undefined}
+              >
                 {step === "twoFactor"
                   ? "Autenticação em duas etapas"
-                  : "Entre para gerenciar seu salão"
+                  : current.sub
                 }
-              </Text>
+              </Animated.Text>
             </View>
 
             {/* ── STEP 1: Credenciais ─────────────────────────────────────────── */}

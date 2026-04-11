@@ -171,6 +171,14 @@ export function EmployeesScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
         </View>
       </View>
 
+      {!isLoading && items.length < totalCount && (
+        <View className="px-5 py-2 bg-white border-b border-zinc-100">
+          <Text className="text-xs text-zinc-400 font-medium">
+            Mostrando {items.length} de {totalCount} funcionário{totalCount !== 1 ? "s" : ""}
+          </Text>
+        </View>
+      )}
+
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={primaryColor} />

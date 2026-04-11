@@ -32,6 +32,8 @@ function getStatus(value: number) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
 function fmtCurrency(value: number) {
   return (value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -41,10 +43,15 @@ function abbreviate(value: number): string {
   return (value || 0).toFixed(0)
 }
 
-function formatTime(iso?: string): string {
-  if (!iso) return ""
+function parseDateInfo(iso?: string): { day: string; month: string; time: string } | null {
+  if (!iso) return null
   const d = new Date(iso)
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  if (isNaN(d.getTime())) return null
+  return {
+    day: String(d.getDate()).padStart(2, "0"),
+    month: MONTHS_SHORT[d.getMonth()],
+    time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+  }
 }
 
 function isToday(iso?: string): boolean {
@@ -139,46 +146,78 @@ function RevenueChart({ data }: { data: RevenueByMonthItem[] }) {
   )
 }
 
-// ─── Today Appointment Card ───────────────────────────────────────────────────
+// ─── Dashboard Appointment Card ───────────────────────────────────────────────
 
 function AppointmentCard({
   appointment,
   onStatusChange,
+  onPress,
+  isUpdating,
 }: {
   appointment: any
   onStatusChange: (id: string, status: number) => void
+  onPress: () => void
+  isUpdating?: boolean
 }) {
   const [modalOpen, setModalOpen] = useState(false)
   const { primaryColor } = useTenantTheme()
   const status = useMemo(() => getStatus(appointment.status ?? 0), [appointment.status])
   const clientName = (appointment.clientName ?? `${appointment.client?.firstName ?? ""} ${appointment.client?.lastName ?? ""}`.trim()) || "Cliente"
   const serviceName = appointment.serviceName ?? appointment.service?.name ?? appointment.description ?? "Serviço"
+  const dateInfo = useMemo(() => parseDateInfo(appointment.scheduledDateTime ?? appointment.date), [appointment.scheduledDateTime, appointment.date])
 
   return (
     <>
-      <View className="flex-row items-center gap-3 py-3 border-b border-zinc-50 last:border-0">
-        <View className="h-10 w-10 rounded-2xl items-center justify-center shrink-0" style={{ backgroundColor: primaryColor + "15" }}>
-          <Text className="font-black text-sm" style={{ color: primaryColor }}>{clientName[0]?.toUpperCase()}</Text>
-        </View>
+      <Pressable
+        onPress={onPress}
+        className="flex-row items-center gap-3 py-3 border-b border-zinc-50 active:bg-zinc-50/80"
+      >
+        {/* Date block */}
+        {dateInfo ? (
+          <View className="w-12 items-center justify-center rounded-2xl py-2.5 shrink-0" style={{ backgroundColor: primaryColor + "15" }}>
+            <Text className="text-lg font-black leading-tight" style={{ color: primaryColor }}>{dateInfo.day}</Text>
+            <Text className="text-[10px] font-bold uppercase tracking-wide" style={{ color: primaryColor + "99" }}>{dateInfo.month}</Text>
+          </View>
+        ) : (
+          <View className="h-12 w-12 rounded-2xl items-center justify-center shrink-0" style={{ backgroundColor: primaryColor + "15" }}>
+            <Text className="font-black text-sm" style={{ color: primaryColor }}>{clientName[0]?.toUpperCase()}</Text>
+          </View>
+        )}
 
+        {/* Content */}
         <View className="flex-1 min-w-0">
+          {/* Time + Status badge */}
+          <View className="flex-row items-center gap-2 mb-1">
+            {dateInfo?.time ? (
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="time-outline" size={11} color={primaryColor} />
+                <Text className="text-xs font-bold" style={{ color: primaryColor }}>{dateInfo.time}</Text>
+              </View>
+            ) : null}
+            <View className="rounded-full px-2 py-0.5 border" style={{ backgroundColor: status.bg, borderColor: status.border }}>
+              <Text className="text-[10px] font-bold" style={{ color: status.text }}>{status.label}</Text>
+            </View>
+          </View>
           <Text className="text-zinc-900 font-bold text-sm" numberOfLines={1}>{clientName}</Text>
-          <Text className="text-zinc-400 text-xs" numberOfLines={1}>{serviceName}</Text>
+          <Text className="text-zinc-400 text-xs mt-0.5" numberOfLines={1}>{serviceName}</Text>
         </View>
 
-        <View className="items-end gap-2 shrink-0">
-          {appointment.scheduledDateTime ? (
-            <Text className="text-zinc-500 text-xs font-semibold">{formatTime(appointment.scheduledDateTime)}</Text>
-          ) : null}
-          <Pressable
-            onPress={() => setModalOpen(true)}
-            className="rounded-2xl px-2.5 py-1 border"
-            style={{ backgroundColor: status.bg, borderColor: status.border }}
-          >
-            <Text className="text-xs font-bold" style={{ color: status.text }}>{status.label}</Text>
-          </Pressable>
+        {/* Right: status action + chevron */}
+        <View className="items-center gap-2 shrink-0">
+          {isUpdating ? (
+            <ActivityIndicator size="small" color={primaryColor} />
+          ) : (
+            <Pressable
+              onPress={() => setModalOpen(true)}
+              className="h-8 w-8 rounded-xl items-center justify-center border"
+              style={{ backgroundColor: status.bg, borderColor: status.border }}
+            >
+              <Ionicons name="create-outline" size={14} color={status.text} />
+            </Pressable>
+          )}
+          <Ionicons name="chevron-forward" size={15} color="#d4d4d8" />
         </View>
-      </View>
+      </Pressable>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
         <Pressable
@@ -361,6 +400,7 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
 
   const [period, setPeriod] = useState<"today" | "week">("today")
   const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [showPastModal, setShowPastModal] = useState(false)
   const hasShownPastModal = useRef(false)
 
@@ -436,21 +476,36 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
   }, [bookingUrl])
 
   const dashboardAppointments = useMemo(() => {
+    const now = new Date()
     return (appointments ?? [])
       .filter((a: any) => {
-        const date = a.scheduledDateTime ?? a.date
-        return period === "today" ? isToday(date) : isWithinNext7Days(date)
+        const dateStr = a.scheduledDateTime ?? a.date
+        if (!dateStr) return false
+
+        // Filtro de período (hoje / próximos 7 dias)
+        const matchesTime = period === "today" ? isToday(dateStr) : isWithinNext7Days(dateStr)
+        if (!matchesTime) return false
+
+        // Agendamentos terminais (Concluído=2, Cancelado=3, Faltou=4) saem após 20 min
+        const isFinished = [2, 3, 4].includes(Number(a.status))
+        if (isFinished) {
+          const minutesSince = (now.getTime() - new Date(dateStr).getTime()) / 60000
+          if (minutesSince > 20) return false
+        }
+
+        return true
       })
       .sort((a: any, b: any) => {
         const ta = a.scheduledDateTime ?? a.date ?? ""
         const tb = b.scheduledDateTime ?? b.date ?? ""
         return ta.localeCompare(tb)
       })
-      .slice(0, 5)
+      .slice(0, 10)
   }, [appointments, period])
 
   const handleStatusChange = useCallback(async (id: string, newStatus: number) => {
     const appointment = appointments?.find((a) => a.id === id)
+    setUpdatingId(id)
     mutateAppointments(
       (prev) => prev?.map((a) => a.id === id ? { ...a, status: newStatus } : a),
       false
@@ -471,6 +526,7 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
         )
       }
     } finally {
+      setUpdatingId(null)
       mutateAppointments()
     }
   }, [appointments, mutateAppointments, tenant?.useWhatsappBooking, sendWhatsAppMessage])
@@ -610,9 +666,21 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
                       key={appt.id}
                       appointment={appt}
                       onStatusChange={handleStatusChange}
+                      onPress={() => router.push(`${rootPath}/appointments/${appt.id}` as any)}
+                      isUpdating={updatingId === appt.id}
                     />
                   ))
                 )}
+
+                {/* Ver todos */}
+                <Pressable
+                  onPress={() => router.push(`${rootPath}/appointments` as any)}
+                  className="flex-row items-center justify-center gap-2 mt-3 py-3 rounded-2xl border border-zinc-200 bg-zinc-50 active:bg-zinc-100"
+                >
+                  <Ionicons name="calendar-outline" size={15} color="#71717a" />
+                  <Text className="text-zinc-600 font-bold text-sm">Ver todos os agendamentos</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#a1a1aa" />
+                </Pressable>
               </View>
 
               {/* ── Booking Link ── */}

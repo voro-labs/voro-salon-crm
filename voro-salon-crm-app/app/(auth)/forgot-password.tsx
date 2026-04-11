@@ -118,7 +118,7 @@ export default function ForgotPasswordScreen() {
             </Pressable>
             <View className="flex-row justify-center mt-6">
               <Text className="text-zinc-500 font-bold">Lembrou a senha? </Text>
-              <Pressable onPress={() => router.replace("/(auth)/sign-in")}>
+              <Pressable onPress={() => router.back()}>
                 <Text className="font-black" style={{ color: primaryColor }}>Voltar ao login</Text>
               </Pressable>
             </View>

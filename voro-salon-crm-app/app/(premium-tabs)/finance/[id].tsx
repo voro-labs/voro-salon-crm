@@ -162,7 +162,7 @@ export default function TransactionDetailScreen() {
         right={
           <View className="flex-row gap-2">
             <Pressable
-              onPress={() => router.push(`/(tabs)/finance/edit?id=${id}` as any)}
+              onPress={() => router.push(`/(premium-tabs)/finance/edit?id=${id}` as any)}
               className="h-9 w-9 rounded-xl items-center justify-center"
               style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}
             >
@@ -250,7 +250,7 @@ export default function TransactionDetailScreen() {
             </Pressable>
           )}
           <Pressable
-            onPress={() => router.push(`/(tabs)/finance/edit?id=${id}` as any)}
+            onPress={() => router.push(`/(premium-tabs)/finance/edit?id=${id}` as any)}
             className="h-14 rounded-2xl items-center justify-center flex-row gap-2"
             style={{ backgroundColor: primaryColor }}
           >

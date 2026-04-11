@@ -278,6 +278,12 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
                     <Text className="text-zinc-500 text-sm" numberOfLines={1}>{c.email}</Text>
                   </View>
                 ) : null}
+                {c.birthDate ? (
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="gift-outline" size={13} color="#71717a" />
+                    <Text className="text-zinc-500 text-sm">{formatDate(c.birthDate)}</Text>
+                  </View>
+                ) : null}
               </View>
               {c.notes ? (
                 <Text className="text-zinc-400 text-xs mt-2" numberOfLines={2}>{c.notes}</Text>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react"
-import { View, Text, TextInput, Pressable, ActivityIndicator, Switch } from "react-native"
+import { View, Text, TextInput, Pressable, ActivityIndicator, Switch, InteractionManager } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
@@ -141,13 +141,17 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
   }, [])
 
   // Re-fetch quando data, serviço ou profissional mudam (exceto em encaixe)
+  // Usar InteractionManager para não interromper a animação de transição de tela
   useEffect(() => {
     if (form.isEncaixe) {
       setAvailableSlots(undefined)
       return
     }
     if (date) {
-      fetchAvailability(date, form.serviceId, form.employeeId)
+      const task = InteractionManager.runAfterInteractions(() => {
+        fetchAvailability(date, form.serviceId, form.employeeId)
+      })
+      return () => task.cancel()
     }
   }, [date, form.serviceId, form.employeeId, form.isEncaixe])
 
