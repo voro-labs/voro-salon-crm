@@ -32,6 +32,8 @@ import { getClientBranding, getEstablishmentTypeByHostname } from "@/lib/brandin
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto } from "@/types/subscription.interface"
 import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ColorSchemePicker } from "@/components/color-scheme-picker"
 
 // ── Animation variants ────────────────────────────────────────────────────────
 
@@ -1224,12 +1226,8 @@ export default function PrecosPage() {
             <span className="font-black text-lg tracking-tight">{branding.shortName}</span>
           </motion.div>
           <div className="flex items-center gap-2">
-            <motion.div
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
-            >
-            </motion.div>
+            <ColorSchemePicker />
+            <ThemeToggle />
           </div>
         </div>
       </motion.nav>

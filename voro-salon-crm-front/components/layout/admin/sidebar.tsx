@@ -23,6 +23,8 @@ import {
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
 import { toTitleCase } from "@/lib/utils"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ColorSchemePicker } from "@/components/color-scheme-picker"
 import {
   Select,
   SelectContent,
@@ -332,11 +334,17 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
           </button>
         </nav>
 
-        {/* Product name footer */}
-        <div className="px-4 pb-4 text-center">
-          <p className="text-[11px] text-muted-foreground/50 font-medium">
-            {getBrandingByType(tenant?.establishmentType ?? EstablishmentType.Salon).productName}
-          </p>
+        {/* Theme controls footer */}
+        <div className="px-4 pb-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-muted-foreground/50 font-medium">
+              {getBrandingByType(tenant?.establishmentType ?? EstablishmentType.Salon).productName}
+            </p>
+            <div className="flex items-center gap-1">
+              <ColorSchemePicker />
+              <ThemeToggle />
+            </div>
+          </div>
         </div>
       </aside>
     </>
