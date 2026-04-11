@@ -35,14 +35,15 @@ export function BlockedHoursScreen() {
     fetcher
   )
 
-  const { data: employees } = useSWR<any[]>(
-    API_CONFIG.ENDPOINTS.EMPLOYEES,
+  const { data: _employeesRaw } = useSWR<any>(
+    API_CONFIG.ENDPOINTS.EMPLOYEES + "?pageSize=200",
     fetcher
   )
+  const employees: any[] = _employeesRaw?.items ?? (Array.isArray(_employeesRaw) ? _employeesRaw : [])
 
   const employeeOptions = [
     { id: "none", label: "Todos os profissionais (Salão fechado)" },
-    ...(employees ?? []).map((e: any) => ({
+    ...employees.map((e: any) => ({
       id: e.id,
       label: e.name ?? `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim(),
     })),
@@ -157,7 +158,7 @@ export function BlockedHoursScreen() {
                       <View className="mt-1 flex-row items-center gap-1">
                         <Ionicons name="person" size={10} color="#a1a1aa" />
                         <Text className="text-[10px] text-zinc-400 font-bold uppercase">
-                          {employees?.find(e => e.id === block.employeeId)?.name || "Profissional"}
+                          {employees.find((e: any) => e.id === block.employeeId)?.name || "Profissional"}
                         </Text>
                       </View>
                     )}

@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import {
   View, Text, ScrollView, Pressable, ActivityIndicator,
-  RefreshControl, Modal, TextInput, Alert, TouchableOpacity,
+  RefreshControl, Modal, TextInput, Alert, TouchableOpacity, Switch,
 } from "react-native"
 import { ConfirmModal } from "components/ConfirmModal"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -68,7 +68,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
   const [tab, setTab] = useState<TabType>("services")
 
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", notes: "", birthDate: "" })
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", notes: "", birthDate: "", isActive: true })
   const [editCountryCode, setEditCountryCode] = useState("BR")
 
   // Anamnesis modal
@@ -179,6 +179,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
       phone: phoneNumber,
       notes: c.notes ?? "",
       birthDate: c.birthDate ? c.birthDate.slice(0, 10) : "",
+      isActive: c.isActive !== false,
     })
     setEditOpen(true)
   }
@@ -192,6 +193,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
       phone: `${dialCodeOnlyNumber}${editForm.phone}`,
       notes: editForm.notes,
       birthDate: editForm.birthDate || null,
+      isActive: editForm.isActive,
     })
     if (success) setEditOpen(false)
   }
@@ -243,6 +245,7 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
   }
 
   const c = client as any
+  const isInactive = c.isActive === false
   const fullName = `${c.name ?? ""} ${c.lastName ?? ""}`.trim()
   const initials = `${c.name?.[0] ?? ""}${c.lastName?.[0] ?? ""}`.toUpperCase()
   const totalSpent = (services ?? []).reduce((sum: number, s: any) => sum + (s.amount ?? 0), 0)
@@ -291,28 +294,56 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
             </View>
           </View>
 
+          {/* Inactive banner */}
+          {isInactive && (
+            <View className="flex-row items-center gap-2 mt-3 bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2.5">
+              <Ionicons name="ban-outline" size={15} color="#71717a" />
+              <Text className="text-zinc-500 text-xs font-semibold flex-1">
+                Cliente inativo. Apenas o status pode ser alterado.
+              </Text>
+            </View>
+          )}
+
           {/* Action Buttons */}
           <View className="flex-row gap-2 mt-4">
             <Pressable
               onPress={openEdit}
+              disabled={isInactive}
               className="flex-1 flex-row items-center justify-center gap-2 h-10 bg-zinc-50 border border-zinc-200 rounded-xl"
+              style={isInactive ? { opacity: 0.4 } : undefined}
             >
               <Ionicons name="pencil-outline" size={15} color="#18181b" />
               <Text className="text-zinc-800 font-bold text-sm">Editar</Text>
             </Pressable>
-            <Pressable
-              onPress={handleDelete}
-              disabled={isDeleting}
-              className="flex-1 flex-row items-center justify-center gap-2 h-10 bg-red-50 border border-red-100 rounded-xl"
-            >
-              {isDeleting
-                ? <ActivityIndicator size="small" color="#ef4444" />
-                : <>
-                    <Ionicons name="trash-outline" size={15} color="#ef4444" />
-                    <Text className="text-red-600 font-bold text-sm">Excluir</Text>
-                  </>
-              }
-            </Pressable>
+            {isInactive ? (
+              <Pressable
+                onPress={() => updateClient({ isActive: true })}
+                disabled={isSaving}
+                className="flex-1 flex-row items-center justify-center gap-2 h-10 bg-green-50 border border-green-200 rounded-xl"
+              >
+                {isSaving
+                  ? <ActivityIndicator size="small" color="#16a34a" />
+                  : <>
+                      <Ionicons name="checkmark-circle-outline" size={15} color="#16a34a" />
+                      <Text className="text-green-700 font-bold text-sm">Reativar</Text>
+                    </>
+                }
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 flex-row items-center justify-center gap-2 h-10 bg-red-50 border border-red-100 rounded-xl"
+              >
+                {isDeleting
+                  ? <ActivityIndicator size="small" color="#ef4444" />
+                  : <>
+                      <Ionicons name="trash-outline" size={15} color="#ef4444" />
+                      <Text className="text-red-600 font-bold text-sm">Excluir</Text>
+                    </>
+                }
+              </Pressable>
+            )}
           </View>
 
           {/* Stats */}
@@ -656,6 +687,19 @@ export function ClientDetailScreen({ id, rootPath = "/(tabs)" }: { id: string; r
                 onChangeText={(v) => setEditForm((p) => ({ ...p, notes: v }))}
                 multiline
                 textAlignVertical="top"
+              />
+            </View>
+
+            <View className="flex-row items-center justify-between bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 mb-4">
+              <View>
+                <Text className="text-zinc-700 font-bold text-sm">Cliente ativo</Text>
+                <Text className="text-zinc-400 text-xs mt-0.5">Desativar oculta o cliente de novas buscas</Text>
+              </View>
+              <Switch
+                value={editForm.isActive}
+                onValueChange={(v) => setEditForm((p) => ({ ...p, isActive: v }))}
+                trackColor={{ false: "#e4e4e7", true: primaryColor + "80" }}
+                thumbColor={editForm.isActive ? primaryColor : "#a1a1aa"}
               />
             </View>
           </KeyboardAwareScrollView>
