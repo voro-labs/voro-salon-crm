@@ -26,6 +26,7 @@ import { ptBR } from "date-fns/locale"
 import { QuickCreateClient } from "@/components/custom/quick-create-client"
 import { QuickCreateService } from "@/components/custom/quick-create-service"
 import { QuickCreateEmployee } from "@/components/custom/quick-create-employee"
+import { SearchableSelect } from "@/components/ui/custom/searchable-select"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentForm } from "@/hooks/use-appointment-form.hook"
@@ -164,20 +165,15 @@ export default function NovoAgendamentoPage() {
                       />
                     )}
                   </div>
-                  <Select
-                    key={clients ? "clients-loaded" : "clients-loading"}
+                  <SearchableSelect
+                    id="clientId"
                     value={form.clientId}
                     onValueChange={(v) => setForm((p) => ({ ...p, clientId: v }))}
-                  >
-                    <SelectTrigger id="clientId" className="w-full">
-                      <SelectValue placeholder="Selecione um cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients?.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={clients?.map((c: any) => ({ value: c.id, label: c.name })) ?? []}
+                    placeholder="Selecione um cliente"
+                    searchPlaceholder="Buscar cliente..."
+                    emptyText="Nenhum cliente encontrado."
+                  />
                   {activeMembership && (
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
@@ -203,28 +199,15 @@ export default function NovoAgendamentoPage() {
                         />
                       )}
                     </div>
-                    <Select
-                      key={services ? "services-loaded" : "services-loading"}
+                    <SearchableSelect
+                      id="serviceId"
                       value={form.serviceId}
                       onValueChange={handleServiceChange}
-                    >
-                      <SelectTrigger id="serviceId" className="w-full">
-                        <SelectValue placeholder="Selecione um serviço" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum / Customizado</SelectItem>
-                        {services?.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            <span className="flex items-center gap-2">
-                              {s.name}
-                              {s.hasPromotion && (
-                                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">PROMOÇÃO</span>
-                              )}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={[{ value: "none", label: "Nenhum / Customizado" }, ...(services?.map((s: any) => ({ value: s.id, label: s.name, badge: s.hasPromotion ? "PROMOÇÃO" : undefined })) ?? [])]}
+                      placeholder="Selecione um serviço"
+                      searchPlaceholder="Buscar serviço..."
+                      emptyText="Nenhum serviço encontrado."
+                    />
                     {activePromotion && (
                       <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                         <Tag className="h-4 w-4 shrink-0 text-emerald-600" />
@@ -253,21 +236,15 @@ export default function NovoAgendamentoPage() {
                         }}
                       />
                     </div>
-                    <Select
-                      key={employees ? "employees-loaded" : "employees-loading"}
+                    <SearchableSelect
+                      id="employeeId"
                       value={form.employeeId}
                       onValueChange={(v) => setForm((p) => ({ ...p, employeeId: v }))}
-                    >
-                      <SelectTrigger id="employeeId" className="w-full">
-                        <SelectValue placeholder="Selecione um funcionário" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Qualquer um</SelectItem>
-                        {employees?.map((e: any) => (
-                          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={[{ value: "none", label: "Qualquer um" }, ...(employees?.map((e: any) => ({ value: e.id, label: e.name })) ?? [])]}
+                      placeholder="Selecione um funcionário"
+                      searchPlaceholder="Buscar funcionário..."
+                      emptyText="Nenhum funcionário encontrado."
+                    />
                   </div>
                 )}
               </div>

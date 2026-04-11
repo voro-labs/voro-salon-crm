@@ -21,9 +21,16 @@ import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { Switch } from "@/components/ui/switch"
 import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import useSWR from "swr"
 
 interface QuickCreateClientProps {
   onSuccess: (clientId: string) => void
+}
+
+const fetcher = async (url: string) => {
+  const result = await secureApiCall<any>(url, { method: "GET" })
+  if (result.hasError) throw new Error(result.message || "Error")
+  return result.data
 }
 
 export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
@@ -32,6 +39,7 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
   const [countryCode, setCountryCode] = useState("BR")
   const [showAnamnesis, setShowAnamnesis] = useState(false)
   const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
+  const [duplicateFound, setDuplicateFound] = useState<{ id: string; name: string } | null>(null)
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -39,17 +47,10 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
     notes: "",
   })
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!form.name.trim()) {
-      toast.error("Nome é obrigatório.")
-      return
-    }
-    if (!form.phone.trim()) {
-      toast.error("Telefone é obrigatório.")
-      return
-    }
+  const { data: _clientsRaw } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
+  const existingClients = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : []) ?? []
+
+  async function performCreate() {
     setLoading(true)
     try {
       const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
@@ -67,7 +68,7 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
           client: body,
           anamnesis: {
             date: new Date().toISOString(),
-            professionalId: "00000000-0000-0000-0000-000000000000", // Will be handled by service if 0 or empty for now
+            professionalId: "00000000-0000-0000-0000-000000000000",
             responses: anamnesisResponses,
             signatures: []
           }
@@ -87,7 +88,6 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
       toast.success(showAnamnesis ? "Cliente e Anamnese cadastrados!" : "Cliente cadastrado com sucesso!")
       onSuccess(res.data.id)
       setOpen(false)
-      // Clear form
       setForm({ name: "", phone: "", email: "", notes: "" })
       setAnamnesisResponses([])
       setShowAnamnesis(false)
@@ -98,8 +98,35 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
     }
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!form.name.trim()) {
+      toast.error("Nome é obrigatório.")
+      return
+    }
+    if (!form.phone.trim()) {
+      toast.error("Telefone é obrigatório.")
+      return
+    }
+
+    const nameLower = form.name.trim().toLowerCase()
+    const match = existingClients.find((c: any) => c.name?.trim().toLowerCase() === nameLower)
+    if (match) {
+      setDuplicateFound({ id: match.id, name: match.name })
+      return
+    }
+
+    await performCreate()
+  }
+
+  async function handleForceCreate() {
+    setDuplicateFound(null)
+    await performCreate()
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(val) => { setOpen(val); if (!val) setDuplicateFound(null) }}>
       <DialogTrigger asChild>
         <Button type="button" variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-primary/10 hover:text-primary">
           <Plus className="h-4 w-4" />
@@ -109,7 +136,7 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
         <DialogHeader className="p-6 pb-2 border-b">
           <DialogTitle>Novo Cliente</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="flex flex-col gap-4 pb-4">
@@ -119,9 +146,46 @@ export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
                   id="quick-client-name"
                   placeholder="Nome completo"
                   value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((p) => ({ ...p, name: e.target.value }))
+                    setDuplicateFound(null)
+                  }}
                   required
                 />
+                {duplicateFound !== null && (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 flex flex-col gap-2">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      Já existe um cliente com nome similar: <strong>{duplicateFound.name}</strong>
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-amber-400 text-amber-800 hover:bg-amber-100"
+                        onClick={() => {
+                          onSuccess(duplicateFound.id)
+                          setOpen(false)
+                          setDuplicateFound(null)
+                          setForm({ name: "", phone: "", email: "", notes: "" })
+                          setAnamnesisResponses([])
+                          setShowAnamnesis(false)
+                        }}
+                      >
+                        Usar {duplicateFound.name}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={handleForceCreate}
+                      >
+                        Criar mesmo assim
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">

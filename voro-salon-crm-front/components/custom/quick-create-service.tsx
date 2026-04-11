@@ -23,14 +23,22 @@ import {
 import { CurrencyInput } from "@/components/currency-input"
 import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import useSWR from "swr"
 
 interface QuickCreateServiceProps {
   onSuccess: (serviceId: string, serviceData: any) => void
 }
 
+const fetcher = async (url: string) => {
+  const result = await secureApiCall<any>(url, { method: "GET" })
+  if (result.hasError) throw new Error(result.message || "Error")
+  return result.data
+}
+
 export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [duplicateFound, setDuplicateFound] = useState<{ id: string; name: string } | null>(null)
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -38,13 +46,10 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
     durationMinutes: 30,
   })
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!form.name.trim()) {
-      toast.error("O nome do serviço é obrigatório.")
-      return
-    }
+  const { data: _svcRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const existingServices = _svcRaw?.items ?? (Array.isArray(_svcRaw) ? _svcRaw : []) ?? []
+
+  async function performCreate() {
     setLoading(true)
     try {
       const res = await secureApiCall<any>(API_CONFIG.ENDPOINTS.SERVICES, {
@@ -60,7 +65,6 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
       toast.success("Serviço cadastrado com sucesso!")
       onSuccess(res.data.id, res.data)
       setOpen(false)
-      // Clear form
       setForm({ name: "", description: "", price: 0, durationMinutes: 30 })
     } catch {
       toast.error("Erro de conexão. Tente novamente.")
@@ -69,8 +73,31 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
     }
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!form.name.trim()) {
+      toast.error("O nome do serviço é obrigatório.")
+      return
+    }
+
+    const nameLower = form.name.trim().toLowerCase()
+    const match = existingServices.find((s: any) => s.name?.trim().toLowerCase() === nameLower)
+    if (match) {
+      setDuplicateFound({ id: match.id, name: match.name })
+      return
+    }
+
+    await performCreate()
+  }
+
+  async function handleForceCreate() {
+    setDuplicateFound(null)
+    await performCreate()
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(val) => { setOpen(val); if (!val) setDuplicateFound(null) }}>
       <DialogTrigger asChild>
         <Button type="button" variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-primary/10 hover:text-primary">
           <Plus className="h-4 w-4" />
@@ -87,9 +114,44 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
               id="quick-service-name"
               placeholder="Nome do serviço"
               value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              onChange={(e) => {
+                setForm((p) => ({ ...p, name: e.target.value }))
+                setDuplicateFound(null)
+              }}
               required
             />
+            {duplicateFound !== null && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 flex flex-col gap-2">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  Já existe um serviço com nome similar: <strong>{duplicateFound.name}</strong>
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-400 text-amber-800 hover:bg-amber-100"
+                    onClick={() => {
+                      onSuccess(duplicateFound.id, existingServices.find((s: any) => s.id === duplicateFound.id))
+                      setOpen(false)
+                      setDuplicateFound(null)
+                      setForm({ name: "", description: "", price: 0, durationMinutes: 30 })
+                    }}
+                  >
+                    Usar {duplicateFound.name}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={handleForceCreate}
+                  >
+                    Criar mesmo assim
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
