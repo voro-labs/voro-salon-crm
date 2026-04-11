@@ -92,15 +92,19 @@ function CalendarWeekView({
     return !bh || !bh.isOpen
   }
 
-  function isInBusinessHours(date: Date, hour: number) {
+  function isInBusinessHours(date: Date, hour: number, minute: number) {
     if (!businessHours?.length) return true
     const dow = date.getDay()
     const bh = businessHours.find((d) => d.dayOfWeek === dow)
     if (!bh || !bh.isOpen) return false
+    const slotMin = hour * 60 + minute
     return bh.ranges.some((r) => {
-      const oh = parseInt(r.openTime.split(":")[0], 10)
-      const ch = parseInt(r.closeTime.split(":")[0], 10)
-      return hour >= oh && hour < ch
+      const [oh, om] = r.openTime.split(":").map(Number)
+      const [ch, cm] = r.closeTime.split(":").map(Number)
+      const openMin = oh * 60 + om
+      const closeMin = ch * 60 + cm
+      // slot começa dentro do range E ainda cabe (pelo menos 30 min antes de fechar)
+      return slotMin >= openMin && slotMin + 30 <= closeMin
     })
   }
 
@@ -146,7 +150,7 @@ function CalendarWeekView({
 
   function handleSlotClick(date: Date, hour: number, minute: number) {
     const key = `${date.toISOString()}_${hour}_${minute}`
-    if (isSlotPast(date, hour, minute) || isDayClosed(date) || !isInBusinessHours(date, hour) || hasConflict(date, hour, minute)) {
+    if (isSlotPast(date, hour, minute) || isDayClosed(date) || !isInBusinessHours(date, hour, minute) || hasConflict(date, hour, minute)) {
       setBlockedKey(key)
       setTimeout(() => setBlockedKey(null), 700)
       return
@@ -225,7 +229,7 @@ function CalendarWeekView({
             >
               {hours.flatMap((h) =>
                 [0, 30].map((m) => {
-                  const inBH = isInBusinessHours(visibleDay, h)
+                  const inBH = isInBusinessHours(visibleDay, h, m)
                   const past = isSlotPast(visibleDay, h, m)
                   const slotKey = `${visibleDay.toISOString()}_${h}_${m}`
                   const isBlocked = blockedKey === slotKey
@@ -350,7 +354,7 @@ function CalendarWeekView({
                 {/* Hour grid lines + click targets (30-min slots) */}
                 {hours.flatMap((h) =>
                   [0, 30].map((m) => {
-                    const inBH = isInBusinessHours(day, h)
+                    const inBH = isInBusinessHours(day, h, m)
                     const past = isSlotPast(day, h, m)
                     const slotKey = `${day.toISOString()}_${h}_${m}`
                     const isBlocked = blockedKey === slotKey
