@@ -137,7 +137,8 @@ export default function AppointmentDetailPage() {
         const phone = (res.data.clientPhone ?? "").replace(/\D/g, "")
         const clientName = res.data.clientName ?? "cliente"
         const serviceName = res.data.serviceName ?? "serviço"
-        const message = `Olá ${clientName}! Ficamos felizes em atendê-lo(a) no ${serviceName}. Que tal nos deixar sua avaliação? Sua opinião é muito importante para nós! 😊`
+        const ratingUrl = `${window.location.origin}/receipt/${appointmentId}`
+        const message = `Olá ${clientName}! Ficamos felizes em atendê-lo(a) no ${serviceName}. Que tal nos deixar sua avaliação? Acesse o link: ${ratingUrl} 😊`
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
         toast.info("WhatsApp aberto com solicitação de avaliação.")
       } else {

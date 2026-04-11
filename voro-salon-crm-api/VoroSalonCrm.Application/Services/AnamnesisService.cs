@@ -329,8 +329,6 @@ namespace VoroSalonCrm.Application.Services
                 if (sheetWithDetails?.Client?.Phone != null && sheetWithDetails.Tenant != null &&
                     sheetWithDetails.Tenant.UseWhatsappBooking)
                 {
-                    var frontendUrl = _configuration["FrontendUrl"] ?? "https://app.vorosalon.com";
-                    var signingUrl = $"{frontendUrl}/anamnesis/sign/{sheet.PublicToken}";
 
                     var templateMsg = new WhatsappTemplateMessageDto
                     {
@@ -465,8 +463,6 @@ namespace VoroSalonCrm.Application.Services
             await _unitOfWork.SaveChangesAsync();
 
             var tenant = await _tenantRepository.GetByIdAsync(false, tenantId);
-            var frontendUrl = _configuration["FrontendUrl"] ?? "https://app.vorosalon.com";
-            var fillUrl = $"{frontendUrl}/anamnesis/fill/{sheet.PublicToken}";
 
             if (tenant != null && tenant.UseWhatsappBooking && !string.IsNullOrWhiteSpace(tenant.WhatsappPhoneNumberId) &&
                 !string.IsNullOrWhiteSpace(client.Phone))
