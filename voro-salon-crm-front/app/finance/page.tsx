@@ -111,7 +111,7 @@ const getPaymentMethodName = (method: PaymentMethod) => {
 }
 
 export default function FinancialPage() {
-  const { transactions, isLoading, createTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions()
+  const { transactions, isLoading, createTransaction, updateTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions()
   const { serviceRecords } = useServiceRecords()
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
@@ -136,6 +136,18 @@ export default function FinancialPage() {
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false)
   const [txToCancel, setTxToCancel] = useState<TransactionDto | null>(null)
   const [txToDelete, setTxToDelete] = useState<TransactionDto | null>(null)
+  const [txToEdit, setTxToEdit] = useState<TransactionDto | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+  const [editForm, setEditForm] = useState({
+    description: "",
+    amount: 0,
+    type: "2",
+    categoryId: "none",
+    dueDate: format(new Date(), "yyyy-MM-dd"),
+    paymentMethod: "4",
+    notes: ""
+  })
 
   // Form Pagamento
   const [payForm, setPayForm] = useState({
@@ -255,6 +267,50 @@ export default function FinancialPage() {
       resetForm()
     } catch (err: any) {
       toast.error(err.message || "Falha ao enviar transação.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleOpenEditDialog = (tx: TransactionDto) => {
+    setTxToEdit(tx)
+    setEditForm({
+      description: tx.description,
+      amount: tx.amount,
+      type: tx.type.toString(),
+      categoryId: tx.category?.id ?? "none",
+      dueDate: format(new Date(tx.dueDate), "yyyy-MM-dd"),
+      paymentMethod: tx.paymentMethod.toString(),
+      notes: tx.notes ?? ""
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!txToEdit) return
+    if (!editForm.description) { toast.error("A descrição é obrigatória"); return }
+    const val = editForm.amount
+    if (isNaN(val) || val <= 0) { toast.error("Insira um valor maior que 0"); return }
+    if (!editForm.dueDate) { toast.error("Insira uma data válida"); return }
+
+    setIsSubmitting(true)
+    try {
+      const res = await updateTransaction(txToEdit.id, {
+        id: txToEdit.id,
+        description: editForm.description,
+        amount: val,
+        type: parseInt(editForm.type) as TransactionType,
+        categoryId: editForm.categoryId === "none" ? undefined : editForm.categoryId,
+        dueDate: editForm.dueDate + "T12:00:00.000Z",
+        paymentMethod: parseInt(editForm.paymentMethod) as PaymentMethod,
+        notes: editForm.notes
+      })
+      if (res.hasError) throw new Error(res.message || "Erro")
+      toast.success("Lançamento atualizado com sucesso!")
+      setIsEditDialogOpen(false)
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao atualizar lançamento.")
     } finally {
       setIsSubmitting(false)
     }
@@ -710,7 +766,7 @@ export default function FinancialPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => { }} disabled>
+                                <DropdownMenuItem onClick={() => handleOpenEditDialog(tx)}>
                                   <FileEdit className="mr-2 h-4 w-4" />
                                   Editar Lançamento
                                 </DropdownMenuItem>
@@ -895,6 +951,111 @@ export default function FinancialPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Lançamento</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Tipo</Label>
+                <Select value={editForm.type} onValueChange={(v) => setEditForm({ ...editForm, type: v })}>
+                  <SelectTrigger id="edit-type" className="w-full">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">Saída (Despesa)</SelectItem>
+                    <SelectItem value="1">Entrada (Ganho)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-date">Vencimento / Data *</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={editForm.dueDate}
+                  onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Descrição *</Label>
+              <Input
+                id="edit-description"
+                placeholder="Ex: Aluguel do mês, Faturamento diário..."
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                autoFocus
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-amount">Valor *</Label>
+                <CurrencyInput
+                  id="edit-amount"
+                  value={editForm.amount}
+                  onChange={(v) => setEditForm(p => ({ ...p, amount: v }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Categoria</Label>
+                <Select value={editForm.categoryId} onValueChange={(v) => setEditForm({ ...editForm, categoryId: v })}>
+                  <SelectTrigger id="edit-category" className="w-full">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    {(categories || [])
+                      .filter(c => c.type.toString() === editForm.type)
+                      .map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-paymentMethod">Método de Pagamento</Label>
+              <Select value={editForm.paymentMethod} onValueChange={(v) => setEditForm({ ...editForm, paymentMethod: v })}>
+                <SelectTrigger id="edit-paymentMethod" className="w-full">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="6">Pix</SelectItem>
+                  <SelectItem value="2">Cartão de Crédito</SelectItem>
+                  <SelectItem value="3">Cartão de Débito</SelectItem>
+                  <SelectItem value="1">Dinheiro</SelectItem>
+                  <SelectItem value="5">Boleto</SelectItem>
+                  <SelectItem value="7">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">Observações</Label>
+              <Input
+                id="edit-notes"
+                placeholder="Ex: Comprovante Nº, referência..."
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+              />
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <PdfStatementImport
         open={isPdfImportOpen}
