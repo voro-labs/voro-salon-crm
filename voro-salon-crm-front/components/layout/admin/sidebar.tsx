@@ -24,7 +24,6 @@ import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
 import { toTitleCase } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { ColorSchemePicker } from "@/components/color-scheme-picker"
 import {
   Select,
   SelectContent,
@@ -341,7 +340,6 @@ export function Sidebar({ isOpen, onClose, tenant }: SidebarProps) {
               {getBrandingByType(tenant?.establishmentType ?? EstablishmentType.Salon).productName}
             </p>
             <div className="flex items-center gap-1">
-              <ColorSchemePicker />
               <ThemeToggle />
             </div>
           </div>
