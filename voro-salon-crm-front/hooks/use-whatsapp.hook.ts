@@ -29,22 +29,22 @@ export function useWhatsApp() {
     let message = ""
     switch (newStatus) {
       case 0:
-        message = `Olá ${clientName}! Recebemos sua solicitação de agendamento para ${serviceName} em ${dateStr} às ${timeStr}. Estamos analisando e logo te confirmamos! ⏳`
+        message = `Olá ${clientName}! Recebemos sua solicitação de agendamento para ${serviceName} em ${dateStr} às ${timeStr}. Estamos analisando e logo te confirmamos!`
         break
       case 1:
-        message = `Olá ${clientName}! Seu agendamento de ${serviceName} foi confirmado para ${dateStr} às ${timeStr}. Aguardamos você! 😊`
+        message = `Olá ${clientName}! Seu agendamento de ${serviceName} foi confirmado para ${dateStr} às ${timeStr}. Aguardamos você!`
         break
       case 2:
-        message = `Olá ${clientName}! Obrigado pelo seu agendamento de ${serviceName}. Foi um prazer atendê-lo(a)! Qualquer dúvida, estamos à disposição. 🙏`
+        message = `Olá ${clientName}! Obrigado pelo seu agendamento de ${serviceName}. Foi um prazer atendê-lo(a)! Qualquer dúvida, estamos à disposição.`
         break
       case 3:
-        message = `Olá ${clientName}! Infelizmente seu agendamento de ${serviceName} para ${dateStr} às ${timeStr} precisou ser cancelado. Se desejar, podemos reagendar para outro horário! 😊`
+        message = `Olá ${clientName}! Infelizmente seu agendamento de ${serviceName} para ${dateStr} às ${timeStr} precisou ser cancelado. Se desejar, podemos reagendar para outro horário!`
         break
       case 4:
-        message = `Olá ${clientName}, sentimos sua falta hoje no agendamento de ${serviceName}. Aconteceu algum imprevisto? Se quiser agendar uma nova data, estamos por aqui! 👋`
+        message = `Olá ${clientName}, sentimos sua falta hoje no agendamento de ${serviceName}. Aconteceu algum imprevisto? Se quiser agendar uma nova data, estamos por aqui!`
         break
       case 5:
-        message = `Olá ${clientName}! Seu agendamento de ${serviceName} foi alterado para ${dateStr} às ${timeStr}. Caso tenha alguma dúvida, entre em contato! 😊`
+        message = `Olá ${clientName}! Seu agendamento de ${serviceName} foi alterado para ${dateStr} às ${timeStr}. Caso tenha alguma dúvida, entre em contato!`
         break
       default:
         return null
