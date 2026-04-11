@@ -78,7 +78,7 @@ namespace VoroSalonCrm.Application.Services
             return rating == null ? null : MapToDto(rating);
         }
 
-        public async Task SendRatingRequestAsync(Guid appointmentId)
+        public async Task<SendRatingRequestResultDto> SendRatingRequestAsync(Guid appointmentId)
         {
             var appointment = await appointmentRepository
                 .Query(a => a.Id == appointmentId)
@@ -93,6 +93,18 @@ namespace VoroSalonCrm.Application.Services
 
             var tenant = await tenantRepository.GetByIdAsync(false, appointment.TenantId)
                 ?? throw new InvalidOperationException("Tenant não encontrado.");
+
+            // Se o WhatsApp não estiver configurado, delega o envio para o frontend via wa.me
+            if (!tenant.UseWhatsappBooking || string.IsNullOrWhiteSpace(tenant.WhatsappPhoneNumberId))
+            {
+                return new SendRatingRequestResultDto(
+                    SentViaBot: false,
+                    RequiresManualSend: true,
+                    ClientPhone: appointment.Client.Phone,
+                    ClientName: appointment.Client.Name,
+                    ServiceName: appointment.Service?.Name ?? "Serviço"
+                );
+            }
 
             var ratingMsg = new WhatsappTemplateMessageDto
             {
@@ -115,7 +127,7 @@ namespace VoroSalonCrm.Application.Services
                             SubType = "url",
                             Index = "0",
                             Parameters = [
-                                new() { Type = "text", Text = "/" + appointment.Id.ToString() }
+                                new() { Type = "text", Text = appointment.Id.ToString() }
                             ]
                         }
                     ]
@@ -123,6 +135,14 @@ namespace VoroSalonCrm.Application.Services
             };
 
             await whatsappService.SendTemplateMessageAsync(ratingMsg, tenant.WhatsappPhoneNumberId);
+
+            return new SendRatingRequestResultDto(
+                SentViaBot: true,
+                RequiresManualSend: false,
+                ClientPhone: null,
+                ClientName: null,
+                ServiceName: null
+            );
         }
 
         private static ClientRatingDto MapToDto(ClientRating r) => new(

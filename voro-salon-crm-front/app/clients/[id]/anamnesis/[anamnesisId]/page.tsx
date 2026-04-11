@@ -4,25 +4,31 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import useSWR from "swr"
-import { 
-  ArrowLeft, 
-  Printer, 
-  User, 
-  Calendar, 
-  ClipboardList, 
+import {
+  ArrowLeft,
+  Printer,
+  User,
+  Calendar,
+  ClipboardList,
   Stethoscope,
   ChevronDown,
   ChevronUp,
   Image as ImageIcon,
   PenTool,
-  Loader2
+  Loader2,
+  Phone,
+  Cake,
+  Send,
+  CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { API_CONFIG } from "@/lib/api"
+import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { fetcher } from "@/lib/fetcher"
+import { toast } from "sonner"
+import { useSettings } from "@/hooks/use-settings.hook"
 import { 
   AnamnesisSheet, 
   AnamnesisQuestion, 
@@ -31,6 +37,7 @@ import {
   AnamnesisFieldType
 } from "@/types/anamnesis.types"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
+import { formatPhone } from "@/lib/mask-utils"
 
 export default function AnamnesisDetailPage() {
   const params = useParams()
@@ -63,9 +70,41 @@ export default function AnamnesisDetailPage() {
   )
 
   const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({})
+  const [isSendingSigningLink, setIsSendingSigningLink] = useState(false)
+  const [signingLinkSent, setSigningLinkSent] = useState(false)
+
+  const { tenant } = useSettings()
 
   const toggleSection = (section: number) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  async function handleSendSigningLink() {
+    setIsSendingSigningLink(true)
+    try {
+      const res = await authenticatedApiCall<{ token: string }>(
+        `${API_CONFIG.ENDPOINTS.ANAMNESIS}/${anamnesisId}/signing-token`,
+        { method: "POST" }
+      )
+      if (res.hasError) { toast.error(res.message || "Erro ao gerar link de assinatura."); return }
+
+      const token = res.data?.token
+      if (!token) { toast.error("Token não retornado."); return }
+
+      if (tenant?.useWhatsappBooking) {
+        toast.success("Link de assinatura enviado via WhatsApp!")
+      } else {
+        const signingUrl = `${window.location.origin}/anamnesis/sign/${token}`
+        const phone = (client?.phone ?? "").replace(/\D/g, "")
+        const clientName = client?.name ?? "cliente"
+        const message = `Olá ${clientName}! Preparamos sua ficha de anamnese para assinatura. Acesse o link para visualizar e assinar: ${signingUrl}`
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
+        toast.info("WhatsApp aberto com o link de assinatura.")
+      }
+
+      setSigningLinkSent(true)
+    } catch { toast.error("Erro de conexão.") }
+    finally { setIsSendingSigningLink(false) }
   }
 
   if (loadingSheet || loadingQuestions) {
@@ -120,6 +159,33 @@ export default function AnamnesisDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {(() => {
+              const clientAlreadySigned = anamnesis.signatures?.some(s => s.type === 1)
+              if (clientAlreadySigned) {
+                return (
+                  <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium px-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Cliente assinou
+                  </span>
+                )
+              }
+              return (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendSigningLink}
+                  disabled={isSendingSigningLink || signingLinkSent}
+                  className="h-9 text-xs sm:text-sm flex-1 sm:flex-none"
+                >
+                  {isSendingSigningLink
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : signingLinkSent
+                      ? <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
+                      : <Send className="mr-2 h-4 w-4" />}
+                  {signingLinkSent ? "Link enviado" : "Solicitar Assinatura"}
+                </Button>
+              )
+            })()}
             <Button variant="outline" size="sm" onClick={handlePrint} className="h-9 text-xs sm:text-sm flex-1 sm:flex-none">
               <Printer className="mr-2 h-4 w-4" />
               Imprimir
@@ -137,6 +203,20 @@ export default function AnamnesisDetailPage() {
               <div className="overflow-hidden">
                 <p className="text-xs font-semibold text-primary uppercase tracking-wider">Cliente</p>
                 <p className="text-lg font-bold truncate">{client?.name || "Carregando..."}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                  {client?.phone && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      {formatPhone(client.phone)}
+                    </span>
+                  )}
+                  {client?.birthDate && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Cake className="h-3 w-3" />
+                      {new Date(client.birthDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
+                    </span>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -160,7 +240,7 @@ export default function AnamnesisDetailPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Profissional</p>
-                <p className="text-lg font-bold">Voro Labs</p> 
+                <p className="text-lg font-bold">{anamnesis.professionalName || "—"}</p>
               </div>
             </CardContent>
           </Card>

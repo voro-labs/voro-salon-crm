@@ -20,6 +20,7 @@ import {
   CreditCard,
   Infinity,
   XCircle,
+  Cake,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -72,7 +73,7 @@ import { toast } from "sonner"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ClipboardList, History } from "lucide-react"
+import { ClipboardList, History, Send } from "lucide-react"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
 import { useSettings } from "@/hooks/use-settings.hook"
 import { getServicePlaceholders } from "@/lib/branding"
@@ -171,6 +172,8 @@ export default function ClienteDetailPage() {
 
   const [anamnesisOpen, setAnamnesisOpen] = useState(false)
   const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
+  const [isSendingFillRequest, setIsSendingFillRequest] = useState(false)
+  const [fillRequestSent, setFillRequestSent] = useState(false)
   const { data: anamnesisQuestions } = useSWR(
     `${API_CONFIG.ENDPOINTS.ANAMNESIS}/questions`,
     (url) => authenticatedApiCall<any[]>(url).then((r) => r.data ?? [])
@@ -269,6 +272,33 @@ export default function ClienteDetailPage() {
       setAnamnesisOpen(false)
       setAnamnesisResponses([])
     }
+  }
+
+  async function handleSendFillRequest() {
+    setIsSendingFillRequest(true)
+    try {
+      const res = await authenticatedApiCall<{
+        sentViaBot: boolean
+        requiresManualSend: boolean
+        clientPhone?: string
+        clientName?: string
+        token?: string
+      }>(`${API_CONFIG.ENDPOINTS.ANAMNESIS}/send-fill-request/${clientId}`, { method: "POST" })
+      if (res.hasError) { toast.error(res.message || "Erro ao enviar link."); return }
+
+      if (res.data?.requiresManualSend && res.data.token) {
+        const fillUrl = `${window.location.origin}/anamnesis/fill/${res.data.token}`
+        const phone = (res.data.clientPhone ?? "").replace(/\D/g, "")
+        const name = res.data.clientName ?? "cliente"
+        const message = `Olá ${name}! Preparamos uma ficha de anamnese para você preencher. Acesse o link: ${fillUrl}`
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank")
+        toast.info("WhatsApp aberto com o link de preenchimento.")
+      } else {
+        toast.success("Link de preenchimento enviado via WhatsApp!")
+      }
+      setFillRequestSent(true)
+    } catch { toast.error("Erro de conexão.") }
+    finally { setIsSendingFillRequest(false) }
   }
 
   async function handleDeleteService(serviceId: string) {
@@ -388,6 +418,12 @@ export default function ClienteDetailPage() {
                       <span className="flex items-center gap-1.5 truncate">
                         <Mail className="h-3.5 w-3.5" />
                         {client.email}
+                      </span>
+                    )}
+                    {client.birthDate && (
+                      <span className="flex items-center gap-1.5 whitespace-nowrap">
+                        <Cake className="h-3.5 w-3.5" />
+                        {new Date(client.birthDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long" })}
                       </span>
                     )}
                   </div>
@@ -698,7 +734,20 @@ export default function ClienteDetailPage() {
                   <CardTitle className="text-foreground text-lg">Histórico de Anamnese</CardTitle>
                   <CardDescription>Avaliações capilares registradas</CardDescription>
                 </div>
-                <Dialog open={anamnesisOpen} onOpenChange={setAnamnesisOpen}>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!hasAnamnesisQuestions || isSendingFillRequest || fillRequestSent}
+                    onClick={handleSendFillRequest}
+                    title={!hasAnamnesisQuestions ? "Configure as perguntas da anamnese antes de enviar" : undefined}
+                  >
+                    {isSendingFillRequest
+                      ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      : <Send className="mr-1.5 h-3.5 w-3.5" />}
+                    {fillRequestSent ? "Link Enviado" : "Enviar para Preencher"}
+                  </Button>
+                  <Dialog open={anamnesisOpen} onOpenChange={setAnamnesisOpen}>
                   <DialogTrigger asChild>
                     <Button
                       size="sm"
@@ -732,6 +781,7 @@ export default function ClienteDetailPage() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (

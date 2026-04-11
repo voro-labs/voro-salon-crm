@@ -209,7 +209,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                 <span className="text-lg font-bold">{data.tenant.name}</span>
                 <div className="flex items-center text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3 mr-1" />
-                  <span>{data.tenant.slug}.vorosalon.com</span>
+                  <span>{data.tenant.slug}</span>
                 </div>
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground font-medium">Status</span>
                 <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-200 capitalize">
-                  {data.status === "Confirmed" ? "Confirmado" : data.status}
+                  {data.status === "Confirmed" ? "Confirmado" : data.status === "Completed" ? "Completado" : data.status}
                 </Badge>
               </div>
             </div>

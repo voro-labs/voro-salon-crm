@@ -68,6 +68,7 @@ namespace VoroSalonCrm.Application.DTOs.Anamnesis
         Guid Id,
         Guid ClientId,
         Guid ProfessionalId,
+        string? ProfessionalName,
         DateTimeOffset Date,
         string? Diagnosis,
         string? TreatmentProtocol,
@@ -104,5 +105,39 @@ namespace VoroSalonCrm.Application.DTOs.Anamnesis
     public record SubmitPublicSignatureDto(
         /// <summary>Base64-encoded PNG of the signature drawn on canvas.</summary>
         string SignatureData
+    );
+
+    // ── Fill flow (client fills the form themselves) ──────────────────────────
+
+    public record PublicAnamnesisQuestionForFillDto(
+        Guid Id,
+        string Label,
+        string? Placeholder,
+        AnamnesisFieldType FieldType,
+        string? Options,
+        bool IsRequired,
+        AnamnesisSection Section,
+        int Order
+    );
+
+    public record PublicAnamnesisFillSheetDto(
+        string ClientName,
+        string TenantName,
+        DateTimeOffset? ExpiresAt,
+        IEnumerable<PublicAnamnesisQuestionForFillDto> Questions,
+        bool AlreadyFilled
+    );
+
+    public record ClientFillAndSignDto(
+        IEnumerable<AnamnesisResponseDto> Responses,
+        string SignatureData
+    );
+
+    public record SendFillRequestResultDto(
+        bool SentViaBot,
+        bool RequiresManualSend,
+        string? ClientPhone,
+        string? ClientName,
+        string? Token
     );
 }
