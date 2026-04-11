@@ -138,9 +138,15 @@ function CalendarWeekView({
     return nextStartMin - slotStartMin
   }
 
+  function isSlotPast(date: Date, hour: number, minute: number): boolean {
+    const slotTime = new Date(date)
+    slotTime.setHours(hour, minute, 0, 0)
+    return slotTime < new Date()
+  }
+
   function handleSlotClick(date: Date, hour: number, minute: number) {
     const key = `${date.toISOString()}_${hour}_${minute}`
-    if (isDayClosed(date) || !isInBusinessHours(date, hour) || hasConflict(date, hour, minute)) {
+    if (isSlotPast(date, hour, minute) || isDayClosed(date) || !isInBusinessHours(date, hour) || hasConflict(date, hour, minute)) {
       setBlockedKey(key)
       setTimeout(() => setBlockedKey(null), 700)
       return
@@ -170,7 +176,11 @@ function CalendarWeekView({
           <div className="flex flex-col items-center">
             <span
               className={`text-sm font-semibold capitalize ${
-                isToday(visibleDay) ? "text-primary" : "text-foreground"
+                isToday(visibleDay)
+                  ? "text-primary"
+                  : startOfDay(visibleDay) < startOfDay(new Date())
+                  ? "text-muted-foreground/60"
+                  : "text-foreground"
               }`}
             >
               {format(visibleDay, "EEE, dd MMM", { locale: ptBR })}
@@ -216,10 +226,11 @@ function CalendarWeekView({
               {hours.flatMap((h) =>
                 [0, 30].map((m) => {
                   const inBH = isInBusinessHours(visibleDay, h)
+                  const past = isSlotPast(visibleDay, h, m)
                   const slotKey = `${visibleDay.toISOString()}_${h}_${m}`
                   const isBlocked = blockedKey === slotKey
                   const topOffset = (h - calStartHour) * HOUR_HEIGHT + (m === 30 ? HOUR_HEIGHT / 2 : 0)
-                  const availMins = (!closed && inBH && !hasConflict(visibleDay, h, m))
+                  const availMins = (!past && !closed && inBH && !hasConflict(visibleDay, h, m))
                     ? getAvailableMinutesFromSlot(visibleDay, h * 60 + m)
                     : Infinity
 
@@ -231,6 +242,8 @@ function CalendarWeekView({
                       } ${
                         isBlocked
                           ? "bg-red-100 dark:bg-red-900/30"
+                          : past
+                          ? "bg-muted/40 cursor-default opacity-60"
                           : closed || !inBH
                           ? "bg-muted/30 cursor-default"
                           : hasConflict(visibleDay, h, m)
@@ -284,12 +297,13 @@ function CalendarWeekView({
         <div className="h-12 border-r" />
         {days.map((day) => {
           const closed = isDayClosed(day)
+          const isPastDay = startOfDay(day) < startOfDay(new Date())
           return (
             <div
               key={day.toISOString()}
               className={`h-12 flex flex-col items-center justify-center text-xs border-r last:border-r-0 ${
-                isToday(day) ? "bg-primary/10" : ""
-              } ${closed ? "opacity-50" : ""}`}
+                isToday(day) ? "bg-primary/10" : isPastDay ? "bg-muted/20" : ""
+              } ${closed || isPastDay ? "opacity-50" : ""}`}
             >
               <span className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">
                 {format(day, "EEE", { locale: ptBR })}
@@ -297,7 +311,7 @@ function CalendarWeekView({
               <span className={`text-sm font-bold ${isToday(day) ? "text-primary" : "text-foreground"}`}>
                 {format(day, "dd")}
               </span>
-              {closed && (
+              {closed && !isPastDay && (
                 <span className="text-[8px] text-muted-foreground/60 uppercase tracking-wider leading-none">
                   fechado
                 </span>
@@ -337,10 +351,11 @@ function CalendarWeekView({
                 {hours.flatMap((h) =>
                   [0, 30].map((m) => {
                     const inBH = isInBusinessHours(day, h)
+                    const past = isSlotPast(day, h, m)
                     const slotKey = `${day.toISOString()}_${h}_${m}`
                     const isBlocked = blockedKey === slotKey
                     const topOffset = (h - calStartHour) * HOUR_HEIGHT + (m === 30 ? HOUR_HEIGHT / 2 : 0)
-                    const availMins = (!closed && inBH && !hasConflict(day, h, m))
+                    const availMins = (!past && !closed && inBH && !hasConflict(day, h, m))
                       ? getAvailableMinutesFromSlot(day, h * 60 + m)
                       : Infinity
 
@@ -352,6 +367,8 @@ function CalendarWeekView({
                         } ${
                           isBlocked
                             ? "bg-red-100 dark:bg-red-900/30"
+                            : past
+                            ? "bg-muted/40 cursor-default opacity-60"
                             : closed || !inBH
                             ? "bg-muted/30 cursor-default"
                             : hasConflict(day, h, m)
