@@ -40,7 +40,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     establishmentLabel: "estética & clínica",
     establishmentLabelPlural: "estética & clínica",
     description: "Gerencie sua clínica de estética com agendamento, clientes e financeiro em um só lugar. WhatsApp integrado. Teste grátis por 14 dias.",
-    hostname: "estetica-crm.vorolabs.app"
+    hostname: "esthetic-crm.vorolabs.app"
   },
   [EstablishmentType.SpaMassage]: {
     productName: "Voro SPA",
@@ -56,7 +56,7 @@ const HOSTNAME_MAP: Record<string, EstablishmentType> = {
   "salon-crm.vorolabs.app": EstablishmentType.Salon,
   "barber-crm.vorolabs.app": EstablishmentType.Barber,
   "nails-crm.vorolabs.app": EstablishmentType.NailsLashes,
-  "estetica-crm.vorolabs.app": EstablishmentType.EstheticsClinic,
+  "esthetic-crm.vorolabs.app": EstablishmentType.EstheticsClinic,
   "spa-crm.vorolabs.app": EstablishmentType.SpaMassage,
 }
 
