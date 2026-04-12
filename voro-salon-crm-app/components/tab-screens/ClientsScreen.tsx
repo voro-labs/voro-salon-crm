@@ -121,6 +121,16 @@ export function ClientsScreen({ rootPath = "/(tabs)" }: { rootPath?: string }) {
         </Pressable>
       </View>
 
+      {!isLoading && totalCount > 0 && (
+        <View className="px-5 py-2 bg-white border-b border-zinc-100">
+          <Text className="text-xs text-zinc-400 font-medium">
+            {items.length < totalCount
+              ? `Mostrando ${items.length} de ${totalCount} cliente${totalCount !== 1 ? "s" : ""}`
+              : `${totalCount} cliente${totalCount !== 1 ? "s" : ""}`}
+          </Text>
+        </View>
+      )}
+
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={primaryColor} />

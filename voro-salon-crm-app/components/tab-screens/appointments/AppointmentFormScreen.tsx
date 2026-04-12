@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react"
-import { View, Text, TextInput, Pressable, ActivityIndicator, Switch } from "react-native"
+import { View, Text, TextInput, Pressable, ActivityIndicator, Switch, InteractionManager } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { Ionicons } from "@expo/vector-icons"
@@ -33,6 +33,9 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
   const showClients = isModuleEnabled(1)
   const showServices = isModuleEnabled(3)
   const showEmployees = isModuleEnabled(4) && !isSalonEmployee
+
+  // Block all editing when appointment is cancelled (status 3)
+  const isCancelled = !!id && form.status === 3
 
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
@@ -113,21 +116,23 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
     if (!d) return
     setLoadingSlots(true)
     setAvailableSlots(undefined)
-    setTime("")
+    if (!id) setTime("") // Only clear time on new appointments
     try {
       const params = new URLSearchParams({ date: d })
       if (serviceId && serviceId !== "none") params.set("serviceId", serviceId)
       if (employeeId && employeeId !== "none") params.set("employeeId", employeeId)
+      // When editing, exclude the current appointment from conflict checks
+      if (id) params.set("appointmentId", id)
       const res = await secureApiCall<any[]>(
         `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?${params.toString()}`,
         { method: "GET" }
       )
       if (!res.hasError && res.data) {
         const slots = res.data
-          .filter((s: any) => s.isAvailable)
+          .filter((s: any) => s.isAvailable && !s.isBlocked)
           .map((s: any) => {
-            const d = new Date(s.startTime)
-            return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+            const t = new Date(s.startTime)
+            return `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`
           })
         setAvailableSlots(slots)
       } else {
@@ -138,16 +143,20 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
     } finally {
       setLoadingSlots(false)
     }
-  }, [])
+  }, [id])
 
   // Re-fetch quando data, serviço ou profissional mudam (exceto em encaixe)
+  // Usar InteractionManager para não interromper a animação de transição de tela
   useEffect(() => {
     if (form.isEncaixe) {
       setAvailableSlots(undefined)
       return
     }
     if (date) {
-      fetchAvailability(date, form.serviceId, form.employeeId)
+      const task = InteractionManager.runAfterInteractions(() => {
+        fetchAvailability(date, form.serviceId, form.employeeId)
+      })
+      return () => task.cancel()
     }
   }, [date, form.serviceId, form.employeeId, form.isEncaixe])
 
@@ -197,6 +206,24 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
           </View>
         ) : (
           <KeyboardAwareScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+            {/* Cancelled banner */}
+            {isCancelled && (
+              <View className="flex-row items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4">
+                <Ionicons name="ban-outline" size={18} color="#dc2626" />
+                <Text className="text-red-700 text-sm font-semibold flex-1">
+                  Agendamento cancelado. Edição bloqueada.
+                </Text>
+              </View>
+            )}
+
+            {/* Overlay to block all field interactions when cancelled */}
+            {isCancelled && (
+              <View
+                style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, backgroundColor: "transparent" }}
+                pointerEvents="box-only"
+              />
+            )}
 
             {showClients && (
               <View className="mb-4">
@@ -324,9 +351,9 @@ export function AppointmentFormScreen({ id, rootPath = "/(tabs)" }: { id?: strin
 
             <Pressable
               onPress={handleSave}
-              disabled={isCreating}
+              disabled={isCreating || !!isCancelled}
               className="h-14 rounded-2xl items-center justify-center"
-              style={{ backgroundColor: isCreating ? primaryColor + "99" : primaryColor }}
+              style={{ backgroundColor: isCancelled ? "#d4d4d8" : isCreating ? primaryColor + "99" : primaryColor }}
             >
               {isCreating ? <ActivityIndicator color="white" /> : <Text className="text-white font-black text-base">Salvar Agendamento</Text>}
             </Pressable>

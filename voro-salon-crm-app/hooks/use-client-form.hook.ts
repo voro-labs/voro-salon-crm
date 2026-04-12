@@ -54,6 +54,21 @@ export function useClientForm() {
       const dialCode = flags[countryCode as keyof typeof flags]?.dialCodeOnlyNumber || ""
       const phoneForApi = `${dialCode}${form.phone}`
 
+      // Check for duplicate phone before creating
+      const checkRes = await secureApiCall<any>(
+        `${API_CONFIG.ENDPOINTS.CLIENTS}?search=${encodeURIComponent(phoneForApi)}&pageSize=1`,
+        { method: "GET" }
+      )
+      if (!checkRes.hasError && checkRes.data) {
+        const existing = checkRes.data?.items ?? (Array.isArray(checkRes.data) ? checkRes.data : [])
+        if (existing.length > 0) {
+          Toast.error("Já existe um cliente cadastrado com este telefone.")
+          setErrors((p) => ({ ...p, phone: "Telefone já cadastrado." }))
+          setIsCreating(false)
+          return false
+        }
+      }
+
       let endpoint = API_CONFIG.ENDPOINTS.CLIENTS
       let body: any = { ...form, phone: phoneForApi }
 

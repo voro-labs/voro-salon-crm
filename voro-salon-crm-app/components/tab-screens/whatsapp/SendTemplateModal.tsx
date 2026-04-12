@@ -10,6 +10,7 @@ import { API_CONFIG, secureApiCall } from "lib/api"
 import { fetcher } from "lib/fetcher"
 import { useTenantTheme } from "contexts/tenant-theme.context"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
+import { formatPhone } from "@/lib/mask-utils"
 
 interface SendTemplateModalProps {
   visible: boolean
@@ -43,6 +44,7 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
   const [bodyParams, setBodyParams] = useState<string[]>([])
   const [isSending, setIsSending] = useState(false)
   const [results, setResults] = useState<SendResult[] | null>(null)
+  const [clientSearch, setClientSearch] = useState("")
 
   const currentTemplate = templates?.find((t) => t.name === selectedTemplate)
 
@@ -223,10 +225,29 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
                   <Text className="text-zinc-700 font-bold text-sm">Clientes *</Text>
                   <Text className="text-xs text-zinc-500 font-medium">{selectedClientIds.length} selecionados</Text>
                 </View>
-                
+
+                <View className="bg-zinc-50 border border-zinc-200 rounded-2xl px-3 py-2 flex-row items-center gap-2 mb-2">
+                  <Ionicons name="search" size={16} color="#a1a1aa" />
+                  <TextInput
+                    className="flex-1 text-zinc-900 font-medium text-sm py-0.5"
+                    placeholder="Pesquisar cliente..."
+                    placeholderTextColor="#a1a1aa"
+                    value={clientSearch}
+                    onChangeText={setClientSearch}
+                  />
+                  {clientSearch.length > 0 && (
+                    <Pressable onPress={() => setClientSearch("")}>
+                      <Ionicons name="close-circle" size={16} color="#a1a1aa" />
+                    </Pressable>
+                  )}
+                </View>
+
                 <View className="border border-zinc-200 rounded-2xl max-h-56 overflow-hidden">
                   <ScrollView nestedScrollEnabled className="flex-grow-0">
-                    {(clients ?? []).filter((c: any) => c.phone).map((c: any) => (
+                    {(clients ?? [])
+                      .filter((c: any) => c.phone)
+                      .filter((c: any) => !clientSearch || c.name?.toLowerCase().includes(clientSearch.toLowerCase()))
+                      .map((c: any) => (
                       <Pressable
                         key={c.id}
                         onPress={() => toggleClient(c.id)}
@@ -237,12 +258,14 @@ export function SendTemplateModal({ visible, onClose }: SendTemplateModalProps) 
                         </View>
                         <View className="flex-1">
                           <Text className="font-semibold text-sm text-zinc-900">{c.name}</Text>
-                          <Text className="text-xs text-zinc-500">{c.phone}</Text>
+                          <Text className="text-xs text-zinc-500">{formatPhone(c.phone)}</Text>
                         </View>
                       </Pressable>
                     ))}
-                    {(clients ?? []).filter((c: any) => c.phone).length === 0 && (
-                      <Text className="text-center py-6 text-zinc-400 font-medium text-sm">Nenhum cliente com telefone.</Text>
+                    {(clients ?? []).filter((c: any) => c.phone).filter((c: any) => !clientSearch || c.name?.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
+                      <Text className="text-center py-6 text-zinc-400 font-medium text-sm">
+                        {clientSearch ? "Nenhum cliente encontrado." : "Nenhum cliente com telefone."}
+                      </Text>
                     )}
                   </ScrollView>
                 </View>

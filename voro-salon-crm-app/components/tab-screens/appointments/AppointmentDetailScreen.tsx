@@ -90,6 +90,7 @@ export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: stri
 
   const dt        = parseDt(appt.scheduledDateTime)
   const status    = STATUS_OPTIONS[appt.status ?? 0] ?? STATUS_OPTIONS[0]
+  const isCancelled = appt.status === 3 || appt.status === "Cancelled"
   const clientName = (appt.clientName ?? appt.client?.name ?? `${appt.client?.firstName ?? ""} ${appt.client?.lastName ?? ""}`.trim()) || "—"
   const serviceName = appt.serviceName ?? appt.service?.name ?? appt.description ?? "—"
   const employeeName = appt.employeeName ?? appt.employee?.name ?? `${appt.employee?.firstName ?? ""} ${appt.employee?.lastName ?? ""}`.trim()
@@ -108,10 +109,16 @@ export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: stri
           <View className="flex-row gap-2">
             <Pressable
               onPress={() => router.push(`${rootPath}/appointments/edit?id=${id}` as any)}
+              disabled={isCancelled}
               className="h-9 w-9 rounded-xl items-center justify-center"
-              style={{ backgroundColor: primaryColor + "15", borderWidth: 1, borderColor: primaryColor + "25" }}
+              style={{
+                backgroundColor: isCancelled ? "#f4f4f5" : primaryColor + "15",
+                borderWidth: 1,
+                borderColor: isCancelled ? "#e4e4e7" : primaryColor + "25",
+                opacity: isCancelled ? 0.5 : 1,
+              }}
             >
-              <Ionicons name="create-outline" size={18} color={primaryColor} />
+              <Ionicons name="create-outline" size={18} color={isCancelled ? "#a1a1aa" : primaryColor} />
             </Pressable>
             <Pressable
               onPress={confirmDelete}
@@ -155,6 +162,16 @@ export function AppointmentDetailScreen({ id, rootPath = "/(tabs)" }: { id: stri
                 ) : null}
               </View>
             </View>
+          </View>
+        )}
+
+        {/* Cancelled banner */}
+        {isCancelled && (
+          <View className="flex-row items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+            <Ionicons name="ban-outline" size={18} color="#dc2626" />
+            <Text className="text-red-700 text-sm font-semibold flex-1">
+              Agendamento cancelado. Apenas o status pode ser alterado.
+            </Text>
           </View>
         )}
 

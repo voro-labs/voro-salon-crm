@@ -20,6 +20,7 @@ const TAB_ICONS: Record<string, { active: IconName; inactive: IconName; label: s
   employees: { active: "person", inactive: "person-outline", label: "Equipe" },
   finance: { active: "wallet", inactive: "wallet-outline", label: "Finanças" },
   whatsapp: { active: "chatbubbles", inactive: "chatbubbles-outline", label: "WhatsApp" },
+  funnel: { active: "funnel", inactive: "funnel-outline", label: "Funil" },
   notifications: { active: "notifications", inactive: "notifications-outline", label: "Avisos" },
   settings: { active: "settings", inactive: "settings-outline", label: "Config." },
 }
@@ -102,7 +103,7 @@ export default function PremiumTabsLayout() {
           tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
             <Ionicons name={focused ? icon.active : icon.inactive} size={22} color={color} />
           ),
-          swipeEnabled: route.name !== "whatsapp",
+          swipeEnabled: route.name !== "funnel",
           animationEnabled: true,
         } as any
       }}
@@ -114,6 +115,7 @@ export default function PremiumTabsLayout() {
       <MaterialTopTabs.Screen name="employees" />
       <MaterialTopTabs.Screen name="finance" />
       <MaterialTopTabs.Screen name="whatsapp" />
+      <MaterialTopTabs.Screen name="funnel" />
       <MaterialTopTabs.Screen name="settings" />
       <MaterialTopTabs.Screen name="notifications" />
     </MaterialTopTabs>

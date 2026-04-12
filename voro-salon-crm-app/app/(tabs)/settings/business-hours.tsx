@@ -69,6 +69,27 @@ const DEFAULT_RANGES: TimeRange[] = [
   { openTime: "13:30", closeTime: "18:30" },
 ]
 
+const DEFAULT_SCHEDULE: BusinessHoursViewModel[] = DAYS_OF_WEEK.map((d) => ({
+  dayOfWeek: d.day,
+  isOpen: d.day >= 1 && d.day <= 6,
+  ranges: DEFAULT_RANGES.map((r) => ({ ...r })),
+}))
+
+function isScheduleDefault(localHours: BusinessHoursViewModel[]): boolean {
+  return DEFAULT_SCHEDULE.every((def) => {
+    const local = localHours.find((l) => l.dayOfWeek === def.dayOfWeek)
+    if (!local) return false
+    if (local.isOpen !== def.isOpen) return false
+    if (!local.isOpen) return true
+    if (local.ranges.length !== def.ranges.length) return false
+    return def.ranges.every(
+      (r, i) =>
+        local.ranges[i].openTime === r.openTime &&
+        local.ranges[i].closeTime === r.closeTime
+    )
+  })
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function apiToViewModel(apiHours: ApiBusinessHours[], days: typeof DAYS_OF_WEEK): BusinessHoursViewModel[] {
@@ -126,6 +147,7 @@ export default function BusinessHoursScreen() {
     () => apiToViewModel([], DAYS_OF_WEEK)
   )
   const [isSaving, setIsSaving] = useState<number | null>(null)
+  const [resetting, setResetting] = useState(false)
 
   // Sync local state when remote data arrives
   useEffect(() => {
@@ -218,6 +240,48 @@ export default function BusinessHoursScreen() {
     [localHours, mutate]
   )
 
+  // ─── Reset to default ──────────────────────────────────────────────────────
+
+  const resetToDefault = useCallback(async () => {
+    Alert.alert(
+      "Restaurar horários padrão?",
+      "Dom: Fechado\nSeg–Sáb: 08:00–11:30 e 13:30–18:30\n\nEssa ação não pode ser desfeita.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Restaurar",
+          style: "destructive",
+          onPress: async () => {
+            setResetting(true)
+            setLocalHours(DEFAULT_SCHEDULE.map((d) => ({ ...d, ranges: d.ranges.map((r) => ({ ...r })) })))
+            try {
+              const payload = {
+                days: DEFAULT_SCHEDULE.map((d) => ({
+                  dayOfWeek: d.dayOfWeek,
+                  isOpen: d.isOpen,
+                  ranges: d.ranges.map((r) => ({ openTime: r.openTime, closeTime: r.closeTime })),
+                })),
+              }
+              const result = await secureApiCall(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+              })
+              if (!result.hasError) {
+                mutate()
+              } else {
+                Alert.alert("Erro", result.message || "Erro ao restaurar horários.")
+              }
+            } catch {
+              Alert.alert("Erro", "Erro ao conectar ao servidor.")
+            } finally {
+              setResetting(false)
+            }
+          },
+        },
+      ]
+    )
+  }, [mutate])
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -234,6 +298,28 @@ export default function BusinessHoursScreen() {
         title="Horários de Funcionamento"
         showBack
         onBack={() => router.back()}
+        right={
+          localHours.length > 0 && !isScheduleDefault(localHours) ? (
+            <TouchableOpacity
+              onPress={resetToDefault}
+              disabled={resetting || isSaving !== null}
+              style={[
+                appStyles.resetButton,
+                (resetting || isSaving !== null) && appStyles.opacityDisabled,
+              ]}
+              activeOpacity={0.7}
+            >
+              {resetting ? (
+                <ActivityIndicator size="small" color="#64748b" />
+              ) : (
+                <>
+                  <Ionicons name="refresh-outline" size={14} color="#64748b" />
+                  <Text style={appStyles.resetButtonText}>Restaurar</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : undefined
+        }
       />
 
       <ScrollView contentContainerStyle={appStyles.scrollContent}>
@@ -597,6 +683,22 @@ const appStyles = StyleSheet.create({
   },
   opacityDisabled: {
     opacity: 0.5,
+  },
+  resetButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
+  },
+  resetButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748b",
   },
   // ── Time picker trigger ───────────────────────────────────────────────────
   timePickerTrigger: {

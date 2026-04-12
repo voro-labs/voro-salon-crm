@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import {
-  View, Text, ScrollView, ActivityIndicator, Pressable, RefreshControl,
+  View, Text, ScrollView, FlatList, ActivityIndicator, Pressable, RefreshControl,
   TextInput, Dimensions
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -74,6 +74,7 @@ export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
   const { primaryColor } = useTenantTheme()
   const [search, setSearch] = useState("")
   const [showSendModal, setShowSendModal] = useState(false)
+  const [viewMode, setViewMode] = useState<"list" | "funnel">("funnel")
 
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
@@ -147,6 +148,24 @@ export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
               ) : null}
             </View>
 
+            {/* Toggle lista/funil */}
+            <View className="flex-row h-10 bg-white border border-zinc-200 rounded-xl overflow-hidden">
+              <Pressable
+                className="w-10 items-center justify-center"
+                style={{ backgroundColor: viewMode === "list" ? primaryColor : "transparent" }}
+                onPress={() => setViewMode("list")}
+              >
+                <Ionicons name="list" size={18} color={viewMode === "list" ? "#fff" : "#71717a"} />
+              </Pressable>
+              <Pressable
+                className="w-10 items-center justify-center"
+                style={{ backgroundColor: viewMode === "funnel" ? primaryColor : "transparent" }}
+                onPress={() => setViewMode("funnel")}
+              >
+                <Ionicons name="grid" size={16} color={viewMode === "funnel" ? "#fff" : "#71717a"} />
+              </Pressable>
+            </View>
+
             <Pressable
               className="h-10 px-3 flex-row items-center justify-center gap-1.5 rounded-xl border"
               style={{ borderColor: primaryColor + "40", backgroundColor: primaryColor + "10" }}
@@ -157,7 +176,7 @@ export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
             </Pressable>
           </View>
 
-          {/* Kanban Board */}
+          {/* Lista / Kanban */}
           {isLoading ? (
             <View className="flex-1 items-center justify-center">
               <ActivityIndicator size="large" color={primaryColor} />
@@ -172,6 +191,47 @@ export function WhatsAppScreen({ rootPath = "/(tabs)" }: WhatsAppScreenProps) {
                 As conversas via WhatsApp aparecerão aqui conforme os clientes interagirem.
               </Text>
             </View>
+          ) : viewMode === "list" ? (
+            <FlatList
+              data={[...filtered].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+              showsVerticalScrollIndicator={false}
+              refreshControl={<RefreshControl refreshing={false} onRefresh={() => mutate()} tintColor={primaryColor} />}
+              renderItem={({ item: conv }) => {
+                const col = KANBAN_COLUMNS.find((c) => c.state === conv.state)
+                const isScheduled = conv.state === "COMPLETED" && conv.appointmentId
+                const displayName = conv.contactName !== "Cliente" ? conv.contactName : conv.phoneNumber
+                return (
+                  <Pressable
+                    className="bg-white rounded-2xl p-4 mb-2 border border-zinc-100 flex-row items-center gap-3 active:bg-zinc-50"
+                    onPress={() => router.push({
+                      pathname: `${rootPath}/whatsapp/[phone]`,
+                      params: { phone: conv.phoneNumber, contactName: conv.contactName, clientId: conv.clientId || undefined }
+                    } as any)}
+                  >
+                    <View className={`h-12 w-12 rounded-2xl items-center justify-center shrink-0 ${isScheduled ? "bg-emerald-100" : "bg-zinc-100"}`}>
+                      <Ionicons name={isScheduled ? "calendar" : "chatbubble-ellipses"} size={20} color={isScheduled ? "#059669" : "#71717a"} />
+                    </View>
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-zinc-900 font-bold text-base" numberOfLines={1}>{displayName}</Text>
+                      {conv.contactName !== "Cliente" && (
+                        <Text className="text-zinc-400 text-xs font-mono">{conv.phoneNumber}</Text>
+                      )}
+                      <Text className="text-zinc-500 text-sm mt-0.5" numberOfLines={1}>{conv.lastMessageBody || "Sem mensagens"}</Text>
+                    </View>
+                    <View className="items-end gap-1 shrink-0">
+                      <Text className="text-zinc-400 text-xs">{timeAgo(conv.lastMessageAt)}</Text>
+                      {col && (
+                        <View className={`px-2 py-0.5 rounded-full ${col.bgColor}`}>
+                          <Text className={`text-[10px] font-bold ${col.textColor}`}>{col.label}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </Pressable>
+                )
+              }}
+            />
           ) : (
             <ScrollView
               horizontal
