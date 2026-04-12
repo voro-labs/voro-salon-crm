@@ -99,10 +99,10 @@ export default function RefundPage() {
                     a partir da data da primeira cobrança. Para solicitar, entre em contato pelo
                     e-mail{" "}
                     <a
-                      href="mailto:contato@vorolabs.com.br"
+                      href="mailto:contato@vorolabs.app"
                       className="text-primary underline underline-offset-4"
                     >
-                      contato@vorolabs.com.br
+                      contato@vorolabs.app
                     </a>
                     .
                   </p>
@@ -149,10 +149,10 @@ export default function RefundPage() {
                 <li>
                   Envie um e-mail para{" "}
                   <a
-                    href="mailto:contato@vorolabs.com.br"
+                    href="mailto:contato@vorolabs.app"
                     className="text-primary underline underline-offset-4"
                   >
-                    contato@vorolabs.com.br
+                    contato@vorolabs.app
                   </a>{" "}
                   com o assunto "Solicitação de Reembolso".
                 </li>
@@ -236,10 +236,10 @@ export default function RefundPage() {
                 Antes de abrir uma disputa (chargeback) junto à sua operadora de cartão ou banco,
                 pedimos que entre em contato conosco pelo e-mail{" "}
                 <a
-                  href="mailto:contato@vorolabs.com.br"
+                  href="mailto:contato@vorolabs.app"
                   className="text-primary underline underline-offset-4"
                 >
-                  contato@vorolabs.com.br
+                  contato@vorolabs.app
                 </a>{" "}
                 para que possamos resolver a situação de forma direta e ágil. Chargebacks indevidos
                 ou fraudulentos resultarão no bloqueio imediato da conta e poderão ser contestados
@@ -262,10 +262,10 @@ export default function RefundPage() {
                 <p className="text-sm text-muted-foreground">
                   E-mail:{" "}
                   <a
-                    href="mailto:contato@vorolabs.com.br"
+                    href="mailto:contato@vorolabs.app"
                     className="text-primary underline underline-offset-4"
                   >
-                    contato@vorolabs.com.br
+                    contato@vorolabs.app
                   </a>
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">

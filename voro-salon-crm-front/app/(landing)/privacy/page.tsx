@@ -231,10 +231,10 @@ export default function PrivacyPage() {
               <p className="text-muted-foreground leading-relaxed mt-4">
                 Para exercer qualquer desses direitos, entre em contato pelo e-mail{" "}
                 <a
-                  href="mailto:contato@vorolabs.com.br"
+                  href="mailto:contato@vorolabs.app"
                   className="text-primary underline underline-offset-4"
                 >
-                  contato@vorolabs.com.br
+                  contato@vorolabs.app
                 </a>
                 .
               </p>
@@ -284,10 +284,10 @@ export default function PrivacyPage() {
                 <p className="text-sm text-muted-foreground">
                   E-mail:{" "}
                   <a
-                    href="mailto:contato@vorolabs.com.br"
+                    href="mailto:contato@vorolabs.app"
                     className="text-primary underline underline-offset-4"
                   >
-                    contato@vorolabs.com.br
+                    contato@vorolabs.app
                   </a>
                 </p>
               </div>

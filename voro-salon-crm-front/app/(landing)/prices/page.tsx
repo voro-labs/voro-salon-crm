@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { LegalFooter } from "@/components/legal/legal-footer"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -2657,6 +2658,8 @@ export default function PrecosPage() {
           <MessageCircle className="h-7 w-7 fill-white text-white" strokeWidth={1.5} />
         </span>
       </motion.a>
+
+      <LegalFooter />
     </div>
   )
 }

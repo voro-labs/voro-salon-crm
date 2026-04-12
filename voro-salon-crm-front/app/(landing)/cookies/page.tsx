@@ -271,10 +271,10 @@ export default function CookiesPage() {
                 <p className="text-sm text-muted-foreground">
                   E-mail:{" "}
                   <a
-                    href="mailto:contato@vorolabs.com.br"
+                    href="mailto:contato@vorolabs.app"
                     className="text-primary underline underline-offset-4"
                   >
-                    contato@vorolabs.com.br
+                    contato@vorolabs.app
                   </a>
                 </p>
               </div>

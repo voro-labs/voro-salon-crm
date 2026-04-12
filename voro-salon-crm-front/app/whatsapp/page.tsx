@@ -586,7 +586,7 @@ export default function WhatsAppPage() {
                     asChild
                   >
                     <a
-                      href={`mailto:suporte@vorolabs.com.br?subject=Solicitar%20configuração%20WhatsApp&body=Olá%2C%20preciso%20configurar%20o%20WhatsApp%20Bot%20para%20o%20estabelecimento%3A%20${encodeURIComponent(tenant?.name ?? "")}%20(${encodeURIComponent(tenant?.id ?? "")})`}
+                      href={`mailto:suporte@vorolabs.app?subject=Solicitar%20configuração%20WhatsApp&body=Olá%2C%20preciso%20configurar%20o%20WhatsApp%20Bot%20para%20o%20estabelecimento%3A%20${encodeURIComponent(tenant?.name ?? "")}%20(${encodeURIComponent(tenant?.id ?? "")})`}
                     >
                       Solicitar configuração
                     </a>
