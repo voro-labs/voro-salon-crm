@@ -15,7 +15,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     shortName: "Voro Salon",
     establishmentLabel: "salão",
     establishmentLabelPlural: "salões",
-    description: "Gerencie agenda, clientes e financeiro do seu salão de beleza. WhatsApp integrado, pagamentos e relatórios. Teste grátis por 14 dias.",
+    description: "Sistema para salão de beleza com agendamento online e WhatsApp integrado. Controle financeiro, gestão de clientes e relatórios. Teste grátis 14 dias.",
     hostname: "salon-crm.vorolabs.app"
   },
   [EstablishmentType.Barber]: {
@@ -23,7 +23,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     shortName: "Voro Barber",
     establishmentLabel: "barbearia",
     establishmentLabelPlural: "barbearias",
-    description: "Sistema completo para barbearia: agendamento online, controle de clientes e financeiro. WhatsApp Bot integrado. Teste grátis 14 dias.",
+    description: "Sistema para barbearia com agendamento online e WhatsApp Bot integrado. Controle financeiro, gestão de clientes e comissões. Teste grátis 14 dias.",
     hostname: "barber-crm.vorolabs.app"
   },
   [EstablishmentType.NailsLashes]: {
@@ -31,7 +31,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     shortName: "Voro Nails",
     establishmentLabel: "nails & cílios",
     establishmentLabelPlural: "nails & cílios",
-    description: "Gerencie seu estúdio de unhas e cílios com agendamento online, controle de clientes e financeiro. WhatsApp integrado. Teste grátis por 14 dias.",
+    description: "Sistema para studio de unhas e cílios com agendamento online e WhatsApp integrado. Controle financeiro, histórico de clientes e comissões. Teste grátis 14 dias.",
     hostname: "nails-crm.vorolabs.app"
   },
   [EstablishmentType.EstheticsClinic]: {
@@ -39,7 +39,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     shortName: "Voro Estética",
     establishmentLabel: "estética & clínica",
     establishmentLabelPlural: "estética & clínica",
-    description: "Gerencie sua clínica de estética com agendamento, clientes e financeiro em um só lugar. WhatsApp integrado. Teste grátis por 14 dias.",
+    description: "Sistema para clínica de estética com agendamento online, anamnese digital e WhatsApp integrado. Controle financeiro e prontuário. Teste grátis 14 dias.",
     hostname: "esthetic-crm.vorolabs.app"
   },
   [EstablishmentType.SpaMassage]: {
@@ -47,7 +47,7 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
     shortName: "Voro SPA",
     establishmentLabel: "spa & massagem",
     establishmentLabelPlural: "spas & massagem",
-    description: "Gerencie seu SPA ou clínica de massagem com agendamento online e financeiro. WhatsApp integrado. Teste grátis por 14 dias.",
+    description: "Sistema para SPA e massagem com agendamento online e WhatsApp integrado. Gestão de salas, controle financeiro e pacotes de bem-estar. Teste grátis 14 dias.",
     hostname: "spa-crm.vorolabs.app"
   },
 }

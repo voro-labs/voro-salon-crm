@@ -1,68 +1,113 @@
-# Tasks — Mobile (voro-salon-crm-app)
+  ┌──────────────┬───────────────────────────────────────────────────────┐
+  │    Campo     │                        Detalhe                        │                                                                    
+  ├──────────────┼───────────────────────────────────────────────────────┤
+  │ metadataBase │ URL base para OG/Twitter funcionar no WhatsApp        │                                                                    
+  ├──────────────┼───────────────────────────────────────────────────────┤                                                                  
+  │ title        │ Com "São Paulo" e "Emergência 24h" para CTR alto      │                                                                    
+  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
+  │ description  │ 155 chars com keyword nos primeiros 20 chars + CTA    │                                                                    
+  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
+  │ keywords     │ 12 long-tail relevantes                               │                                                                  
+  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
+  │ openGraph    │ Completo com locale: pt_BR                            │                                                                  
+  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
+  │ twitter      │ summary_large_image                                   │                                                                  
+  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
+  │ robots       │ index + follow + googleBot + max-image-preview: large │
+  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
+  │ JSON-LD      │ VeterinaryCare + LocalBusiness + WebSite + FAQPage    │                                                                  
+  └──────────────┴───────────────────────────────────────────────────────┘                                                                    
+   
+  ---                                                                                                                                         
+  Ações pendentes (alta prioridade)                                                                                                         
+                                               
+  1. Criar /public/og-image.jpg (1200×630px) — essencial para previews no WhatsApp
+  2. Preencher endereço, CEP e coordenadas reais no JSON-LD                                                                                   
+  3. Substituir o domínio placeholder clinicacuidadocompleto.com.br pelo domínio real nos 3 arquivos                                          
+  4. Conectar Google Search Console com o token de verificação                                                                                
+  5. Otimizar o Google Business Profile — maior impacto gratuito para aparecer no mapa                                                        
+                                                                                         
+
+Recomendação: 5 imagens, uma por   
+produto                              
+        
+Arquivo: /public/og-image-salon.jpg  
+Produto: Voro Salon                  
+Hostname: salon-crm.vorolabs.app  
+─────────────────────────────────────
+─                                    
+Arquivo: /public/og-image-barber.jpg 
+Produto: Voro Barber               
+Hostname: barber-crm.vorolabs.app    
+─────────────────────────────────────
+─                                 
+Arquivo: /public/og-image-nails.jpg
+Produto: Voro Nails                
+Hostname: nails-crm.vorolabs.app  
+─────────────────────────────────────
+─                                 
+Arquivo:                          
+/public/og-image-esthetic.jpg        
+Produto: Voro Estética            
+Hostname: esthetic-crm.vorolabs.app  
+─────────────────────────────────────
+─
+Arquivo: /public/og-image-spa.jpg    
+Produto: Voro SPA                  
+Hostname: spa-crm.vorolabs.app       
+                                      
+Todas com: 1200 × 630 px, formato    
+.jpg, máx. 300 KB                  
+                                      
+---                                  
+Conteúdo sugerido para cada imagem
+                                      
+Cada OG image deve conter:         
+- Logo do produto (ex: "Voro Salon") 
+- Tagline curta (usando a description
+  do branding.ts)                     
+- Fundo com identidade visual da     
+categoria (cores/ícones relacionados 
+ao segmento)                         
+                                      
+Produto: Voro Salon                  
+Descrição para o designer: "Sistema  
+  para salão de beleza com         
+agendamento                        
+    online e WhatsApp integrado. Teste
+
+  grátis 14 dias."                   
+─────────────────────────────────────
+─                                    
+Produto: Voro Barber                 
+Descrição para o designer: "Sistema
+  para barbearia com agendamento   
+  online e WhatsApp Bot integrado. 
+  Teste grátis 14 dias."
+─────────────────────────────────────
+─                                    
+Produto: Voro Nails
+Descrição para o designer: "Sistema  
+  para studio de unhas e cílios com  
+  agendamento online e WhatsApp
+  integrado. Teste grátis 14 dias."
+─────────────────────────────────────
+─                                    
+Produto: Voro Estética
+Descrição para o designer: "Sistema  
+  para clínica de estética com       
+  agendamento online, anamnese
+digital                            
+    e WhatsApp integrado. Teste grátis
+
+  14 dias."
+─────────────────────────────────────
+─                                    
+Produto: Voro SPA
+Descrição para o designer: "Sistema  
+  para SPA e massagem com agendamento
+
+  online e WhatsApp integrado. Teste
+  grátis 14 dias."                 
 
 ---
-
-## 1. Transição da tela de edição de agendamento não funciona
-
-**Status:** ✅ Concluído
-**Arquivo modificado:** `components/tab-screens/appointments/AppointmentFormScreen.tsx`
-
-**O que foi feito:**
-Adicionado `InteractionManager` do React Native. O `useEffect` que chama `fetchAvailability` foi envolvido em `InteractionManager.runAfterInteractions()`, que adia a busca de horários disponíveis até que todas as animações de navegação sejam concluídas. A task retornada é cancelada no cleanup do effect para evitar chamadas obsoletas.
-
----
-
-## 2. Paginação nas listas (igual ao web)
-
-**Status:** ✅ Concluído
-**Arquivos modificados:**
-- `components/tab-screens/ClientsScreen.tsx`
-- `components/tab-screens/ServicesScreen.tsx`
-
-**O que foi feito:**
-As listas já utilizavam infinite scroll (`onEndReached`, `ListFooterComponent` com spinner). Adicionado contador de registros abaixo da barra de busca:
-- Quando `items.length < totalCount`: exibe "Mostrando X de Y clientes/serviços"
-- Quando todos carregados: exibe "X clientes/serviços"
-Também adicionado `totalCount` ao destructuring do `useDataList` no `ServicesScreen` (estava ausente).
-
----
-
-## 3. Funil do WhatsApp — separar visualização de lista e funil
-
-**Status:** ✅ Concluído
-**Arquivo modificado:** `components/tab-screens/WhatsAppScreen.tsx`
-
-**O que foi feito:**
-- Adicionado estado `viewMode: "list" | "funnel"` (padrão: `"funnel"`)
-- Adicionado toggle com ícones "list" / "grid" no toolbar (ao lado da busca e do botão Template)
-- **Modo Lista:** `FlatList` vertical com conversas ordenadas por `lastMessageAt` (mais recentes primeiro), exibindo nome, telefone, prévia da última mensagem, tempo relativo e badge do estado do funil
-- **Modo Funil:** Kanban horizontal com colunas por estado (comportamento existente, sem alteração)
-
----
-
-## 4. Redefinir horários para o padrão nas configurações
-
-**Status:** ✅ Concluído
-**Arquivo modificado:** `app/(tabs)/settings/business-hours.tsx`
-
-**O que foi feito:**
-- Adicionadas constantes `DEFAULT_SCHEDULE` e função `isScheduleDefault()`
-- Adicionado estado `resetting: boolean`
-- Adicionada função `resetToDefault` com `Alert.alert` de confirmação (estilo `destructive`)
-- Adicionado botão "Restaurar" no `right` do `ScreenHeader`, visível apenas quando `!isScheduleDefault(localHours)`, desabilitado durante reset ou salvamento
-- Adicionados estilos `resetButton` e `resetButtonText` no `StyleSheet`
-- Como `(premium-tabs)/settings/business-hours.tsx` re-exporta o arquivo de `(tabs)`, a funcionalidade é aplicada automaticamente em ambos os planos
-
----
-
-## 5. Data de aniversário do cliente na tela de detalhes
-
-**Status:** ✅ Concluído
-**Arquivo modificado:** `components/tab-screens/clients/ClientDetailScreen.tsx`
-
-**O que foi feito:**
-Adicionada exibição da data de aniversário no cartão de perfil do cliente, logo após o e-mail, usando:
-- Ícone `gift-outline` (Ionicons)
-- Data formatada com `formatDate()` (já existia no arquivo)
-- Renderizado condicionalmente apenas quando `c.birthDate` está preenchido
-O campo `birthDate` já é retornado pela API e salvo pelo formulário de edição — apenas estava ausente na visualização.
