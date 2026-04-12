@@ -86,7 +86,7 @@ export function EmployeeDetailScreen({ id, rootPath = "/(tabs)" }: { id: string;
         ? await secureApiCall<EmployeeGoalDto>(`/EmployeeGoal/${goal.id}`, { method: "PUT", body })
         : await secureApiCall<EmployeeGoalDto>("/EmployeeGoal", { method: "POST", body })
       if (res.hasError) { Alert.alert("Erro", res.message || "Erro ao salvar meta."); return }
-      setGoal(res.data)
+      setGoal(res.data ?? null)
       setGoalModalOpen(false)
     } catch { Alert.alert("Erro", "Erro de conexão.") }
     finally { setIsSavingGoal(false) }

@@ -479,6 +479,9 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
     const now = new Date()
     return (appointments ?? [])
       .filter((a: any) => {
+        // Nunca filtrar o agendamento que está sendo atualizado (para manter o loading visível)
+        if (updatingId === a.id) return true
+
         const dateStr = a.scheduledDateTime ?? a.date
         if (!dateStr) return false
 
@@ -501,13 +504,13 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
         return ta.localeCompare(tb)
       })
       .slice(0, 10)
-  }, [appointments, period])
+  }, [appointments, period, updatingId])
 
   const handleStatusChange = useCallback(async (id: string, newStatus: number) => {
-    const appointment = appointments?.find((a) => a.id === id)
+    const appointment = appointments?.find((a: any) => a.id === id)
     setUpdatingId(id)
     mutateAppointments(
-      (prev) => prev?.map((a) => a.id === id ? { ...a, status: newStatus } : a),
+      (prev: any) => prev?.map((a: any) => a.id === id ? { ...a, status: newStatus } : a),
       false
     )
     try {

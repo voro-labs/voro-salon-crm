@@ -7,6 +7,9 @@ import { useState } from "react"
 import { useRouter } from "expo-router"
 import * as SecureStore from "expo-secure-store"
 
+export const TWO_FACTOR_PENDING_KEY = "two_factor_pending_token"
+export const TWO_FACTOR_EMAIL_KEY = "two_factor_email"
+
 export function useSignIn() {
   const { login } = useAuth()
   const router = useRouter()
@@ -60,8 +63,10 @@ export function useSignIn() {
         return { success: false }
       }
 
-      // 2FA necessário: retorna o token pendente para o componente exibir inline
+      // 2FA necessário: salva no SecureStore e redireciona para a tela de verificação
       if (response.data.requiresTwoFactor && response.data.twoFactorPendingToken) {
+        await SecureStore.setItemAsync(TWO_FACTOR_PENDING_KEY, response.data.twoFactorPendingToken)
+        await SecureStore.setItemAsync(TWO_FACTOR_EMAIL_KEY, data.email)
         return {
           success: false,
           requiresTwoFactor: true as const,
