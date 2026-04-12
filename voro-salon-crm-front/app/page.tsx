@@ -95,7 +95,6 @@ export default function DashboardPage() {
 
   const [timeFilter, setTimeFilter] = useState("today")
   const [showPastModal, setShowPastModal] = useState(false)
-  const hasShownPastModal = useRef(false)
 
   // Se não houver agendamentos hoje, mostra a semana automaticamente
   useEffect(() => {
@@ -116,12 +115,13 @@ export default function DashboardPage() {
   }, [aptData])
 
   useEffect(() => {
-    if (hasShownPastModal.current) return
-    if (pastAppointments.length > 0) {
+    if (pastAppointments.length === 0) return
+    const alreadyShown = sessionStorage.getItem("past-modal-shown")
+    if (!alreadyShown) {
       setShowPastModal(true)
-      hasShownPastModal.current = true
+      sessionStorage.setItem("past-modal-shown", "1")
     }
-  }, [pastAppointments])
+  }, [pastAppointments.length])
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -426,12 +426,28 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                <div className="shrink-0 p-3 bg-muted/20 border-t border-border/40">
-                  <Button asChild size="sm" className="w-full">
-                    <Link href="/appointments">
-                      Ver todos os agendamentos
-                    </Link>
-                  </Button>
+                <div className="shrink-0 border-t border-border/40">
+                  {pastAppointments.length > 0 && !showPastModal && (
+                    <button
+                      onClick={() => setShowPastModal(true)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 bg-amber-50 hover:bg-amber-100 border-b border-amber-200 transition-colors text-left"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                      <span className="text-xs font-semibold text-amber-800 flex-1">
+                        {pastAppointments.length === 1
+                          ? "1 agendamento passado pendente"
+                          : `${pastAppointments.length} agendamentos passados pendentes`}
+                      </span>
+                      <ChevronRight className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    </button>
+                  )}
+                  <div className="p-3 bg-muted/20">
+                    <Button asChild size="sm" className="w-full">
+                      <Link href="/appointments">
+                        Ver todos os agendamentos
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

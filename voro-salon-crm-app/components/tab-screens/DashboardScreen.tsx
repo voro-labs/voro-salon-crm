@@ -510,7 +510,16 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
     const appointment = appointments?.find((a: any) => a.id === id)
     setUpdatingId(id)
     mutateAppointments(
-      (prev: any) => prev?.map((a: any) => a.id === id ? { ...a, status: newStatus } : a),
+      (prev: any) => {
+        if (!prev) return prev
+        if (Array.isArray(prev)) {
+          return prev.map((a: any) => a.id === id ? { ...a, status: newStatus } : a)
+        }
+        if (prev.items) {
+          return { ...prev, items: prev.items.map((a: any) => a.id === id ? { ...a, status: newStatus } : a) }
+        }
+        return prev
+      },
       false
     )
     try {
@@ -675,6 +684,22 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
                   ))
                 )}
 
+                {/* Banner de agendamentos passados pendentes */}
+                {pastAppointments.length > 0 && !showPastModal && (
+                  <Pressable
+                    onPress={() => setShowPastModal(true)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8, marginBottom: 4, padding: 12, borderRadius: 16, backgroundColor: "#fef3c7", borderWidth: 1, borderColor: "#fde68a" }}
+                  >
+                    <Ionicons name="time-outline" size={16} color="#d97706" />
+                    <Text style={{ flex: 1, fontSize: 13, fontWeight: "700", color: "#92400e" }}>
+                      {pastAppointments.length === 1
+                        ? "1 agendamento passado pendente"
+                        : `${pastAppointments.length} agendamentos passados pendentes`}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={14} color="#d97706" />
+                  </Pressable>
+                )}
+
                 {/* Ver todos */}
                 <Pressable
                   onPress={() => router.push(`${rootPath}/appointments` as any)}
@@ -808,15 +833,23 @@ export function DashboardScreen({ rootPath = "/(tabs)" }: { rootPath?: string })
 
                       {/* Status action buttons: only terminal statuses */}
                       <View style={{ flexDirection: "row", gap: 8 }}>
-                        {STATUS_OPTIONS.filter(s => [2, 3, 4].includes(s.value)).map((opt) => (
-                          <Pressable
-                            key={opt.value}
-                            onPress={() => handleStatusChange(apt.id, opt.value)}
-                            style={{ flex: 1, paddingVertical: 8, borderRadius: 12, alignItems: "center", backgroundColor: opt.bg, borderWidth: 1, borderColor: opt.border }}
-                          >
-                            <Text style={{ fontSize: 12, fontWeight: "700", color: opt.text }}>{opt.label}</Text>
-                          </Pressable>
-                        ))}
+                        {STATUS_OPTIONS.filter(s => [2, 3, 4].includes(s.value)).map((opt) => {
+                          const isLoading = updatingId === apt.id
+                          return (
+                            <Pressable
+                              key={opt.value}
+                              onPress={() => !isLoading && handleStatusChange(apt.id, opt.value)}
+                              disabled={isLoading}
+                              style={{ flex: 1, paddingVertical: 8, borderRadius: 12, alignItems: "center", backgroundColor: opt.bg, borderWidth: 1, borderColor: opt.border, opacity: isLoading ? 0.6 : 1 }}
+                            >
+                              {isLoading ? (
+                                <ActivityIndicator size="small" color={opt.text} />
+                              ) : (
+                                <Text style={{ fontSize: 12, fontWeight: "700", color: opt.text }}>{opt.label}</Text>
+                              )}
+                            </Pressable>
+                          )
+                        })}
                       </View>
                     </View>
                   )
