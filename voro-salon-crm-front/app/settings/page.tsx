@@ -29,7 +29,14 @@ import {
   Clock,
   MessageCircle,
   MessageSquare,
+  Wifi,
+  WifiOff,
+  CheckCircle,
+  AlertTriangle,
 } from "lucide-react"
+import useSWR from "swr"
+import { Badge } from "@/components/ui/badge"
+import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Button } from "@/components/ui/button"
@@ -51,6 +58,24 @@ import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { getBrandingByType } from "@/lib/branding"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 import { toast } from "sonner"
+
+interface OnboardingStatus {
+  connected: boolean
+  displayPhone: string | null
+  businessAccountId: string | null
+  tokenExpiresAt: string | null
+}
+
+interface OnboardingConfig {
+  appId: string
+  configId: string
+}
+
+const fetchOnboardingStatus = async (url: string): Promise<OnboardingStatus | null> => {
+  const res = await secureApiCall<OnboardingStatus>(url)
+  if (res.hasError) return null
+  return res.data ?? null
+}
 
 interface TenantData {
   id: string
@@ -111,6 +136,16 @@ export default function ConfiguracoesPage() {
   const [useWhatsappBooking, setUseWhatsappBooking] = useState(false)
   const [savingWp, setSavingWp] = useState(false)
 
+  // WhatsApp Embedded Signup state
+  const { data: onboardingStatus, isLoading: statusLoading, mutate: mutateStatus } = useSWR<OnboardingStatus | null>(
+    API_CONFIG.ENDPOINTS.WHATSAPP_ONBOARDING_STATUS,
+    fetchOnboardingStatus,
+    { fallbackData: null }
+  )
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
+
   useEffect(() => {
     setTwoFactorEnabled(user?.twoFactorEnabled ?? false)
   }, [user?.twoFactorEnabled])
@@ -161,6 +196,84 @@ export default function ConfiguracoesPage() {
       setUseWhatsappBooking(tenant.useWhatsappBooking ?? false)
     }
   }, [tenant]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleConnect = useCallback(async () => {
+    setConnecting(true)
+    try {
+      const configRes = await secureApiCall<OnboardingConfig>(API_CONFIG.ENDPOINTS.WHATSAPP_ONBOARDING_CONFIG)
+      if (configRes.hasError || !configRes.data) {
+        toast.error("Erro ao obter configuração do WhatsApp.")
+        return
+      }
+      const { appId, configId } = configRes.data
+      const extras = encodeURIComponent(JSON.stringify({ setup: {} }))
+      const url = `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${appId}&config_id=${configId}&extras=${extras}`
+      const popup = window.open(url, "wa_signup", "width=800,height=700,scrollbars=yes")
+      if (!popup) {
+        toast.error("Popup bloqueado. Permita popups para este site e tente novamente.")
+        return
+      }
+      const handleMessage = async (event: MessageEvent) => {
+        if (event.origin !== "https://business.facebook.com") return
+        try {
+          const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data
+          if (data?.type !== "WA_EMBEDDED_SIGNUP") return
+          if (data.event === "FINISH") {
+            const { code, waba_id } = data.data ?? {}
+            if (code && waba_id) {
+              popup.close()
+              window.removeEventListener("message", handleMessage)
+              const exchangeRes = await secureApiCall(API_CONFIG.ENDPOINTS.WHATSAPP_ONBOARDING_EXCHANGE, {
+                method: "POST",
+                body: JSON.stringify({ code, wabaId: waba_id }),
+              })
+              if (exchangeRes.hasError) {
+                toast.error(exchangeRes.message ?? "Erro ao conectar WhatsApp.")
+              } else {
+                toast.success("WhatsApp Business conectado com sucesso!")
+                mutateStatus()
+              }
+              setConnecting(false)
+            }
+          } else if (data.event === "CANCEL" || data.event === "ERROR") {
+            popup.close()
+            window.removeEventListener("message", handleMessage)
+            toast.error("Conexão com WhatsApp cancelada.")
+            setConnecting(false)
+          }
+        } catch { /* ignore */ }
+      }
+      window.addEventListener("message", handleMessage)
+      const pollTimer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollTimer)
+          window.removeEventListener("message", handleMessage)
+          setConnecting(false)
+        }
+      }, 500)
+    } catch {
+      toast.error("Erro de conexão.")
+      setConnecting(false)
+    }
+  }, [mutateStatus])
+
+  const handleDisconnectWa = async () => {
+    setDisconnecting(true)
+    try {
+      const res = await secureApiCall(API_CONFIG.ENDPOINTS.WHATSAPP_ONBOARDING_DISCONNECT, { method: "DELETE" })
+      if (res.hasError) {
+        toast.error(res.message ?? "Erro ao desconectar.")
+      } else {
+        toast.success("WhatsApp desconectado.")
+        mutateStatus()
+      }
+    } catch {
+      toast.error("Erro de conexão.")
+    } finally {
+      setDisconnecting(false)
+      setDisconnectDialogOpen(false)
+    }
+  }
 
   const handleSaveWhatsapp = async () => {
     setSavingWp(true)
@@ -966,6 +1079,70 @@ export default function ConfiguracoesPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-5">
+
+                  {/* Embedded Signup Connection Card */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg border bg-muted/30">
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${onboardingStatus?.connected ? "bg-emerald-100 dark:bg-emerald-950/30" : "bg-zinc-100 dark:bg-zinc-800"}`}>
+                      {statusLoading
+                        ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        : onboardingStatus?.connected
+                          ? <Wifi className="h-5 w-5 text-emerald-600" />
+                          : <WifiOff className="h-5 w-5 text-zinc-500" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm">Número WhatsApp Business</span>
+                        {!statusLoading && (
+                          onboardingStatus?.connected
+                            ? <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 gap-1 text-xs">
+                                <CheckCircle className="h-3 w-3" />
+                                Conectado
+                              </Badge>
+                            : <Badge variant="outline" className="text-zinc-500 border-zinc-300 text-xs">
+                                Desconectado
+                              </Badge>
+                        )}
+                      </div>
+                      {onboardingStatus?.connected ? (
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          {onboardingStatus.displayPhone && (
+                            <p className="text-sm text-muted-foreground font-mono">{onboardingStatus.displayPhone}</p>
+                          )}
+                          {onboardingStatus.tokenExpiresAt && (() => {
+                            const d = new Date(onboardingStatus.tokenExpiresAt!)
+                            const diffDays = Math.ceil((d.getTime() - Date.now()) / 86400000)
+                            return (
+                              <div className="flex items-center gap-1">
+                                {diffDays <= 7 && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                                <p className={`text-xs ${diffDays <= 7 ? "text-amber-600" : "text-muted-foreground"}`}>
+                                  Token expira em {d.toLocaleDateString("pt-BR")} ({diffDays} dia{diffDays !== 1 ? "s" : ""})
+                                </p>
+                              </div>
+                            )
+                          })()}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-0.5">Conecte via Facebook para ativar o bot.</p>
+                      )}
+                    </div>
+                    <div className="shrink-0">
+                      {onboardingStatus?.connected ? (
+                        <Button variant="outline" size="sm"
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setDisconnectDialogOpen(true)}
+                          disabled={disconnecting || statusLoading}>
+                          {disconnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <WifiOff className="mr-2 h-4 w-4" />}
+                          Desconectar
+                        </Button>
+                      ) : (
+                        <Button size="sm" onClick={handleConnect} disabled={connecting || statusLoading}>
+                          {connecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wifi className="mr-2 h-4 w-4" />}
+                          {connecting ? "Aguardando..." : "Conectar"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="wp-phone-number-id">Phone Number ID</Label>
                     <Input
@@ -1035,6 +1212,27 @@ export default function ConfiguracoesPage() {
           )}
         </Tabs>
       </div>
+
+      {/* WhatsApp Disconnect Confirmation Dialog */}
+      <Dialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Desconectar WhatsApp?</DialogTitle>
+            <DialogDescription>
+              Os envios automáticos de mensagens serão interrompidos até que você reconecte um número.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDisconnectDialogOpen(false)} disabled={disconnecting}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDisconnectWa} disabled={disconnecting}>
+              {disconnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Desconectar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AuthGuard>
   )
 }

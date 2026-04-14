@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using VoroSalonCrm.Domain.Enums;
 
 namespace VoroSalonCrm.Application.DTOs.Subscription
@@ -46,7 +47,7 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         Guid? TenantId,
         string? CouponCode = null,
         EstablishmentType? EstablishmentType = null,
-        PaymentMethod CheckoutMethod = PaymentMethod.CreditCard
+        [property: JsonConverter(typeof(JsonStringEnumConverter))] PaymentMethod CheckoutMethod = PaymentMethod.CreditCard
     );
 
     public record CheckoutResultDto(
