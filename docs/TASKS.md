@@ -97,8 +97,8 @@
 - [x] Exibir label informativo: _"Promoção disponível apenas para novos clientes ou upgrades"_ quando cliente inativo tentar acessar promo
 
 #### Frontend Mobile
-- [ ] Mesma lógica: ao fechar tela de checkout de troca de plano sem pagar → chamar endpoint de cancelamento
-- [ ] Tela de planos: exibir preço correto conforme status do tenant (cheio para inativos)
+- [x] Mesma lógica: ao fechar tela de checkout de troca de plano sem pagar → chamar endpoint de cancelamento
+- [x] Tela de planos: exibir preço correto conforme status do tenant (cheio para inativos)
 
 #### Bug Pix — QR Code sumia antes de pagamento
 - [x] Polling não deve tratar `"Inactive"` como falha — corrigido em `subscription/page.tsx` e `prices/page.tsx` (só `"cancelled"` encerra o QR)

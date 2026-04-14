@@ -5,5 +5,6 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories
 {
     public interface IAppointmentRepository : IRepositoryBase<Appointment>
     {
+        Task AddAppointmentServiceAsync(AppointmentService appointmentService);
     }
 }

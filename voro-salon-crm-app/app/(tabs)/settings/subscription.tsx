@@ -62,6 +62,30 @@ export default function SubscriptionScreen() {
   } | null>(null)
   const [pixStatus, setPixStatus] = useState<"pending" | "approved" | "failed">("pending")
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const checkoutCompletedRef = useRef(false)
+
+  // Resolved prices (preço correto por tenant)
+  const { data: resolvedPrices } = useSWR<{ planId: string; displayPrice: number }[]>(
+    API_CONFIG.ENDPOINTS.SUBSCRIPTION_RESOLVED_PRICES,
+    async (url: string) => {
+      const res = await secureApiCall<{ planId: string; displayPrice: number }[]>(url)
+      return res.hasError ? [] : (res.data ?? [])
+    },
+    { fallbackData: [] }
+  )
+
+  function getResolvedPrice(plan: any): number {
+    const found = resolvedPrices?.find((r) => r.planId === plan.id)
+    if (found) return found.displayPrice
+    if (isPlanPromoActiveCheck(plan)) return plan.promoPrice
+    return plan.monthlyPrice
+  }
+
+  function isResolvedPromoActive(plan: any): boolean {
+    const found = resolvedPrices?.find((r) => r.planId === plan.id)
+    if (found) return found.displayPrice < plan.monthlyPrice
+    return isPlanPromoActiveCheck(plan)
+  }
 
   if (isLoading) {
     return (
@@ -146,7 +170,7 @@ export default function SubscriptionScreen() {
               await mutate()
               setPixData(null)
             }, 2000)
-          } else if (s === "pastdue" || s === "cancelled" || s === "inactive") {
+          } else if (s === "cancelled") {
             setPixStatus("failed")
             stopPolling()
           }
@@ -162,8 +186,12 @@ export default function SubscriptionScreen() {
   const handleConfirm = async () => {
     if (!selectedPlan) return
     setSubmitting(true)
+    checkoutCompletedRef.current = false
     try {
-      const res = await apiCall<any>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT, {
+      const endpoint = (isActive || isTrial)
+        ? API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHANGE_PLAN
+        : API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT
+      const res = await apiCall<any>(endpoint, {
         method: "POST",
         body: JSON.stringify({
           planId: selectedPlan.id,
@@ -189,6 +217,7 @@ export default function SubscriptionScreen() {
         setPixStatus("pending")
         startPixPolling(res.data.subscriptionId)
       } else if (res.data.checkoutUrl) {
+        checkoutCompletedRef.current = true
         Alert.alert(
           "Pagamento via Cartão",
           "Abra o link no navegador para concluir o pagamento.",
@@ -198,6 +227,7 @@ export default function SubscriptionScreen() {
           ]
         )
       } else {
+        checkoutCompletedRef.current = true
         await mutate()
         setSelectedPlan(null)
       }
@@ -206,6 +236,13 @@ export default function SubscriptionScreen() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const cancelPendingChange = async () => {
+    if (!(isActive || isTrial) || checkoutCompletedRef.current) return
+    try {
+      await apiCall(API_CONFIG.ENDPOINTS.SUBSCRIPTION_PENDING_CANCEL, { method: "DELETE" })
+    } catch { /* ignore */ }
   }
 
   const handleSharePix = async () => {
@@ -340,8 +377,9 @@ export default function SubscriptionScreen() {
 
             <View className="gap-3 mb-6">
               {visiblePlans.map((plan) => {
-                const promoActive = isPlanPromoActiveCheck(plan)
-                const effectivePrice = promoActive ? plan.promoPrice : plan.monthlyPrice
+                const promoActive = isResolvedPromoActive(plan)
+                const hasGlobalPromo = isPlanPromoActiveCheck(plan)
+                const effectivePrice = getResolvedPrice(plan)
                 const isSelected = selectedPlan?.id === plan.id
                 return (
                   <Pressable
@@ -349,6 +387,7 @@ export default function SubscriptionScreen() {
                     onPress={() => {
                       setSelectedPlan(plan)
                       setPaymentMethod("CreditCard")
+                      checkoutCompletedRef.current = false
                       setShowMethodModal(true)
                     }}
                     className="bg-white rounded-2xl p-5 border border-zinc-100"
@@ -381,6 +420,12 @@ export default function SubscriptionScreen() {
                       </Text>
                     )}
 
+                    {!promoActive && hasGlobalPromo && (
+                      <Text className="text-xs text-zinc-400 mb-1">
+                        Promoção disponível apenas para novos clientes ou upgrades
+                      </Text>
+                    )}
+
                     <Text className="text-zinc-400 text-xs mb-3">{plan.description}</Text>
 
                     <View className="flex-row items-center justify-between">
@@ -406,13 +451,13 @@ export default function SubscriptionScreen() {
         visible={showMethodModal}
         animationType="slide"
         transparent
-        onRequestClose={() => setShowMethodModal(false)}
+        onRequestClose={() => { cancelPendingChange(); setShowMethodModal(false) }}
       >
         <View className="flex-1 justify-end bg-black/40">
           <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: 36 }}>
             <View className="flex-row items-center justify-between mb-5">
               <Text className="text-lg font-black text-zinc-900">Forma de pagamento</Text>
-              <Pressable onPress={() => setShowMethodModal(false)} hitSlop={12}>
+              <Pressable onPress={() => { cancelPendingChange(); setShowMethodModal(false) }} hitSlop={12}>
                 <Ionicons name="close" size={22} color="#71717a" />
               </Pressable>
             </View>
@@ -421,10 +466,10 @@ export default function SubscriptionScreen() {
             {selectedPlan && (
               <View className="bg-zinc-50 rounded-2xl p-4 mb-5 border border-zinc-100">
                 <Text className="font-bold text-zinc-900 mb-1">{selectedPlan.name}</Text>
-                {isPlanPromoActiveCheck(selectedPlan) ? (
+                {isResolvedPromoActive(selectedPlan) ? (
                   <View className="flex-row items-baseline gap-2">
                     <Text className="text-xl font-black text-zinc-900">
-                      R$ {selectedPlan.promoPrice.toFixed(2).replace(".", ",")}
+                      R$ {getResolvedPrice(selectedPlan).toFixed(2).replace(".", ",")}
                       <Text className="text-sm font-normal text-zinc-400">/mês</Text>
                     </Text>
                     <Text className="text-sm text-zinc-400" style={{ textDecorationLine: "line-through" }}>
@@ -433,7 +478,7 @@ export default function SubscriptionScreen() {
                   </View>
                 ) : (
                   <Text className="text-xl font-black text-zinc-900">
-                    R$ {selectedPlan.monthlyPrice.toFixed(2).replace(".", ",")}
+                    R$ {getResolvedPrice(selectedPlan).toFixed(2).replace(".", ",")}
                     <Text className="text-sm font-normal text-zinc-400">/mês</Text>
                   </Text>
                 )}
@@ -508,7 +553,7 @@ export default function SubscriptionScreen() {
         visible={!!pixData}
         animationType="slide"
         transparent
-        onRequestClose={() => { setPixData(null); stopPolling() }}
+        onRequestClose={() => { cancelPendingChange(); setPixData(null); stopPolling() }}
       >
         <View className="flex-1 justify-end bg-black/50">
           <View className="bg-white rounded-t-3xl p-6" style={{ paddingBottom: 36 }}>
@@ -535,7 +580,7 @@ export default function SubscriptionScreen() {
               <>
                 <View className="flex-row items-center justify-between mb-5">
                   <Text className="text-lg font-black text-zinc-900">Pagar com Pix</Text>
-                  <Pressable onPress={() => { setPixData(null); stopPolling() }} hitSlop={12}>
+                  <Pressable onPress={() => { cancelPendingChange(); setPixData(null); stopPolling() }} hitSlop={12}>
                     <Ionicons name="close" size={22} color="#71717a" />
                   </Pressable>
                 </View>

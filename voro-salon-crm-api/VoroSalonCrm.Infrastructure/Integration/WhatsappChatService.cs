@@ -26,6 +26,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly IAppointmentRepository _appointmentRepository;
         private readonly IClientRepository _clientRepository;
         private readonly IClientRatingRepository _clientRatingRepository;
+        private readonly IAIConversationService _aiConversationService;
 
         private const string CACHE_PREFIX = "wa_booking_";
 
@@ -40,7 +41,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             ILogger<WhatsappChatService> logger,
             IAppointmentRepository appointmentRepository,
             IClientRepository clientRepository,
-            IClientRatingRepository clientRatingRepository)
+            IClientRatingRepository clientRatingRepository,
+            IAIConversationService aiConversationService)
         {
             _whatsappService = whatsappService;
             _publicBookingService = publicBookingService;
@@ -53,6 +55,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             _appointmentRepository = appointmentRepository;
             _clientRepository = clientRepository;
             _clientRatingRepository = clientRatingRepository;
+            _aiConversationService = aiConversationService;
         }
 
         /// <summary>Salva mensagem enviada pelo bot no histórico da conversa.</summary>
@@ -232,8 +235,32 @@ namespace VoroSalonCrm.Infrastructure.Integration
                         break;
 
                     default:
-                        session.State = "START";
-                        await StartBookingFlowAsync(from, contactName, session, ct);
+                        // No intent matched — fall back to AI assistant
+                        if (message.Type == "text" && !string.IsNullOrWhiteSpace(incomingText) && session.TenantId != Guid.Empty)
+                        {
+                            try
+                            {
+                                var tenantName = session.TenantName ?? "Salão";
+                                var aiReply = await _aiConversationService.RespondAsync(
+                                    session.TenantId,
+                                    tenantName,
+                                    from,
+                                    incomingText);
+                                await _whatsappService.SendTextMessageAsync(from, aiReply, session.WhatsappPhoneNumberId, ct);
+                                await SaveBotMessageAsync(session.TenantId, from, session.WhatsappPhoneNumberId, aiReply);
+                            }
+                            catch (Exception aiEx)
+                            {
+                                _logger.LogWarning(aiEx, "AI fallback failed for {From}. Restarting booking flow.", from);
+                                session.State = "START";
+                                await StartBookingFlowAsync(from, contactName, session, ct);
+                            }
+                        }
+                        else
+                        {
+                            session.State = "START";
+                            await StartBookingFlowAsync(from, contactName, session, ct);
+                        }
                         break;
                 }
 

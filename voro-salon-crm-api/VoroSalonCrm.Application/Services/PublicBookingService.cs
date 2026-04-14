@@ -118,24 +118,42 @@ namespace VoroSalonCrm.Application.Services
             var tenant = await tenantRepository.GetBySlugAsync(dto.TenantSlug);
             if (tenant == null) return new PublicBookingResponseDto(false, "Estabelecimento não encontrado.", null);
 
-            var service = await serviceRepository.GetPublicByIdAsync(tenant.Id, dto.ServiceId);
+            var serviceIds = dto.ResolvedServiceIds();
+            if (serviceIds.Count == 0)
+                return new PublicBookingResponseDto(false, "Nenhum serviço informado.", null);
 
-            if (service == null) return new PublicBookingResponseDto(false, "Serviço não encontrado.", null);
+            // Load all requested services
+            var services = new List<Service>();
+            foreach (var sid in serviceIds)
+            {
+                var svc = await serviceRepository.GetPublicByIdAsync(tenant.Id, sid);
+                if (svc == null)
+                    return new PublicBookingResponseDto(false, $"Serviço não encontrado: {sid}.", null);
+                services.Add(svc);
+            }
 
-            // Resolve promotional price if applicable today
+            // Resolve promotional prices and sum totals
             var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
             var todayDow = (int)today.DayOfWeek;
-            var activePromo = await _servicePromotionRepository
-                .Query(p =>
-                    p.TenantId == tenant.Id &&
-                    p.ServiceId == service.Id &&
-                    p.IsActive &&
-                    p.DaysOfWeek.Contains(todayDow) &&
-                    (p.ValidFrom == null || p.ValidFrom <= today) &&
-                    (p.ValidUntil == null || p.ValidUntil >= today))
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync();
-            var resolvedPrice = activePromo?.PromotionalPrice ?? service.Price;
+            decimal totalAmount = 0;
+            int totalDuration = 0;
+
+            foreach (var svc in services)
+            {
+                var activePromo = await _servicePromotionRepository
+                    .Query(p =>
+                        p.TenantId == tenant.Id &&
+                        p.ServiceId == svc.Id &&
+                        p.IsActive &&
+                        p.DaysOfWeek.Contains(todayDow) &&
+                        (p.ValidFrom == null || p.ValidFrom <= today) &&
+                        (p.ValidUntil == null || p.ValidUntil >= today))
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync();
+
+                totalAmount += activePromo?.PromotionalPrice ?? svc.Price;
+                totalDuration += svc.DurationMinutes;
+            }
 
             var client = await clientRepository.GetByPhoneAsync(tenant.Id, dto.ClientPhone);
             if (client == null)
@@ -151,15 +169,18 @@ namespace VoroSalonCrm.Application.Services
                 await unitOfWork.CommitAsync();
             }
 
+            // For backward-compat, set ServiceId to the first service
+            var primaryService = services[0];
+
             var appointment = new Appointment
             {
                 TenantId = tenant.Id,
                 ClientId = client.Id,
-                ServiceId = dto.ServiceId,
+                ServiceId = primaryService.Id,
                 EmployeeId = dto.EmployeeId,
                 ScheduledDateTime = dto.ScheduledDateTime.ToUniversalTime(),
-                DurationMinutes = service.DurationMinutes,
-                Amount = resolvedPrice,
+                DurationMinutes = totalDuration,
+                Amount = totalAmount,
                 Status = AppointmentStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
                 Description = dto.Description,
@@ -169,6 +190,18 @@ namespace VoroSalonCrm.Application.Services
             };
 
             await appointmentRepository.AddAsync(appointment);
+            await unitOfWork.CommitAsync();
+
+            // Insert AppointmentServices join records
+            foreach (var svc in services)
+            {
+                var appointmentService = new AppointmentService
+                {
+                    AppointmentId = appointment.Id,
+                    ServiceId = svc.Id,
+                };
+                await appointmentRepository.AddAppointmentServiceAsync(appointmentService);
+            }
             await unitOfWork.CommitAsync();
 
             // Notify tenant owners about the new booking
@@ -185,10 +218,14 @@ namespace VoroSalonCrm.Application.Services
                     var dateStr = localTime.ToString("dd/MM/yyyy");
                     var timeStr = localTime.ToString("HH:mm");
 
+                    var servicesSummary = services.Count == 1
+                        ? services[0].Name
+                        : string.Join(", ", services.Select(s => s.Name));
+
                     await _expoPushNotificationService.SendToUsersAsync(
                         ownerIds,
                         "Novo Agendamento!",
-                        $"{client.Name} agendou {service.Name} para {dateStr} às {timeStr}",
+                        $"{client.Name} agendou {servicesSummary} para {dateStr} às {timeStr}",
                         new { appointmentId = appointment.Id },
                         tenant.Id,
                         "new_appointment",
@@ -203,18 +240,37 @@ namespace VoroSalonCrm.Application.Services
             return new PublicBookingResponseDto(true, "Agendamento realizado com sucesso!", appointment.Id);
         }
 
-        public async Task<IEnumerable<DTOs.CRM.AvailabilitySlotDto>> GetAvailableSlotsAsync(string tenantSlug, DateTime date, Guid? serviceId = null, Guid? employeeId = null)
+        public async Task<IEnumerable<DTOs.CRM.AvailabilitySlotDto>> GetAvailableSlotsAsync(string tenantSlug, DateTime date, Guid? serviceId = null, Guid? employeeId = null, List<Guid>? serviceIds = null)
         {
             var tenant = await tenantRepository.GetBySlugAsync(tenantSlug);
             if (tenant == null) return [];
 
-            // Resolve service duration for conflict window calculation
+            // Resolve total service duration for conflict window calculation
+            // serviceIds takes precedence over single serviceId
             int serviceDurationMinutes = 30;
-            if (serviceId.HasValue && serviceId.Value != Guid.Empty)
+            var effectiveServiceIds = (serviceIds != null && serviceIds.Count > 0)
+                ? serviceIds
+                : (serviceId.HasValue && serviceId.Value != Guid.Empty ? [serviceId.Value] : new List<Guid>());
+
+            if (effectiveServiceIds.Count > 0)
             {
-                var service = await serviceRepository.GetPublicByIdAsync(tenant.Id, serviceId.Value);
-                if (service != null)
-                    serviceDurationMinutes = service.DurationMinutes;
+                int sumDuration = 0;
+                Guid? firstValidId = null;
+                foreach (var sid in effectiveServiceIds)
+                {
+                    var svc = await serviceRepository.GetPublicByIdAsync(tenant.Id, sid);
+                    if (svc != null)
+                    {
+                        sumDuration += svc.DurationMinutes;
+                        firstValidId ??= sid;
+                    }
+                }
+                if (sumDuration > 0)
+                    serviceDurationMinutes = sumDuration;
+
+                // Use first valid serviceId for employee count query when no specific employeeId
+                if (firstValidId.HasValue && (!serviceId.HasValue || serviceId.Value == Guid.Empty))
+                    serviceId = firstValidId;
             }
 
             var nowBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3));
@@ -365,6 +421,7 @@ namespace VoroSalonCrm.Application.Services
                 .Include(a => a.Service)
                 .Include(a => a.Employee)
                 .Include(a => a.Tenant)
+                .Include(a => a.Services).ThenInclude(s => s.Service)
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync();
 
@@ -375,9 +432,9 @@ namespace VoroSalonCrm.Application.Services
 
             // Agenda do dia para o cliente ver o contexto (mostra slots ocupados/livres)
             var dayAgenda = await GetAvailableSlotsAsync(
-                appointment.Tenant.Slug, 
-                appointment.ScheduledDateTime.Date, 
-                appointment.ServiceId, 
+                appointment.Tenant.Slug,
+                appointment.ScheduledDateTime.Date,
+                appointment.ServiceId,
                 appointment.EmployeeId);
 
             var existingRating = await _clientRatingRepository
@@ -387,10 +444,20 @@ namespace VoroSalonCrm.Application.Services
 
             var canRate = appointment.Status == AppointmentStatus.Completed && existingRating == null;
 
+            // Build service names from join table, falling back to single Service
+            IEnumerable<string> serviceNames;
+            if (appointment.Services != null && appointment.Services.Count > 0)
+                serviceNames = appointment.Services.Select(s => s.Service?.Name ?? "Serviço").ToList();
+            else
+                serviceNames = [appointment.Service?.Name ?? "Serviço"];
+
+            var primaryServiceName = serviceNames.FirstOrDefault() ?? "Serviço";
+            var combinedServiceName = string.Join(", ", serviceNames);
+
             return new PublicReceiptDto(
                 appointment.Id,
                 appointment.Client.Name,
-                appointment.Service?.Name ?? "Serviço",
+                combinedServiceName,
                 appointment.Employee?.Name,
                 appointment.ScheduledDateTime,
                 appointment.DurationMinutes,
@@ -399,7 +466,8 @@ namespace VoroSalonCrm.Application.Services
                 tenantDto,
                 dayAgenda,
                 existingRating?.Stars,
-                canRate
+                canRate,
+                serviceNames
             );
         }
 

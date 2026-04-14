@@ -33,6 +33,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<Service> Services { get; set; }
         public DbSet<ServiceRecord> ServiceRecords { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<AppointmentService> AppointmentServices { get; set; }
         public DbSet<TenantModule> TenantModules { get; set; }
         public DbSet<Employee> Employees { get; set; }
         public DbSet<EmployeeService> EmployeeServices { get; set; }
@@ -73,6 +74,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
         public DbSet<BookingFunnelSession> BookingFunnelSessions { get; set; }
         public DbSet<PendingPlanChange> PendingPlanChanges { get; set; }
+
+        public DbSet<AIConversationMessage> AIConversationMessages { get; set; }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -348,6 +351,32 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(a => a.EmployeeId)
                  .OnDelete(DeleteBehavior.SetNull);
+
+                b.HasMany(a => a.Services)
+                 .WithOne(s => s.Appointment)
+                 .HasForeignKey(s => s.AppointmentId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // APPOINTMENT SERVICE (Join Table — múltiplos serviços por agendamento)
+            // ---------------------------
+            builder.Entity<AppointmentService>(b =>
+            {
+                b.HasKey(s => new { s.AppointmentId, s.ServiceId });
+
+                b.HasOne(s => s.Appointment)
+                 .WithMany(a => a.Services)
+                 .HasForeignKey(s => s.AppointmentId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(s => s.Service)
+                 .WithMany()
+                 .HasForeignKey(s => s.ServiceId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasIndex(s => s.AppointmentId);
+                b.HasIndex(s => s.ServiceId);
             });
 
             // ---------------------------
@@ -883,6 +912,20 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 e.Property(x => x.SubscriptionSnapshot).HasMaxLength(4000);
                 e.HasIndex(x => x.TenantId);
                 e.HasIndex(x => x.ExpiresAt);
+            });
+
+            // ---------------------------
+            // AI CONVERSATION MESSAGES
+            // ---------------------------
+            builder.Entity<AIConversationMessage>(e =>
+            {
+                e.ToTable("AIConversationMessages");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.PhoneNumber).HasMaxLength(30).IsRequired();
+                e.Property(x => x.Role).HasMaxLength(20).IsRequired();
+                e.Property(x => x.Content).HasMaxLength(4000).IsRequired();
+                e.HasIndex(x => new { x.TenantId, x.PhoneNumber });
+                e.HasIndex(x => x.CreatedAt);
             });
         }
     }

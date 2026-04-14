@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar, Smartphone, X, Bell, Clock } from "lucide-react"
+import { User, CheckCircle2, Loader2, Send, MessageCircle, Calendar, Smartphone, X, Bell, Clock, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,190 @@ import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 
 type Step = 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'NAME' | 'PHONE' | 'CONFIRM' | 'SUCCESS'
 
+// ─── Types for public tenant data ────────────────────────────────────────────
+
+interface BusinessHourRange {
+  openTime: string
+  closeTime: string
+}
+
+interface BusinessHour {
+  dayOfWeek: number   // 0 = Sunday … 6 = Saturday
+  isOpen: boolean
+  ranges: BusinessHourRange[]
+}
+
+interface PublicTenant {
+  id: string
+  name: string
+  slug: string
+  logoUrl?: string | null
+  coverImageUrl?: string | null
+  primaryColor?: string | null
+  secondaryColor?: string | null
+  contactPhone?: string | null
+  contactEmail?: string | null
+  isBookingEnabled?: boolean
+  establishmentType?: number
+  businessHours?: BusinessHour[]
+  // address fields — any combination may be present
+  street?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+  zipCode?: string | null
+  address?: string | null
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const DAY_NAMES_PT: Record<number, string> = {
+  0: "Domingo",
+  1: "Segunda",
+  2: "Terça",
+  3: "Quarta",
+  4: "Quinta",
+  5: "Sexta",
+  6: "Sábado",
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function buildGoogleMapsUrl(tenant: PublicTenant): string | null {
+  // Prefer a pre-composed address field, then assemble from parts
+  const parts: string[] = []
+
+  if (tenant.address) {
+    parts.push(tenant.address)
+  } else {
+    if (tenant.street) parts.push(tenant.street)
+    if (tenant.neighborhood) parts.push(tenant.neighborhood)
+  }
+
+  if (tenant.city) parts.push(tenant.city)
+  if (tenant.state) parts.push(tenant.state)
+  if (tenant.zipCode) parts.push(tenant.zipCode)
+
+  if (parts.length === 0) return null
+
+  const query = encodeURIComponent(`${tenant.name} ${parts.join(", ")}`)
+  return `https://www.google.com/maps/search/?api=1&query=${query}`
+}
+
+function formatTime(t: string): string {
+  // Slice to "HH:mm" whether the string is "HH:mm" or "HH:mm:ss"
+  return t ? t.slice(0, 5) : ""
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+}
+
+// ─── WelcomeCard component ────────────────────────────────────────────────────
+
+function WelcomeCard({ tenant }: { tenant: PublicTenant }) {
+  const mapsUrl = buildGoogleMapsUrl(tenant)
+
+  const sortedHours = tenant.businessHours
+    ? [...tenant.businessHours].sort((a, b) => {
+        // Reorder so Monday (1) comes first, Sunday (0) last
+        const order = [1, 2, 3, 4, 5, 6, 0]
+        return order.indexOf(a.dayOfWeek) - order.indexOf(b.dayOfWeek)
+      })
+    : []
+
+  const hasBusinessHours = sortedHours.length > 0
+
+  return (
+    <div className="rounded-2xl rounded-tl-none border bg-background shadow-sm overflow-hidden max-w-[85%]">
+      {/* Cover image */}
+      {tenant.coverImageUrl && (
+        <div className="w-full h-28 overflow-hidden">
+          <img
+            src={tenant.coverImageUrl}
+            alt={`Capa de ${tenant.name}`}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      <div className="p-4 flex flex-col gap-4">
+        {/* Logo + name row */}
+        <div className="flex items-center gap-3">
+          {tenant.logoUrl ? (
+            <img
+              src={tenant.logoUrl}
+              alt={tenant.name}
+              className="h-14 w-14 rounded-full object-cover border-2 border-border shadow-sm shrink-0"
+            />
+          ) : (
+            <div className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+              {getInitials(tenant.name)}
+            </div>
+          )}
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-base text-foreground leading-tight truncate">
+              {tenant.name}
+            </span>
+            <Badge
+              variant="outline"
+              className="w-fit text-[10px] h-4 py-0 text-green-600 bg-green-50 mt-1"
+            >
+              Agendamento Online
+            </Badge>
+          </div>
+        </div>
+
+        {/* Business hours */}
+        {hasBusinessHours && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <Clock className="h-3 w-3" />
+              Horários
+            </div>
+            <div className="grid grid-cols-1 gap-0.5">
+              {sortedHours.map((bh) => (
+                <div key={bh.dayOfWeek} className="flex items-start justify-between text-xs gap-2">
+                  <span className="text-muted-foreground w-16 shrink-0">
+                    {DAY_NAMES_PT[bh.dayOfWeek] ?? `Dia ${bh.dayOfWeek}`}
+                  </span>
+                  {!bh.isOpen || !bh.ranges || bh.ranges.length === 0 ? (
+                    <span className="text-destructive/70 font-medium">Fechado</span>
+                  ) : (
+                    <span className="text-foreground font-medium text-right">
+                      {bh.ranges
+                        .map((r) => `${formatTime(r.openTime)} – ${formatTime(r.closeTime)}`)
+                        .join(" | ")}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Maps button */}
+        {mapsUrl && (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+            Ver no Google Maps
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface ChatMessage {
   id: string
   text: string
@@ -31,7 +215,7 @@ export default function PublicBookingPage() {
   const { slug } = useParams()
   const router = useRouter()
   const [step, setStep] = useState<Step>('SERVICE')
-  const [tenant, setTenant] = useState<any>(null)
+  const [tenant, setTenant] = useState<PublicTenant | null>(null)
   const [services, setServices] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -471,6 +655,17 @@ export default function PublicBookingPage() {
       {/* Chat Area */}
       <main className="flex-1 overflow-y-auto p-6 flex flex-col gap-4" ref={scrollRef}>
         <div className="flex flex-col gap-4 max-w-2xl mx-auto w-full">
+          {/* Welcome card — rendered once as the first chat bubble */}
+          {tenant && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              className="flex justify-start"
+            >
+              <WelcomeCard tenant={tenant} />
+            </motion.div>
+          )}
+
           <AnimatePresence>
             {messages.map((m) => (
               <motion.div
@@ -715,7 +910,7 @@ export default function PublicBookingPage() {
               <div className="flex flex-col gap-1">
                 <Label className="text-[10px] text-muted-foreground ml-1">Observações (opcional)</Label>
                 <Textarea
-                  placeholder={getServicePlaceholders(tenant?.establishmentType).observations}
+                  placeholder={getServicePlaceholders(tenant?.establishmentType ?? 0).observations}
                   rows={2}
                   value={form.description}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
