@@ -4,6 +4,165 @@
 
 ---
 
+## WhatsApp — Embedded Signup (Vincular número do cliente)
+
+### Contexto
+
+Hoje o sistema usa um único número/token global configurado em `appsettings.json`.
+A meta é permitir que **cada tenant conecte o próprio número WhatsApp Business** diretamente
+pelo app/painel, sem precisar de suporte manual. Para isso, usa-se o **Meta Embedded Signup**,
+que abre um fluxo guiado do Facebook onde o dono do salão conecta a sua conta WhatsApp Business
+Account (WABA) à plataforma Voro. Ao final, a plataforma recebe um token de acesso e
+armazena por tenant.
+
+---
+
+### O que você precisa fazer no Facebook (passo a passo manual)
+
+> ⚠️ Esses passos são pré-requisitos que precisam ser feitos **antes** de qualquer código.
+
+#### 1. Criar o Meta App (se ainda não existe)
+- Acesse: **developers.facebook.com → Meus Apps → Criar app**
+- Tipo: **Business**
+- Nome: `Voro` (ou o nome do produto)
+- Business Account: selecione sua conta de negócios da Vorolabs
+
+#### 2. Adicionar o produto WhatsApp
+- No painel do app: **Adicionar produto → WhatsApp → Configurar**
+- Anote o **App ID** e o **App Secret** (estão em Configurações → Básico)
+
+#### 3. Adicionar o produto "Facebook Login for Business"
+- **Adicionar produto → Facebook Login for Business → Configurar**
+- Em **Escopos OAuth**, adicionar:
+  - `whatsapp_business_management`
+  - `business_management`
+- Ativar **Client OAuth Login** e **Web OAuth Login**
+
+#### 4. Configurar o Embedded Signup
+- Vá em **WhatsApp → Embedded Signup → Configurar**
+- Ative o fluxo de Embedded Signup
+- Em **Override callback & state**, defina o redirect/postMessage behavior
+- Anote a **Solution ID** (Tech Provider ID) se já tiver aprovação BSP — caso contrário ignore por agora
+
+#### 5. Solicitar App Review (permissões avançadas)
+- Vá em **App Review → Permissões e Recursos**
+- Solicite aprovação para:
+  - `whatsapp_business_management` (avançada)
+  - `business_management` (avançada)
+- Enquanto não aprovado, o fluxo funciona apenas com usuários administradores do app (modo desenvolvimento)
+
+#### 6. Criar System User na Business Manager
+- Acesse: **business.facebook.com → Configurações → Usuários → Usuários do Sistema**
+- Criar Usuário do Sistema com papel **Administrador**
+- Gerar token de acesso permanente para este usuário com escopos:
+  - `whatsapp_business_management`
+  - `business_management`
+- Esse é o **token master da Vorolabs** (salvar em `appsettings` como `WhatsApp:MasterAccessToken`)
+- Esse token é usado para: fazer subscribe em WABAs dos clientes e gerenciar permissões
+
+#### 7. Configurar o Webhook
+- Em **WhatsApp → Configuração → Webhooks**
+- URL: `https://seudominio.com/api/v1/whatsapp` (já existe)
+- Verify Token: qualquer string segura (já deve estar em `appsettings` como `VerifyToken`)
+- Campos para assinar: `messages`, `message_deliveries`, `message_reads`
+- Assinar na WABA master também (para receber eventos de todas as WABAs dos clientes)
+
+#### 8. Variáveis de ambiente a guardar após os passos acima
+```
+WhatsApp:AppId            → ID do Meta App
+WhatsApp:AppSecret        → Secret do Meta App
+WhatsApp:MasterAccessToken → Token do System User da Vorolabs
+WhatsApp:VerifyToken      → Token de verificação do webhook (já existe)
+```
+
+---
+
+### Fluxo técnico do Embedded Signup
+
+```
+Mobile/Web Settings
+    → Usuário clica "Conectar WhatsApp"
+    → Abre WebView com página HTML do Facebook SDK
+    → Usuário loga com Facebook → seleciona Business → seleciona/cria WABA → seleciona número
+    → Facebook envia postMessage com { code, business_id }
+    → App captura o code e envia para o backend
+
+Backend
+    → Troca code por user_access_token via Graph API
+    → Com user_access_token: busca WABA ID + Phone Number ID
+    → Com MasterToken: adiciona System User ao WABA do cliente (subscribe_app)
+    → Gera token de acesso do System User para essa WABA específica
+    → Salva no Tenant: WabaId, PhoneNumberId, AccessToken, DisplayPhone
+
+Frontend
+    → Mostra número conectado + status "Ativo"
+    → Opção de desconectar
+```
+
+---
+
+### Mudanças no banco de dados
+
+**Tenant** — adicionar campos:
+```csharp
+public string? WhatsAppAccessToken { get; set; }    // token por tenant (substitui global)
+public string? WhatsAppDisplayPhone { get; set; }   // ex: "+55 11 99999-9999"
+public bool WhatsAppConnected { get; set; }          // status da conexão
+public DateTimeOffset? WhatsAppTokenExpiresAt { get; set; } // tokens expiram em 60 dias
+```
+
+> Os campos `WhatsappPhoneNumberId` e `WhatsappBusinessAccountId` já existem no Tenant.
+
+---
+
+### Tasks de implementação
+
+#### Pré-requisito Manual (Facebook)
+- [ ] Criar Meta App tipo Business e adicionar produto WhatsApp
+- [ ] Adicionar produto "Facebook Login for Business" com escopos corretos
+- [ ] Configurar Embedded Signup no painel do app
+- [ ] Criar System User na Business Manager e gerar MasterAccessToken
+- [ ] Configurar Webhook no painel do app (assinatura de WABA)
+- [ ] Solicitar App Review para permissões avançadas
+
+#### Backend — Entidades e Banco
+- [x] Adicionar campos ao `Tenant.cs`: `WhatsAppAccessToken`, `WhatsAppDisplayPhone`, `WhatsAppConnected`, `WhatsAppTokenExpiresAt`
+- [x] Migration EF: `AddWhatsAppEmbeddedSignupFields`
+- [x] Atualizar `JasmimDbContext` e `ModelSnapshot` com as novas propriedades
+- [x] Adicionar `AppId`, `AppSecret`, `MasterAccessToken` em `IntegrationUtil.WhatsappUtil`
+
+#### Backend — Serviço de Embedded Signup
+- [x] Criar `IWhatsAppOnboardingService` + `WhatsAppOnboardingService`
+- [x] `ExchangeCodeAsync`: troca code → short token → long token (60d), busca phone numbers, subscribe WABA, salva no Tenant
+- [x] `DisconnectAsync`: unsubscribe WABA (fire & forget), limpa campos do Tenant
+- [x] `GetStatusAsync`: retorna status + número + data de expiração
+- [x] `GetAppId()`: retorna AppId para o frontend inicializar o SDK
+
+#### Backend — Controller
+- [x] `GET /whatsapp/onboarding/config` — retorna AppId (AllowAnonymous)
+- [x] `POST /whatsapp/onboarding/exchange` — troca code, salva conexão (Authorize)
+- [x] `DELETE /whatsapp/onboarding/disconnect` — desconecta WABA (Authorize)
+- [x] `GET /whatsapp/onboarding/status` — retorna status + número + expiração (Authorize)
+
+#### Backend — Job de Renovação de Token
+- [ ] Job agendado (semanal): buscar tenants com `WhatsAppTokenExpiresAt < now + 7 dias` e renovar token via Graph API
+
+#### Backend — Webhook Multi-Tenant
+- [ ] Garantir roteamento por `WhatsappBusinessAccountId` como fallback adicional no webhook
+
+#### Frontend Mobile — Settings
+- [x] Card de status de conexão no topo (conectado/desconectado + número + data de expiração)
+- [x] Botão "Conectar WhatsApp Business" → busca AppId do backend → abre WebView com Embedded Signup HTML
+- [x] HTML inline com Facebook JS SDK (`FB.login()` com escopos `whatsapp_business_management,business_management`)
+- [x] Intercepta `onMessage` com `{ code, business_id }` → chama `POST /whatsapp/onboarding/exchange`
+- [x] Botão "Desconectar" com Alert de confirmação → chama `DELETE /whatsapp/onboarding/disconnect`
+- [x] Endpoints `WHATSAPP_ONBOARDING_*` adicionados em `lib/api.ts`
+
+#### Frontend Web — Settings
+- [ ] Atualizar `/app/settings/whatsapp/page.tsx` com card de conexão + Embedded Signup via popup JS SDK + botão desconectar
+
+---
+
 ## Booking Web (Funil de Agendamento Online)
 
 ### Welcome Screen

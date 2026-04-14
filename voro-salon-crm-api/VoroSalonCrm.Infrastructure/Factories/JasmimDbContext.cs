@@ -196,6 +196,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(t => t.Slug).IsUnique();
                 b.Property(t => t.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
                 b.Property(t => t.IsActive).HasDefaultValue(true);
+                b.Property(t => t.WhatsAppAccessToken).HasMaxLength(512);
+                b.Property(t => t.WhatsAppDisplayPhone).HasMaxLength(30);
             });
 
             // ---------------------------

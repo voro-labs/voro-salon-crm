@@ -26,6 +26,12 @@ namespace VoroSalonCrm.Domain.Entities
         public string? WhatsappPhoneNumberId { get; set; }
         public string? WhatsappBusinessAccountId { get; set; }
         public string? BirthdayWhatsappTemplateName { get; set; }
+
+        // WhatsApp Embedded Signup — por tenant
+        public string? WhatsAppAccessToken { get; set; }
+        public string? WhatsAppDisplayPhone { get; set; }
+        public bool WhatsAppConnected { get; set; } = false;
+        public DateTimeOffset? WhatsAppTokenExpiresAt { get; set; }
         
         public string ThemeMode { get; set; } = "system";
 

@@ -199,6 +199,76 @@ namespace VoroSalonCrm.API.Controllers
         private static string NormalizePhone(string phone) =>
             new string(phone.Where(char.IsDigit).ToArray());
 
+        [HttpGet("onboarding/config")]
+        [AllowAnonymous]
+        public IActionResult GetOnboardingConfig([FromServices] IWhatsAppOnboardingService onboardingService)
+        {
+            var cfg = onboardingService.GetConfig();
+            if (string.IsNullOrEmpty(cfg.AppId))
+                return ResponseViewModel<object>.Fail("WhatsApp AppId não configurado.").ToActionResult();
+            return ResponseViewModel<WhatsAppOnboardingConfigDto>
+                .Success(cfg)
+                .ToActionResult();
+        }
+
+        [HttpPost("onboarding/exchange")]
+        [Authorize]
+        public async Task<IActionResult> ExchangeCode(
+            [FromServices] IWhatsAppOnboardingService onboardingService,
+            [FromServices] ICurrentUserService currentUserService,
+            [FromBody] WhatsAppExchangeCodeDto dto)
+        {
+            try
+            {
+                await onboardingService.ExchangeCodeAsync(dto, currentUserService.TenantId);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("WhatsApp conectado com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("onboarding/disconnect")]
+        [Authorize]
+        public async Task<IActionResult> Disconnect(
+            [FromServices] IWhatsAppOnboardingService onboardingService,
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await onboardingService.DisconnectAsync(currentUserService.TenantId);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("WhatsApp desconectado.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("onboarding/status")]
+        [Authorize]
+        public async Task<IActionResult> GetOnboardingStatus(
+            [FromServices] IWhatsAppOnboardingService onboardingService,
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                var status = await onboardingService.GetStatusAsync(currentUserService.TenantId);
+                return ResponseViewModel<WhatsAppOnboardingStatusDto>
+                    .Success(status)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
         [HttpGet("kanban-appointments")]
         [Authorize]
         public async Task<IActionResult> GetKanbanAppointments(
