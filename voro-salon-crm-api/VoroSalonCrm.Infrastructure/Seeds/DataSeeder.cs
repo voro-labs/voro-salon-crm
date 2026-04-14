@@ -385,7 +385,8 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     Id = StarterPlanId,
                     Name = "Starter",
                     Description = "Para autônomos e salões solo que querem sair do caderno",
-                    MonthlyPrice = 39.00m,
+                    MonthlyPrice = 49.90m,
+                    PromoPrice = 39.90m,
                     MaxEmployees = 3,
                     MaxClients = -1,          // ilimitado
                     HasEmployees = true,
@@ -408,7 +409,8 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     Id = ProPlanId,
                     Name = "Pro",
                     Description = "Para salões com equipe que querem acabar com o no-show",
-                    MonthlyPrice = 79.00m,
+                    MonthlyPrice = 99.90m,
+                    PromoPrice = 79.90m,
                     MaxEmployees = 10,
                     MaxClients = -1,          // ilimitado
                     HasEmployees = true,
@@ -431,7 +433,8 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     Id = PremiumPlanId,
                     Name = "Premium",
                     Description = "Para salões maiores com foco em química e multi-profissional",
-                    MonthlyPrice = 149.00m,
+                    MonthlyPrice = 199.90m,
+                    PromoPrice = 149.90m,
                     MaxEmployees = -1,        // ilimitado
                     MaxClients = -1,          // ilimitado
                     HasEmployees = true,

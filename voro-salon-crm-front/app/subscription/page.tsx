@@ -108,6 +108,17 @@ export default function SubscriptionPage() {
   const canResubscribe = subscription && !isActive && !isTrial
   const currentPlanInList = plans?.some((p) => p.id === subscription?.plan?.id)
 
+  // Helpers de promoção
+  function isPlanPromoActive(plan: SubscriptionPlanDto): boolean {
+    if (!plan.promoPrice) return false
+    if (!plan.promoEndsAt) return true
+    return new Date(plan.promoEndsAt) > new Date()
+  }
+
+  function effectivePlanPrice(plan: SubscriptionPlanDto): number {
+    return isPlanPromoActive(plan) ? plan.promoPrice! : plan.monthlyPrice
+  }
+
   // Exibe apenas planos com preço maior que o plano atual (evolução sem downgrade)
   const currentPrice = subscription?.plan?.monthlyPrice ?? 0
   const visiblePlans = (isActive || isTrial)
@@ -138,10 +149,29 @@ export default function SubscriptionPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-2xl font-black">
-              {subscription.plan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              <span className="text-sm font-normal text-muted-foreground">/mês</span>
-            </p>
+            <div>
+              {subscription.lockedPromoPrice ? (
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-black">
+                    {subscription.lockedPromoPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                  </p>
+                  <span className="text-sm text-muted-foreground line-through">
+                    {subscription.plan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-2xl font-black">
+                  {subscription.plan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                </p>
+              )}
+              {subscription.lockedPromoPrice && (
+                <p className="text-xs text-green-600 dark:text-green-400 font-semibold mt-0.5">
+                  Você assinou no preço promocional — mantido enquanto renovar em dia
+                </p>
+              )}
+            </div>
 
             {isTrial && trialEndsAt && (
               <div className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${
@@ -251,10 +281,29 @@ export default function SubscriptionPage() {
                     <span className="font-bold text-sm">{plan.name}</span>
                     {isCurrent && isActive && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
                   </div>
-                  <p className="text-xl font-black mb-1">
-                    {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    <span className="text-xs font-normal text-muted-foreground">/mês</span>
-                  </p>
+                  {isPlanPromoActive(plan) ? (
+                    <div className="mb-1">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-xl font-black">
+                          {plan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </span>
+                        <span className="text-xs font-normal text-muted-foreground">/mês</span>
+                        <span className="text-xs text-muted-foreground line-through">
+                          {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        </span>
+                      </div>
+                      {plan.promoEndsAt && (
+                        <p className="text-[10px] text-red-500 font-semibold">
+                          Até {new Date(plan.promoEndsAt).toLocaleDateString("pt-BR")}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xl font-black mb-1">
+                      {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      <span className="text-xs font-normal text-muted-foreground">/mês</span>
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground line-clamp-2">{plan.description}</p>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                     {plan.hasEmployees
@@ -310,10 +359,27 @@ export default function SubscriptionPage() {
           <div className="space-y-4 mt-2">
             <div className="rounded-xl border border-border bg-muted/40 p-4">
               <p className="font-bold">{selectedPlan?.name}</p>
-              <p className="text-2xl font-black mt-1">
-                {selectedPlan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                <span className="text-sm font-normal text-muted-foreground">/mês</span>
-              </p>
+              {selectedPlan && isPlanPromoActive(selectedPlan) ? (
+                <div className="mt-1">
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-black">
+                      {selectedPlan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                    </p>
+                    <span className="text-sm text-muted-foreground line-through">
+                      {selectedPlan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600 font-semibold mt-1">
+                    Preço promocional — mantido enquanto renovar em dia
+                  </p>
+                </div>
+              ) : (
+                <p className="text-2xl font-black mt-1">
+                  {selectedPlan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                </p>
+              )}
             </div>
             {error && <p className="text-sm text-destructive font-medium">{error}</p>}
             <Button onClick={handleConfirmPlan} disabled={submitting} className="w-full">

@@ -6,6 +6,8 @@ namespace VoroSalonCrm.Domain.Entities
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public decimal MonthlyPrice { get; set; }
+        public decimal? PromoPrice { get; set; }
+        public DateTimeOffset? PromoEndsAt { get; set; }
         public int MaxEmployees { get; set; }       // -1 = ilimitado
         public int MaxClients { get; set; }         // -1 = ilimitado
         public bool HasEmployees { get; set; }

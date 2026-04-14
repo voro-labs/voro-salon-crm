@@ -13,6 +13,8 @@ export interface SubscriptionPlanDto {
   hasWhatsAppBot: boolean
   sortOrder: number
   defaultTrialDays: number
+  promoPrice?: number | null
+  promoEndsAt?: string | null
 }
 
 export interface TenantSubscriptionDto {
@@ -29,6 +31,7 @@ export interface TenantSubscriptionDto {
   contactName: string | null
   salonName: string | null
   trialEndsAt: string | null
+  lockedPromoPrice?: number | null
 }
 
 export interface CreateCheckoutDto {

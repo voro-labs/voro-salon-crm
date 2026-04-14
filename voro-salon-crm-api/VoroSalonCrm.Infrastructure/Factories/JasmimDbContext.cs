@@ -512,6 +512,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(p => p.Name).HasMaxLength(100).IsRequired();
                 b.Property(p => p.Description).HasMaxLength(500);
                 b.Property(p => p.MonthlyPrice).HasColumnType("NUMERIC(10,2)").IsRequired();
+                b.Property(p => p.PromoPrice).HasColumnType("NUMERIC(10,2)");
                 b.Property(p => p.IsActive).HasDefaultValue(true);
                 b.Property(p => p.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
             });
@@ -531,6 +532,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(s => s.MercadoPagoSubscriptionId).HasMaxLength(100);
                 b.Property(s => s.MercadoPagoExternalReference).HasMaxLength(300);
                 b.Property(s => s.Notes).HasMaxLength(500);
+                b.Property(s => s.LockedPromoPrice).HasColumnType("NUMERIC(10,2)");
 
                 b.HasIndex(s => s.TenantId);
                 b.HasIndex(s => s.MercadoPagoSubscriptionId);

@@ -16,7 +16,9 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         bool HasBooking,
         bool HasWhatsAppBot,
         int SortOrder,
-        int DefaultTrialDays
+        int DefaultTrialDays,
+        decimal? PromoPrice,
+        DateTimeOffset? PromoEndsAt
     );
 
     public record TenantSubscriptionDto(
@@ -32,7 +34,8 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         string? ContactEmail,
         string? ContactName,
         string? SalonName,
-        DateTimeOffset? TrialEndsAt
+        DateTimeOffset? TrialEndsAt,
+        decimal? LockedPromoPrice
     );
 
     public record CreateCheckoutDto(
