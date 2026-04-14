@@ -18,10 +18,14 @@ namespace VoroSalonCrm.Domain.Entities
         // Checkout pendente — expira em 10 min se não concluído
         public DateTimeOffset? CheckoutExpiresAt { get; set; }
 
-        // MercadoPago
+        // MercadoPago — Cartão (preapproval recorrente)
         public string? MercadoPagoSubscriptionId { get; set; }
         public string? MercadoPagoPayerId { get; set; }
         public string? MercadoPagoExternalReference { get; set; }  // email ou tenantId
+
+        // MercadoPago — Pix (pagamento avulso por ciclo)
+        public string? MercadoPagoPixPaymentId { get; set; }
+
         public DateTimeOffset? LastPaymentAt { get; set; }
         public DateTimeOffset? NextPaymentAt { get; set; }
 

@@ -36,6 +36,12 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            services.AddHttpClient("whatsapp-graph", client =>
+            {
+                client.BaseAddress = new Uri("https://graph.facebook.com/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             services.AddHttpClient("expo-push", client =>
             {
                 client.BaseAddress = new Uri("https://exp.host");
@@ -119,6 +125,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IExpoPushNotificationService, ExpoPushNotificationService>();
             services.AddScoped<IUserNotificationService, UserNotificationService>();
             services.AddScoped<IWhatsAppTemplateService, WhatsAppTemplateService>();
+            services.AddScoped<IWhatsAppOnboardingService, WhatsAppOnboardingService>();
             services.AddScoped<IClientMembershipService, ClientMembershipService>();
             services.AddScoped<IEmployeeGoalRepository, EmployeeGoalRepository>();
             services.AddScoped<IEmployeeGoalService, EmployeeGoalService>();

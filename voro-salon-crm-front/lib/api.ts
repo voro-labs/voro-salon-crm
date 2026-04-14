@@ -52,6 +52,7 @@ export const API_CONFIG = {
     ADMIN_SUBSCRIPTION_GRANT: "/admin/subscription/grant",
     SUBSCRIPTION_ADMIN_EXTEND_TRIAL: "/subscription/admin/extend-trial",
     SUBSCRIPTION_ADMIN_COUPONS: "/subscription/admin/coupons",
+    SUBSCRIPTION_PIX_STATUS: "/subscription/pix-status",
     NOTIFICATIONS: "/notifications",
     NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
     PUSH_TOKENS: "/push-tokens",
