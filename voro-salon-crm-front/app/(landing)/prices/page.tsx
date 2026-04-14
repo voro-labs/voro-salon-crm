@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { LegalFooter } from "@/components/legal/legal-footer"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -12,7 +12,6 @@ import {
   useScroll,
   useTransform,
   useSpring,
-  useMotionValue,
 } from "framer-motion"
 import {
   CheckCircle2, Scissors, BarChart3, Users, Calendar, ClipboardList,
@@ -117,50 +116,6 @@ function CountUp({
   )
 }
 
-// ── Tilt card (for pricing) ───────────────────────────────────────────────────
-
-function TiltCard({
-  children,
-  className,
-  intensity = 8,
-}: {
-  children: React.ReactNode
-  className?: string
-  intensity?: number
-}) {
-  const shouldReduce = useReducedMotion()
-  const ref = useRef<HTMLDivElement>(null)
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const springX = useSpring(x, { stiffness: 300, damping: 30 })
-  const springY = useSpring(y, { stiffness: 300, damping: 30 })
-  const rotateX = useTransform(springY, [-0.5, 0.5], [intensity, -intensity])
-  const rotateY = useTransform(springX, [-0.5, 0.5], [-intensity, intensity])
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (shouldReduce || !ref.current) return
-    const rect = ref.current.getBoundingClientRect()
-    x.set((e.clientX - rect.left) / rect.width - 0.5)
-    y.set((e.clientY - rect.top) / rect.height - 0.5)
-  }
-
-  const handleMouseLeave = () => {
-    x.set(0)
-    y.set(0)
-  }
-
-  return (
-    <motion.div
-      ref={ref}
-      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  )
-}
 
 // ── Animated section wrapper ──────────────────────────────────────────────────
 
@@ -907,6 +862,120 @@ function formatPromoEndsAt(isoDate: string): string {
   })
 }
 
+// ── Hero promo timer (inline, compact) ────────────────────────────────────────
+
+function HeroPromoTimer({ endsAt }: { endsAt: string }) {
+  const [label, setLabel] = React.useState("")
+
+  React.useEffect(() => {
+    const target = new Date(endsAt).getTime()
+    const tick = () => {
+      const diff = target - Date.now()
+      if (diff <= 0) { setLabel(""); return }
+      const days    = Math.floor(diff / 86_400_000)
+      const hours   = Math.floor((diff % 86_400_000) / 3_600_000)
+      const minutes = Math.floor((diff % 3_600_000)  / 60_000)
+      const seconds = Math.floor((diff % 60_000)     / 1_000)
+      const pad = (n: number) => String(n).padStart(2, "0")
+      setLabel(days > 0
+        ? `${days}d ${pad(hours)}h ${pad(minutes)}m`
+        : `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+      )
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [endsAt])
+
+  if (!label) return null
+  return (
+    <span className="font-black tabular-nums">
+      termina em {label}
+    </span>
+  )
+}
+
+// ── Promo countdown banner ─────────────────────────────────────────────────────
+
+function PromoCountdown({ endsAt }: { endsAt: string | null }) {
+  const [timeLeft, setTimeLeft] = React.useState<{
+    days: number; hours: number; minutes: number; seconds: number
+  } | null>(null)
+
+  React.useEffect(() => {
+    if (!endsAt) return
+    const target = new Date(endsAt).getTime()
+    const tick = () => {
+      const diff = target - Date.now()
+      if (diff <= 0) { setTimeLeft(null); return }
+      setTimeLeft({
+        days:    Math.floor(diff / 86_400_000),
+        hours:   Math.floor((diff % 86_400_000) / 3_600_000),
+        minutes: Math.floor((diff % 3_600_000)  / 60_000),
+        seconds: Math.floor((diff % 60_000)     / 1_000),
+      })
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [endsAt])
+
+  // Sem data → urgência genérica
+  if (!endsAt) {
+    return (
+      <div className="flex items-center justify-center gap-2.5 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900/60 px-4 py-3 mb-6 text-sm">
+        <span className="animate-pulse h-2 w-2 rounded-full bg-red-500 shrink-0" />
+        <span className="font-semibold text-red-700 dark:text-red-400">
+          Oferta por tempo limitado — preço promocional garantido enquanto durar
+        </span>
+      </div>
+    )
+  }
+
+  if (!timeLeft) return null
+
+  const pad = (n: number) => String(n).padStart(2, "0")
+
+  const units = timeLeft.days > 0
+    ? [
+        { label: "dias",      value: timeLeft.days },
+        { label: "horas",     value: timeLeft.hours },
+        { label: "min",       value: timeLeft.minutes },
+        { label: "seg",       value: timeLeft.seconds },
+      ]
+    : [
+        { label: "horas",     value: timeLeft.hours },
+        { label: "min",       value: timeLeft.minutes },
+        { label: "seg",       value: timeLeft.seconds },
+      ]
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900/60 px-5 py-3.5 mb-6">
+      <div className="flex items-center gap-2">
+        <span className="animate-pulse h-2 w-2 rounded-full bg-red-500 shrink-0" />
+        <span className="text-sm font-bold text-red-700 dark:text-red-400">
+          Oferta encerra em
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        {units.map((u, i) => (
+          <React.Fragment key={u.label}>
+            {i > 0 && <span className="text-red-400 font-bold text-sm">:</span>}
+            <div className="flex flex-col items-center min-w-10">
+              <span className="bg-red-600 text-white text-base font-black tabular-nums rounded-md px-2 py-0.5 leading-tight">
+                {pad(u.value)}
+              </span>
+              <span className="text-[9px] font-semibold text-red-500 mt-0.5 uppercase tracking-wide">
+                {u.label}
+              </span>
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Plan card ─────────────────────────────────────────────────────────────────
 
 interface PlanCardProps {
@@ -1299,6 +1368,63 @@ export default function PrecosPage() {
             </Badge>
           </motion.div>
 
+          {/* Faixa de promoção — aparece quando há promo ativa nos planos */}
+          {!loadingPlans && plans.some(isPlanPromoActive) && (() => {
+            const promoPlans = plans.filter(isPlanPromoActive)
+            const maxTrialDays = Math.max(...promoPlans.map((p) => p.defaultTrialDays ?? 0), 0)
+            const earliestEnd = promoPlans
+              .map((p) => p.promoEndsAt ?? null)
+              .filter(Boolean)
+              .sort()[0] ?? null
+            const lowestPromo = Math.min(...promoPlans.map((p) => p.promoPrice!))
+
+            return (
+              <motion.div
+                initial={shouldReduce ? {} : { opacity: 0, y: 12, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.06 }}
+                className="mb-5 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 rounded-2xl border border-red-200 dark:border-red-900/60 bg-linear-to-r from-red-50 to-orange-50 dark:from-red-950/40 dark:to-orange-950/30 px-5 py-3 shadow-sm shadow-red-100 dark:shadow-none"
+              >
+                {/* Pulse + label */}
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                  </span>
+                  <span className="text-sm font-black text-red-700 dark:text-red-400 uppercase tracking-wide">
+                    Oferta especial
+                  </span>
+                </div>
+
+                <span className="hidden sm:block h-4 w-px bg-red-200 dark:bg-red-800" />
+
+                {/* Detalhes */}
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-red-700 dark:text-red-300">
+                  <span className="font-semibold">
+                    A partir de{" "}
+                    <span className="font-black">
+                      {lowestPromo.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês
+                    </span>
+                  </span>
+                  {maxTrialDays > 0 && (
+                    <>
+                      <span className="text-red-300 dark:text-red-700">·</span>
+                      <span className="font-semibold">
+                        <span className="font-black">{maxTrialDays} dias grátis</span> para testar
+                      </span>
+                    </>
+                  )}
+                  {earliestEnd && (
+                    <>
+                      <span className="text-red-300 dark:text-red-700">·</span>
+                      <HeroPromoTimer endsAt={earliestEnd} />
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })()}
+
           <motion.h1
             initial={shouldReduce ? {} : { opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1387,7 +1513,10 @@ export default function PrecosPage() {
             {[
               { value: "−70%", label: "de no-shows" },
               { value: "+R$800", label: "recuperados/mês" },
-              { value: "14 dias", label: "grátis" },
+              {
+                value: `${Math.max(...(plans.length ? plans.map((p) => p.defaultTrialDays ?? 0) : [14]), 0) || 14} dias`,
+                label: "grátis",
+              },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -2198,6 +2327,17 @@ export default function PrecosPage() {
               Plano Pro a partir de R$ 2,63 por dia — menos que um cafezinho.
             </motion.p>
 
+            {(() => {
+              const promoPlans = plans.filter(isPlanPromoActive)
+              if (promoPlans.length === 0) return null
+              // Usa a menor data de expiração entre os planos com promo
+              const earliest = promoPlans
+                .map((p) => p.promoEndsAt ?? null)
+                .filter(Boolean)
+                .sort()[0] ?? null
+              return <PromoCountdown endsAt={earliest} />
+            })()}
+
             <motion.div
               className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start"
               variants={stagger}
@@ -2209,16 +2349,14 @@ export default function PrecosPage() {
                 <motion.div
                   key={plan.id}
                   variants={fadeUp}
-                  style={{ perspective: 800 }}
+                  whileHover={{ y: -4, transition: { type: "spring", stiffness: 400, damping: 25 } }}
                 >
-                  <TiltCard intensity={i === 1 ? 4 : 6}>
-                    <PlanCard
-                      plan={plan}
-                      popular={i === 1}
-                      onSelect={setSelectedPlan}
-                      onModuleInfo={setOpenModuleKey}
-                    />
-                  </TiltCard>
+                  <PlanCard
+                    plan={plan}
+                    popular={i === 1}
+                    onSelect={setSelectedPlan}
+                    onModuleInfo={setOpenModuleKey}
+                  />
                 </motion.div>
               ))}
             </motion.div>
