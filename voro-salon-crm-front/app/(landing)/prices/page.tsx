@@ -850,14 +850,26 @@ function AgendamentoOnlineMockup() {
 
 // ── Promo helpers ─────────────────────────────────────────────────────────────
 
+/**
+ * Retorna o timestamp alvo da promo: fim do dia UTC da data informada.
+ * Usa partes UTC para evitar o desvio de fuso (ex: UTC-3 anteciparia 1 dia).
+ */
+function promoEndTarget(isoDate: string): number {
+  const d = new Date(isoDate)
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999)
+}
+
 function isPlanPromoActive(plan: SubscriptionPlanDto): boolean {
   if (!plan.promoPrice) return false
   if (!plan.promoEndsAt) return true
-  return new Date(plan.promoEndsAt) > new Date()
+  return promoEndTarget(plan.promoEndsAt) > Date.now()
 }
 
 function formatPromoEndsAt(isoDate: string): string {
-  return new Date(isoDate).toLocaleDateString("pt-BR", {
+  const d = new Date(isoDate)
+  // Usa partes UTC para exibir a data correta independente do fuso local
+  const local = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  return local.toLocaleDateString("pt-BR", {
     day: "2-digit", month: "long", year: "numeric",
   })
 }
@@ -868,7 +880,7 @@ function HeroPromoTimer({ endsAt }: { endsAt: string }) {
   const [label, setLabel] = React.useState("")
 
   React.useEffect(() => {
-    const target = new Date(endsAt).getTime()
+    const target = promoEndTarget(endsAt)
     const tick = () => {
       const diff = target - Date.now()
       if (diff <= 0) { setLabel(""); return }
@@ -904,7 +916,7 @@ function PromoCountdown({ endsAt }: { endsAt: string | null }) {
 
   React.useEffect(() => {
     if (!endsAt) return
-    const target = new Date(endsAt).getTime()
+    const target = promoEndTarget(endsAt)
     const tick = () => {
       const diff = target - Date.now()
       if (diff <= 0) { setTimeLeft(null); return }
@@ -981,11 +993,12 @@ function PromoCountdown({ endsAt }: { endsAt: string | null }) {
 interface PlanCardProps {
   plan: SubscriptionPlanDto
   popular?: boolean
+  showPromoDate?: boolean
   onSelect: (plan: SubscriptionPlanDto) => void
   onModuleInfo: (key: string) => void
 }
 
-function PlanCard({ plan, popular, onSelect, onModuleInfo }: PlanCardProps) {
+function PlanCard({ plan, popular, showPromoDate = true, onSelect, onModuleInfo }: PlanCardProps) {
   type FeatureItem = { label: string; moduleKey?: string; highlight?: boolean }
 
   const featureList: FeatureItem[] = [
@@ -1041,7 +1054,7 @@ function PlanCard({ plan, popular, onSelect, onModuleInfo }: PlanCardProps) {
             <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
               Oferta
             </span>
-            {plan.promoEndsAt && (
+            {showPromoDate && plan.promoEndsAt && (
               <span className="text-xs text-red-500 font-semibold">
                 até {formatPromoEndsAt(plan.promoEndsAt)}
               </span>
@@ -2345,20 +2358,29 @@ export default function PrecosPage() {
               whileInView="visible"
               viewport={{ once: true, margin: "-60px" }}
             >
-              {plans.map((plan, i) => (
-                <motion.div
-                  key={plan.id}
-                  variants={fadeUp}
-                  whileHover={{ y: -4, transition: { type: "spring", stiffness: 400, damping: 25 } }}
-                >
-                  <PlanCard
-                    plan={plan}
-                    popular={i === 1}
-                    onSelect={setSelectedPlan}
-                    onModuleInfo={setOpenModuleKey}
-                  />
-                </motion.div>
-              ))}
+              {(() => {
+                // Se todos os planos com promo têm a mesma data, não repete a data nos cards
+                const promoEndDates = plans
+                  .filter(isPlanPromoActive)
+                  .map((p) => p.promoEndsAt ?? "")
+                  .filter(Boolean)
+                const allSamePromoDate = new Set(promoEndDates).size <= 1
+                return plans.map((plan, i) => (
+                  <motion.div
+                    key={plan.id}
+                    variants={fadeUp}
+                    whileHover={{ y: -4, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+                  >
+                    <PlanCard
+                      plan={plan}
+                      popular={i === 1}
+                      showPromoDate={!allSamePromoDate}
+                      onSelect={setSelectedPlan}
+                      onModuleInfo={setOpenModuleKey}
+                    />
+                  </motion.div>
+                ))
+              })()}
             </motion.div>
           </>
         )}
