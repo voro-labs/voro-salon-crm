@@ -117,6 +117,114 @@ WhatsApp (Webhook) → WhatsAppBotService
 
 ---
 
+## Pagamentos — Pix via MercadoPago
+
+### Contexto
+O fluxo atual de pagamento usa exclusivamente **preapproval (recorrência automática via cartão)**
+via `CreatePreapprovalAsync` → `ProcessWebhookAsync("subscription_preapproval")`.
+
+A nova feature adiciona **Pix** como segunda opção no dialog de checkout, mantendo o cartão existente.
+O usuário escolhe o método antes de ser redirecionado/ver o QR.
+
+---
+
+### Fluxo por método
+
+**Cartão (fluxo atual — sem mudança):**
+```
+Checkout dialog → escolhe cartão → CreatePreapprovalAsync → redireciona para InitPoint (MP)
+                                                         ↓ webhook subscription_preapproval
+                                                   ativa assinatura recorrente
+```
+
+**Pix (novo):**
+```
+Checkout dialog → escolhe Pix → CreatePixPaymentAsync → retorna QR code + copia-e-cola
+                                                     ↓ exibe QR na tela (sem redirecionar)
+                                                     ↓ webhook payment (topic=payment, status=approved)
+                                               ativa assinatura por 30 dias
+                                               ↓ ao se aproximar NextPaymentAt
+                                         job/WhatsApp envia novo Pix pro cliente renovar
+```
+
+---
+
+### Mudanças no contrato
+
+**`CreateCheckoutDto`** — adicionar campo:
+```csharp
+PaymentMethod PaymentMethod = PaymentMethod.Card  // enum: Card | Pix
+```
+
+**`CheckoutResultDto`** — adicionar campos para o caso Pix:
+```csharp
+string? PixQrCode          // string copia-e-cola
+string? PixQrCodeBase64    // imagem do QR para exibir
+DateTimeOffset? PixExpiresAt
+```
+
+**`TenantSubscription`** — adicionar:
+```csharp
+string? MercadoPagoPixPaymentId   // ID do payment MP atual (Pix)
+```
+
+---
+
+### Tasks de implementação
+
+#### Domínio / Contrato
+- [ ] Criar enum `PaymentMethod` (`Card`, `Pix`) em `VoroSalonCrm.Domain.Enums`
+- [ ] Adicionar `PaymentMethod PaymentMethod` em `CreateCheckoutDto`
+- [ ] Adicionar `PixQrCode?`, `PixQrCodeBase64?`, `PixExpiresAt?` em `CheckoutResultDto`
+- [ ] Adicionar campo `MercadoPagoPixPaymentId: string?` em `TenantSubscription`
+- [ ] Migration EF: `AddPixPaymentIdToTenantSubscription`
+
+#### Backend — MercadoPagoService
+- [ ] Criar record `MpCreatePixPaymentDto(string PayerEmail, string Description, decimal Amount, string ExternalReference, string BackUrl)`
+- [ ] Criar record `MpPixPaymentResult(string PaymentId, string QrCode, string QrCodeBase64, DateTimeOffset ExpiresAt)`
+- [ ] Implementar `CreatePixPaymentAsync(MpCreatePixPaymentDto dto)` em `IMercadoPagoService` / `MercadoPagoService`
+  - Usa `PaymentClient` (não `PreapprovalClient`)
+  - `payment_method_id: "pix"`, `payment_type_id: "bank_transfer"`
+  - Retorna `qr_code` e `qr_code_base64` de `point_of_interaction.transaction_data`
+  - Validade do Pix: 30 minutos (configurável)
+- [ ] Criar `GetPaymentAsync(string paymentId)` para buscar status de um payment MP
+
+#### Backend — SubscriptionService
+- [ ] Criar `CreatePixCheckoutAsync(CreateCheckoutDto dto, SubscriptionPlan plan)` no `SubscriptionService`
+  - Chama `CreatePixPaymentAsync`
+  - Persiste `TenantSubscription` com `PaymentSource = MercadoPago`, `MercadoPagoPixPaymentId = paymentId`
+  - Retorna `CheckoutResultDto` preenchido com os dados do Pix
+- [ ] Atualizar `CheckoutAsync` para rotear para `CreateMercadoPagoCheckoutAsync` (cartão) ou `CreatePixCheckoutAsync` (Pix) baseado em `dto.PaymentMethod`
+- [ ] Atualizar `ProcessWebhookAsync`:
+  - Manter tratamento de `subscription_preapproval` (cartão)
+  - Adicionar tratamento de `payment` (Pix):
+    - Busca `TenantSubscription` por `MercadoPagoPixPaymentId`
+    - Status `approved` → `Active`, `LastPaymentAt = now`, `NextPaymentAt = now + 30 dias`
+    - Status `rejected` / `cancelled` → `PastDue`
+- [ ] Atualizar `SubscriptionController` webhook para aceitar topic `payment` além de `subscription_preapproval`
+
+#### Renovação Pix (mensal)
+- [ ] Job agendado (ou trigger no `NextPaymentAt`): quando faltarem ≤ 3 dias para `NextPaymentAt` de uma assinatura Pix, gerar novo Pix e enviar via WhatsApp ao cliente
+- [ ] Endpoint `POST /api/subscriptions/renew-pix/{subscriptionId}` para o cliente solicitar novo QR manualmente
+
+#### Frontend Web — Dialog de checkout
+- [ ] Adicionar seleção de método de pagamento no dialog (antes de confirmar):
+  ```
+  [💳 Cartão de crédito — MercadoPago]
+  [🏦 Pix — MercadoPago            ]
+  ```
+- [ ] Se Pix selecionado: ao confirmar, exibir QR code + código copia-e-cola inline no dialog
+  - Polling ou SSE para detectar pagamento confirmado e fechar o dialog automaticamente
+  - Exibir timer de expiração do Pix (30 min)
+- [ ] Se cartão: manter fluxo atual de redirect para `checkoutUrl`
+- [ ] Atualizar `subscription/page.tsx` e `prices/page.tsx`
+
+#### Frontend Mobile — tela de assinatura
+- [ ] Exibir seleção Cartão / Pix antes de ir ao checkout
+- [ ] Se Pix: abrir WebView ou tela dedicada com QR + copia-e-cola
+
+---
+
 ## Preços Promocionais *(implementado em 2026-04-14)*
 
 - [x] Campos `PromoPrice` e `PromoEndsAt` em `SubscriptionPlan`
