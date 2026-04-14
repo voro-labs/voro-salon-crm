@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
+import Image from "next/image"
 import {
   CheckCircle2, Clock, CreditCard, Loader2, ArrowRight, AlertCircle, Info,
+  QrCode, Copy, Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -46,9 +48,14 @@ export default function SubscriptionPage() {
   )
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanDto | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<"CreditCard" | "Pix">("CreditCard")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [openModuleKey, setOpenModuleKey] = useState<string | null>(null)
+  const [pixData, setPixData] = useState<{ subscriptionId: string; qrCode: string; qrCodeBase64: string; expiresAt: string } | null>(null)
+  const [pixStatus, setPixStatus] = useState<"pending" | "approved" | "failed">("pending")
+  const [copied, setCopied] = useState(false)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Guard de autenticação
   useEffect(() => {
@@ -59,8 +66,47 @@ export default function SubscriptionPage() {
 
   const handleSelectPlan = (plan: SubscriptionPlanDto) => {
     setSelectedPlan(plan)
+    setPaymentMethod("CreditCard")
     setError(null)
   }
+
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+  }
+
+  const startPixPolling = (subscriptionId: string) => {
+    stopPolling()
+    pollingRef.current = setInterval(async () => {
+      try {
+        const res = await apiCall<{ status: string }>(
+          `${API_CONFIG.ENDPOINTS.SUBSCRIPTION_PIX_STATUS}/${subscriptionId}`,
+          { method: "GET" }
+        )
+        if (!res.hasError && res.data?.status) {
+          const s = res.data.status.toLowerCase()
+          if (s === "active") {
+            setPixStatus("approved")
+            stopPolling()
+            setTimeout(async () => {
+              await mutate()
+              setPixData(null)
+              setSelectedPlan(null)
+            }, 2000)
+          } else if (s === "pastdue" || s === "cancelled" || s === "inactive") {
+            setPixStatus("failed")
+            stopPolling()
+          }
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }, 3000)
+  }
+
+  useEffect(() => stopPolling, [])
 
   const handleConfirmPlan = async () => {
     if (!selectedPlan || !tenant?.id) return
@@ -75,6 +121,7 @@ export default function SubscriptionPage() {
           email: user?.email ?? "",
           name: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim(),
           salonName: tenant.name ?? "",
+          checkoutMethod: paymentMethod,
         }),
       })
       if (res.hasError || !res.data) {
@@ -83,6 +130,16 @@ export default function SubscriptionPage() {
       }
       if (res.data.checkoutUrl) {
         window.location.href = res.data.checkoutUrl
+      } else if (res.data.pixQrCode) {
+        setPixData({
+          subscriptionId: res.data.subscriptionId,
+          qrCode: res.data.pixQrCode,
+          qrCodeBase64: res.data.pixQrCodeBase64 ?? "",
+          expiresAt: res.data.pixExpiresAt ?? "",
+        })
+        setPixStatus("pending")
+        setSelectedPlan(null)
+        startPixPolling(res.data.subscriptionId)
       } else {
         await mutate()
         setSelectedPlan(null)
@@ -92,6 +149,13 @@ export default function SubscriptionPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleCopyPix = async () => {
+    if (!pixData) return
+    await navigator.clipboard.writeText(pixData.qrCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   if (loading || isLoading) {
@@ -353,7 +417,7 @@ export default function SubscriptionPage() {
           <DialogHeader>
             <DialogTitle>Confirmar assinatura</DialogTitle>
             <DialogDescription>
-              Você será redirecionado ao MercadoPago para completar a assinatura.
+              Escolha como prefere pagar.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
@@ -381,12 +445,130 @@ export default function SubscriptionPage() {
                 </p>
               )}
             </div>
+
+            {/* Seletor de método de pagamento */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("CreditCard")}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all text-sm font-medium ${
+                  paymentMethod === "CreditCard"
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <CreditCard className="h-5 w-5" />
+                Cartão
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("Pix")}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all text-sm font-medium ${
+                  paymentMethod === "Pix"
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <QrCode className="h-5 w-5" />
+                Pix
+              </button>
+            </div>
+
+            {paymentMethod === "CreditCard" && (
+              <p className="text-xs text-muted-foreground text-center">
+                Você será redirecionado ao MercadoPago para inserir seus dados.
+              </p>
+            )}
+            {paymentMethod === "Pix" && (
+              <p className="text-xs text-muted-foreground text-center">
+                Um QR Code Pix será gerado. Após o pagamento, sua assinatura é ativada automaticamente.
+              </p>
+            )}
+
             {error && <p className="text-sm text-destructive font-medium">{error}</p>}
             <Button onClick={handleConfirmPlan} disabled={submitting} className="w-full">
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Ir para pagamento
+              {paymentMethod === "Pix" ? "Gerar QR Code Pix" : "Ir para pagamento"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Pix QR Code */}
+      <Dialog open={!!pixData} onOpenChange={(o) => { if (!o) { setPixData(null); stopPolling() } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5 text-primary" />
+              Pagar com Pix
+            </DialogTitle>
+            <DialogDescription>
+              Escaneie o QR Code ou copie o código Pix copia e cola.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            {pixStatus === "approved" ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <CheckCircle2 className="h-12 w-12 text-green-500" />
+                <p className="font-bold text-green-600">Pagamento confirmado!</p>
+                <p className="text-sm text-muted-foreground text-center">Sua assinatura está sendo ativada...</p>
+              </div>
+            ) : pixStatus === "failed" ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <AlertCircle className="h-12 w-12 text-destructive" />
+                <p className="font-bold text-destructive">Pagamento não aprovado</p>
+                <p className="text-sm text-muted-foreground text-center">Tente novamente ou escolha outro método.</p>
+                <Button variant="outline" size="sm" onClick={() => { setPixData(null); setSelectedPlan(selectedPlan) }}>
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : (
+              <>
+                {pixData?.qrCodeBase64 && (
+                  <div className="flex justify-center">
+                    <div className="rounded-xl border border-border p-2 bg-white">
+                      <Image
+                        src={`data:image/png;base64,${pixData.qrCodeBase64}`}
+                        alt="QR Code Pix"
+                        width={192}
+                        height={192}
+                        className="rounded-lg"
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="rounded-lg bg-muted/60 p-3 flex items-start gap-2">
+                  <p className="text-xs font-mono text-muted-foreground break-all flex-1 line-clamp-3">
+                    {pixData?.qrCode}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleCopyPix}
+                    className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                    title="Copiar código Pix"
+                  >
+                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button variant="outline" className="w-full" onClick={handleCopyPix}>
+                  {copied ? (
+                    <><Check className="mr-2 h-4 w-4 text-green-500" />Copiado!</>
+                  ) : (
+                    <><Copy className="mr-2 h-4 w-4" />Copiar código Pix</>
+                  )}
+                </Button>
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Aguardando confirmação do pagamento...
+                </div>
+                {pixData?.expiresAt && (
+                  <p className="text-center text-xs text-muted-foreground">
+                    Expira em {new Date(pixData.expiresAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

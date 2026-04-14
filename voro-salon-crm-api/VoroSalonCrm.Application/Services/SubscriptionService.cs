@@ -49,7 +49,11 @@ namespace VoroSalonCrm.Application.Services
             var plan = await planRepository.GetByIdAsync(false, dto.PlanId)
                 ?? throw new InvalidOperationException("Plano não encontrado.");
 
-            // Determine trial days: coupon overrides plan default
+            // Pix: pagamento imediato, sem trial
+            if (dto.CheckoutMethod == PaymentMethod.Pix)
+                return await CreatePixCheckoutAsync(dto, plan);
+
+            // Cartão: lógica de trial para novos assinantes
             int trialDays = plan.DefaultTrialDays;
             SubscriptionCoupon? coupon = null;
 
@@ -133,6 +137,57 @@ namespace VoroSalonCrm.Application.Services
             await subscriptionRepository.SaveChangesAsync();
 
             return new CheckoutResultDto(null, subscription.Id.ToString(), true, trialEndsAt);
+        }
+
+        private async Task<CheckoutResultDto> CreatePixCheckoutAsync(CreateCheckoutDto dto, SubscriptionPlan plan)
+        {
+            var externalRef = dto.TenantId.HasValue
+                ? dto.TenantId.Value.ToString()
+                : dto.Email;
+
+            var (transactionAmount, lockedPromoPrice) = await ResolveEffectivePriceAsync(dto, plan);
+
+            var notificationUrl = configuration["MercadoPagoSettings:NotificationUrl"];
+
+            var pixResult = await mercadoPagoService.CreatePixPaymentAsync(new MpCreatePixPaymentDto(
+                PayerEmail: env.IsDevelopment()
+                    ? configuration["MercadoPagoSettings:TestPayerEmail"] ?? dto.Email
+                    : dto.Email,
+                Description: $"Voro Salon CRM — Plano {plan.Name}",
+                Amount: transactionAmount,
+                ExternalReference: externalRef,
+                NotificationUrl: notificationUrl
+            ));
+
+            var subscription = new TenantSubscription
+            {
+                Id = Guid.NewGuid(),
+                TenantId = dto.TenantId,
+                PlanId = dto.PlanId,
+                Status = SubscriptionStatus.Inactive,
+                PaymentSource = PaymentSource.MercadoPago,
+                StartDate = DateTimeOffset.UtcNow,
+                CheckoutExpiresAt = pixResult.ExpiresAt,
+                MercadoPagoPixPaymentId = pixResult.PaymentId,
+                MercadoPagoExternalReference = externalRef,
+                ContactEmail = dto.Email,
+                ContactName = dto.Name,
+                SalonName = dto.SalonName,
+                EstablishmentType = dto.EstablishmentType ?? EstablishmentType.Salon,
+                LockedPromoPrice = lockedPromoPrice,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            await subscriptionRepository.AddAsync(subscription);
+            await subscriptionRepository.SaveChangesAsync();
+
+            return new CheckoutResultDto(
+                CheckoutUrl: null,
+                SubscriptionId: subscription.Id.ToString(),
+                PixQrCode: pixResult.QrCode,
+                PixQrCodeBase64: pixResult.QrCodeBase64,
+                PixExpiresAt: pixResult.ExpiresAt
+            );
         }
 
         private async Task<CheckoutResultDto> CreateMercadoPagoCheckoutAsync(CreateCheckoutDto dto, SubscriptionPlan plan)
@@ -226,6 +281,12 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task ProcessWebhookAsync(string eventType, string resourceId)
         {
+            if (eventType == "payment")
+            {
+                await ProcessPixPaymentWebhookAsync(resourceId);
+                return;
+            }
+
             if (eventType != "subscription_preapproval") return;
 
             var details = await mercadoPagoService.GetPreapprovalAsync(resourceId);
@@ -280,6 +341,69 @@ namespace VoroSalonCrm.Application.Services
                     unitOfWork.ClearTracker();
                 }
             }
+        }
+
+        private async Task ProcessPixPaymentWebhookAsync(string paymentId)
+        {
+            var payment = await mercadoPagoService.GetPixPaymentAsync(paymentId);
+            if (payment is null) return;
+
+            var sub = await subscriptionRepository.GetByPixPaymentIdAsync(paymentId);
+            if (sub is null) return;
+
+            logger.LogInformation("[Webhook-Pix] PaymentId: {Id} | Status: {Status} | SubscriptionId: {SubId}",
+                paymentId, payment.Status, sub.Id);
+
+            switch (payment.Status)
+            {
+                case "approved":
+                    sub.Status = SubscriptionStatus.Active;
+                    sub.LastPaymentAt = DateTimeOffset.UtcNow;
+                    sub.NextPaymentAt = DateTimeOffset.UtcNow.AddDays(30);
+                    break;
+                case "rejected":
+                case "cancelled":
+                    sub.Status = SubscriptionStatus.PastDue;
+                    break;
+            }
+
+            sub.UpdatedAt = DateTimeOffset.UtcNow;
+            subscriptionRepository.Update(sub);
+            await subscriptionRepository.SaveChangesAsync();
+
+            // Provisionar conta se ainda não foi criada (novo assinante via Pix)
+            if (payment.Status == "approved" && sub.TenantId == null && !string.IsNullOrWhiteSpace(sub.ContactEmail))
+            {
+                try
+                {
+                    var tenantId = await authService.ProvisionAccountFromSubscriptionAsync(
+                        sub.ContactEmail,
+                        sub.ContactName ?? sub.ContactEmail,
+                        sub.SalonName ?? sub.ContactEmail,
+                        sub.EstablishmentType);
+
+                    sub.TenantId = tenantId;
+                    sub.UpdatedAt = DateTimeOffset.UtcNow;
+                    subscriptionRepository.Update(sub);
+
+                    var plan = await planRepository.GetByIdAsync(false, sub.PlanId);
+                    if (plan != null)
+                        await InitializePlanModulesAsync(tenantId, plan);
+
+                    await subscriptionRepository.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "[Webhook-Pix] Falha ao provisionar conta para {Email}.", sub.ContactEmail);
+                    unitOfWork.ClearTracker();
+                }
+            }
+        }
+
+        public async Task<string?> GetCheckoutStatusAsync(Guid subscriptionId)
+        {
+            var sub = await subscriptionRepository.GetByIdAsync(false, subscriptionId);
+            return sub?.Status.ToString();
         }
 
         public async Task<CouponValidationResultDto?> ValidateCouponAsync(string code)
