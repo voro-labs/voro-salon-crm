@@ -530,12 +530,14 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(s => s.ContactName).HasMaxLength(200);
                 b.Property(s => s.SalonName).HasMaxLength(150);
                 b.Property(s => s.MercadoPagoSubscriptionId).HasMaxLength(100);
+                b.Property(s => s.MercadoPagoPixPaymentId).HasMaxLength(100);
                 b.Property(s => s.MercadoPagoExternalReference).HasMaxLength(300);
                 b.Property(s => s.Notes).HasMaxLength(500);
                 b.Property(s => s.LockedPromoPrice).HasColumnType("NUMERIC(10,2)");
 
                 b.HasIndex(s => s.TenantId);
                 b.HasIndex(s => s.MercadoPagoSubscriptionId);
+                b.HasIndex(s => s.MercadoPagoPixPaymentId);
 
                 b.HasOne(s => s.Tenant)
                  .WithMany()

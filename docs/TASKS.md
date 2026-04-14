@@ -173,55 +173,141 @@ string? MercadoPagoPixPaymentId   // ID do payment MP atual (Pix)
 ### Tasks de implementação
 
 #### Domínio / Contrato
-- [ ] Criar enum `PaymentMethod` (`Card`, `Pix`) em `VoroSalonCrm.Domain.Enums`
-- [ ] Adicionar `PaymentMethod PaymentMethod` em `CreateCheckoutDto`
-- [ ] Adicionar `PixQrCode?`, `PixQrCodeBase64?`, `PixExpiresAt?` em `CheckoutResultDto`
-- [ ] Adicionar campo `MercadoPagoPixPaymentId: string?` em `TenantSubscription`
-- [ ] Migration EF: `AddPixPaymentIdToTenantSubscription`
+- [x] Criar enum `PaymentMethod` (`Card`, `Pix`) em `VoroSalonCrm.Domain.Enums` *(reusado enum existente)*
+- [x] Adicionar `CheckoutMethod` em `CreateCheckoutDto`
+- [x] Adicionar `PixQrCode?`, `PixQrCodeBase64?`, `PixExpiresAt?` em `CheckoutResultDto`
+- [x] Adicionar campo `MercadoPagoPixPaymentId: string?` em `TenantSubscription`
+- [x] Migration EF: `AddPixPaymentIdToTenantSubscription`
 
 #### Backend — MercadoPagoService
-- [ ] Criar record `MpCreatePixPaymentDto(string PayerEmail, string Description, decimal Amount, string ExternalReference, string BackUrl)`
-- [ ] Criar record `MpPixPaymentResult(string PaymentId, string QrCode, string QrCodeBase64, DateTimeOffset ExpiresAt)`
-- [ ] Implementar `CreatePixPaymentAsync(MpCreatePixPaymentDto dto)` em `IMercadoPagoService` / `MercadoPagoService`
-  - Usa `PaymentClient` (não `PreapprovalClient`)
-  - `payment_method_id: "pix"`, `payment_type_id: "bank_transfer"`
-  - Retorna `qr_code` e `qr_code_base64` de `point_of_interaction.transaction_data`
-  - Validade do Pix: 30 minutos (configurável)
-- [ ] Criar `GetPaymentAsync(string paymentId)` para buscar status de um payment MP
+- [x] Criar record `MpCreatePixPaymentDto`
+- [x] Criar record `MpPixPaymentResult`
+- [x] Implementar `CreatePixPaymentAsync` em `IMercadoPagoService` / `MercadoPagoService`
+- [x] Criar `GetPixPaymentAsync(string paymentId)` para buscar status de um payment MP
 
 #### Backend — SubscriptionService
-- [ ] Criar `CreatePixCheckoutAsync(CreateCheckoutDto dto, SubscriptionPlan plan)` no `SubscriptionService`
-  - Chama `CreatePixPaymentAsync`
-  - Persiste `TenantSubscription` com `PaymentSource = MercadoPago`, `MercadoPagoPixPaymentId = paymentId`
-  - Retorna `CheckoutResultDto` preenchido com os dados do Pix
-- [ ] Atualizar `CheckoutAsync` para rotear para `CreateMercadoPagoCheckoutAsync` (cartão) ou `CreatePixCheckoutAsync` (Pix) baseado em `dto.PaymentMethod`
-- [ ] Atualizar `ProcessWebhookAsync`:
-  - Manter tratamento de `subscription_preapproval` (cartão)
-  - Adicionar tratamento de `payment` (Pix):
-    - Busca `TenantSubscription` por `MercadoPagoPixPaymentId`
-    - Status `approved` → `Active`, `LastPaymentAt = now`, `NextPaymentAt = now + 30 dias`
-    - Status `rejected` / `cancelled` → `PastDue`
-- [ ] Atualizar `SubscriptionController` webhook para aceitar topic `payment` além de `subscription_preapproval`
+- [x] Criar `CreatePixCheckoutAsync(CreateCheckoutDto dto, SubscriptionPlan plan)`
+- [x] Atualizar `CreateCheckoutAsync` para rotear por método (cartão ou Pix)
+- [x] Atualizar `ProcessWebhookAsync` — adicionar branch `payment` (Pix)
+- [x] Implementar `ProcessPixPaymentWebhookAsync`: approved → Active / rejected → PastDue
+- [x] Implementar `GetCheckoutStatusAsync(Guid subscriptionId)` para polling frontend
+- [x] Endpoint `GET /subscription/pix-status/{subscriptionId}` no controller
 
 #### Renovação Pix (mensal)
-- [ ] Job agendado (ou trigger no `NextPaymentAt`): quando faltarem ≤ 3 dias para `NextPaymentAt` de uma assinatura Pix, gerar novo Pix e enviar via WhatsApp ao cliente
-- [ ] Endpoint `POST /api/subscriptions/renew-pix/{subscriptionId}` para o cliente solicitar novo QR manualmente
+- [ ] Job agendado: quando faltarem ≤ 3 dias para `NextPaymentAt` de assinatura Pix, gerar novo QR e enviar via WhatsApp
+- [ ] Endpoint `POST /api/subscriptions/renew-pix/{subscriptionId}` para solicitar novo QR manualmente
 
 #### Frontend Web — Dialog de checkout
-- [ ] Adicionar seleção de método de pagamento no dialog (antes de confirmar):
-  ```
-  [💳 Cartão de crédito — MercadoPago]
-  [🏦 Pix — MercadoPago            ]
-  ```
-- [ ] Se Pix selecionado: ao confirmar, exibir QR code + código copia-e-cola inline no dialog
-  - Polling ou SSE para detectar pagamento confirmado e fechar o dialog automaticamente
-  - Exibir timer de expiração do Pix (30 min)
-- [ ] Se cartão: manter fluxo atual de redirect para `checkoutUrl`
-- [ ] Atualizar `subscription/page.tsx` e `prices/page.tsx`
+- [x] Seletor Cartão / Pix no dialog de confirmação em `subscription/page.tsx`
+- [x] Seletor Cartão / Pix no dialog de checkout em `prices/page.tsx`
+- [x] Exibir QR Code base64 + código copia-e-cola em dialog dedicado
+- [x] Polling a cada 3s em `GET /subscription/pix-status/{id}` até aprovação ou falha
+- [x] Estado aprovado: feedback visual → redireciona/atualiza assinatura automaticamente
+- [x] Botão copiar código copia-e-cola com feedback visual
 
 #### Frontend Mobile — tela de assinatura
-- [ ] Exibir seleção Cartão / Pix antes de ir ao checkout
-- [ ] Se Pix: abrir WebView ou tela dedicada com QR + copia-e-cola
+- [x] Exibir seleção Cartão / Pix antes de ir ao checkout (bottom sheet modal)
+- [x] Se Pix: modal dedicado com QR base64 + copia-e-cola + compartilhar + polling
+- [x] Estado aprovado: feedback visual + mutate SWR automático
+- [x] Estado falha: opção de tentar novamente
+
+---
+
+## Troca de Plano — Proteção de Preço Promocional
+
+### Contexto e objetivo
+
+Quando um cliente inicia o fluxo de troca de plano mas **desiste ou não conclui**, o sistema deve:
+
+1. **Restaurar o plano anterior** se ainda estiver válido (ativo ou dentro do período de graça).
+2. **Bloquear o preço promocional** para clientes com assinatura inativa — não podem aproveitar o promo como se fossem novos clientes.
+3. **Exibir o valor cheio** na tela de assinaturas para clientes inativos, mesmo que o plano tenha promoção ativa.
+4. Preço promocional é exclusivo para **novos clientes** ou para **upgrades de plano**.
+
+---
+
+### Regras de negócio
+
+| Situação | Comportamento esperado |
+|---|---|
+| Inicia troca → desiste antes de pagar | Mantém plano antigo (sem alteração) |
+| Plano anterior ainda ativo | Plano antigo restaurado normalmente |
+| Plano anterior expirado/inativo | Mantém inativo; não recebe promoção |
+| Cliente inativo vê tela de planos | Exibe **preço cheio**, sem promoção |
+| Novo cliente (sem histórico) | Exibe **preço promocional** normalmente |
+| Upgrade de plano (plano maior) | Exibe **preço promocional** normalmente |
+| Downgrade ou troca lateral | Exibe **preço cheio** (sem promo) |
+
+---
+
+### Fluxo de troca de plano
+
+```
+Usuário clica "Trocar plano"
+    → Cria PendingPlanChange (novo plano + plano atual salvo)
+    → Abre dialog de checkout
+
+Cenário A — Conclui pagamento:
+    → Webhook confirma pagamento
+    → Aplica novo plano
+    → Remove PendingPlanChange
+    → Se upgrade: aplica PromoPrice se disponível
+    → Se não for upgrade: aplica preço cheio
+
+Cenário B — Fecha dialog / abandona:
+    → PendingPlanChange é descartado
+    → Plano anterior é mantido (nenhuma alteração)
+    → Se plano anterior estava ativo: continua ativo
+    → Se estava inativo: continua inativo (sem ganhar promoção)
+```
+
+---
+
+### Tasks de implementação
+
+#### Domínio
+- [ ] Criar entidade ou record `PendingPlanChange` (tenantId, currentPlanId, currentSubscriptionSnapshot, requestedPlanId, createdAt, expiresAt)
+- [ ] Definir `SubscriptionChangeType` enum: `NewSubscription`, `Upgrade`, `Downgrade`, `LateralSwitch`
+- [ ] Adicionar método `IsUpgrade(SubscriptionPlan current, SubscriptionPlan requested): bool` em `SubscriptionPlan` ou service
+- [ ] Regra: `PromoPrice` só é aplicado se `ChangeType == NewSubscription || ChangeType == Upgrade`
+
+#### Backend — SubscriptionService
+- [ ] Criar `InitiatePlanChangeAsync(tenantId, newPlanId)`:
+  - Salva snapshot do plano/assinatura atual em `PendingPlanChange`
+  - Inicia checkout normalmente (Cartão ou Pix)
+  - Retorna `checkoutUrl` ou dados Pix
+- [ ] Criar `CancelPendingPlanChangeAsync(tenantId)`:
+  - Remove `PendingPlanChange`
+  - Restaura/mantém estado original da `TenantSubscription` (sem alterar nada)
+  - Chamado quando: dialog fechado, timeout, ou cliente solicita cancelamento
+- [ ] Atualizar `ProcessWebhookAsync`:
+  - Ao confirmar pagamento, verificar se há `PendingPlanChange` para o tenant
+  - Se houver: aplicar novo plano e resolver `ChangeType`
+  - Aplicar `PromoPrice` somente se `ChangeType == NewSubscription || Upgrade`
+  - Remover `PendingPlanChange` após conclusão
+- [ ] Job de limpeza: expirar `PendingPlanChange` com mais de 2 horas sem conclusão (chama `CancelPendingPlanChangeAsync`)
+
+#### Backend — Lógica de exibição de preço
+- [ ] Criar `ResolveDisplayPriceAsync(tenantId, planId): decimal`:
+  - Se tenant **não tem histórico** de assinatura (novo): retorna `PromoPrice` se disponível
+  - Se tenant tem assinatura **ativa**: retorna `PromoPrice` somente se `IsUpgrade`
+  - Se tenant tem assinatura **inativa/expirada**: retorna **preço cheio** (`Price`) independente de promo
+- [ ] Endpoint `GET /api/subscriptions/plans/prices?tenantId=...` retornar o preço correto por tenant (não só o preço global do plano)
+
+#### Backend — API
+- [ ] `POST /api/subscriptions/change-plan` → chama `InitiatePlanChangeAsync`
+- [ ] `DELETE /api/subscriptions/pending-change` → chama `CancelPendingPlanChangeAsync` (chamado ao fechar dialog)
+
+#### Frontend Web
+- [ ] Ao abrir dialog de checkout para trocar plano, registrar `PendingPlanChange` via `POST /api/subscriptions/change-plan`
+- [ ] Ao fechar dialog (X, ESC, clique fora) **sem concluir**: chamar `DELETE /api/subscriptions/pending-change`
+- [ ] Tela `subscription/page.tsx` e `prices/page.tsx`: buscar preço via endpoint personalizado por tenant em vez do preço global do plano
+- [ ] Ocultar badge de promoção e riscar preço original para clientes inativos (mostrar só preço cheio)
+- [ ] Exibir label informativo: _"Promoção disponível apenas para novos clientes ou upgrades"_ quando cliente inativo tentar acessar promo
+
+#### Frontend Mobile
+- [ ] Mesma lógica: ao fechar tela de checkout de troca de plano sem pagar → chamar endpoint de cancelamento
+- [ ] Tela de planos: exibir preço correto conforme status do tenant (cheio para inativos)
 
 ---
 

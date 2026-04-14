@@ -45,14 +45,18 @@ namespace VoroSalonCrm.Application.DTOs.Subscription
         string SalonName,
         Guid? TenantId,
         string? CouponCode = null,
-        EstablishmentType? EstablishmentType = null
+        EstablishmentType? EstablishmentType = null,
+        PaymentMethod CheckoutMethod = PaymentMethod.CreditCard
     );
 
     public record CheckoutResultDto(
         string? CheckoutUrl,
         string SubscriptionId,
         bool IsTrial = false,
-        DateTimeOffset? TrialEndsAt = null
+        DateTimeOffset? TrialEndsAt = null,
+        string? PixQrCode = null,
+        string? PixQrCodeBase64 = null,
+        DateTimeOffset? PixExpiresAt = null
     );
 
     public record GrantManualSubscriptionDto(

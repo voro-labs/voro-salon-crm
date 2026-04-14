@@ -138,6 +138,26 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpGet("pix-status/{subscriptionId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPixStatus(Guid subscriptionId)
+        {
+            try
+            {
+                var status = await subscriptionService.GetCheckoutStatusAsync(subscriptionId);
+                if (status == null)
+                    return ResponseViewModel<object>.Fail("Assinatura não encontrada.").ToActionResult();
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Status retrieved.", new { status })
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
         [HttpPost("admin/extend-trial")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ExtendTrial([FromBody] ExtendTrialDto dto)

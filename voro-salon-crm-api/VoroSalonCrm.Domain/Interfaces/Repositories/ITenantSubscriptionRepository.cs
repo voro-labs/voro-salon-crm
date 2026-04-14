@@ -8,6 +8,7 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories
         Task<TenantSubscription?> GetActiveByTenantIdAsync(Guid tenantId);
         Task<TenantSubscription?> GetLatestByTenantIdAsync(Guid tenantId);
         Task<TenantSubscription?> GetByMercadoPagoIdAsync(string mercadoPagoSubscriptionId);
+        Task<TenantSubscription?> GetByPixPaymentIdAsync(string pixPaymentId);
         Task<TenantSubscription?> GetByExternalReferenceAsync(string externalReference);
         Task<IEnumerable<TenantSubscription>> GetAllWithPlanAsync(int page, int pageSize);
         Task<TenantSubscription?> GetByIdWithPlanAsync(Guid id);

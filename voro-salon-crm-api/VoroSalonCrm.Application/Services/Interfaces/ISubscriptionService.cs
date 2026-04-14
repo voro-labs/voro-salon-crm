@@ -16,5 +16,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<CouponDto> CreateCouponAsync(CreateCouponDto dto);
         Task<IEnumerable<CouponDto>> GetCouponsAsync();
         Task ExtendTrialAsync(Guid tenantId, int additionalDays);
+        Task<string?> GetCheckoutStatusAsync(Guid subscriptionId);
     }
 }

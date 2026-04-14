@@ -1631,6 +1631,10 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<string>("MercadoPagoPayerId")
                         .HasColumnType("text");
 
+                    b.Property<string>("MercadoPagoPixPaymentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("MercadoPagoSubscriptionId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1668,6 +1672,8 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MercadoPagoPixPaymentId");
 
                     b.HasIndex("MercadoPagoSubscriptionId");
 

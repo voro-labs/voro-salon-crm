@@ -41,6 +41,7 @@ export interface CreateCheckoutDto {
   salonName: string
   tenantId?: string
   couponCode?: string
+  checkoutMethod?: "CreditCard" | "Pix"
 }
 
 export interface CheckoutResultDto {
@@ -48,6 +49,9 @@ export interface CheckoutResultDto {
   subscriptionId: string
   isTrial: boolean
   trialEndsAt: string | null
+  pixQrCode?: string | null
+  pixQrCodeBase64?: string | null
+  pixExpiresAt?: string | null
 }
 
 export interface CouponValidationResultDto {
