@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect } from "react"
 import { View, Text, ScrollView, ActivityIndicator, Pressable, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Switch } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -11,7 +11,6 @@ import { useSettings } from "hooks/use-settings.hook"
 import { usePlanLimits } from "hooks/use-plan-limits.hook"
 import { API_CONFIG, apiCall, secureApiCall } from "lib/api"
 import useSWR from "swr"
-import { fetcher } from "lib/fetcher"
 
 interface OnboardingStatus {
   connected: boolean
@@ -56,12 +55,13 @@ export default function WhatsAppSettingsScreen() {
   const [disconnecting, setDisconnecting] = useState(false)
   const [signupConfig, setSignupConfig] = useState<OnboardingConfig | null>(null)
 
-  const { data: status, mutate: mutateStatus } = useSWR<OnboardingStatus>(
+  const fetchStatus = async (url: string): Promise<OnboardingStatus | null> => {
+    const res = await secureApiCall<OnboardingStatus>(url, { method: "GET" })
+    return res.hasError ? null : (res.data ?? null)
+  }
+  const { data: status, mutate: mutateStatus } = useSWR<OnboardingStatus | null>(
     API_CONFIG.ENDPOINTS.WHATSAPP_ONBOARDING_STATUS,
-    async (url: string) => {
-      const res = await secureApiCall<OnboardingStatus>(url, { method: "GET" })
-      return res.hasError ? null : res.data
-    }
+    fetchStatus
   )
 
   const handleToggleWhatsappBooking = async (value: boolean) => {
