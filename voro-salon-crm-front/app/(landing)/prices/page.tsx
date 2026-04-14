@@ -893,6 +893,20 @@ function AgendamentoOnlineMockup() {
   )
 }
 
+// ── Promo helpers ─────────────────────────────────────────────────────────────
+
+function isPlanPromoActive(plan: SubscriptionPlanDto): boolean {
+  if (!plan.promoPrice) return false
+  if (!plan.promoEndsAt) return true
+  return new Date(plan.promoEndsAt) > new Date()
+}
+
+function formatPromoEndsAt(isoDate: string): string {
+  return new Date(isoDate).toLocaleDateString("pt-BR", {
+    day: "2-digit", month: "long", year: "numeric",
+  })
+}
+
 // ── Plan card ─────────────────────────────────────────────────────────────────
 
 interface PlanCardProps {
@@ -953,15 +967,34 @@ function PlanCard({ plan, popular, onSelect, onModuleInfo }: PlanCardProps) {
       )}
       <CardHeader className="pb-4 pt-8">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{plan.name}</p>
+        {isPlanPromoActive(plan) && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+              Oferta
+            </span>
+            {plan.promoEndsAt && (
+              <span className="text-xs text-red-500 font-semibold">
+                até {formatPromoEndsAt(plan.promoEndsAt)}
+              </span>
+            )}
+          </div>
+        )}
         <div className="flex items-end gap-1 mt-2">
           <span className="text-4xl font-black text-foreground">
-            {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            {isPlanPromoActive(plan)
+              ? plan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+              : plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </span>
           <span className="text-muted-foreground mb-1">/mês</span>
+          {isPlanPromoActive(plan) && (
+            <span className="text-sm text-muted-foreground line-through mb-1">
+              {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </span>
+          )}
         </div>
         {popular && (
           <p className="text-xs text-muted-foreground -mt-1">
-            ≈ R$ {(plan.monthlyPrice / 30).toFixed(2)}/dia
+            ≈ R$ {((isPlanPromoActive(plan) ? plan.promoPrice! : plan.monthlyPrice) / 30).toFixed(2)}/dia
           </p>
         )}
         <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
@@ -2332,17 +2365,30 @@ export default function PrecosPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Assinar plano {selectedPlan?.name}</DialogTitle>
-            <DialogDescription>
-              {selectedPlan?.monthlyPrice.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
-              /mês
-              {trialDays > 0 && (
-                <span className="ml-1 text-green-600 dark:text-green-400 font-medium">
-                  — {trialDays} dias de trial grátis incluídos
+            <DialogDescription asChild>
+              <div>
+                <span>
+                  {selectedPlan && isPlanPromoActive(selectedPlan)
+                    ? selectedPlan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    : selectedPlan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  /mês
                 </span>
-              )}
+                {selectedPlan && isPlanPromoActive(selectedPlan) && (
+                  <span className="ml-2 text-muted-foreground line-through text-xs">
+                    {selectedPlan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                )}
+                {trialDays > 0 && (
+                  <span className="ml-1 text-green-600 dark:text-green-400 font-medium">
+                    — {trialDays} dias de trial grátis incluídos
+                  </span>
+                )}
+                {selectedPlan && isPlanPromoActive(selectedPlan) && (
+                  <p className="text-xs text-green-600 dark:text-green-400 font-semibold mt-1">
+                    Preço promocional garantido enquanto você mantiver a assinatura ativa
+                  </p>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
 

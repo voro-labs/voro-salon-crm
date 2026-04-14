@@ -22,6 +22,15 @@ namespace VoroSalonCrm.Infrastructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<TenantSubscription?> GetLatestByTenantIdAsync(Guid tenantId)
+        {
+            return await _context.TenantSubscriptions
+                .Include(s => s.Plan)
+                .Where(s => s.TenantId == tenantId)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<TenantSubscription?> GetByMercadoPagoIdAsync(string mercadoPagoSubscriptionId)
         {
             return await _context.TenantSubscriptions

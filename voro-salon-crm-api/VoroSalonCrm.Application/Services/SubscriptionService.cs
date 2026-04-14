@@ -147,10 +147,13 @@ namespace VoroSalonCrm.Application.Services
                 ? dto.TenantId.Value.ToString()
                 : email;
 
+            // Determina o preço efetivo: promo do plano (se vigente) ou grace period de 7 dias
+            var (transactionAmount, lockedPromoPrice) = await ResolveEffectivePriceAsync(dto, plan);
+
             var result = await mercadoPagoService.CreatePreapprovalAsync(new MpCreatePreapprovalDto(
                 PayerEmail: email,
                 Reason: $"Voro Salon CRM — Plano {plan.Name}",
-                TransactionAmount: plan.MonthlyPrice,
+                TransactionAmount: transactionAmount,
                 ExternalReference: externalRef,
                 BackUrl: backUrl
             ));
@@ -170,6 +173,7 @@ namespace VoroSalonCrm.Application.Services
                 ContactName = dto.Name,
                 SalonName = dto.SalonName,
                 EstablishmentType = dto.EstablishmentType ?? EstablishmentType.Salon,
+                LockedPromoPrice = lockedPromoPrice,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -361,20 +365,58 @@ namespace VoroSalonCrm.Application.Services
             }
         }
 
+        // ── Promo pricing ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Retorna (preçoEfetivo, preçoPromoBloqueado) para o checkout.
+        ///
+        /// Regras:
+        ///   1. Se o plano tem promo vigente → usa PromoPrice e bloqueia.
+        ///   2. Se o plano não tem promo MAS o tenant tinha promo bloqueada na última
+        ///      assinatura E pagou há menos de 7 dias → honra o preço bloqueado (grace period).
+        ///   3. Caso contrário → preço cheio, sem bloqueio.
+        /// </summary>
+        private async Task<(decimal transactionAmount, decimal? lockedPromoPrice)> ResolveEffectivePriceAsync(
+            CreateCheckoutDto dto, SubscriptionPlan plan)
+        {
+            bool isPlanPromoActive = plan.PromoPrice.HasValue &&
+                (!plan.PromoEndsAt.HasValue || plan.PromoEndsAt.Value > DateTimeOffset.UtcNow);
+
+            if (isPlanPromoActive)
+                return (plan.PromoPrice!.Value, plan.PromoPrice);
+
+            // Sem promo ativa no plano — verifica grace period do tenant
+            if (dto.TenantId.HasValue)
+            {
+                var latest = await subscriptionRepository.GetLatestByTenantIdAsync(dto.TenantId.Value);
+
+                if (latest?.LockedPromoPrice.HasValue == true &&
+                    latest.LastPaymentAt.HasValue &&
+                    latest.LastPaymentAt.Value.AddDays(7) >= DateTimeOffset.UtcNow)
+                {
+                    return (latest.LockedPromoPrice.Value, latest.LockedPromoPrice);
+                }
+            }
+
+            return (plan.MonthlyPrice, null);
+        }
+
         // ── Mappers ────────────────────────────────────────────────────────────
 
         private static SubscriptionPlanDto MapPlan(SubscriptionPlan p) => new(
             p.Id, p.Name, p.Description, p.MonthlyPrice,
             p.MaxEmployees, p.MaxClients,
             p.HasEmployees, p.HasAnamnesis, p.HasFinancial, p.HasReports, p.HasBooking, p.HasWhatsAppBot,
-            p.SortOrder, p.DefaultTrialDays
+            p.SortOrder, p.DefaultTrialDays,
+            p.PromoPrice, p.PromoEndsAt
         );
 
         private static TenantSubscriptionDto MapSubscription(TenantSubscription s) => new(
             s.Id, s.TenantId, MapPlan(s.Plan!),
             s.Status.ToString(), s.PaymentSource.ToString(),
             s.StartDate, s.EndDate, s.NextPaymentAt, s.LastPaymentAt,
-            s.ContactEmail, s.ContactName, s.SalonName, s.TrialEndsAt
+            s.ContactEmail, s.ContactName, s.SalonName, s.TrialEndsAt,
+            s.LockedPromoPrice
         );
 
         private static CouponDto MapCoupon(SubscriptionCoupon c) => new(

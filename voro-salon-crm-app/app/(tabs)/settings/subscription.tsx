@@ -65,7 +65,13 @@ export default function SubscriptionScreen() {
   }
 
   const planName = sub?.name || sub?.plan?.name
-  const price = sub?.monthlyPrice || sub?.plan?.monthlyPrice || sub?.price || 0
+  const rawPrice = sub?.monthlyPrice || sub?.plan?.monthlyPrice || sub?.price || 0
+  const lockedPromoPrice = sub?.lockedPromoPrice ?? null
+  const planPromoPrice = sub?.plan?.promoPrice ?? null
+  const planPromoEndsAt = sub?.plan?.promoEndsAt ?? null
+  const isPlanPromoActive = planPromoPrice && (!planPromoEndsAt || new Date(planPromoEndsAt) > new Date())
+  const price = lockedPromoPrice ?? (isPlanPromoActive ? planPromoPrice : rawPrice)
+  const showPromo = !!(lockedPromoPrice || isPlanPromoActive)
   const maxClients = sub?.maxClients || sub?.plan?.maxClients || -1
   const maxEmployees = sub?.maxEmployees || sub?.plan?.maxEmployees || -1
 
@@ -96,6 +102,16 @@ export default function SubscriptionScreen() {
               R$ {price.toFixed(2).replace(".", ",")}
               <Text className="text-lg text-zinc-400 font-semibold">/mês</Text>
             </Text>
+            {showPromo && (
+              <Text className="text-sm text-zinc-400 mb-1" style={{ textDecorationLine: "line-through" }}>
+                R$ {rawPrice.toFixed(2).replace(".", ",")}
+              </Text>
+            )}
+            {showPromo && (
+              <Text className="text-xs font-semibold text-green-600 mb-1">
+                Preço promocional garantido
+              </Text>
+            )}
 
             {isTrial && sub?.trialEndsAt && (
               <Text className="text-zinc-500 text-sm mt-2 font-medium">

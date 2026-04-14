@@ -25,6 +25,11 @@ namespace VoroSalonCrm.Domain.Entities
         public DateTimeOffset? LastPaymentAt { get; set; }
         public DateTimeOffset? NextPaymentAt { get; set; }
 
+        // Preço promocional bloqueado no momento da assinatura.
+        // Mantido enquanto a assinatura estiver ativa. Perdido se o tenant
+        // não renovar dentro de 7 dias após o último pagamento.
+        public decimal? LockedPromoPrice { get; set; }
+
         // Concessão manual
         public Guid? GrantedByUserId { get; set; }
         public string? Notes { get; set; }

@@ -1386,6 +1386,12 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Property<decimal>("MonthlyPrice")
                         .HasColumnType("NUMERIC(10,2)");
 
+                    b.Property<DateTimeOffset?>("PromoEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("PromoPrice")
+                        .HasColumnType("numeric(10,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1628,6 +1634,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset?>("NextPaymentAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("LockedPromoPrice")
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
