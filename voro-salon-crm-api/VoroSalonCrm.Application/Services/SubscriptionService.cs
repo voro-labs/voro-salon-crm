@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 using VoroSalonCrm.Application.DTOs.Subscription;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
@@ -16,6 +17,7 @@ namespace VoroSalonCrm.Application.Services
         ITenantSubscriptionRepository subscriptionRepository,
         ISubscriptionCouponRepository couponRepository,
         ITenantModuleRepository moduleRepository,
+        IPendingPlanChangeRepository pendingPlanChangeRepository,
         IMercadoPagoService mercadoPagoService,
         IConfiguration configuration, IHostEnvironment env,
         IAuthService authService,
@@ -314,6 +316,17 @@ namespace VoroSalonCrm.Application.Services
             subscriptionRepository.Update(sub);
             await subscriptionRepository.SaveChangesAsync();
 
+            // Limpar mudança de plano pendente após ativação confirmada
+            if (details.Status == "authorized" && sub.TenantId.HasValue)
+            {
+                var pending = await pendingPlanChangeRepository.GetByTenantIdAsync(sub.TenantId.Value);
+                if (pending != null)
+                {
+                    pendingPlanChangeRepository.Delete(pending);
+                    await pendingPlanChangeRepository.SaveChangesAsync();
+                }
+            }
+
             // Provisionar conta automaticamente no primeiro pagamento confirmado
             if (details.Status == "authorized" && sub.TenantId == null && !string.IsNullOrWhiteSpace(sub.ContactEmail))
             {
@@ -370,6 +383,17 @@ namespace VoroSalonCrm.Application.Services
             sub.UpdatedAt = DateTimeOffset.UtcNow;
             subscriptionRepository.Update(sub);
             await subscriptionRepository.SaveChangesAsync();
+
+            // Limpar mudança de plano pendente após pagamento Pix aprovado
+            if (payment.Status == "approved" && sub.TenantId.HasValue)
+            {
+                var pending = await pendingPlanChangeRepository.GetByTenantIdAsync(sub.TenantId.Value);
+                if (pending != null)
+                {
+                    pendingPlanChangeRepository.Delete(pending);
+                    await pendingPlanChangeRepository.SaveChangesAsync();
+                }
+            }
 
             // Provisionar conta se ainda não foi criada (novo assinante via Pix)
             if (payment.Status == "approved" && sub.TenantId == null && !string.IsNullOrWhiteSpace(sub.ContactEmail))
@@ -457,6 +481,124 @@ namespace VoroSalonCrm.Application.Services
 
             subscriptionRepository.Update(sub);
             await subscriptionRepository.SaveChangesAsync();
+        }
+
+        // ── Plan Change Flow ───────────────────────────────────────────────────
+
+        public async Task<SubscriptionChangeType> DetermineChangeTypeAsync(Guid tenantId, Guid newPlanId)
+        {
+            var current = await subscriptionRepository.GetActiveByTenantIdAsync(tenantId);
+
+            if (current is null)
+                return SubscriptionChangeType.NewSubscription;
+
+            var newPlan = await planRepository.GetByIdAsync(false, newPlanId)
+                ?? throw new InvalidOperationException("Plano não encontrado.");
+
+            var currentPlan = current.Plan
+                ?? await planRepository.GetByIdAsync(false, current.PlanId)
+                ?? throw new InvalidOperationException("Plano atual não encontrado.");
+
+            if (newPlan.SortOrder > currentPlan.SortOrder)
+                return SubscriptionChangeType.Upgrade;
+
+            if (newPlan.SortOrder < currentPlan.SortOrder)
+                return SubscriptionChangeType.Downgrade;
+
+            return SubscriptionChangeType.LateralSwitch;
+        }
+
+        public async Task<CheckoutResultDto> InitiatePlanChangeAsync(Guid tenantId, CreateCheckoutDto dto)
+        {
+            var changeType = await DetermineChangeTypeAsync(tenantId, dto.PlanId);
+
+            // Captura snapshot da assinatura atual (se existir)
+            var currentSub = await subscriptionRepository.GetActiveByTenantIdAsync(tenantId);
+            var snapshot = currentSub is not null
+                ? JsonSerializer.Serialize(MapSubscription(currentSub))
+                : "{}";
+
+            var currentPlanId = currentSub?.PlanId ?? dto.PlanId;
+
+            // Upsert: remove pendência anterior do tenant, se existir
+            var existing = await pendingPlanChangeRepository.GetByTenantIdAsync(tenantId);
+            if (existing is not null)
+            {
+                // GetByTenantIdAsync retorna AsNoTracking — precisamos obter rastreado para deletar
+                var tracked = await pendingPlanChangeRepository.GetByIdAsync(false, existing.Id);
+                if (tracked is not null)
+                    pendingPlanChangeRepository.Delete(tracked);
+            }
+
+            var pendingChange = PendingPlanChange.Create(
+                tenantId,
+                currentPlanId,
+                snapshot,
+                dto.PlanId);
+
+            await pendingPlanChangeRepository.AddAsync(pendingChange);
+            await pendingPlanChangeRepository.SaveChangesAsync();
+
+            logger.LogInformation(
+                "Pending plan change created for tenant {TenantId}: {ChangeType} to plan {PlanId}.",
+                tenantId, changeType, dto.PlanId);
+
+            // Reutiliza a lógica de checkout existente com o tenantId embutido no dto
+            var checkoutDto = dto with { TenantId = tenantId };
+            return await CreateCheckoutAsync(checkoutDto);
+        }
+
+        public async Task CancelPendingPlanChangeAsync(Guid tenantId)
+        {
+            var pending = await pendingPlanChangeRepository.GetByTenantIdAsync(tenantId);
+            if (pending is null) return;
+
+            var tracked = await pendingPlanChangeRepository.GetByIdAsync(false, pending.Id);
+            if (tracked is null) return;
+
+            pendingPlanChangeRepository.Delete(tracked);
+            await pendingPlanChangeRepository.SaveChangesAsync();
+
+            logger.LogInformation("Pending plan change cancelled for tenant {TenantId}.", tenantId);
+        }
+
+        public async Task<decimal> ResolveDisplayPriceAsync(Guid? tenantId, Guid planId)
+        {
+            var plan = await planRepository.GetByIdAsync(false, planId)
+                ?? throw new InvalidOperationException("Plano não encontrado.");
+
+            bool isPlanPromoActive = plan.PromoPrice.HasValue &&
+                (!plan.PromoEndsAt.HasValue || plan.PromoEndsAt.Value > DateTimeOffset.UtcNow);
+
+            if (tenantId is null)
+                return isPlanPromoActive ? plan.PromoPrice!.Value : plan.MonthlyPrice;
+
+            var currentSub = await subscriptionRepository.GetActiveByTenantIdAsync(tenantId.Value);
+
+            // Tenant sem histórico ativo → trata como novo assinante
+            if (currentSub is null)
+            {
+                var latestSub = await subscriptionRepository.GetLatestByTenantIdAsync(tenantId.Value);
+                if (latestSub is null)
+                    return isPlanPromoActive ? plan.PromoPrice!.Value : plan.MonthlyPrice;
+
+                // Tenant com histórico inativo/cancelado/pastdue → sem promo
+                return plan.MonthlyPrice;
+            }
+
+            // Tenant com assinatura ativa/trial — promo apenas em upgrades
+            if (isPlanPromoActive)
+            {
+                var currentPlan = currentSub.Plan
+                    ?? await planRepository.GetByIdAsync(false, currentSub.PlanId);
+
+                bool wouldBeUpgrade = currentPlan is null || plan.SortOrder > currentPlan.SortOrder;
+
+                if (wouldBeUpgrade)
+                    return plan.PromoPrice!.Value;
+            }
+
+            return plan.MonthlyPrice;
         }
 
         // ── Module Initialization ──────────────────────────────────────────────

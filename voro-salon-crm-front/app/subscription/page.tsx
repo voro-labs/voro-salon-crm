@@ -15,7 +15,7 @@ import { API_CONFIG, apiCall, secureApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useSubscription } from "@/hooks/use-subscription.hook"
 import { useAuth } from "@/contexts/auth.context"
-import type { SubscriptionPlanDto, CheckoutResultDto } from "@/types/subscription.interface"
+import type { SubscriptionPlanDto, CheckoutResultDto, ResolvedPlanPriceDto } from "@/types/subscription.interface"
 import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
 
 function statusLabel(status: string) {
@@ -56,6 +56,29 @@ export default function SubscriptionPage() {
   const [pixStatus, setPixStatus] = useState<"pending" | "approved" | "failed">("pending")
   const [copied, setCopied] = useState(false)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // checkoutCompleted tracks whether the checkout flow finished so we know
+  // whether to call DELETE /subscription/pending-change on dialog close
+  const checkoutCompletedRef = useRef(false)
+
+  // Resolved prices — user-specific pricing taking into account promo eligibility
+  const { data: resolvedPrices } = useSWR<ResolvedPlanPriceDto[]>(
+    user?.token ? API_CONFIG.ENDPOINTS.SUBSCRIPTION_RESOLVED_PRICES : null,
+    async (url: string) => {
+      const res = await secureApiCall<ResolvedPlanPriceDto[]>(url, { method: "GET" })
+      return res.hasError || !res.data ? [] : res.data
+    }
+  )
+
+  // Helpers for resolved price lookup
+  function getResolvedPrice(plan: SubscriptionPlanDto): number {
+    const found = resolvedPrices?.find((r) => r.planId === plan.id)
+    return found ? found.displayPrice : effectivePlanPrice(plan)
+  }
+
+  function isResolvedPromoActive(plan: SubscriptionPlanDto): boolean {
+    const display = getResolvedPrice(plan)
+    return display < plan.monthlyPrice
+  }
 
   // Guard de autenticação
   useEffect(() => {
@@ -95,7 +118,7 @@ export default function SubscriptionPage() {
               setPixData(null)
               setSelectedPlan(null)
             }, 2000)
-          } else if (s === "pastdue" || s === "cancelled" || s === "inactive") {
+          } else if (s === "cancelled") {
             setPixStatus("failed")
             stopPolling()
           }
@@ -113,22 +136,31 @@ export default function SubscriptionPage() {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await apiCall<CheckoutResultDto>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT, {
+      const checkoutDto = {
+        planId: selectedPlan.id,
+        tenantId: tenant.id,
+        email: user?.email ?? "",
+        name: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim(),
+        salonName: tenant.name ?? "",
+        checkoutMethod: paymentMethod,
+      }
+
+      // Use change-plan endpoint when user already has an active (or trial) subscription
+      const endpoint = (isActive || isTrial)
+        ? API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHANGE_PLAN
+        : API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT
+
+      const res = await secureApiCall<CheckoutResultDto>(endpoint, {
         method: "POST",
-        body: JSON.stringify({
-          planId: selectedPlan.id,
-          tenantId: tenant.id,
-          email: user?.email ?? "",
-          name: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim(),
-          salonName: tenant.name ?? "",
-          checkoutMethod: paymentMethod,
-        }),
+        body: JSON.stringify(checkoutDto),
       })
       if (res.hasError || !res.data) {
         setError(res.message ?? "Erro ao iniciar checkout.")
         return
       }
       if (res.data.checkoutUrl) {
+        // Mark as completed so we don't call DELETE pending-change (redirect handles it)
+        checkoutCompletedRef.current = true
         window.location.href = res.data.checkoutUrl
       } else if (res.data.pixQrCode) {
         setPixData({
@@ -138,9 +170,12 @@ export default function SubscriptionPage() {
           expiresAt: res.data.pixExpiresAt ?? "",
         })
         setPixStatus("pending")
+        // Keep selectedPlan null to close the confirm dialog and show the Pix dialog
+        checkoutCompletedRef.current = true
         setSelectedPlan(null)
         startPixPolling(res.data.subscriptionId)
       } else {
+        checkoutCompletedRef.current = true
         await mutate()
         setSelectedPlan(null)
       }
@@ -149,6 +184,16 @@ export default function SubscriptionPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleCheckoutDialogClose = async () => {
+    if (!checkoutCompletedRef.current && (isActive || isTrial)) {
+      // User dismissed the dialog without completing — cancel the pending change
+      await secureApiCall<unknown>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_PENDING_CANCEL, { method: "DELETE" })
+    }
+    checkoutCompletedRef.current = false
+    setSelectedPlan(null)
+    setError(null)
   }
 
   const handleCopyPix = async () => {
@@ -188,6 +233,14 @@ export default function SubscriptionPage() {
   const visiblePlans = (isActive || isTrial)
     ? plans?.filter((p) => p.monthlyPrice > currentPrice)
     : plans
+
+  // Label for action button
+  const actionLabel = (plan: SubscriptionPlanDto) => {
+    const isCurrent = plan.id === subscription?.plan?.id
+    if (isCurrent && canResubscribe) return "Reassinar"
+    if (isActive || isTrial) return "Fazer upgrade"
+    return "Assinar"
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -345,11 +398,11 @@ export default function SubscriptionPage() {
                     <span className="font-bold text-sm">{plan.name}</span>
                     {isCurrent && isActive && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
                   </div>
-                  {isPlanPromoActive(plan) ? (
+                  {isResolvedPromoActive(plan) ? (
                     <div className="mb-1">
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-xl font-black">
-                          {plan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          {getResolvedPrice(plan).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                         </span>
                         <span className="text-xs font-normal text-muted-foreground">/mês</span>
                         <span className="text-xs text-muted-foreground line-through">
@@ -363,10 +416,17 @@ export default function SubscriptionPage() {
                       )}
                     </div>
                   ) : (
-                    <p className="text-xl font-black mb-1">
-                      {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      <span className="text-xs font-normal text-muted-foreground">/mês</span>
-                    </p>
+                    <div className="mb-1">
+                      <p className="text-xl font-black">
+                        {getResolvedPrice(plan).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        <span className="text-xs font-normal text-muted-foreground">/mês</span>
+                      </p>
+                      {isPlanPromoActive(plan) && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Promoção disponível apenas para novos clientes e upgrades
+                        </p>
+                      )}
+                    </div>
                   )}
                   <p className="text-xs text-muted-foreground line-clamp-2">{plan.description}</p>
                   <div className="mt-3 space-y-1 text-xs text-muted-foreground">
@@ -398,7 +458,7 @@ export default function SubscriptionPage() {
                   </div>
                   {!isDisabled && (
                     <div className="mt-3 text-xs font-semibold text-primary flex items-center gap-1">
-                      {isCurrent && canResubscribe ? "Reassinar" : isActive ? "Fazer upgrade" : "Assinar"} <ArrowRight className="h-3 w-3" />
+                      {actionLabel(plan)} <ArrowRight className="h-3 w-3" />
                     </div>
                   )}
                 </button>
@@ -412,10 +472,15 @@ export default function SubscriptionPage() {
       <ModuleInfoDialog moduleKey={openModuleKey} onClose={() => setOpenModuleKey(null)} />
 
       {/* Dialog de confirmação */}
-      <Dialog open={!!selectedPlan} onOpenChange={(o) => { if (!o) { setSelectedPlan(null); setError(null) } }}>
+      <Dialog
+        open={!!selectedPlan}
+        onOpenChange={(o) => { if (!o) { handleCheckoutDialogClose() } }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Confirmar assinatura</DialogTitle>
+            <DialogTitle>
+              {(isActive || isTrial) ? "Confirmar troca de plano" : "Confirmar assinatura"}
+            </DialogTitle>
             <DialogDescription>
               Escolha como prefere pagar.
             </DialogDescription>
@@ -423,11 +488,11 @@ export default function SubscriptionPage() {
           <div className="space-y-4 mt-2">
             <div className="rounded-xl border border-border bg-muted/40 p-4">
               <p className="font-bold">{selectedPlan?.name}</p>
-              {selectedPlan && isPlanPromoActive(selectedPlan) ? (
+              {selectedPlan && isResolvedPromoActive(selectedPlan) ? (
                 <div className="mt-1">
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-black">
-                      {selectedPlan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      {getResolvedPrice(selectedPlan).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       <span className="text-sm font-normal text-muted-foreground">/mês</span>
                     </p>
                     <span className="text-sm text-muted-foreground line-through">
@@ -439,10 +504,17 @@ export default function SubscriptionPage() {
                   </p>
                 </div>
               ) : (
-                <p className="text-2xl font-black mt-1">
-                  {selectedPlan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                  <span className="text-sm font-normal text-muted-foreground">/mês</span>
-                </p>
+                <div className="mt-1">
+                  <p className="text-2xl font-black">
+                    {selectedPlan ? getResolvedPrice(selectedPlan).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : ""}
+                    <span className="text-sm font-normal text-muted-foreground">/mês</span>
+                  </p>
+                  {selectedPlan && isPlanPromoActive(selectedPlan) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Promoção disponível apenas para novos clientes e upgrades
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

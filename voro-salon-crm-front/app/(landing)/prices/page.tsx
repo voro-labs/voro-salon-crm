@@ -28,10 +28,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { API_CONFIG, apiCall, getAuthToken } from "@/lib/api"
+import { API_CONFIG, apiCall, secureApiCall, getAuthToken } from "@/lib/api"
 import { getClientBranding, getEstablishmentTypeByHostname } from "@/lib/branding"
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
-import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto } from "@/types/subscription.interface"
+import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto, ResolvedPlanPriceDto } from "@/types/subscription.interface"
 import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ColorSchemePicker } from "@/components/color-scheme-picker"
@@ -997,9 +997,12 @@ interface PlanCardProps {
   showPromoDate?: boolean
   onSelect: (plan: SubscriptionPlanDto) => void
   onModuleInfo: (key: string) => void
+  displayPrice?: number
 }
 
-function PlanCard({ plan, popular, showPromoDate = true, onSelect, onModuleInfo }: PlanCardProps) {
+function PlanCard({ plan, popular, showPromoDate = true, onSelect, onModuleInfo, displayPrice }: PlanCardProps) {
+  const resolvedPrice = displayPrice ?? (isPlanPromoActive(plan) ? plan.promoPrice! : plan.monthlyPrice)
+  const promoActive = resolvedPrice < plan.monthlyPrice
   type FeatureItem = { label: string; moduleKey?: string; highlight?: boolean }
 
   const featureList: FeatureItem[] = [
@@ -1050,7 +1053,7 @@ function PlanCard({ plan, popular, showPromoDate = true, onSelect, onModuleInfo 
       )}
       <CardHeader className="pb-4 pt-8">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{plan.name}</p>
-        {isPlanPromoActive(plan) && (
+        {promoActive && (
           <div className="flex items-center gap-1.5 mt-2">
             <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
               Oferta
@@ -1064,20 +1067,23 @@ function PlanCard({ plan, popular, showPromoDate = true, onSelect, onModuleInfo 
         )}
         <div className="flex items-end gap-1 mt-2">
           <span className="text-4xl font-black text-foreground">
-            {isPlanPromoActive(plan)
-              ? plan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-              : plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            {resolvedPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </span>
           <span className="text-muted-foreground mb-1">/mês</span>
-          {isPlanPromoActive(plan) && (
+          {promoActive && (
             <span className="text-sm text-muted-foreground line-through mb-1">
               {plan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
             </span>
           )}
         </div>
+        {!promoActive && isPlanPromoActive(plan) && (
+          <p className="text-[10px] text-muted-foreground -mt-1">
+            Promoção disponível apenas para novos clientes e upgrades
+          </p>
+        )}
         {popular && (
           <p className="text-xs text-muted-foreground -mt-1">
-            ≈ R$ {((isPlanPromoActive(plan) ? plan.promoPrice! : plan.monthlyPrice) / 30).toFixed(2)}/dia
+            ≈ R$ {(resolvedPrice / 30).toFixed(2)}/dia
           </p>
         )}
         <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
@@ -1182,6 +1188,13 @@ export default function PrecosPage() {
   const [pixStatus, setPixStatus] = useState<"pending" | "approved" | "failed">("pending")
   const [copied, setCopied] = useState(false)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // checkoutCompleted — used to skip DELETE /pending-change when checkout actually proceeded
+  const checkoutCompletedRef = useRef(false)
+  // Auth state for authenticated users visiting this page directly
+  const [authToken, setAuthToken] = useState<string | null>(null)
+  const [resolvedPrices, setResolvedPrices] = useState<ResolvedPlanPriceDto[]>([])
+  // Active subscription tracking for authenticated users
+  const [activeSubscription, setActiveSubscription] = useState<{ status: string; tenantId: string | null } | null>(null)
 
   // Navbar scroll-aware
   const { scrollY } = useScroll()
@@ -1199,8 +1212,10 @@ export default function PrecosPage() {
   const springHeroY = useSpring(heroY, { stiffness: 100, damping: 30 })
 
   useEffect(() => {
-    if (getAuthToken()) router.replace("/dashboard")
-  }, [router])
+    const token = getAuthToken()
+    setAuthToken(token)
+    // Note: do NOT redirect authenticated users — they may be upgrading their plan
+  }, [])
 
   useEffect(() => {
     const trackingKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid"]
@@ -1220,6 +1235,28 @@ export default function PrecosPage() {
         if (!res.hasError && res.data) setPlans(res.data)
       })
       .finally(() => setLoadingPlans(false))
+  }, [])
+
+  // Fetch resolved prices (user-specific). Falls back to plan raw prices on 401/error.
+  useEffect(() => {
+    const token = getAuthToken()
+    if (!token) return
+    secureApiCall<ResolvedPlanPriceDto[]>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_RESOLVED_PRICES, { method: "GET" })
+      .then((res) => {
+        if (!res.hasError && res.data) setResolvedPrices(res.data)
+      })
+      .catch(() => { /* fall back to raw prices */ })
+  }, [])
+
+  // Fetch current subscription if authenticated, to determine if we should use change-plan endpoint
+  useEffect(() => {
+    const token = getAuthToken()
+    if (!token) return
+    secureApiCall<{ status: string; tenantId: string | null }>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_ME, { method: "GET" })
+      .then((res) => {
+        if (!res.hasError && res.data) setActiveSubscription(res.data)
+      })
+      .catch(() => { /* ignore */ })
   }, [])
 
   // Auto-play entre tabs do product preview
@@ -1254,7 +1291,7 @@ export default function PrecosPage() {
             setTimeout(() => {
               router.push("/prices/feedback?trial=false&pix=true")
             }, 2000)
-          } else if (s === "pastdue" || s === "cancelled" || s === "inactive") {
+          } else if (s === "cancelled") {
             setPixStatus("failed")
             stopPolling()
           }
@@ -1270,6 +1307,38 @@ export default function PrecosPage() {
     await navigator.clipboard.writeText(pixData.qrCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // ── Resolved price helpers ────────────────────────────────────────────────
+
+  function getResolvedPrice(plan: SubscriptionPlanDto): number {
+    const found = resolvedPrices.find((r) => r.planId === plan.id)
+    if (found) return found.displayPrice
+    // Fallback to plan's raw promo or full price
+    return isPlanPromoActive(plan) ? plan.promoPrice! : plan.monthlyPrice
+  }
+
+  function isResolvedPromoActive(plan: SubscriptionPlanDto): boolean {
+    return getResolvedPrice(plan) < plan.monthlyPrice
+  }
+
+  // Whether the authenticated user has an active or trial subscription
+  const hasActiveSubscription = activeSubscription
+    ? (activeSubscription.status === "Active" || activeSubscription.status === "Trial")
+    : false
+
+  // Cancel any pending change when the checkout dialog closes without completion
+  const handleCheckoutDialogClose = async () => {
+    if (!checkoutCompletedRef.current && authToken && hasActiveSubscription) {
+      await secureApiCall<unknown>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_PENDING_CANCEL, { method: "DELETE" })
+    }
+    checkoutCompletedRef.current = false
+    setSelectedPlan(null)
+    setTermsAccepted(false)
+    setError(null)
+    setCouponCode("")
+    setCouponResult(null)
+    setCouponError(null)
   }
 
   const handleValidateCoupon = async () => {
@@ -1332,7 +1401,13 @@ export default function PrecosPage() {
         }
       } catch { }
 
-      const res = await apiCall<CheckoutResultDto>(API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT, {
+      // Use change-plan endpoint when the user already has an active/trial subscription
+      const endpoint = hasActiveSubscription
+        ? API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHANGE_PLAN
+        : API_CONFIG.ENDPOINTS.SUBSCRIPTION_CHECKOUT
+
+      const caller = authToken ? secureApiCall : apiCall
+      const res = await caller<CheckoutResultDto>(endpoint, {
         method: "POST",
         body: JSON.stringify(body),
       })
@@ -1342,8 +1417,10 @@ export default function PrecosPage() {
       }
       try { localStorage.removeItem("voro_tracking") } catch { }
       if (res.data.isTrial) {
+        checkoutCompletedRef.current = true
         router.push("/prices/feedback?trial=true")
       } else if (res.data.pixQrCode) {
+        checkoutCompletedRef.current = true
         setPixData({
           subscriptionId: res.data.subscriptionId,
           qrCode: res.data.pixQrCode,
@@ -1353,6 +1430,7 @@ export default function PrecosPage() {
         setPixStatus("pending")
         startPixPolling(res.data.subscriptionId)
       } else {
+        checkoutCompletedRef.current = true
         window.location.href = res.data.checkoutUrl!
       }
     } catch {
@@ -1438,15 +1516,15 @@ export default function PrecosPage() {
             </Badge>
           </motion.div>
 
-          {/* Faixa de promoção — aparece quando há promo ativa nos planos */}
-          {!loadingPlans && plans.some(isPlanPromoActive) && (() => {
-            const promoPlans = plans.filter(isPlanPromoActive)
+          {/* Faixa de promoção — aparece quando há promo ativa para este usuário */}
+          {!loadingPlans && plans.some((p) => isResolvedPromoActive(p)) && (() => {
+            const promoPlans = plans.filter((p) => isResolvedPromoActive(p))
             const maxTrialDays = Math.max(...promoPlans.map((p) => p.defaultTrialDays ?? 0), 0)
             const earliestEnd = promoPlans
               .map((p) => p.promoEndsAt ?? null)
               .filter(Boolean)
               .sort()[0] ?? null
-            const lowestPromo = Math.min(...promoPlans.map((p) => p.promoPrice!))
+            const lowestPromo = Math.min(...promoPlans.map((p) => getResolvedPrice(p)))
 
             return (
               <motion.div
@@ -2398,9 +2476,9 @@ export default function PrecosPage() {
             </motion.p>
 
             {(() => {
-              const promoPlans = plans.filter(isPlanPromoActive)
+              const promoPlans = plans.filter((p) => isResolvedPromoActive(p))
               if (promoPlans.length === 0) return null
-              // Usa a menor data de expiração entre os planos com promo
+              // Usa a menor data de expiração entre os planos com promo resolvida
               const earliest = promoPlans
                 .map((p) => p.promoEndsAt ?? null)
                 .filter(Boolean)
@@ -2416,27 +2494,31 @@ export default function PrecosPage() {
               viewport={{ once: true, margin: "-60px" }}
             >
               {(() => {
-                // Se todos os planos com promo têm a mesma data, não repete a data nos cards
+                // Se todos os planos com promo resolvida têm a mesma data, não repete a data nos cards
                 const promoEndDates = plans
-                  .filter(isPlanPromoActive)
+                  .filter((p) => isResolvedPromoActive(p))
                   .map((p) => p.promoEndsAt ?? "")
                   .filter(Boolean)
                 const allSamePromoDate = new Set(promoEndDates).size <= 1
-                return plans.map((plan, i) => (
-                  <motion.div
-                    key={plan.id}
-                    variants={fadeUp}
-                    whileHover={{ y: -4, transition: { type: "spring", stiffness: 400, damping: 25 } }}
-                  >
-                    <PlanCard
-                      plan={plan}
-                      popular={i === 1}
-                      showPromoDate={!allSamePromoDate}
-                      onSelect={setSelectedPlan}
-                      onModuleInfo={setOpenModuleKey}
-                    />
-                  </motion.div>
-                ))
+                return plans.map((plan, i) => {
+                  const rp = resolvedPrices.find((r) => r.planId === plan.id)
+                  return (
+                    <motion.div
+                      key={plan.id}
+                      variants={fadeUp}
+                      whileHover={{ y: -4, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+                    >
+                      <PlanCard
+                        plan={plan}
+                        popular={i === 1}
+                        showPromoDate={!allSamePromoDate}
+                        onSelect={setSelectedPlan}
+                        onModuleInfo={setOpenModuleKey}
+                        displayPrice={rp?.displayPrice}
+                      />
+                    </motion.div>
+                  )
+                })
               })()}
             </motion.div>
           </>
@@ -2568,16 +2650,7 @@ export default function PrecosPage() {
       {/* ── Checkout Dialog ── */}
       <Dialog
         open={!!selectedPlan}
-        onOpenChange={(o) => {
-          if (!o) {
-            setSelectedPlan(null)
-            setTermsAccepted(false)
-            setError(null)
-            setCouponCode("")
-            setCouponResult(null)
-            setCouponError(null)
-          }
-        }}
+        onOpenChange={(o) => { if (!o) { handleCheckoutDialogClose() } }}
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -2585,12 +2658,12 @@ export default function PrecosPage() {
             <DialogDescription asChild>
               <div>
                 <span>
-                  {selectedPlan && isPlanPromoActive(selectedPlan)
-                    ? selectedPlan.promoPrice!.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                    : selectedPlan?.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  {selectedPlan
+                    ? getResolvedPrice(selectedPlan).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                    : ""}
                   /mês
                 </span>
-                {selectedPlan && isPlanPromoActive(selectedPlan) && (
+                {selectedPlan && isResolvedPromoActive(selectedPlan) && (
                   <span className="ml-2 text-muted-foreground line-through text-xs">
                     {selectedPlan.monthlyPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </span>
@@ -2600,9 +2673,14 @@ export default function PrecosPage() {
                     — {trialDays} dias de trial grátis incluídos
                   </span>
                 )}
-                {selectedPlan && isPlanPromoActive(selectedPlan) && (
+                {selectedPlan && isResolvedPromoActive(selectedPlan) && (
                   <p className="text-xs text-green-600 dark:text-green-400 font-semibold mt-1">
                     Preço promocional garantido enquanto você mantiver a assinatura ativa
+                  </p>
+                )}
+                {selectedPlan && !isResolvedPromoActive(selectedPlan) && isPlanPromoActive(selectedPlan) && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Promoção disponível apenas para novos clientes e upgrades
                   </p>
                 )}
               </div>

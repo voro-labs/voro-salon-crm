@@ -59,3 +59,8 @@ export interface CouponValidationResultDto {
   trialDays: number
   description: string | null
 }
+
+export interface ResolvedPlanPriceDto {
+  planId: string
+  displayPrice: number
+}
