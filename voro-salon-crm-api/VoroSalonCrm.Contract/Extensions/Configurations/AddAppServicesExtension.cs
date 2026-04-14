@@ -93,6 +93,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
             services.AddScoped<ITenantSubscriptionRepository, TenantSubscriptionRepository>();
             services.AddScoped<ISubscriptionCouponRepository, SubscriptionCouponRepository>();
+            services.AddScoped<IPendingPlanChangeRepository, PendingPlanChangeRepository>();
             services.AddScoped<IPushTokenRepository, PushTokenRepository>();
             services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
             services.AddScoped<IClientMembershipPlanRepository, ClientMembershipPlanRepository>();
@@ -140,6 +141,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddHostedService<AppointmentReminderBackgroundService>();
             services.AddHostedService<MembershipExpirationNotificationJob>();
             services.AddHostedService<ExpiredCheckoutCleanupJob>();
+            services.AddHostedService<ExpiredPendingPlanChangeCleanupJob>();
 
             return services;
         }

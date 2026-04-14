@@ -72,6 +72,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<IntegrationAuditLog> IntegrationAuditLogs { get; set; }
 
         public DbSet<BookingFunnelSession> BookingFunnelSessions { get; set; }
+        public DbSet<PendingPlanChange> PendingPlanChanges { get; set; }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -871,6 +872,18 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             builder.Entity<ClientRating>().HasQueryFilter(cr =>
                 cr.TenantId == _currentUser.TenantId);
+
+            // ---------------------------
+            // PENDING PLAN CHANGE
+            // ---------------------------
+            builder.Entity<PendingPlanChange>(e =>
+            {
+                e.ToTable("PendingPlanChanges");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.SubscriptionSnapshot).HasMaxLength(4000);
+                e.HasIndex(x => x.TenantId);
+                e.HasIndex(x => x.ExpiresAt);
+            });
         }
     }
 }

@@ -174,5 +174,67 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpPost("change-plan")]
+        [Authorize]
+        public async Task<IActionResult> ChangePlan([FromBody] CreateCheckoutDto dto)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var result = await subscriptionService.InitiatePlanChangeAsync(tenantId, dto);
+                return ResponseViewModel<CheckoutResultDto>
+                    .SuccessWithMessage("Plan change initiated.", result)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("pending-change")]
+        [Authorize]
+        public async Task<IActionResult> CancelPendingChange()
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                await subscriptionService.CancelPendingPlanChangeAsync(tenantId);
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Pending plan change cancelled.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("plans/resolved-prices")]
+        [Authorize]
+        public async Task<IActionResult> GetResolvedPrices()
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var plans = await subscriptionService.GetAllPlansAsync();
+
+                var resolvedPrices = new List<object>();
+                foreach (var plan in plans)
+                {
+                    var displayPrice = await subscriptionService.ResolveDisplayPriceAsync(tenantId, plan.Id);
+                    resolvedPrices.Add(new { planId = plan.Id, displayPrice });
+                }
+
+                return ResponseViewModel<IEnumerable<object>>
+                    .SuccessWithMessage("Resolved prices retrieved.", resolvedPrices)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }

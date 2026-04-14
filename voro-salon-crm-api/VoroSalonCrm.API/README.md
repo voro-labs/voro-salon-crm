@@ -1,7 +1,7 @@
 ASPNETCORE_ENVIRONMENT=Development
 
 # Last Migrations
-dotnet ef migrations add AddWhatsAppEmbeddedSignupFields --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API --output-dir Migrations
+dotnet ef migrations add AddPendingPlanChanges --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API --output-dir Migrations
 
 # Remove Last Migrations
 dotnet ef migrations remove --project VoroSalonCrm.Infrastructure --startup-project VoroSalonCrm.API

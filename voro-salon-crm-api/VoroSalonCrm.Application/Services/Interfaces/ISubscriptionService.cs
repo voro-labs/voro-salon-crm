@@ -1,4 +1,5 @@
 using VoroSalonCrm.Application.DTOs.Subscription;
+using VoroSalonCrm.Domain.Enums;
 
 namespace VoroSalonCrm.Application.Services.Interfaces
 {
@@ -17,5 +18,10 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<IEnumerable<CouponDto>> GetCouponsAsync();
         Task ExtendTrialAsync(Guid tenantId, int additionalDays);
         Task<string?> GetCheckoutStatusAsync(Guid subscriptionId);
+
+        Task<SubscriptionChangeType> DetermineChangeTypeAsync(Guid tenantId, Guid newPlanId);
+        Task<CheckoutResultDto> InitiatePlanChangeAsync(Guid tenantId, CreateCheckoutDto dto);
+        Task CancelPendingPlanChangeAsync(Guid tenantId);
+        Task<decimal> ResolveDisplayPriceAsync(Guid? tenantId, Guid planId);
     }
 }
