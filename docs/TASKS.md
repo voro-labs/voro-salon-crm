@@ -1,113 +1,126 @@
-  ┌──────────────┬───────────────────────────────────────────────────────┐
-  │    Campo     │                        Detalhe                        │                                                                    
-  ├──────────────┼───────────────────────────────────────────────────────┤
-  │ metadataBase │ URL base para OG/Twitter funcionar no WhatsApp        │                                                                    
-  ├──────────────┼───────────────────────────────────────────────────────┤                                                                  
-  │ title        │ Com "São Paulo" e "Emergência 24h" para CTR alto      │                                                                    
-  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
-  │ description  │ 155 chars com keyword nos primeiros 20 chars + CTA    │                                                                    
-  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
-  │ keywords     │ 12 long-tail relevantes                               │                                                                  
-  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
-  │ openGraph    │ Completo com locale: pt_BR                            │                                                                  
-  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
-  │ twitter      │ summary_large_image                                   │                                                                  
-  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
-  │ robots       │ index + follow + googleBot + max-image-preview: large │
-  ├──────────────┼───────────────────────────────────────────────────────┤                                                                    
-  │ JSON-LD      │ VeterinaryCare + LocalBusiness + WebSite + FAQPage    │                                                                  
-  └──────────────┴───────────────────────────────────────────────────────┘                                                                    
-   
-  ---                                                                                                                                         
-  Ações pendentes (alta prioridade)                                                                                                         
-                                               
-  1. Criar /public/og-image.jpg (1200×630px) — essencial para previews no WhatsApp
-  2. Preencher endereço, CEP e coordenadas reais no JSON-LD                                                                                   
-  3. Substituir o domínio placeholder clinicacuidadocompleto.com.br pelo domínio real nos 3 arquivos                                          
-  4. Conectar Google Search Console com o token de verificação                                                                                
-  5. Otimizar o Google Business Profile — maior impacto gratuito para aparecer no mapa                                                        
-                                                                                         
+# Voro Salon CRM — Task Backlog
 
-Recomendação: 5 imagens, uma por   
-produto                              
-        
-Arquivo: /public/og-image-salon.jpg  
-Produto: Voro Salon                  
-Hostname: salon-crm.vorolabs.app  
-─────────────────────────────────────
-─                                    
-Arquivo: /public/og-image-barber.jpg 
-Produto: Voro Barber               
-Hostname: barber-crm.vorolabs.app    
-─────────────────────────────────────
-─                                 
-Arquivo: /public/og-image-nails.jpg
-Produto: Voro Nails                
-Hostname: nails-crm.vorolabs.app  
-─────────────────────────────────────
-─                                 
-Arquivo:                          
-/public/og-image-esthetic.jpg        
-Produto: Voro Estética            
-Hostname: esthetic-crm.vorolabs.app  
-─────────────────────────────────────
-─
-Arquivo: /public/og-image-spa.jpg    
-Produto: Voro SPA                  
-Hostname: spa-crm.vorolabs.app       
-                                      
-Todas com: 1200 × 630 px, formato    
-.jpg, máx. 300 KB                  
-                                      
----                                  
-Conteúdo sugerido para cada imagem
-                                      
-Cada OG image deve conter:         
-- Logo do produto (ex: "Voro Salon") 
-- Tagline curta (usando a description
-  do branding.ts)                     
-- Fundo com identidade visual da     
-categoria (cores/ícones relacionados 
-ao segmento)                         
-                                      
-Produto: Voro Salon                  
-Descrição para o designer: "Sistema  
-  para salão de beleza com         
-agendamento                        
-    online e WhatsApp integrado. Teste
-
-  grátis 14 dias."                   
-─────────────────────────────────────
-─                                    
-Produto: Voro Barber                 
-Descrição para o designer: "Sistema
-  para barbearia com agendamento   
-  online e WhatsApp Bot integrado. 
-  Teste grátis 14 dias."
-─────────────────────────────────────
-─                                    
-Produto: Voro Nails
-Descrição para o designer: "Sistema  
-  para studio de unhas e cílios com  
-  agendamento online e WhatsApp
-  integrado. Teste grátis 14 dias."
-─────────────────────────────────────
-─                                    
-Produto: Voro Estética
-Descrição para o designer: "Sistema  
-  para clínica de estética com       
-  agendamento online, anamnese
-digital                            
-    e WhatsApp integrado. Teste grátis
-
-  14 dias."
-─────────────────────────────────────
-─                                    
-Produto: Voro SPA
-Descrição para o designer: "Sistema  
-  para SPA e massagem com agendamento
-
-  online e WhatsApp integrado. Teste
-  grátis 14 dias."                 
+> Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído
 
 ---
+
+## Booking Web (Funil de Agendamento Online)
+
+### Welcome Screen
+- [ ] Exibir imagem de capa + logo do estabelecimento (buscar de `TenantSettings`)
+- [ ] Exibir horários de funcionamento formatados por dia da semana
+- [ ] Exibir mapa embutido (Google Maps iframe ou link) com o endereço do estabelecimento
+- [ ] Fallback gracioso caso o endereço não esteja cadastrado (ocultar seção de mapa)
+
+---
+
+## Melhorias Futuras
+
+### Agendamento com múltiplos serviços
+- [ ] Permitir ao cliente selecionar mais de um serviço por agendamento
+- [ ] Recalcular duração total somando os `DurationMinutes` de cada serviço selecionado
+- [ ] Verificar disponibilidade do slot considerando a duração total acumulada
+- [ ] Exibir resumo dos serviços selecionados + preço total antes de confirmar
+- [ ] Ajustar notificações WhatsApp para listar todos os serviços do agendamento
+- [ ] Fazer esse ajuste no web e mobile + api
+
+---
+
+## WhatsApp — Atendimento com IA
+
+### Contexto e objetivo
+Implementar atendimento conversacional via IA no canal WhatsApp para dois casos de uso distintos:
+
+**Caso 1 — Atendimento para clínicas e salões (produto final)**
+Responde perguntas dos clientes do estabelecimento com base no contexto do tenant:
+horários, serviços, preços, localização, políticas de cancelamento etc.
+
+**Caso 2 — Atendimento de vendas do sistema (uso interno Vorolabs)**
+IA que responde leads interessados no Voro, explica planos, tira dúvidas e
+direciona para o checkout — funciona como SDR automatizado 24/7.
+
+---
+
+### Avaliação de LLMs (custo vs. qualidade)
+
+| Provedor | Modelo sugerido | Custo aprox. | Observação |
+|---|---|---|---|
+| **Google Gemini** | `gemini-1.5-flash` | ~$0.075 / 1M tokens in | Melhor custo-benefício atual, free tier generoso |
+| **OpenAI** | `gpt-4o-mini` | ~$0.15 / 1M tokens in | Qualidade alta, custo médio |
+| **Anthropic** | `claude-haiku-4-5` | ~$0.08 / 1M tokens in | Bom equilíbrio, ótimo para seguir instruções |
+| **Groq** | `llama-3.1-8b` | Gratuito (rate-limited) | Opção zero-custo para MVP/testes |
+
+**Recomendação inicial:** `gemini-1.5-flash` para produção (free tier cobre volume inicial)
+com fallback para `gpt-4o-mini` se precisar de maior qualidade em casos complexos.
+
+---
+
+### Arquitetura proposta
+
+```
+WhatsApp (Webhook) → WhatsAppBotService
+    → IntentRouter
+        ├── intent: agendamento/cancelamento → fluxo programado existente
+        └── intent: pergunta livre → AIConversationService
+                → LLM (Gemini Flash)
+                    + system prompt com contexto do tenant
+                    + histórico da conversa (últimas N mensagens)
+                → responde ao cliente via WhatsApp
+```
+
+**Contexto injetado no system prompt (Caso 1 — estabelecimento):**
+- Nome, endereço, horários de funcionamento
+- Lista de serviços e preços
+- Política de cancelamento / reagendamento
+- Link de agendamento online do tenant
+
+**Contexto injetado no system prompt (Caso 2 — vendas Voro):**
+- Planos disponíveis e preços (buscado da API)
+- Funcionalidades do produto
+- Link de checkout / trial
+- FAQs de objeções comuns ("é caro", "já uso outro sistema", "preciso de nota fiscal")
+
+---
+
+### Tasks de implementação
+
+#### Backend
+- [ ] Criar entidade `AIConversationMessage` (tenantId, phoneNumber, role, content, createdAt)
+- [ ] Criar `IAIConversationRepository` + implementação EF
+- [ ] Criar `AIConversationService` com método `RespondAsync(tenantId, phoneNumber, userMessage)`
+  - Busca histórico das últimas 10 mensagens da conversa
+  - Monta system prompt com contexto do tenant
+  - Chama LLM via HTTP (Gemini Flash ou configurável via `appsettings`)
+  - Persiste mensagem do usuário + resposta da IA
+  - Retorna texto da resposta
+- [ ] Criar `IGeminiService` (ou `ILLMService` agnóstico ao provedor)
+- [ ] Configurar `appsettings.json`: `AISettings:Provider`, `AISettings:ApiKey`, `AISettings:Model`
+- [ ] Integrar `AIConversationService` no `WhatsAppBotService`:
+  - Se a mensagem não corresponder a nenhum intent programado → delegar à IA
+- [ ] Endpoint admin: `GET /api/ai-conversations/{tenantId}` para visualizar histórico
+- [ ] Endpoint admin: `POST /api/ai-conversations/reset/{phoneNumber}` para limpar histórico
+
+#### Caso 2 — SDR Vorolabs (contexto separado)
+- [ ] System prompt dedicado com script de vendas do Voro
+- [ ] Número WhatsApp separado para o bot de vendas
+- [ ] Webhook separado ou roteamento por número destino no mesmo webhook
+- [ ] Dashboard básico de leads atendidos pela IA
+
+#### Frontend (admin)
+- [ ] Tela de configuração da IA por tenant: ativar/desativar, personalizar tom/instruções extras
+- [ ] Visualizador de conversas IA no painel admin
+
+#### Infraestrutura
+- [ ] Variável de ambiente `GEMINI_API_KEY` no deploy
+- [ ] Rate limiting por tenant para evitar abuso (máx. N mensagens IA / hora)
+- [ ] Logging de tokens consumidos por tenant para monitorar custo
+
+---
+
+## Preços Promocionais *(implementado em 2026-04-14)*
+
+- [x] Campos `PromoPrice` e `PromoEndsAt` em `SubscriptionPlan`
+- [x] Campo `LockedPromoPrice` em `TenantSubscription` (preço garantido enquanto renovar)
+- [x] Regra de grace period: perde o preço promocional se não renovar em 7 dias
+- [x] Contador regressivo no hero e na seção de preços da landing page
+- [x] Exibição de preço promo + original riscado em todas as telas (web + mobile)
