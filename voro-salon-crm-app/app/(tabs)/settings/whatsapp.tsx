@@ -26,7 +26,7 @@ interface OnboardingConfig {
 
 function buildSignupUrl(appId: string, configId: string): string {
   const extras = encodeURIComponent(JSON.stringify({ sessionInfoVersion: "3", version: "v4" }))
-  return `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${appId}&config_id=${configId}&extras=${extras}`
+  return `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${appId.trim()}&config_id=${configId.trim()}&extras=${extras}`
 }
 
 export default function WhatsAppSettingsScreen() {
