@@ -21,6 +21,15 @@ import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 
 type Step = 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'NAME' | 'PHONE' | 'CONFIRM' | 'SUCCESS'
 
+interface SelectedService {
+  id: string
+  name: string
+  price: number
+  durationMinutes: number
+  promotionalPrice?: number
+  hasPromotion?: boolean
+}
+
 // ─── Types for public tenant data ────────────────────────────────────────────
 
 interface BusinessHourRange {
@@ -235,6 +244,8 @@ export default function PublicBookingPage() {
     }).catch(() => {})
   }
 
+  const [selectedServices, setSelectedServices] = useState<SelectedService[]>([])
+
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -387,23 +398,48 @@ export default function PublicBookingPage() {
     }
   }
 
-  const handleServiceSelect = async (service: any) => {
-    setForm(p => ({ ...p, serviceId: service.id }))
-    addUserMessage(service.name)
+  const toggleServiceSelection = (service: any) => {
+    setSelectedServices(prev => {
+      const isSelected = prev.some(s => s.id === service.id)
+      if (isSelected) {
+        return prev.filter(s => s.id !== service.id)
+      } else {
+        return [...prev, {
+          id: service.id,
+          name: service.name,
+          price: service.price,
+          durationMinutes: service.durationMinutes,
+          promotionalPrice: service.promotionalPrice,
+          hasPromotion: service.hasPromotion,
+        }]
+      }
+    })
+  }
+
+  const handleServicesConfirm = async () => {
+    if (selectedServices.length === 0) return
+
+    // Keep serviceId for legacy compat (first selected service)
+    setForm(p => ({ ...p, serviceId: selectedServices[0].id }))
+
+    const serviceNames = selectedServices.map(s => s.name).join(", ")
+    addUserMessage(serviceNames)
     setLoading(true)
 
     try {
-      const empRes = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_EMPLOYEES}?tenantSlug=${slug}&serviceId=${service.id}`)
+      // Use first service to look up employees (they qualify for any of the selected services)
+      const firstServiceId = selectedServices[0].id
+      const empRes = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_EMPLOYEES}?tenantSlug=${slug}&serviceId=${firstServiceId}`)
       setEmployees(empRes.data || [])
 
       if (empRes.data && empRes.data.length > 0) {
         addBotMessage("Você tem preferência por algum profissional?")
         setStep('PROFESSIONAL')
-        trackFunnelStep('AWAITING_EMPLOYEE', { serviceId: service.id })
+        trackFunnelStep('AWAITING_EMPLOYEE', { serviceIds: selectedServices.map(s => s.id) })
       } else {
         addBotMessage("Perfeito. Agora, qual dia e hora você prefere?")
         setStep('DATETIME')
-        trackFunnelStep('AWAITING_DATE', { serviceId: service.id })
+        trackFunnelStep('AWAITING_DATE', { serviceIds: selectedServices.map(s => s.id) })
       }
     } catch {
       toast.error("Erro ao buscar profissionais.")
@@ -427,7 +463,15 @@ export default function PublicBookingPage() {
       async function fetchAvailability() {
         setLoadingAvailability(true)
         try {
-          const res = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_AVAILABILITY}?tenantSlug=${slug}&date=${form.date}${form.employeeId && form.employeeId !== 'none' ? `&employeeId=${form.employeeId}` : ""}`)
+          const params = new URLSearchParams({ tenantSlug: String(slug), date: form.date })
+          if (form.employeeId && form.employeeId !== 'none') params.set('employeeId', form.employeeId)
+          // Pass all selected serviceIds so the API sums their durations for slot sizing
+          if (selectedServices.length > 0) {
+            selectedServices.forEach(s => params.append('serviceIds', s.id))
+          } else if (form.serviceId) {
+            params.set('serviceId', form.serviceId)
+          }
+          const res = await apiCall<any[]>(`${API_CONFIG.ENDPOINTS.PUBLIC_AVAILABILITY}?${params.toString()}`)
           setAvailability(res.data || [])
         } catch {
           toast.error("Erro ao carregar horários disponíveis.")
@@ -459,13 +503,18 @@ export default function PublicBookingPage() {
       const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
       const phoneForApi = `${dialCode}${form.phone}`
 
+      const serviceIdsToSend = selectedServices.length > 0
+        ? selectedServices.map(s => s.id)
+        : form.serviceId ? [form.serviceId] : []
+
       const res = await apiCall<any>(API_CONFIG.ENDPOINTS.PUBLIC_BOOKING, {
         method: "POST",
         body: JSON.stringify({
           tenantSlug: slug,
           clientName: form.name,
           clientPhone: phoneForApi,
-          serviceId: form.serviceId,
+          serviceId: form.serviceId || null,
+          serviceIds: serviceIdsToSend,
           employeeId: !form.employeeId || form.employeeId === 'none' ? null : form.employeeId,
           scheduledDateTime,
           description: form.description,
@@ -755,35 +804,71 @@ export default function PublicBookingPage() {
             </form>
           )}
 
-          {step === 'SERVICE' && !loading && (
-            <div className="grid grid-cols-2 gap-2">
-              {services.map(s => (
-                <Button
-                  key={s.id}
-                  variant="outline"
-                  className="h-auto py-3 px-3 flex flex-col items-start gap-1 text-left bg-background hover:bg-primary/5 hover:border-primary hover:text-primary transition-all"
-                  onClick={() => handleServiceSelect(s)}
-                >
-                  <div className="flex items-center gap-1.5 w-full">
-                    <span className="font-bold text-sm line-clamp-1 flex-1 text-left">{s.name}</span>
-                    {s.hasPromotion && (
-                      <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">PROMOÇÃO</span>
-                    )}
+          {step === 'SERVICE' && !loading && (() => {
+            const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0)
+            const totalPrice = selectedServices.reduce((sum, s) => sum + (s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price), 0)
+
+            return (
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {services.map(s => {
+                    const isSelected = selectedServices.some(sel => sel.id === s.id)
+                    return (
+                      <Button
+                        key={s.id}
+                        variant={isSelected ? "default" : "outline"}
+                        className={cn(
+                          "h-auto py-3 px-3 flex flex-col items-start gap-1 text-left transition-all",
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-primary/5 hover:border-primary hover:text-primary"
+                        )}
+                        onClick={() => toggleServiceSelection(s)}
+                      >
+                        <div className="flex items-center gap-1.5 w-full">
+                          <span className="font-bold text-sm line-clamp-1 flex-1 text-left">{s.name}</span>
+                          {s.hasPromotion && (
+                            <span className={cn(
+                              "text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0",
+                              isSelected ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
+                            )}>PROMOÇÃO</span>
+                          )}
+                        </div>
+                        {s.hasPromotion && s.promotionalPrice ? (
+                          <span className="text-[10px]">
+                            <span className={cn("line-through", isSelected ? "text-primary-foreground/60" : "text-muted-foreground")}>{s.durationMinutes} min • R$ {s.price.toFixed(2)}</span>
+                            {" "}<span className={isSelected ? "text-white font-bold" : "text-emerald-600 font-bold"}>R$ {s.promotionalPrice.toFixed(2)}</span>
+                          </span>
+                        ) : (
+                          <span className={cn("text-[10px]", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                            {s.durationMinutes} min • R$ {s.price.toFixed(2)}
+                          </span>
+                        )}
+                      </Button>
+                    )
+                  })}
+                </div>
+
+                {selectedServices.length > 0 && (
+                  <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="font-medium">
+                      {selectedServices.length} serviço{selectedServices.length > 1 ? 's' : ''} • {totalDuration} min
+                    </span>
+                    <span className="font-bold text-foreground">R$ {totalPrice.toFixed(2)}</span>
                   </div>
-                  {s.hasPromotion && s.promotionalPrice ? (
-                    <span className="text-[10px]">
-                      <span className="line-through text-muted-foreground">{s.durationMinutes} min • R$ {s.price.toFixed(2)}</span>
-                      {" "}<span className="text-emerald-600 font-bold">R$ {s.promotionalPrice.toFixed(2)}</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">
-                      {s.durationMinutes} min • R$ {s.price.toFixed(2)}
-                    </span>
-                  )}
+                )}
+
+                <Button
+                  className="w-full"
+                  disabled={selectedServices.length === 0}
+                  onClick={handleServicesConfirm}
+                >
+                  Confirmar {selectedServices.length > 0 ? `(${selectedServices.length})` : ""}
+                  <Send className="ml-2 h-4 w-4" />
                 </Button>
-              ))}
-            </div>
-          )}
+              </div>
+            )
+          })()}
 
           {step === 'PROFESSIONAL' && !loading && (
             <div className="flex flex-col gap-2">
@@ -880,8 +965,32 @@ export default function PublicBookingPage() {
               {/* Resumo do agendamento */}
               {form.date && form.time && (
                 <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 flex flex-col gap-1.5">
-                  {form.serviceId && services.find(s => s.id === form.serviceId) && (() => {
-                    const svc = services.find(s => s.id === form.serviceId)!
+                  {selectedServices.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {selectedServices.map((svc, idx) => (
+                        <div key={svc.id} className="flex items-center justify-between gap-2 text-sm">
+                          <span className={cn("font-semibold text-foreground", idx > 0 && "text-muted-foreground font-normal")}>{svc.name}</span>
+                          {svc.hasPromotion && svc.promotionalPrice != null ? (
+                            <span className="text-xs shrink-0">
+                              <span className="line-through text-muted-foreground">R$ {svc.price.toFixed(2)}</span>
+                              {" "}<span className="text-emerald-600 font-bold">R$ {svc.promotionalPrice.toFixed(2)}</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground shrink-0">R$ {svc.price.toFixed(2)}</span>
+                          )}
+                        </div>
+                      ))}
+                      {selectedServices.length > 1 && (
+                        <div className="flex items-center justify-between text-xs font-bold border-t border-border/50 pt-1 mt-0.5">
+                          <span className="text-foreground">Total</span>
+                          <span className="text-foreground">
+                            R$ {selectedServices.reduce((sum, s) => sum + (s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price), 0).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : form.serviceId && services.find((s: any) => s.id === form.serviceId) ? (() => {
+                    const svc = services.find((s: any) => s.id === form.serviceId)!
                     return (
                       <div className="flex items-center gap-2 text-sm flex-wrap">
                         <span className="font-semibold text-foreground">{svc.name}</span>
@@ -893,7 +1002,7 @@ export default function PublicBookingPage() {
                         ) : null}
                       </div>
                     )
-                  })()}
+                  })() : null}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
                     <span>{format(new Date(`${form.date}T00:00:00`), "dd/MM/yyyy")} às {form.time}</span>

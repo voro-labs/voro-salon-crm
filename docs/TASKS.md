@@ -3,41 +3,40 @@
 ## Booking Web (Funil de Agendamento Online)
 
 ### Welcome Screen
-- [ ] Exibir imagem de capa + logo do estabelecimento (buscar de `TenantSettings`)
-- [ ] Exibir horários de funcionamento formatados por dia da semana
-- [ ] Exibir mapa embutido (Google Maps iframe ou link) com o endereço do estabelecimento
-- [ ] Fallback gracioso caso o endereço não esteja cadastrado (ocultar seção de mapa)
+- [x] Exibir imagem de capa + logo do estabelecimento (buscar de `TenantSettings`)
+- [x] Exibir horários de funcionamento formatados por dia da semana
+- [x] Exibir mapa embutido (Google Maps iframe ou link) com o endereço do estabelecimento
+- [x] Fallback gracioso caso o endereço não esteja cadastrado (ocultar seção de mapa)
 
 ---
 
 ## Melhorias Futuras
 
 ### Agendamento com múltiplos serviços
-- [ ] Permitir ao cliente selecionar mais de um serviço por agendamento
-- [ ] Recalcular duração total somando os `DurationMinutes` de cada serviço selecionado
-- [ ] Verificar disponibilidade do slot considerando a duração total acumulada
-- [ ] Exibir resumo dos serviços selecionados + preço total antes de confirmar
-- [ ] Ajustar notificações WhatsApp para listar todos os serviços do agendamento
-- [ ] Fazer esse ajuste no web e mobile + api
+- [x] Permitir ao cliente selecionar mais de um serviço por agendamento
+- [x] Recalcular duração total somando os `DurationMinutes` de cada serviço selecionado
+- [x] Verificar disponibilidade do slot considerando a duração total acumulada
+- [x] Exibir resumo dos serviços selecionados + preço total antes de confirmar
+- [x] Ajustar notificações WhatsApp para listar todos os serviços do agendamento
+- [x] Fazer esse ajuste no web e mobile + api
 
 
-### Tasks de implementação
+### Tasks de implementação — IA WhatsApp Bot
 
 #### Backend
-- [ ] Criar entidade `AIConversationMessage` (tenantId, phoneNumber, role, content, createdAt)
-- [ ] Criar `IAIConversationRepository` + implementação EF
-- [ ] Criar `AIConversationService` com método `RespondAsync(tenantId, phoneNumber, userMessage)`
+- [x] Criar entidade `AIConversationMessage` (tenantId, phoneNumber, role, content, createdAt)
+- [x] Criar `IAIConversationRepository` + implementação EF
+- [x] Criar `AIConversationService` com método `RespondAsync(tenantId, phoneNumber, userMessage)`
   - Busca histórico das últimas 10 mensagens da conversa
   - Monta system prompt com contexto do tenant
   - Chama LLM via HTTP (Gemini Flash ou configurável via `appsettings`)
   - Persiste mensagem do usuário + resposta da IA
   - Retorna texto da resposta
-- [ ] Criar `IGeminiService` (ou `ILLMService` agnóstico ao provedor)
-- [ ] Configurar `appsettings.json`: `AISettings:Provider`, `AISettings:ApiKey`, `AISettings:Model`
-- [ ] Integrar `AIConversationService` no `WhatsAppBotService`:
-  - Se a mensagem não corresponder a nenhum intent programado → delegar à IA
-- [ ] Endpoint admin: `GET /api/ai-conversations/{tenantId}` para visualizar histórico
-- [ ] Endpoint admin: `POST /api/ai-conversations/reset/{phoneNumber}` para limpar histórico
+- [x] Criar `IGeminiService` (ou `ILLMService` agnóstico ao provedor)
+- [x] Configurar `appsettings.json`: `AISettings:Provider`, `AISettings:ApiKey`, `AISettings:Model`
+- [x] Integrar `AIConversationService` no `WhatsAppBotService` (fallback no `default:` do state machine)
+- [x] Endpoint admin: `GET /admin/ai-conversations/{tenantId}` para visualizar histórico
+- [x] Endpoint admin: `POST /admin/ai-conversations/reset` para limpar histórico
 
 #### Caso 2 — SDR Vorolabs (contexto separado)
 - [ ] System prompt dedicado com script de vendas do Voro
@@ -50,7 +49,7 @@
 - [ ] Visualizador de conversas IA no painel admin
 
 #### Infraestrutura
-- [ ] Variável de ambiente `GEMINI_API_KEY` no deploy
+- [ ] Variável de ambiente `GEMINI_API_KEY` no deploy (definir `AISettings:ApiKey`)
 - [ ] Rate limiting por tenant para evitar abuso (máx. N mensagens IA / hora)
 - [ ] Logging de tokens consumidos por tenant para monitorar custo
 
@@ -105,3 +104,13 @@
 
 #### Bug Pix — Erro MercadoPago "Collector user without key enabled for QR render"
 - [ ] Problema de configuração da conta MercadoPago — habilitar QR Code no painel MP (não é código)
+
+#### Bug — WhatsApp Connect
+- [x] URL do Embedded Signup corrigida: `extras` agora inclui `{"sessionInfoVersion":"3","version":"v4"}` e é concatenada corretamente na URL (estava sendo montada mas não usada) — corrigido em `settings/page.tsx`, `settings/whatsapp/page.tsx` e `whatsapp.tsx` mobile
+- [ ] "Sorry, this content isn't available right now" — verificar configuração do App no Meta Business Manager (App ID, Config ID, permissões do app)
+
+#### Bug Crítico — Duplicação de agendamento
+- [x] Idempotency check em `CreateBookingAsync`: retorna agendamento existente se criado nos últimos 30s com mesmo tenant+client+employee+horário
+- [x] Unique index parcial no banco: `IX_Appointments_TenantId_EmployeeId_ScheduledAt` (filter: `EmployeeId IS NOT NULL`)
+- [x] Migration `20260414210000_AddAppointmentUniqueIndex.cs` + snapshot atualizado
+- [x] Frontend web e mobile: botão já estava com `disabled={submitting}` — nenhuma mudança necessária

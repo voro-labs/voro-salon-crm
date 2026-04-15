@@ -331,6 +331,10 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.HasIndex(a => a.ClientId);
                 b.HasIndex(a => a.ServiceId);
                 b.HasIndex(a => new { a.TenantId, a.ScheduledDateTime });
+                b.HasIndex(a => new { a.TenantId, a.EmployeeId, a.ScheduledDateTime })
+                 .IsUnique()
+                 .HasDatabaseName("IX_Appointments_TenantId_EmployeeId_ScheduledAt")
+                 .HasFilter("\"EmployeeId\" IS NOT NULL");
 
                 b.HasOne(p => p.Tenant)
                  .WithMany()

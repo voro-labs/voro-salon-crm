@@ -6,6 +6,7 @@ using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
+using AppointmentServiceEntity = VoroSalonCrm.Domain.Entities.AppointmentService;
 
 namespace VoroSalonCrm.Application.Services
 {
@@ -169,6 +170,22 @@ namespace VoroSalonCrm.Application.Services
                 await unitOfWork.CommitAsync();
             }
 
+            // --- Idempotency check: return existing appointment if a duplicate arrives within 30 seconds ---
+            var scheduledUtc = dto.ScheduledDateTime.ToUniversalTime();
+            var deduplicationWindow = DateTimeOffset.UtcNow.AddSeconds(-30);
+            var existingAppointment = await appointmentRepository
+                .Query(a =>
+                    a.TenantId == tenant.Id &&
+                    a.ClientId == client.Id &&
+                    a.EmployeeId == dto.EmployeeId &&
+                    a.ScheduledDateTime == scheduledUtc &&
+                    a.CreatedAt >= deduplicationWindow)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync();
+
+            if (existingAppointment != null)
+                return new PublicBookingResponseDto(true, "Agendamento realizado com sucesso!", existingAppointment.Id);
+
             // For backward-compat, set ServiceId to the first service
             var primaryService = services[0];
 
@@ -195,7 +212,7 @@ namespace VoroSalonCrm.Application.Services
             // Insert AppointmentServices join records
             foreach (var svc in services)
             {
-                var appointmentService = new AppointmentService
+                var appointmentService = new AppointmentServiceEntity
                 {
                     AppointmentId = appointment.Id,
                     ServiceId = svc.Id,

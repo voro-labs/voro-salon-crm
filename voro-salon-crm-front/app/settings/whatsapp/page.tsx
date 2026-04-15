@@ -82,7 +82,7 @@ export default function WhatsAppTemplatesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const buildSignupUrl = (appId: string, configId: string) => {
-    const extras = encodeURIComponent(JSON.stringify({ setup: {} }))
+    const extras = encodeURIComponent(JSON.stringify({ sessionInfoVersion: "3", version: "v4" }))
     return `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${appId}&config_id=${configId}&extras=${extras}`
   }
 
