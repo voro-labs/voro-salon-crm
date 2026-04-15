@@ -132,10 +132,13 @@ export default function SubscriptionScreen() {
   const currentClients = clientsData?.length ?? 0
   const currentEmployees = employeesData?.length ?? 0
 
-  // Planos disponíveis para assinar (excluindo o atual se ativo)
+  // Planos visíveis na grade:
+  // - Ativo/Trial: apenas planos com preço MAIOR que o atual
+  // - Inativo/Cancelado/PastDue: nenhum — mostramos botão Renovar no hero card
+  const isInactiveOrCancelled = !isActive && !isPastDue
   const currentPrice = sub?.plan?.monthlyPrice ?? 0
   const visiblePlans = plans
-    ? (isActive && !isPastDue ? plans.filter((p) => p.monthlyPrice > currentPrice) : plans)
+    ? (isActive && !isPastDue ? plans.filter((p) => p.monthlyPrice > currentPrice) : [])
     : []
 
   function isPlanPromoActiveCheck(plan: any): boolean {
@@ -309,6 +312,49 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
+        {/* Botão Renovar para assinatura inativa/cancelada */}
+        {!isActive && !isPastDue && planName && isSalonOwner && (
+          <View style={{ marginBottom: 24 }}>
+            <Pressable
+              onPress={() => {
+                const currentPlan = sub?.plan ?? sub
+                if (currentPlan) {
+                  setSelectedPlan(currentPlan)
+                  setPaymentMethod("CreditCard")
+                  checkoutCompletedRef.current = false
+                  setShowMethodModal(true)
+                }
+              }}
+              className="rounded-2xl p-4 items-center flex-row justify-center gap-2"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Ionicons name="reload-outline" size={18} color="#fff" />
+              <Text className="text-white font-bold text-base">Renovar Assinatura</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {isPastDue && isSalonOwner && (
+          <View style={{ marginBottom: 24 }}>
+            <Pressable
+              onPress={() => {
+                const currentPlan = sub?.plan ?? sub
+                if (currentPlan) {
+                  setSelectedPlan(currentPlan)
+                  setPaymentMethod("CreditCard")
+                  checkoutCompletedRef.current = false
+                  setShowMethodModal(true)
+                }
+              }}
+              className="rounded-2xl p-4 items-center flex-row justify-center gap-2"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Ionicons name="reload-outline" size={18} color="#fff" />
+              <Text className="text-white font-bold text-base">Regularizar Pagamento</Text>
+            </Pressable>
+          </View>
+        )}
+
         {/* Limites da Conta */}
         <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
           Limites do Plano Atual
@@ -368,8 +414,8 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        {/* Seleção de planos */}
-        {isSalonOwner && visiblePlans.length > 0 && (
+        {/* Seleção de planos — somente para usuários ativos com upgrades disponíveis */}
+        {isSalonOwner && isActive && !isPastDue && visiblePlans.length > 0 && (
           <>
             <Text className="text-zinc-400 text-xs font-bold uppercase tracking-wider mb-3">
               {isActive && !isPastDue ? "Fazer Upgrade" : "Escolher Plano"}
