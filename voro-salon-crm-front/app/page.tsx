@@ -430,10 +430,10 @@ export default function DashboardPage() {
                   {pastAppointments.length > 0 && !showPastModal && (
                     <button
                       onClick={() => setShowPastModal(true)}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 bg-amber-50 hover:bg-amber-100 border-b border-amber-200 transition-colors text-left"
+                      className="w-full flex items-center gap-2 px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800/50 transition-colors text-left"
                     >
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                      <span className="text-xs font-semibold text-amber-800 flex-1">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex-1">
                         {pastAppointments.length === 1
                           ? "1 agendamento passado pendente"
                           : `${pastAppointments.length} agendamentos passados pendentes`}
@@ -538,8 +538,8 @@ export default function DashboardPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               </div>
               Agendamentos sem atualização
             </DialogTitle>
@@ -562,12 +562,12 @@ export default function DashboardPage() {
                 const date = new Date(apt.scheduledDateTime)
                 const isAptUpdating = updatingId === apt.id
                 return (
-                  <div key={apt.id} className="flex flex-col gap-2 rounded-xl border border-border/50 bg-amber-50/40 p-3">
+                  <div key={apt.id} className="flex flex-col gap-2 rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <span className="text-sm font-semibold text-foreground truncate">{apt.clientName}</span>
                         <span className="text-xs text-muted-foreground truncate">{apt.serviceName || "Sem serviço"}</span>
-                        <span className="text-xs font-medium text-amber-700 flex items-center gap-1 mt-0.5">
+                        <span className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1 mt-0.5">
                           <Clock className="h-3 w-3" />
                           {format(date, "HH:mm")}
                         </span>
@@ -585,7 +585,7 @@ export default function DashboardPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                        className="h-7 text-xs flex-1 border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                         disabled={isAptUpdating}
                         onClick={() => handleStatusUpdate(apt.id, "3")}
                       >
@@ -594,7 +594,7 @@ export default function DashboardPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs flex-1 border-orange-200 text-orange-600 hover:bg-orange-50"
+                        className="h-7 text-xs flex-1 border-orange-200 dark:border-orange-900/60 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                         disabled={isAptUpdating}
                         onClick={() => handleStatusUpdate(apt.id, "4")}
                       >
