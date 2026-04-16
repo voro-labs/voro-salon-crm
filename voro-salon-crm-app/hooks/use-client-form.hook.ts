@@ -9,7 +9,7 @@ export interface NewClientForm {
   phone: string
   email: string
   notes: string
-  birthDate: string
+  birthDate: string | null
 }
 
 const DEFAULT_FORM: NewClientForm = {
@@ -17,7 +17,7 @@ const DEFAULT_FORM: NewClientForm = {
   phone: "",
   email: "",
   notes: "",
-  birthDate: "",
+  birthDate: null,
 }
 
 export interface ClientFormErrors {

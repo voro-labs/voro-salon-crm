@@ -92,8 +92,8 @@ export default function NovoClientePage() {
                 <Input
                   id="birthDate"
                   type="date"
-                  value={form.birthDate}
-                  onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))}
+                  value={form.birthDate || ""}
+                  onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value || null }))}
                 />
               </div>
 

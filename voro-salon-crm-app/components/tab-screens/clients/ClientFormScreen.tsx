@@ -79,8 +79,8 @@ export function ClientFormScreen({ id }: { id?: string }) {
 
             <FormField label="Data de Nascimento">
               <DatePickerInput
-                value={form.birthDate}
-                onChange={(v) => setForm((p) => ({ ...p, birthDate: v ?? "" }))}
+                value={form.birthDate ?? ""}
+                onChange={(v) => setForm((p) => ({ ...p, birthDate: v ?? null }))}
                 placeholder="Selecionar data"
               />
             </FormField>
