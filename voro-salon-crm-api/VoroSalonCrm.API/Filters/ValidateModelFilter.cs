@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using VoroSalonCrm.Shared.ViewModels;
 
 namespace VoroSalonCrm.API.Filters
 {
@@ -9,7 +10,19 @@ namespace VoroSalonCrm.API.Filters
         {
             if (!context.ModelState.IsValid)
             {
-                context.Result = new BadRequestObjectResult(context.ModelState);
+                var errors = context.ModelState
+                    .Where(e => e.Value?.Errors.Count > 0)
+                    .Select(e => $"{e.Key}: {string.Join("; ", e.Value!.Errors.Select(err => err.ErrorMessage))}")
+                    .ToList();
+
+                var message = string.Join(" | ", errors);
+
+                var response = ResponseViewModel<object>.Fail(
+                    string.IsNullOrWhiteSpace(message) ? "Dados inválidos na requisição." : message,
+                    status: 400
+                );
+
+                context.Result = new BadRequestObjectResult(response);
             }
         }
 

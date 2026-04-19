@@ -9,9 +9,24 @@ namespace VoroSalonCrm.API.Middlewares
     public class AuditMiddleware(RequestDelegate next)
     {
         private readonly RequestDelegate _next = next;
+        private const int MaxBodyLength = 8192;
 
         public async Task InvokeAsync(HttpContext context, ICurrentUserService currentUserService, JasmimDbContext dbContext)
         {
+            string? requestBody = null;
+
+            if (HttpMethods.IsPost(context.Request.Method)
+                || HttpMethods.IsPut(context.Request.Method)
+                || HttpMethods.IsPatch(context.Request.Method))
+            {
+                context.Request.EnableBuffering();
+                using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
+                requestBody = await reader.ReadToEndAsync();
+                if (requestBody.Length > MaxBodyLength)
+                    requestBody = requestBody[..MaxBodyLength] + "...[truncated]";
+                context.Request.Body.Position = 0;
+            }
+
             var sw = Stopwatch.StartNew();
 
             await _next(context);
@@ -28,7 +43,8 @@ namespace VoroSalonCrm.API.Middlewares
                 DurationMs = sw.ElapsedMilliseconds,
                 Timestamp = DateTime.UtcNow,
                 UserId = currentUserService.UserId != Guid.Empty ? currentUserService.UserId : null,
-                TenantId = currentUserService.TenantId != Guid.Empty ? currentUserService.TenantId : null
+                TenantId = currentUserService.TenantId != Guid.Empty ? currentUserService.TenantId : null,
+                RequestBody = requestBody
             };
 
             // Limpa qualquer estado pendente deixado pela lógica de negócio antes de salvar

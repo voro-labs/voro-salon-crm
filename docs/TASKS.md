@@ -117,23 +117,5 @@
 
 NOVOS BUGS:
 
-guardar o body no auditlog que foi enviado
-
-nesse erro:
-
-{
-    "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-    "title": "One or more validation errors occurred.",
-    "status": 400,
-    "errors": {
-        "dto": [
-            "The dto field is required."
-        ],
-        "$.birthDate": [
-            "The JSON value could not be converted to VoroSalonCrm.Application.DTOs.CRM.CreateClientDto. Path: $.birthDate | LineNumber: 0 | BytePositionInLine: 86."
-        ]
-    },
-    "traceId": "00-b6b3a350ecef45de2265447557c9a1fc-99faafd328e2acad-00"
-}
-
-não está tratado no front, deve ser tratado no back-end para retornar via responseviewmodel para ser tratado no front direto
+- [x] Guardar o body no AuditLog — adicionado campo `RequestBody` em `RouteAuditLog` e captura no `AuditMiddleware` (POST/PUT/PATCH, max 8KB)
+- [x] Erro de birthDate retorna via `ResponseViewModel` — configurado `InvalidModelStateResponseFactory` no `ApiBehaviorOptions` e atualizado `ValidateModelFilter` para retornar `ResponseViewModel<object>.Fail()` com as mensagens de erro de validação
