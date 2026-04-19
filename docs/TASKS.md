@@ -119,3 +119,5 @@ NOVOS BUGS:
 
 - [x] Guardar o body no AuditLog — adicionado campo `RequestBody` em `RouteAuditLog` e captura no `AuditMiddleware` (POST/PUT/PATCH, max 8KB)
 - [x] Erro de birthDate retorna via `ResponseViewModel` — configurado `InvalidModelStateResponseFactory` no `ApiBehaviorOptions` e atualizado `ValidateModelFilter` para retornar `ResponseViewModel<object>.Fail()` com as mensagens de erro de validação
+
+adicionar suporte de multiple language no sistema e no bot do whatsapp
