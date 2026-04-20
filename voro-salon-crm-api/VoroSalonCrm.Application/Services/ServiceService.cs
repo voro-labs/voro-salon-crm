@@ -30,6 +30,7 @@ namespace VoroSalonCrm.Application.Services
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 Name = dto.Name,
+                Category = dto.Category,
                 Description = dto.Description,
                 Price = dto.Price,
                 DurationMinutes = dto.DurationMinutes,
@@ -39,7 +40,7 @@ namespace VoroSalonCrm.Application.Services
             await _serviceRepository.AddAsync(service);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt);
+            return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt, service.Category);
         }
 
         public async Task<ServiceDto?> GetByIdAsync(Guid id)
@@ -47,7 +48,7 @@ namespace VoroSalonCrm.Application.Services
             var service = await _serviceRepository.GetByIdAsync(false, id);
             if (service == null) return null;
 
-            return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt);
+            return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt, service.Category);
         }
 
         public async Task<IEnumerable<ServiceDto>> GetAllAsync()
@@ -72,7 +73,7 @@ namespace VoroSalonCrm.Application.Services
             {
                 var promo = promotions.FirstOrDefault(p => p.ServiceId == s.Id);
                 return new ServiceDto(s.Id, s.Name, s.Description, s.Price, s.DurationMinutes, s.CreatedAt,
-                    promo?.PromotionalPrice, promo != null);
+                    s.Category, promo?.PromotionalPrice, promo != null);
             });
         }
 
@@ -107,6 +108,7 @@ namespace VoroSalonCrm.Application.Services
                 ?? throw new KeyNotFoundException($"Service '{id}' not found.");
 
             if (dto.Name != null) service.Name = dto.Name;
+            if (dto.Category != null) service.Category = dto.Category;
             if (dto.Description != null) service.Description = dto.Description;
             if (dto.Price.HasValue) service.Price = dto.Price.Value;
             if (dto.DurationMinutes.HasValue) service.DurationMinutes = dto.DurationMinutes.Value;
@@ -116,7 +118,7 @@ namespace VoroSalonCrm.Application.Services
             _serviceRepository.Update(service);
             await _unitOfWork.SaveChangesAsync();
 
-            return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt);
+            return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt, service.Category);
         }
 
         public async Task<bool> DeleteAsync(Guid id)

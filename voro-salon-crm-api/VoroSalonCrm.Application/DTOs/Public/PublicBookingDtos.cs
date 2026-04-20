@@ -28,6 +28,7 @@ namespace VoroSalonCrm.Application.DTOs.Public
         string Name,
         decimal Price,
         int DurationMinutes,
+        string? Category = null,
         decimal? PromotionalPrice = null,
         bool HasPromotion = false
     );

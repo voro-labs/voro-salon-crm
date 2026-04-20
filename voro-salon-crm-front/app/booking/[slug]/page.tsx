@@ -26,6 +26,7 @@ interface SelectedService {
   name: string
   price: number
   durationMinutes: number
+  category?: string | null
   promotionalPrice?: number
   hasPromotion?: boolean
 }
@@ -419,16 +420,24 @@ export default function PublicBookingPage() {
     setSelectedServices(prev => {
       const isSelected = prev.some(s => s.id === service.id)
       if (isSelected) {
+        // Deselect
         return prev.filter(s => s.id !== service.id)
       } else {
-        return [...prev, {
+        // If service has a category, replace any existing selection from same category
+        const newService: SelectedService = {
           id: service.id,
           name: service.name,
           price: service.price,
           durationMinutes: service.durationMinutes,
+          category: service.category,
           promotionalPrice: service.promotionalPrice,
           hasPromotion: service.hasPromotion,
-        }]
+        }
+        if (service.category) {
+          const filtered = prev.filter(s => s.category !== service.category)
+          return [...filtered, newService]
+        }
+        return [...prev, newService]
       }
     })
   }
@@ -848,46 +857,72 @@ export default function PublicBookingPage() {
             const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0)
             const totalPrice = selectedServices.reduce((sum, s) => sum + (s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price), 0)
 
+            // Group services by category; uncategorized go under empty key
+            const grouped: Record<string, any[]> = {}
+            for (const s of services) {
+              const key = s.category || ""
+              if (!grouped[key]) grouped[key] = []
+              grouped[key].push(s)
+            }
+            const hasCategories = Object.keys(grouped).some(k => k !== "")
+
+            const renderServiceButton = (s: any) => {
+              const isSelected = selectedServices.some(sel => sel.id === s.id)
+              return (
+                <Button
+                  key={s.id}
+                  variant={isSelected ? "default" : "outline"}
+                  className={cn(
+                    "h-auto py-3 px-3 flex flex-col items-start gap-1 text-left transition-all",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-primary/5 hover:border-primary hover:text-primary"
+                  )}
+                  onClick={() => toggleServiceSelection(s)}
+                >
+                  <div className="flex items-center gap-1.5 w-full">
+                    <span className="font-bold text-sm line-clamp-1 flex-1 text-left">{s.name}</span>
+                    {s.hasPromotion && (
+                      <span className={cn(
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0",
+                        isSelected ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
+                      )}>PROMOÇÃO</span>
+                    )}
+                  </div>
+                  {s.hasPromotion && s.promotionalPrice ? (
+                    <span className="text-[10px]">
+                      <span className={cn("line-through", isSelected ? "text-primary-foreground/60" : "text-muted-foreground")}>{s.durationMinutes} min • R$ {s.price.toFixed(2)}</span>
+                      {" "}<span className={isSelected ? "text-white font-bold" : "text-emerald-600 font-bold"}>R$ {s.promotionalPrice.toFixed(2)}</span>
+                    </span>
+                  ) : (
+                    <span className={cn("text-[10px]", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                      {s.durationMinutes} min • R$ {s.price.toFixed(2)}
+                    </span>
+                  )}
+                </Button>
+              )
+            }
+
             return (
               <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-2">
-                  {services.map(s => {
-                    const isSelected = selectedServices.some(sel => sel.id === s.id)
-                    return (
-                      <Button
-                        key={s.id}
-                        variant={isSelected ? "default" : "outline"}
-                        className={cn(
-                          "h-auto py-3 px-3 flex flex-col items-start gap-1 text-left transition-all",
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background hover:bg-primary/5 hover:border-primary hover:text-primary"
+                {hasCategories ? (
+                  <div className="flex flex-col gap-3">
+                    {Object.entries(grouped).map(([category, items]) => (
+                      <div key={category} className="flex flex-col gap-1.5">
+                        {category && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground ml-0.5">{category}</span>
                         )}
-                        onClick={() => toggleServiceSelection(s)}
-                      >
-                        <div className="flex items-center gap-1.5 w-full">
-                          <span className="font-bold text-sm line-clamp-1 flex-1 text-left">{s.name}</span>
-                          {s.hasPromotion && (
-                            <span className={cn(
-                              "text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0",
-                              isSelected ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
-                            )}>PROMOÇÃO</span>
-                          )}
+                        <div className="grid grid-cols-2 gap-2">
+                          {items.map(renderServiceButton)}
                         </div>
-                        {s.hasPromotion && s.promotionalPrice ? (
-                          <span className="text-[10px]">
-                            <span className={cn("line-through", isSelected ? "text-primary-foreground/60" : "text-muted-foreground")}>{s.durationMinutes} min • R$ {s.price.toFixed(2)}</span>
-                            {" "}<span className={isSelected ? "text-white font-bold" : "text-emerald-600 font-bold"}>R$ {s.promotionalPrice.toFixed(2)}</span>
-                          </span>
-                        ) : (
-                          <span className={cn("text-[10px]", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                            {s.durationMinutes} min • R$ {s.price.toFixed(2)}
-                          </span>
-                        )}
-                      </Button>
-                    )
-                  })}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {services.map(renderServiceButton)}
+                  </div>
+                )}
 
                 {selectedServices.length > 0 && (
                   <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs text-muted-foreground">

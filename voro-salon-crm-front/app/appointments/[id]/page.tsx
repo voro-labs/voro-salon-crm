@@ -11,6 +11,7 @@ import {
   CreditCard,
   Calendar as CalendarIcon,
   Zap,
+  Tag,
   MessageCircle,
   MessageSquare,
   Star,
@@ -74,6 +75,16 @@ const slotFetcher = async (url: string) => {
   return result.data
 }
 
+interface SelectedServiceItem {
+  id: string
+  name: string
+  price: number
+  durationMinutes: number
+  category?: string | null
+  promotionalPrice?: number
+  hasPromotion?: boolean
+}
+
 export default function AppointmentDetailPage() {
   const params = useParams()
   const appointmentId = params.id as string
@@ -82,6 +93,7 @@ export default function AppointmentDetailPage() {
   const [selectedEmployeeForCompletion, setSelectedEmployeeForCompletion] = useState<string>("none")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [isEncaixe, setIsEncaixe] = useState(false)
+  const [selectedServices, setSelectedServices] = useState<SelectedServiceItem[]>([])
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false)
   const [isSendingRating, setIsSendingRating] = useState(false)
   const [ratingRequestSent, setRatingRequestSent] = useState(false)
@@ -99,7 +111,6 @@ export default function AppointmentDetailPage() {
     isSaving,
     isDeleting,
     isModuleEnabled,
-    handleServiceChange,
     updateAppointment,
     updateStatus,
     deleteAppointment,
@@ -157,6 +168,60 @@ export default function AppointmentDetailPage() {
       if (!isNaN(d.getTime())) setSelectedDate(d)
     }
   }, [form.scheduledDateTime])
+
+  // Initialize selectedServices from appointment's single serviceId
+  useEffect(() => {
+    if (!appointment?.serviceId || !services || selectedServices.length > 0) return
+    const svc = services.find((s: any) => s.id === appointment.serviceId)
+    if (svc) {
+      setSelectedServices([{
+        id: svc.id, name: svc.name, price: svc.price, durationMinutes: svc.durationMinutes,
+        category: svc.category, promotionalPrice: svc.promotionalPrice, hasPromotion: svc.hasPromotion,
+      }])
+    }
+  }, [appointment?.serviceId, services])
+
+  function toggleService(s: any) {
+    setSelectedServices(prev => {
+      const isSelected = prev.some(sel => sel.id === s.id)
+      let next: SelectedServiceItem[]
+      if (isSelected) {
+        next = prev.filter(sel => sel.id !== s.id)
+      } else {
+        const item: SelectedServiceItem = {
+          id: s.id, name: s.name, price: s.price, durationMinutes: s.durationMinutes,
+          category: s.category, promotionalPrice: s.promotionalPrice, hasPromotion: s.hasPromotion,
+        }
+        next = s.category
+          ? [...prev.filter(sel => sel.category !== s.category), item]
+          : [...prev, item]
+      }
+
+      if (next.length === 0) {
+        setForm(p => ({ ...p, serviceId: "none" }))
+      } else if (next.length === 1) {
+        const svc = next[0]
+        const effectivePrice = svc.hasPromotion && svc.promotionalPrice ? svc.promotionalPrice : svc.price
+        setForm(p => ({
+          ...p,
+          serviceId: svc.id,
+          employeeId: "none",
+          amount: effectivePrice,
+          durationMinutes: svc.durationMinutes,
+          description: p.description || svc.name,
+        }))
+      } else {
+        const totalAmount = next.reduce((sum, svc) => sum + (svc.hasPromotion && svc.promotionalPrice ? svc.promotionalPrice : svc.price), 0)
+        const totalDuration = next.reduce((sum, svc) => sum + svc.durationMinutes, 0)
+        setForm(p => ({ ...p, serviceId: "none", employeeId: "none", amount: totalAmount, durationMinutes: totalDuration, description: next.map(svc => svc.name).join(", ") }))
+      }
+      return next
+    })
+  }
+
+  const displayPromotion = selectedServices.length === 1 && selectedServices[0].hasPromotion && selectedServices[0].promotionalPrice
+    ? { originalPrice: selectedServices[0].price, promotionalPrice: selectedServices[0].promotionalPrice! }
+    : null
 
   const { data: businessHours } = useSWR<any[]>(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, slotFetcher)
 
@@ -308,20 +373,68 @@ export default function AppointmentDetailPage() {
                     </div>
 
                     {isModuleEnabled(3) && (
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="serviceId">Serviço (Opcional)</Label>
-                        <SearchableSelect
-                          id="serviceId"
-                          value={form.serviceId}
-                          onValueChange={handleServiceChange}
-                          options={[
-                            { value: "none", label: "Nenhum" },
-                            ...(services?.map((s: any) => ({ value: s.id, label: s.name })) ?? []),
-                          ]}
-                          placeholder="Selecione um serviço"
-                          searchPlaceholder="Buscar serviço..."
-                          disabled={isFormLocked}
-                        />
+                      <div className="flex flex-col gap-2 sm:col-span-2">
+                        <Label>Serviços (Opcional)</Label>
+                        {services && services.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                            {services.map((s: any) => {
+                              const isSelected = selectedServices.some(sel => sel.id === s.id)
+                              const effectivePrice = s.hasPromotion && s.promotionalPrice ? s.promotionalPrice : s.price
+                              return (
+                                <Button
+                                  key={s.id}
+                                  type="button"
+                                  variant={isSelected ? "default" : "outline"}
+                                  disabled={isFormLocked}
+                                  className={cn(
+                                    "h-auto py-2 px-2.5 flex flex-col items-start gap-0.5 text-left transition-all",
+                                    isSelected
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-background hover:bg-primary/5 hover:border-primary hover:text-primary"
+                                  )}
+                                  onClick={() => toggleService(s)}
+                                >
+                                  <div className="flex items-center gap-1 w-full">
+                                    <span className="font-semibold text-xs line-clamp-1 flex-1">{s.name}</span>
+                                    {s.hasPromotion && (
+                                      <span className={cn(
+                                        "text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0",
+                                        isSelected ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
+                                      )}>%</span>
+                                    )}
+                                  </div>
+                                  <span className={cn("text-[10px]", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                                    {s.durationMinutes} min • R$ {effectivePrice.toFixed(2)}
+                                  </span>
+                                </Button>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Nenhum serviço cadastrado.</p>
+                        )}
+                        {selectedServices.length > 1 && (
+                          <div className="rounded-lg border border-border bg-muted/30 px-3 py-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{selectedServices.length} serviços • {selectedServices.reduce((s, svc) => s + svc.durationMinutes, 0)} min</span>
+                            <span className="font-bold text-foreground">
+                              R$ {selectedServices.reduce((s, svc) => s + (svc.hasPromotion && svc.promotionalPrice ? svc.promotionalPrice : svc.price), 0).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        {displayPromotion && (
+                          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                            <Tag className="h-4 w-4 shrink-0 text-emerald-600" />
+                            <span>
+                              Promoção aplicada:{" "}
+                              <span className="line-through text-emerald-600/70">
+                                {displayPromotion.originalPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </span>{" "}
+                              <strong>
+                                {displayPromotion.promotionalPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </strong>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -276,9 +276,23 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground font-medium">Status</span>
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-200 capitalize">
-                  {data.status === "Confirmed" ? "Confirmado" : data.status === "Completed" ? "Completado" : data.status}
-                </Badge>
+                {data.status === "Confirmed" ? (
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-200 capitalize">
+                    Confirmado
+                  </Badge>
+                ) : data.status === "Completed" ? (
+                  <Badge variant="outline" className="bg-blue-500/10 text-emerald-600 border-emerald-200 capitalize">
+                    Concluído
+                  </Badge>
+                ) : data.status === "Pending" ? (
+                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-200 capitalize">
+                    Pendente
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-emerald-500/10 text-orange-600 border-orange-200 capitalize">
+                    {data.status}
+                  </Badge>
+                )}
               </div>
             </div>
 

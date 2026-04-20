@@ -7,6 +7,7 @@ import { fetcher } from "@/lib/fetcher"
 
 export interface ServiceForm {
   name: string
+  category: string
   description: string
   price: number
   durationMinutes: number
@@ -26,6 +27,7 @@ interface ServicePromotionDto {
 
 const DEFAULT_FORM: ServiceForm = {
   name: "",
+  category: "",
   description: "",
   price: 0,
   durationMinutes: 30,
@@ -78,6 +80,7 @@ export function useServiceDetail(serviceId?: string) {
     if (service) {
       setForm({
         name: service.name,
+        category: service.category || "",
         description: service.description || "",
         price: service.price || 0,
         durationMinutes: service.durationMinutes || 30,

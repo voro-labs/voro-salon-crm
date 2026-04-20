@@ -4,6 +4,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
 {
     public record CreateServiceDto(
         [Required] string Name,
+        string? Category,
         string? Description,
         [Required] decimal Price,
         int DurationMinutes = 30
@@ -11,6 +12,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
 
     public record UpdateServiceDto(
         string? Name,
+        string? Category,
         string? Description,
         decimal? Price,
         int? DurationMinutes
@@ -23,6 +25,7 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         decimal Price,
         int DurationMinutes,
         DateTimeOffset CreatedAt,
+        string? Category = null,
         decimal? PromotionalPrice = null,
         bool HasPromotion = false
     );

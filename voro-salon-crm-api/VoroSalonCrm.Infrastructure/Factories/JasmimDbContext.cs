@@ -270,6 +270,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
             {
                 b.HasKey(s => s.Id);
                 b.Property(s => s.Name).HasMaxLength(200).IsRequired();
+                b.Property(s => s.Category).HasMaxLength(100);
                 b.Property(s => s.Price).HasColumnType("NUMERIC(10,2)").HasDefaultValue(0);
                 b.Property(s => s.DurationMinutes).HasDefaultValue(30);
                 b.Property(s => s.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");

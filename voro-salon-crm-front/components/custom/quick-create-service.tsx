@@ -41,6 +41,7 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
   const [duplicateFound, setDuplicateFound] = useState<{ id: string; name: string } | null>(null)
   const [form, setForm] = useState({
     name: "",
+    category: "",
     description: "",
     price: 0,
     durationMinutes: 30,
@@ -65,7 +66,7 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
       toast.success("Serviço cadastrado com sucesso!")
       onSuccess(res.data.id, res.data)
       setOpen(false)
-      setForm({ name: "", description: "", price: 0, durationMinutes: 30 })
+      setForm({ name: "", category: "", description: "", price: 0, durationMinutes: 30 })
     } catch {
       toast.error("Erro de conexão. Tente novamente.")
     } finally {
@@ -135,7 +136,7 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
                       onSuccess(duplicateFound.id, existingServices.find((s: any) => s.id === duplicateFound.id))
                       setOpen(false)
                       setDuplicateFound(null)
-                      setForm({ name: "", description: "", price: 0, durationMinutes: 30 })
+                      setForm({ name: "", category: "", description: "", price: 0, durationMinutes: 30 })
                     }}
                   >
                     Usar {duplicateFound.name}
@@ -152,6 +153,16 @@ export function QuickCreateService({ onSuccess }: QuickCreateServiceProps) {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="quick-service-category">Categoria</Label>
+            <Input
+              id="quick-service-category"
+              placeholder="Ex: Corte, Coloração, Tratamento..."
+              value={form.category}
+              onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+            />
           </div>
 
           <div className="flex flex-col gap-2">

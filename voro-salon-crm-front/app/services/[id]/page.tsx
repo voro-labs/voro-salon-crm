@@ -364,6 +364,19 @@ export default function EditarServicoPage() {
               </div>
 
               <div className="flex flex-col gap-2">
+                <Label htmlFor="category">Categoria</Label>
+                <Input
+                  id="category"
+                  placeholder="Ex: Corte, Coloração, Tratamento..."
+                  value={form.category}
+                  onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Usada para agrupar serviços no agendamento online e impedir seleção de dois serviços da mesma categoria.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="price">Preço Padrão (R$) *</Label>
                 <CurrencyInput
                   id="price"

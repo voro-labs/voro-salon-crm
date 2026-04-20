@@ -110,7 +110,7 @@ namespace VoroSalonCrm.Application.Services
             {
                 var promo = promotions.FirstOrDefault(p => p.ServiceId == s.Id);
                 return new PublicServiceDto(s.Id, s.Name, s.Price, s.DurationMinutes,
-                    promo?.PromotionalPrice, promo != null);
+                    s.Category, promo?.PromotionalPrice, promo != null);
             });
         }
 
@@ -475,14 +475,21 @@ namespace VoroSalonCrm.Application.Services
 
             var canRate = appointment.Status == AppointmentStatus.Completed && existingRating == null;
 
-            // Build service names from join table, falling back to single Service
+            // Build service names from join table, falling back to single Service, then Description
             IEnumerable<string> serviceNames;
             if (appointment.Services != null && appointment.Services.Count > 0)
                 serviceNames = appointment.Services.Select(s => s.Service?.Name ?? "Serviço").ToList();
+            else if (appointment.Service != null)
+                serviceNames = [appointment.Service.Name];
+            else if (!string.IsNullOrWhiteSpace(appointment.Description))
+            {
+                // Description pode ser "Serviço A, Serviço B | observação" — extrai só a parte dos serviços
+                var descPart = appointment.Description.Split(" | ")[0].Trim();
+                serviceNames = [descPart];
+            }
             else
-                serviceNames = [appointment.Service?.Name ?? "Serviço"];
+                serviceNames = ["Serviço"];
 
-            var primaryServiceName = serviceNames.FirstOrDefault() ?? "Serviço";
             var combinedServiceName = string.Join(", ", serviceNames);
 
             return new PublicReceiptDto(
