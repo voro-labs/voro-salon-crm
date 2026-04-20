@@ -92,8 +92,20 @@ export default function NovoAgendamentoPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [isEncaixe, setIsEncaixe] = useState(false)
 
+  const { data: businessHours } = useSWR<any[]>(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, fetcher)
+
+  function isDateClosed(date: Date): boolean {
+    if (!businessHours || businessHours.length === 0) return false
+    const dow = date.getDay()
+    const dayHours = businessHours.find((h: any) => h.dayOfWeek === dow)
+    if (!dayHours) return true
+    return !dayHours.isOpen
+  }
+
+  const selectedDateClosed = selectedDate ? isDateClosed(selectedDate) : false
+
   const { data: availability, isLoading: loadingAvailability } = useSWR(
-    selectedDate
+    selectedDate && !selectedDateClosed
       ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?date=${format(selectedDate, "yyyy-MM-dd")}${form.employeeId !== "none" ? `&employeeId=${form.employeeId}` : ""}`
       : null,
     fetcher
@@ -277,7 +289,8 @@ export default function NovoAgendamentoPage() {
                         disabled={(date) => {
                           const today = new Date()
                           today.setHours(0, 0, 0, 0)
-                          return date < today
+                          if (date < today) return true
+                          return isDateClosed(date)
                         }}
                         initialFocus
                         locale={ptBR}
@@ -318,43 +331,49 @@ export default function NovoAgendamentoPage() {
                 return (
                   <div className="mt-2 flex flex-col gap-2">
                     <Label className="text-sm font-medium">Horários Disponíveis</Label>
-                    {loadingAvailability ? (
+                    {selectedDateClosed ? (
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                        Estabelecimento fechado neste dia.
+                      </div>
+                    ) : loadingAvailability ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Carregando horários...
                       </div>
                     ) : (
-                      <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
-                        {visibleSlots.map((slot: any) => {
-                          const formTime = form.scheduledDateTime ? new Date(form.scheduledDateTime).getTime() : NaN
-                          const isSelected = !isNaN(formTime) && new Date(slot.startTime).getTime() === formTime
-                          const canSelect = slot.isAvailable || (isEncaixe && !slot.isBlocked)
-                          return (
-                            <Button
-                              key={slot.startTime}
-                              type="button"
-                              variant={isSelected ? "default" : "outline"}
-                              size="sm"
-                              className={cn(
-                                "h-9 px-1 text-[10px] sm:text-xs relative",
-                                slot.isBlocked && "opacity-30 cursor-not-allowed bg-muted",
-                                !slot.isAvailable && !slot.isBlocked && !isEncaixe && "opacity-30 cursor-not-allowed bg-muted",
-                                !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 text-amber-600",
-                              )}
-                              disabled={!canSelect}
-                              onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
-                              title={slot.isBlocked ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado") : undefined}
-                            >
-                              {format(new Date(slot.startTime), "HH:mm")}
-                            </Button>
-                          )
-                        })}
-                      </div>
-                    )}
-                    {visibleSlots.length === 0 && !loadingAvailability && (
-                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                        Nenhum horário disponível para esta data. Selecione outro dia ou ative o modo <strong>Encaixe</strong> abaixo.
-                      </div>
+                      <>
+                        <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                          {visibleSlots.map((slot: any) => {
+                            const formTime = form.scheduledDateTime ? new Date(form.scheduledDateTime).getTime() : NaN
+                            const isSelected = !isNaN(formTime) && new Date(slot.startTime).getTime() === formTime
+                            const canSelect = slot.isAvailable || (isEncaixe && !slot.isBlocked)
+                            return (
+                              <Button
+                                key={slot.startTime}
+                                type="button"
+                                variant={isSelected ? "default" : "outline"}
+                                size="sm"
+                                className={cn(
+                                  "h-9 px-1 text-[10px] sm:text-xs relative",
+                                  slot.isBlocked && "opacity-30 cursor-not-allowed bg-muted",
+                                  !slot.isAvailable && !slot.isBlocked && !isEncaixe && "opacity-30 cursor-not-allowed bg-muted",
+                                  !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 text-amber-600",
+                                )}
+                                disabled={!canSelect}
+                                onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
+                                title={slot.isBlocked ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado") : undefined}
+                              >
+                                {format(new Date(slot.startTime), "HH:mm")}
+                              </Button>
+                            )
+                          })}
+                        </div>
+                        {visibleSlots.length === 0 && (
+                          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                            Nenhum horário disponível para esta data. Selecione outro dia ou ative o modo <strong>Encaixe</strong> abaixo.
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )

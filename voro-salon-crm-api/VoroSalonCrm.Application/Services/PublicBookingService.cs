@@ -52,6 +52,13 @@ namespace VoroSalonCrm.Application.Services
             // var isBookingEnabled = planHasBooking && moduleEnabled;
             var isBookingEnabled = planHasBooking;
 
+            var allBusinessHours = await businessHoursRepository.GetByTenantAsync(tenant.Id);
+            var businessHoursDtos = allBusinessHours.Select(h => new PublicBusinessHourDto(
+                h.DayOfWeek,
+                h.IsOpen,
+                h.Ranges.Select(r => new PublicBusinessHourRangeDto(r.OpenTime, r.CloseTime)).ToList()
+            )).ToList();
+
             return new PublicTenantDto(
                 tenant.Id,
                 tenant.Name,
@@ -62,7 +69,10 @@ namespace VoroSalonCrm.Application.Services
                 tenant.SecondaryColor,
                 tenant.ThemeMode?.ToString(),
                 isBookingEnabled
-            );
+            )
+            {
+                BusinessHours = businessHoursDtos.Count > 0 ? businessHoursDtos : null
+            };
         }
 
         public async Task<PublicClientDto?> CheckClientByPhoneAsync(string tenantSlug, string phone)
@@ -295,8 +305,12 @@ namespace VoroSalonCrm.Application.Services
             var allHours = await businessHoursRepository.GetByTenantAsync(tenant.Id);
             var dayHours = allHours.FirstOrDefault(h => h.DayOfWeek == dayOfWeek);
 
-            // If day is configured and marked as closed, return no slots
+            // Se o dia está marcado como fechado, retorna vazio
             if (dayHours != null && !dayHours.IsOpen)
+                return [];
+
+            // Se o tenant tem horários configurados mas este dia não está entre eles, trata como fechado
+            if (dayHours == null && allHours.Any())
                 return [];
 
             // Build sorted ranges (or use default if none configured)
@@ -387,12 +401,9 @@ namespace VoroSalonCrm.Application.Services
                     var next    = current.AddMinutes(30);
                     var slotEnd = current.AddMinutes(serviceDurationMinutes);
 
+                    // Slot não cabe dentro do horário de funcionamento — encerra este range
                     if (slotEnd > endUtc)
-                    {
-                        slots.Add(new DTOs.CRM.AvailabilitySlotDto(current, next, false));
-                        current = next;
-                        continue;
-                    }
+                        break;
 
                     var overlappingBlock = blocks.FirstOrDefault(b => b.StartDateTime < next && b.EndDateTime > current);
                     if (overlappingBlock != null)

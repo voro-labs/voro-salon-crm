@@ -510,8 +510,12 @@ namespace VoroSalonCrm.Application.Services
             var allHours = await _businessHoursRepository.GetByTenantAsync(tenantId);
             var dayHours = allHours.FirstOrDefault(h => h.DayOfWeek == dayOfWeek);
 
-            // If the day is explicitly closed, return empty
+            // Se o dia está marcado como fechado, retorna vazio
             if (dayHours != null && !dayHours.IsOpen)
+                return [];
+
+            // Se o tenant tem horários configurados mas este dia não está entre eles, trata como fechado
+            if (dayHours == null && allHours.Any())
                 return [];
 
             // Build sorted ranges (or use default if none configured)
@@ -605,12 +609,9 @@ namespace VoroSalonCrm.Application.Services
                         continue;
                     }
 
+                    // Slot não cabe dentro do horário de funcionamento — encerra este range
                     if (slotEnd > endUtc)
-                    {
-                        slots.Add(new AvailabilitySlotDto(current, next, false));
-                        current = next;
-                        continue;
-                    }
+                        break;
 
                     bool isBusy;
                     if (activeEmployeesCount <= 0)

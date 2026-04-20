@@ -30,6 +30,7 @@ export const API_CONFIG = {
     SERVICES: "/services",
     APPOINTMENTS: "/appointments",
     APPOINTMENTS_AVAILABILITY: "/appointments/availability",
+    BUSINESS_HOURS: "/tenant/me/business-hours",
     TRANSACTION_CATEGORIES: "/transactioncategories",
     TRANSACTIONS: "/transactions",
     ANAMNESIS: "/anamnesis",

@@ -43,6 +43,14 @@ interface BusinessHour {
   ranges: BusinessHourRange[]
 }
 
+function isDateClosed(dateStr: string, businessHours?: BusinessHour[]): boolean {
+  if (!businessHours || businessHours.length === 0) return false
+  const dow = new Date(`${dateStr}T00:00:00`).getDay()
+  const dayHours = businessHours.find(h => h.dayOfWeek === dow)
+  if (!dayHours) return true          // dia não configurado = fechado
+  return !dayHours.isOpen
+}
+
 interface PublicTenant {
   id: string
   name: string
@@ -112,6 +120,14 @@ function getInitials(name: string): string {
     .map((w) => w[0])
     .join("")
     .toUpperCase()
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  if (remaining === 0) return `${hours}h`
+  return `${hours}h ${remaining}min`
 }
 
 // ─── WelcomeCard component ────────────────────────────────────────────────────
@@ -261,6 +277,7 @@ export default function PublicBookingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [availability, setAvailability] = useState<any[]>([])
   const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [isClosedDay, setIsClosedDay] = useState(false)
   const [appointmentId, setAppointmentId] = useState<string | null>(null)
   const [countryCode, setCountryCode] = useState("BR")
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -460,6 +477,14 @@ export default function PublicBookingPage() {
   // Fetch availability when date or professional changes
   useEffect(() => {
     if (step === 'DATETIME' && form.date) {
+      // Verifica se o dia está fechado antes de chamar a API
+      const closed = isDateClosed(form.date, tenant?.businessHours)
+      setIsClosedDay(closed)
+      if (closed) {
+        setAvailability([])
+        return
+      }
+
       async function fetchAvailability() {
         setLoadingAvailability(true)
         try {
@@ -858,7 +883,7 @@ export default function PublicBookingPage() {
                 {selectedServices.length > 0 && (
                   <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs text-muted-foreground">
                     <span className="font-medium">
-                      {selectedServices.length} serviço{selectedServices.length > 1 ? 's' : ''} • {totalDuration} min
+                      {selectedServices.length} serviço{selectedServices.length > 1 ? 's' : ''} • {formatDuration(totalDuration)}
                     </span>
                     <span className="font-bold text-foreground">R$ {totalPrice.toFixed(2)}</span>
                   </div>
@@ -950,7 +975,11 @@ export default function PublicBookingPage() {
                       </div>
                     )}
                     {visibleSlots.length === 0 && !loadingAvailability && (
-                      <p className="text-[10px] text-muted-foreground text-center">Nenhum horário disponível para esta data.</p>
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        {isClosedDay
+                          ? "Estabelecimento fechado neste dia."
+                          : "Nenhum horário disponível para esta data."}
+                      </p>
                     )}
                   </div>
                 )}

@@ -158,6 +158,18 @@ export default function AppointmentDetailPage() {
     }
   }, [form.scheduledDateTime])
 
+  const { data: businessHours } = useSWR<any[]>(API_CONFIG.ENDPOINTS.BUSINESS_HOURS, slotFetcher)
+
+  function isDateClosed(date: Date): boolean {
+    if (!businessHours || businessHours.length === 0) return false
+    const dow = date.getDay()
+    const dayHours = businessHours.find((h: any) => h.dayOfWeek === dow)
+    if (!dayHours) return true
+    return !dayHours.isOpen
+  }
+
+  const selectedDateClosed = selectedDate ? isDateClosed(selectedDate) : false
+
   const { data: availability, isLoading: loadingAvailability } = useSWR(
     selectedDate
       ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?date=${format(selectedDate, "yyyy-MM-dd")}${form.employeeId !== "none" ? `&employeeId=${form.employeeId}` : ""}`
@@ -397,7 +409,7 @@ export default function AppointmentDetailPage() {
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-sm font-medium">Horários Disponíveis</Label>
-                          {form.employeeId !== "none" && form.employeeId && (
+                          {!selectedDateClosed && form.employeeId !== "none" && form.employeeId && (
                             <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
@@ -414,56 +426,58 @@ export default function AppointmentDetailPage() {
                             </div>
                           )}
                         </div>
-                        {loadingAvailability ? (
+                        {selectedDateClosed ? (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+                            Estabelecimento fechado neste dia. Ative o modo <strong>Encaixe</strong> para forçar um horário.
+                          </div>
+                        ) : loadingAvailability ? (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             Carregando horários...
                           </div>
                         ) : (
-                          <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
-                            {visibleSlots.map((slot: any) => {
-                              const isSelected = form.scheduledDateTime && new Date(slot.startTime).getTime() === new Date(form.scheduledDateTime).getTime()
-                              const hasSpecificEmployee = form.employeeId !== "none" && !!form.employeeId
-                              const canSelect = isSelected || slot.isAvailable || (isEncaixe && !slot.isBlocked)
-                              return (
-                                <Button
-                                  key={slot.startTime}
-                                  type="button"
-                                  variant={isSelected ? "default" : "outline"}
-                                  size="sm"
-                                  className={cn(
-                                    "h-9 px-1 text-[10px] sm:text-xs font-medium",
-                                    // Disponível (não selecionado): verde
-                                    !isSelected && slot.isAvailable && "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800",
-                                    // Bloqueado (hard block): vermelho
-                                    slot.isBlocked && "border-red-200 bg-red-50 text-red-400 opacity-60 cursor-not-allowed hover:bg-red-50 hover:text-red-400",
-                                    // Ocupado sem encaixe: laranja (mais expressivo quando há funcionário específico)
-                                    !slot.isAvailable && !slot.isBlocked && !isEncaixe && (
-                                      hasSpecificEmployee
-                                        ? "border-orange-300 bg-orange-50 text-orange-500 opacity-70 cursor-not-allowed hover:bg-orange-50 hover:text-orange-500"
-                                        : "border-muted bg-muted/40 text-muted-foreground opacity-50 cursor-not-allowed"
-                                    ),
-                                    // Ocupado com encaixe ativo: âmbar clicável
-                                    !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700",
-                                  )}
-                                  disabled={!canSelect}
-                                  onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
-                                  title={
-                                    slot.isBlocked
-                                      ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado")
-                                      : !slot.isAvailable && hasSpecificEmployee
-                                        ? "Funcionário ocupado neste horário"
-                                        : undefined
-                                  }
-                                >
-                                  {format(new Date(slot.startTime), "HH:mm")}
-                                </Button>
-                              )
-                            })}
-                          </div>
-                        )}
-                        {visibleSlots.length === 0 && !loadingAvailability && (
-                          <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data.</p>
+                          <>
+                            <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+                              {visibleSlots.map((slot: any) => {
+                                const isSelected = form.scheduledDateTime && new Date(slot.startTime).getTime() === new Date(form.scheduledDateTime).getTime()
+                                const hasSpecificEmployee = form.employeeId !== "none" && !!form.employeeId
+                                const canSelect = isSelected || slot.isAvailable || (isEncaixe && !slot.isBlocked)
+                                return (
+                                  <Button
+                                    key={slot.startTime}
+                                    type="button"
+                                    variant={isSelected ? "default" : "outline"}
+                                    size="sm"
+                                    className={cn(
+                                      "h-9 px-1 text-[10px] sm:text-xs font-medium",
+                                      !isSelected && slot.isAvailable && "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800",
+                                      slot.isBlocked && "border-red-200 bg-red-50 text-red-400 opacity-60 cursor-not-allowed hover:bg-red-50 hover:text-red-400",
+                                      !slot.isAvailable && !slot.isBlocked && !isEncaixe && (
+                                        hasSpecificEmployee
+                                          ? "border-orange-300 bg-orange-50 text-orange-500 opacity-70 cursor-not-allowed hover:bg-orange-50 hover:text-orange-500"
+                                          : "border-muted bg-muted/40 text-muted-foreground opacity-50 cursor-not-allowed"
+                                      ),
+                                      !slot.isAvailable && !slot.isBlocked && isEncaixe && !isSelected && "border-amber-400 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700",
+                                    )}
+                                    disabled={!canSelect}
+                                    onClick={() => setForm((p) => ({ ...p, scheduledDateTime: slot.startTime }))}
+                                    title={
+                                      slot.isBlocked
+                                        ? (slot.blockReason ? `Bloqueado: ${slot.blockReason}` : "Horário bloqueado")
+                                        : !slot.isAvailable && hasSpecificEmployee
+                                          ? "Funcionário ocupado neste horário"
+                                          : undefined
+                                    }
+                                  >
+                                    {format(new Date(slot.startTime), "HH:mm")}
+                                  </Button>
+                                )
+                              })}
+                            </div>
+                            {visibleSlots.length === 0 && (
+                              <p className="text-sm text-muted-foreground">Nenhum horário disponível para esta data.</p>
+                            )}
+                          </>
                         )}
                       </div>
                     )

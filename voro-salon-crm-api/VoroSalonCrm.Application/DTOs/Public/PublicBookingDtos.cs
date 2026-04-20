@@ -1,5 +1,13 @@
 namespace VoroSalonCrm.Application.DTOs.Public
 {
+    public record PublicBusinessHourRangeDto(string OpenTime, string CloseTime);
+
+    public record PublicBusinessHourDto(
+        int DayOfWeek,
+        bool IsOpen,
+        List<PublicBusinessHourRangeDto> Ranges
+    );
+
     public record PublicTenantDto(
         Guid Id,
         string Name,
@@ -10,7 +18,10 @@ namespace VoroSalonCrm.Application.DTOs.Public
         string? SecondaryColor,
         string? ThemeMode,
         bool IsBookingEnabled
-    );
+    )
+    {
+        public List<PublicBusinessHourDto>? BusinessHours { get; init; }
+    };
 
     public record PublicServiceDto(
         Guid Id,
