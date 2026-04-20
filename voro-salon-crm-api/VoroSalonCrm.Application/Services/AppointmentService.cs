@@ -514,10 +514,6 @@ namespace VoroSalonCrm.Application.Services
             if (dayHours != null && !dayHours.IsOpen)
                 return [];
 
-            // Se o tenant tem horários configurados mas este dia não está entre eles, trata como fechado
-            if (dayHours == null && allHours.Any())
-                return [];
-
             // Build sorted ranges (or use default if none configured)
             var orderedRanges = dayHours?.Ranges.OrderBy(r => r.SortOrder).ToList()
                 ?? [];
