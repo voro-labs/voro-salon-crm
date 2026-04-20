@@ -120,4 +120,7 @@ NOVOS BUGS:
 - [x] Guardar o body no AuditLog — adicionado campo `RequestBody` em `RouteAuditLog` e captura no `AuditMiddleware` (POST/PUT/PATCH, max 8KB)
 - [x] Erro de birthDate retorna via `ResponseViewModel` — configurado `InvalidModelStateResponseFactory` no `ApiBehaviorOptions` e atualizado `ValidateModelFilter` para retornar `ResponseViewModel<object>.Fail()` com as mensagens de erro de validação
 
-adicionar suporte de multiple language no sistema e no bot do whatsapp
+PENDENTES:
+
+- [ ] Adicionar suporte de multiple language no sistema e no bot do WhatsApp (enum `SupportedLanguage` e `SharedResource` já criados em VoroSalonCrm.Shared — falta configurar localization no Program.cs, criar .resx, adicionar campo Language no Tenant, e adaptar WhatsappChatService + GeminiService)
+- [x] Adicionar envio de e-mail para os erros log@vorolabs.app, titulo do sistema e corpo com o erro — implementado no `ExceptionHandlingMiddleware`
