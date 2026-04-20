@@ -30,7 +30,8 @@ namespace VoroSalonCrm.Application.Services
         ICurrentUserService currentUserService, Domain.Interfaces.Repositories.IUserExtensionRepository userExtensionRepository,
         Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork,
         ITenantRepository tenantRepository, IUserTenantRepository userTenantRepository,
-        UserManager<User> userManager, IDemoResetService demoResetService) : IAuthService
+        UserManager<User> userManager, IDemoResetService demoResetService,
+        ITenantBusinessHoursRepository tenantBusinessHoursRepository) : IAuthService
     {
         private readonly INotificationService _notificationService = notificationService;
         private readonly CookieUtil _cookieUtil = cookieUtil.Value;
@@ -42,6 +43,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly UserManager<User> _userManager = userManager;
         private readonly IDemoResetService _demoResetService = demoResetService;
+        private readonly ITenantBusinessHoursRepository _businessHoursRepository = tenantBusinessHoursRepository;
 
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
@@ -299,6 +301,9 @@ namespace VoroSalonCrm.Application.Services
 
             await _unitOfWork.SaveChangesAsync();
 
+            // Seed horários de funcionamento padrão (seg–sex 08:00–12:00 e 13:00–18:00)
+            await SeedDefaultBusinessHoursAsync(tenant.Id);
+
             // Enviar e-mail com a senha temporária
             var loginUrl = $"{configuration.GetSection("CorsSettings").GetSection("AllowedOrigins").Get<string[]>()?[0]}/sign-in";
             try
@@ -314,6 +319,34 @@ namespace VoroSalonCrm.Application.Services
         }
 
         // ── Helpers de provisionamento ────────────────────────────────────────
+
+        private async Task SeedDefaultBusinessHoursAsync(Guid tenantId)
+        {
+            // Seg–Sex: aberto (08:00–12:00 e 13:00–18:00) | Sáb–Dom: fechado
+            for (int dow = 0; dow <= 6; dow++)
+            {
+                var isOpen = dow >= 1 && dow <= 5;
+                var hours = new TenantBusinessHours
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    DayOfWeek = dow,
+                    IsOpen = isOpen,
+                };
+                await _businessHoursRepository.AddAsync(hours);
+                await _unitOfWork.SaveChangesAsync();
+
+                if (isOpen)
+                {
+                    await _businessHoursRepository.AddRangesAsync(
+                    [
+                        new TenantBusinessHoursRange { Id = Guid.NewGuid(), BusinessHoursId = hours.Id, OpenTime = "08:00", CloseTime = "12:00", SortOrder = 0 },
+                        new TenantBusinessHoursRange { Id = Guid.NewGuid(), BusinessHoursId = hours.Id, OpenTime = "13:00", CloseTime = "18:00", SortOrder = 1 },
+                    ]);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
+        }
 
         private static string GenerateTempPassword()
         {

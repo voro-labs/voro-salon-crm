@@ -40,6 +40,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             await context.SaveChangesAsync();
 
+            // SEED: Business Hours padrão para demos
+            SeedDemoBusinessHours(context);
+
+            await context.SaveChangesAsync();
+
             // SEED: Usuário Admin
             SeedUsers(context);
 
@@ -482,6 +487,42 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     existing.DefaultTrialDays = plan.DefaultTrialDays;
                     existing.SortOrder        = plan.SortOrder;
                     existing.IsActive         = plan.IsActive;
+                }
+            }
+        }
+
+        private static void SeedDemoBusinessHours(JasmimDbContext context)
+        {
+            var demoSlugs = new[] { "vorostarter", "voropro", "voropremium" };
+            foreach (var slug in demoSlugs)
+            {
+                var tenant = context.Tenants.IgnoreQueryFilters().FirstOrDefault(t => t.Slug == slug);
+                if (tenant == null) continue;
+
+                var alreadySeeded = context.TenantBusinessHours.IgnoreQueryFilters().Any(h => h.TenantId == tenant.Id);
+                if (alreadySeeded) continue;
+
+                for (int dow = 0; dow <= 6; dow++)
+                {
+                    var isOpen = dow >= 1 && dow <= 5;
+                    var hours = new TenantBusinessHours
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = tenant.Id,
+                        DayOfWeek = dow,
+                        IsOpen = isOpen,
+                    };
+
+                    if (isOpen)
+                    {
+                        hours.Ranges =
+                        [
+                            new TenantBusinessHoursRange { Id = Guid.NewGuid(), BusinessHoursId = hours.Id, OpenTime = "08:00", CloseTime = "12:00", SortOrder = 0 },
+                            new TenantBusinessHoursRange { Id = Guid.NewGuid(), BusinessHoursId = hours.Id, OpenTime = "13:00", CloseTime = "18:00", SortOrder = 1 },
+                        ];
+                    }
+
+                    context.TenantBusinessHours.Add(hours);
                 }
             }
         }

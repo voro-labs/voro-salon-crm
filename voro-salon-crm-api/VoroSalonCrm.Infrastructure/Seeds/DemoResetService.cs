@@ -116,6 +116,25 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 .IgnoreQueryFilters()
                 .Where(c => c.TenantId == tenantId)
                 .ExecuteDeleteAsync();
+
+            // Business hours ranges primeiro (FK), depois os dias
+            var hoursIds = await context.TenantBusinessHours
+                .IgnoreQueryFilters()
+                .Where(h => h.TenantId == tenantId)
+                .Select(h => h.Id)
+                .ToListAsync();
+
+            if (hoursIds.Count > 0)
+            {
+                await context.TenantBusinessHoursRanges
+                    .Where(r => hoursIds.Contains(r.BusinessHoursId))
+                    .ExecuteDeleteAsync();
+
+                await context.TenantBusinessHours
+                    .IgnoreQueryFilters()
+                    .Where(h => h.TenantId == tenantId)
+                    .ExecuteDeleteAsync();
+            }
         }
 
         // ─── Dados por tenant (índice 0 = vorostarter, 1 = voropro, 2 = voropremium) ───
@@ -506,6 +525,30 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             await context.Transactions.AddRangeAsync(transactions);
             await context.ServiceRecords.AddRangeAsync(serviceRecords);
+
+            // ── Business Hours padrão (seg–sex 08:00–12:00 e 13:00–18:00) ─────────
+            for (int dow = 0; dow <= 6; dow++)
+            {
+                var isOpen = dow >= 1 && dow <= 5;
+                var hours = new TenantBusinessHours
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    DayOfWeek = dow,
+                    IsOpen = isOpen,
+                };
+
+                if (isOpen)
+                {
+                    hours.Ranges =
+                    [
+                        new TenantBusinessHoursRange { Id = Guid.NewGuid(), BusinessHoursId = hours.Id, OpenTime = "08:00", CloseTime = "12:00", SortOrder = 0 },
+                        new TenantBusinessHoursRange { Id = Guid.NewGuid(), BusinessHoursId = hours.Id, OpenTime = "13:00", CloseTime = "18:00", SortOrder = 1 },
+                    ];
+                }
+
+                context.TenantBusinessHours.Add(hours);
+            }
         }
     }
 }
