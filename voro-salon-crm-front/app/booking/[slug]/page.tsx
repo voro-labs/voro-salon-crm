@@ -538,6 +538,13 @@ export default function PublicBookingPage() {
         ? [serviceNamesDescription, form.description].filter(Boolean).join(" | ")
         : form.description
 
+      const multiTotalAmount = isMultiService
+        ? selectedServices.reduce((sum, s) => sum + (s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price), 0)
+        : null
+      const multiTotalDuration = isMultiService
+        ? selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0)
+        : null
+
       const res = await apiCall<any>(API_CONFIG.ENDPOINTS.PUBLIC_BOOKING, {
         method: "POST",
         body: JSON.stringify({
@@ -550,6 +557,8 @@ export default function PublicBookingPage() {
           scheduledDateTime,
           description: finalDescription,
           reminderMinutes: form.reminderMinutes,
+          totalAmount: multiTotalAmount,
+          totalDurationMinutes: multiTotalDuration,
         })
       })
 

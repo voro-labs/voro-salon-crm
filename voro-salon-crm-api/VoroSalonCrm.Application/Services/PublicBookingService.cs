@@ -147,21 +147,30 @@ namespace VoroSalonCrm.Application.Services
             decimal totalAmount = 0;
             int totalDuration = 0;
 
-            foreach (var svc in services)
+            if (services.Count > 0)
             {
-                var activePromo = await _servicePromotionRepository
-                    .Query(p =>
-                        p.TenantId == tenant.Id &&
-                        p.ServiceId == svc.Id &&
-                        p.IsActive &&
-                        p.DaysOfWeek.Contains(todayDow) &&
-                        (p.ValidFrom == null || p.ValidFrom <= today) &&
-                        (p.ValidUntil == null || p.ValidUntil >= today))
-                    .IgnoreQueryFilters()
-                    .FirstOrDefaultAsync();
+                foreach (var svc in services)
+                {
+                    var activePromo = await _servicePromotionRepository
+                        .Query(p =>
+                            p.TenantId == tenant.Id &&
+                            p.ServiceId == svc.Id &&
+                            p.IsActive &&
+                            p.DaysOfWeek.Contains(todayDow) &&
+                            (p.ValidFrom == null || p.ValidFrom <= today) &&
+                            (p.ValidUntil == null || p.ValidUntil >= today))
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync();
 
-                totalAmount += activePromo?.PromotionalPrice ?? svc.Price;
-                totalDuration += svc.DurationMinutes;
+                    totalAmount += activePromo?.PromotionalPrice ?? svc.Price;
+                    totalDuration += svc.DurationMinutes;
+                }
+            }
+            else
+            {
+                // Múltiplos serviços sem IDs: usa os valores informados pelo frontend
+                totalAmount = dto.TotalAmount ?? 0;
+                totalDuration = dto.TotalDurationMinutes ?? 0;
             }
 
             var client = await clientRepository.GetByPhoneAsync(tenant.Id, dto.ClientPhone);

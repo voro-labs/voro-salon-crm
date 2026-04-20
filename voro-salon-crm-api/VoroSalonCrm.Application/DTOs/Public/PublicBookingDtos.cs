@@ -63,6 +63,12 @@ namespace VoroSalonCrm.Application.DTOs.Public
         public int? ReminderMinutes { get; init; }
         public VoroSalonCrm.Domain.Enums.AppointmentSource Source { get; init; } = VoroSalonCrm.Domain.Enums.AppointmentSource.Website;
 
+        /// <summary>Valor total informado pelo cliente (usado quando múltiplos serviços sem IDs).</summary>
+        public decimal? TotalAmount { get; init; }
+
+        /// <summary>Duração total em minutos informada pelo cliente (usado quando múltiplos serviços sem IDs).</summary>
+        public int? TotalDurationMinutes { get; init; }
+
         /// <summary>Retorna a lista efetiva de service IDs, unindo ServiceIds e ServiceId legado.</summary>
         public List<Guid> ResolvedServiceIds()
         {
