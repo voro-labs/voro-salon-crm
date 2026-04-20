@@ -15,6 +15,9 @@ namespace VoroSalonCrm.Domain.Entities
         public Guid? ServiceId { get; set; }
         public Service? Service { get; set; }
 
+        /// <summary>Múltiplos serviços do agendamento (join table). Substituí o ServiceId único.</summary>
+        public ICollection<AppointmentService> Services { get; set; } = new List<AppointmentService>();
+
         public Guid? EmployeeId { get; set; }
         public Employee? Employee { get; set; }
 

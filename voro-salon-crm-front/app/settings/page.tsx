@@ -206,8 +206,8 @@ export default function ConfiguracoesPage() {
         return
       }
       const { appId, configId } = configRes.data
-      const extras = encodeURIComponent(JSON.stringify({ setup: {} }))
-      const url = `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${appId}&config_id=${configId}&extras=${extras}`
+      const extras = encodeURIComponent(JSON.stringify({ sessionInfoVersion: "3", version: "v4" }))
+      const url = `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${appId.trim()}&config_id=${configId.trim()}&extras=${extras}`
       const popup = window.open(url, "wa_signup", "width=800,height=700,scrollbars=yes")
       if (!popup) {
         toast.error("Popup bloqueado. Permita popups para este site e tente novamente.")

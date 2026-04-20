@@ -110,6 +110,42 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.ToTable("UserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.AIConversationMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("TenantId", "PhoneNumber");
+
+                    b.ToTable("AIConversationMessages", (string)null);
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.AnamnesisEvidence", b =>
                 {
                     b.Property<Guid>("Id")
@@ -402,7 +438,29 @@ namespace VoroSalonCrm.Infrastructure.Migrations
 
                     b.HasIndex("TenantId", "ScheduledDateTime");
 
+                    b.HasIndex("TenantId", "EmployeeId", "ScheduledDateTime")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Appointments_TenantId_EmployeeId_ScheduledAt")
+                        .HasFilter("\"EmployeeId\" IS NOT NULL");
+
                     b.ToTable("Appointments");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.AppointmentService", b =>
+                {
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ServiceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("AppointmentId", "ServiceId");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("ServiceId");
+
+                    b.ToTable("AppointmentServices");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.BookingFunnelSession", b =>
@@ -1140,6 +1198,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .HasColumnType("character varying(500)");
 
                     b.Property<string>("QueryString")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestBody")
                         .HasColumnType("text");
 
                     b.Property<int>("StatusCode")
@@ -2294,6 +2355,25 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.AppointmentService", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Appointment", "Appointment")
+                        .WithMany("Services")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Service");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.BookingFunnelSession", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Appointment", "Appointment")
@@ -2744,6 +2824,11 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Responses");
 
                     b.Navigation("Signatures");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Appointment", b =>
+                {
+                    b.Navigation("Services");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.ClientMembershipPlan", b =>

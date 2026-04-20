@@ -12,7 +12,7 @@ jobs:
       - name: Send birthday greetings
         run: |
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X POST "${{ secrets.API_BASE_URL }}/api/v1/birthday-greeting/trigger" \
+            -X POST "${{ secrets.API_BASE_URL }}/api/v1/BirthdayGreeting/trigger" \
             -H "X-Api-Key: ${{ secrets.BIRTHDAY_API_KEY }}" \
             -H "Content-Type: application/json")
           echo "HTTP Status: $RESPONSE"

@@ -9,5 +9,9 @@ namespace VoroSalonCrm.Infrastructure.Repositories
     public class AppointmentRepository(JasmimDbContext context, IUnitOfWork unitOfWork)
         : RepositoryBase<Appointment>(context, unitOfWork), IAppointmentRepository
     {
+        public async Task AddAppointmentServiceAsync(AppointmentService appointmentService)
+        {
+            await context.AppointmentServices.AddAsync(appointmentService);
+        }
     }
 }

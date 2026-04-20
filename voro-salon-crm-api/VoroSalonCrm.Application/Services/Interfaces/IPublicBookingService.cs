@@ -9,7 +9,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task<IEnumerable<PublicServiceDto>> GetServicesByTenantAsync(string tenantSlug);
         Task<IEnumerable<PublicEmployeeDto>> GetEmployeesByServiceAsync(string tenantSlug, Guid serviceId);
         Task<PublicBookingResponseDto> CreateBookingAsync(PublicBookingCreateDto dto);
-        Task<IEnumerable<DTOs.CRM.AvailabilitySlotDto>> GetAvailableSlotsAsync(string tenantSlug, DateTime date, Guid? serviceId = null, Guid? employeeId = null);
+        Task<IEnumerable<DTOs.CRM.AvailabilitySlotDto>> GetAvailableSlotsAsync(string tenantSlug, DateTime date, Guid? serviceId = null, Guid? employeeId = null, List<Guid>? serviceIds = null);
         Task<PublicReceiptDto?> GetAppointmentReceiptAsync(Guid id);
         Task TrackFunnelStepAsync(PublicBookingTrackDto dto);
     }

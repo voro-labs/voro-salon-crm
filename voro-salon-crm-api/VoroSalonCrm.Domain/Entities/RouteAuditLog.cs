@@ -31,5 +31,7 @@ namespace VoroSalonCrm.Domain.Entities
         public Guid? UserId { get; set; }
 
         public Guid? TenantId { get; set; }
+
+        public string? RequestBody { get; set; }
     }
 }

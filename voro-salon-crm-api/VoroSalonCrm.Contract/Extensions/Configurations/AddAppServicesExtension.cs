@@ -48,6 +48,12 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            services.AddHttpClient("gemini", client =>
+            {
+                client.BaseAddress = new Uri("https://generativelanguage.googleapis.com/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
@@ -128,6 +134,8 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IWhatsAppTemplateService, WhatsAppTemplateService>();
             services.AddScoped<IWhatsAppOnboardingService, WhatsAppOnboardingService>();
             services.AddScoped<IClientMembershipService, ClientMembershipService>();
+            services.AddScoped<IGeminiService, GeminiService>();
+            services.AddScoped<IAIConversationService, AIConversationService>();
             services.AddScoped<IEmployeeGoalRepository, EmployeeGoalRepository>();
             services.AddScoped<IEmployeeGoalService, EmployeeGoalService>();
             services.AddScoped<IBirthdayGreetingService, BirthdayGreetingService>();
@@ -136,6 +144,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IClientRatingRepository, ClientRatingRepository>();
             services.AddScoped<IClientRatingService, ClientRatingService>();
             services.AddScoped<IBookingFunnelSessionRepository, BookingFunnelSessionRepository>();
+            services.AddScoped<IAIConversationRepository, AIConversationRepository>();
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();

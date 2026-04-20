@@ -228,16 +228,17 @@ export default function SubscriptionPage() {
     return isPlanPromoActive(plan) ? plan.promoPrice! : plan.monthlyPrice
   }
 
-  // Exibe apenas planos com preço maior que o plano atual (evolução sem downgrade)
+  // Planos a exibir na grade de upgrade:
+  // - Active/Trial: apenas planos com preço MAIOR que o atual (sem downgrade, sem o próprio plano)
+  // - Inactive/Cancelled/PastDue: nenhum — a renovação é feita pelo botão no card do plano atual
   const currentPrice = subscription?.plan?.monthlyPrice ?? 0
-  const visiblePlans = (isActive || isTrial)
-    ? plans?.filter((p) => p.monthlyPrice > currentPrice)
-    : plans
+  const isInactiveOrCancelled = !isActive && !isTrial
+  const visiblePlans = isInactiveOrCancelled
+    ? [] // não exibe grade; renovação fica no hero card
+    : plans?.filter((p) => p.monthlyPrice > currentPrice)
 
   // Label for action button
-  const actionLabel = (plan: SubscriptionPlanDto) => {
-    const isCurrent = plan.id === subscription?.plan?.id
-    if (isCurrent && canResubscribe) return "Reassinar"
+  const actionLabel = (_plan: SubscriptionPlanDto) => {
     if (isActive || isTrial) return "Fazer upgrade"
     return "Assinar"
   }
@@ -365,11 +366,13 @@ export default function SubscriptionPage() {
 
       {/* Seleção de plano */}
       <div>
-        <h2 className="text-lg font-bold mb-4">
-          {isActive ? "Trocar plano" : canResubscribe && currentPlanInList ? "Reassinar ou trocar plano" : "Escolher plano"}
-        </h2>
+        {!isInactiveOrCancelled && (
+          <h2 className="text-lg font-bold mb-4">
+            {isTrial ? "Escolha seu plano" : "Fazer upgrade"}
+          </h2>
+        )}
 
-        {!visiblePlans ? (
+        {isInactiveOrCancelled ? null : !visiblePlans ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
@@ -464,6 +467,11 @@ export default function SubscriptionPage() {
                 </button>
               )
             })}
+          </div>
+        )}
+        {isInactiveOrCancelled && subscription?.plan && (
+          <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm">
+            Para retomar o acesso, utilize o botão <strong>Reassinar este plano</strong> acima.
           </div>
         )}
       </div>

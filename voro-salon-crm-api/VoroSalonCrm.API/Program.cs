@@ -1,10 +1,12 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
 using System.Text.Json;
 using VoroSalonCrm.API.Filters;
 using VoroSalonCrm.API.Middlewares;
 using System.Text.Json.Serialization;
 using VoroSalonCrm.Contract.Extensions.Configurations;
+using VoroSalonCrm.Shared.ViewModels;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,24 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidateModelFilter>();
     options.Filters.Add<DemoTenantFilter>();
+});
+
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .Select(e => $"{e.Key}: {string.Join("; ", e.Value!.Errors.Select(err => err.ErrorMessage))}")
+            .ToList();
+
+        var message = string.IsNullOrWhiteSpace(string.Join("", errors))
+            ? "Dados inválidos na requisição."
+            : string.Join(" | ", errors);
+
+        var response = ResponseViewModel<object>.Fail(message, status: 400);
+        return new BadRequestObjectResult(response);
+    };
 });
 
 builder.Services.AddOpenApi();

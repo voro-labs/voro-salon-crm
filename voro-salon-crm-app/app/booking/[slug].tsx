@@ -71,6 +71,15 @@ interface FormState {
   description: string
 }
 
+interface SelectedService {
+  id: string
+  name: string
+  price: number
+  durationMinutes: number
+  promotionalPrice?: number
+  hasPromotion?: boolean
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function publicFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -148,6 +157,7 @@ export default function BookingScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [countryCode, setCountryCode] = useState("BR")
+  const [selectedServices, setSelectedServices] = useState<SelectedService[]>([])
   const [countryModalOpen, setCountryModalOpen] = useState(false)
   const [countrySearch, setCountrySearch] = useState("")
 
@@ -220,6 +230,12 @@ export default function BookingScreen() {
       try {
         const params = new URLSearchParams({ tenantSlug: slug, date: form.date })
         if (form.employeeId && form.employeeId !== "none") params.set("employeeId", form.employeeId)
+        // Pass all selected serviceIds so the API sums their durations
+        if (selectedServices.length > 0) {
+          selectedServices.forEach(s => params.append("serviceIds", s.id))
+        } else if (form.serviceId) {
+          params.set("serviceId", form.serviceId)
+        }
         const data = await publicFetch<Slot[]>(
           `${API_CONFIG.ENDPOINTS.PUBLIC_AVAILABILITY}?${params.toString()}`
         )
@@ -246,11 +262,32 @@ export default function BookingScreen() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  async function handleServiceSelect(service: Service) {
-    setForm((p) => ({ ...p, serviceId: service.id, serviceName: service.name, employeeId: "", employeeName: "" }))
+  function toggleServiceSelection(service: Service) {
+    setSelectedServices(prev => {
+      const isSelected = prev.some(s => s.id === service.id)
+      if (isSelected) {
+        return prev.filter(s => s.id !== service.id)
+      } else {
+        return [...prev, {
+          id: service.id,
+          name: service.name,
+          price: service.price,
+          durationMinutes: service.durationMinutes,
+          promotionalPrice: service.promotionalPrice,
+          hasPromotion: service.hasPromotion,
+        }]
+      }
+    })
+  }
+
+  async function handleServicesConfirm() {
+    if (selectedServices.length === 0) return
+    const firstService = selectedServices[0]
+    const combinedName = selectedServices.map(s => s.name).join(", ")
+    setForm((p) => ({ ...p, serviceId: firstService.id, serviceName: combinedName, employeeId: "", employeeName: "" }))
     try {
       const data = await publicFetch<Employee[]>(
-        `${API_CONFIG.ENDPOINTS.PUBLIC_EMPLOYEES}?tenantSlug=${slug}&serviceId=${service.id}`
+        `${API_CONFIG.ENDPOINTS.PUBLIC_EMPLOYEES}?tenantSlug=${slug}&serviceId=${firstService.id}`
       )
       setEmployees(data)
       setStep(data.length > 0 ? "PROFESSIONAL" : "DATE")
@@ -300,21 +337,29 @@ export default function BookingScreen() {
       const phoneForApi = `${dialCode}${form.phone}`
       const scheduledDateTime = new Date(`${form.date}T${form.time}:00`).toISOString()
 
+      const serviceIdsToSend = selectedServices.length > 0
+        ? selectedServices.map(s => s.id)
+        : form.serviceId ? [form.serviceId] : []
+
       await publicFetch(`${API_CONFIG.ENDPOINTS.PUBLIC_BOOKING}`, {
         method: "POST",
         body: JSON.stringify({
           tenantSlug: slug,
           clientName: form.name,
           clientPhone: phoneForApi,
-          serviceId: form.serviceId,
+          serviceId: form.serviceId || null,
+          serviceIds: serviceIdsToSend,
           employeeId: form.employeeId === "none" ? null : form.employeeId || null,
           scheduledDateTime,
           description: form.description,
         }),
       })
       // Salva o último serviço no histórico de estabelecimentos
-      if (slug && tenant?.name && form.serviceName) {
-        await saveToHistory(slug, tenant.name, [form.serviceName])
+      const serviceNamesForHistory = selectedServices.length > 0
+        ? selectedServices.map(s => s.name)
+        : form.serviceName ? [form.serviceName] : []
+      if (slug && tenant?.name && serviceNamesForHistory.length > 0) {
+        await saveToHistory(slug, tenant.name, serviceNamesForHistory)
       }
       setStep("SUCCESS")
     } catch (err: any) {
@@ -327,7 +372,10 @@ export default function BookingScreen() {
   function openWhatsApp() {
     const rawPhone = tenant?.contactPhone?.replace(/\D/g, "") ?? ""
     if (!rawPhone) return
-    const message = `Olá, acabei de solicitar um agendamento para *${form.serviceName}* no dia *${formatDate(form.date)} às ${form.time}*. Meu nome é ${form.name}.`
+    const serviceDisplay = selectedServices.length > 0
+      ? selectedServices.map(s => s.name).join(", ")
+      : form.serviceName
+    const message = `Olá, acabei de solicitar um agendamento para *${serviceDisplay}* no dia *${formatDate(form.date)} às ${form.time}*. Meu nome é ${form.name}.`
     Linking.openURL(`https://wa.me/${rawPhone}?text=${encodeURIComponent(message)}`)
   }
 
@@ -432,7 +480,7 @@ export default function BookingScreen() {
 
           <Text className="text-2xl font-black text-zinc-900 mb-1">Escolha o serviço</Text>
           <Text className="text-zinc-500 font-medium mb-6">
-            Qual serviço você deseja realizar?
+            Selecione um ou mais serviços que deseja realizar.
           </Text>
 
           {services.length === 0 ? (
@@ -442,52 +490,119 @@ export default function BookingScreen() {
             </View>
           ) : (
             <View className="gap-3">
-              {services.map((s) => (
-                <Pressable
-                  key={s.id}
-                  onPress={() => handleServiceSelect(s)}
-                  className="bg-white rounded-2xl p-4 border border-zinc-100 flex-row items-center gap-4 active:opacity-70"
-                >
-                  <View
-                    className="h-12 w-12 rounded-2xl items-center justify-center"
-                    style={{ backgroundColor: primary + "18" }}
+              {services.map((s) => {
+                const isSelected = selectedServices.some(sel => sel.id === s.id)
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => toggleServiceSelection(s)}
+                    className="rounded-2xl p-4 border flex-row items-center gap-4 active:opacity-70"
+                    style={{
+                      backgroundColor: isSelected ? primary : "white",
+                      borderColor: isSelected ? primary : "#f4f4f5",
+                    }}
                   >
-                    <Ionicons name="cut-outline" size={22} color={primary} />
-                  </View>
-                  <View className="flex-1">
-                    <View className="flex-row items-center gap-2 flex-wrap">
-                      <Text className="text-zinc-900 font-bold text-base">{s.name}</Text>
-                      {s.hasPromotion && (
-                        <View className="bg-emerald-100 rounded-full px-2 py-0.5">
-                          <Text className="text-emerald-700 font-bold text-[10px]">PROMOÇÃO</Text>
-                        </View>
-                      )}
+                    <View
+                      className="h-12 w-12 rounded-2xl items-center justify-center"
+                      style={{ backgroundColor: isSelected ? "rgba(255,255,255,0.2)" : primary + "18" }}
+                    >
+                      {isSelected
+                        ? <Ionicons name="checkmark" size={22} color="white" />
+                        : <Ionicons name="cut-outline" size={22} color={primary} />
+                      }
                     </View>
-                    <View className="flex-row gap-3 mt-0.5 flex-wrap">
-                      {s.hasPromotion && s.promotionalPrice != null ? (
-                        <>
-                          <Text className="text-zinc-400 font-medium text-sm line-through">
+                    <View className="flex-1">
+                      <View className="flex-row items-center gap-2 flex-wrap">
+                        <Text
+                          className="font-bold text-base"
+                          style={{ color: isSelected ? "white" : "#18181b" }}
+                        >
+                          {s.name}
+                        </Text>
+                        {s.hasPromotion && (
+                          <View
+                            className="rounded-full px-2 py-0.5"
+                            style={{ backgroundColor: isSelected ? "rgba(255,255,255,0.25)" : "#d1fae5" }}
+                          >
+                            <Text
+                              className="font-bold text-[10px]"
+                              style={{ color: isSelected ? "white" : "#059669" }}
+                            >
+                              PROMOÇÃO
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="flex-row gap-3 mt-0.5 flex-wrap">
+                        {s.hasPromotion && s.promotionalPrice != null ? (
+                          <>
+                            <Text
+                              className="font-medium text-sm line-through"
+                              style={{ color: isSelected ? "rgba(255,255,255,0.6)" : "#a1a1aa" }}
+                            >
+                              R$ {s.price.toFixed(2)}
+                            </Text>
+                            <Text
+                              className="font-bold text-sm"
+                              style={{ color: isSelected ? "white" : "#059669" }}
+                            >
+                              R$ {s.promotionalPrice.toFixed(2)}
+                            </Text>
+                          </>
+                        ) : s.price != null ? (
+                          <Text
+                            className="font-medium text-sm"
+                            style={{ color: isSelected ? "rgba(255,255,255,0.8)" : "#71717a" }}
+                          >
                             R$ {s.price.toFixed(2)}
                           </Text>
-                          <Text className="text-emerald-600 font-bold text-sm">
-                            R$ {s.promotionalPrice.toFixed(2)}
+                        ) : null}
+                        {s.durationMinutes != null && (
+                          <Text
+                            className="font-medium text-sm"
+                            style={{ color: isSelected ? "rgba(255,255,255,0.7)" : "#a1a1aa" }}
+                          >
+                            {s.durationMinutes} min
                           </Text>
-                        </>
-                      ) : s.price != null ? (
-                        <Text className="text-zinc-500 font-medium text-sm">
-                          R$ {s.price.toFixed(2)}
-                        </Text>
-                      ) : null}
-                      {s.durationMinutes != null && (
-                        <Text className="text-zinc-400 font-medium text-sm">
-                          {s.durationMinutes} min
-                        </Text>
-                      )}
+                        )}
+                      </View>
                     </View>
+                  </Pressable>
+                )
+              })}
+
+              {/* Running total bar */}
+              {selectedServices.length > 0 && (
+                <View className="bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-3 flex-row items-center justify-between mt-1">
+                  <View>
+                    <Text className="text-zinc-500 font-semibold text-xs">
+                      {selectedServices.length} serviço{selectedServices.length > 1 ? "s" : ""} selecionado{selectedServices.length > 1 ? "s" : ""}
+                    </Text>
+                    <Text className="text-zinc-400 font-medium text-xs">
+                      {selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0)} min no total
+                    </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#d4d4d8" />
-                </Pressable>
-              ))}
+                  <Text className="text-zinc-900 font-black text-base">
+                    R$ {selectedServices
+                      .reduce((sum, s) => sum + (s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price), 0)
+                      .toFixed(2)}
+                  </Text>
+                </View>
+              )}
+
+              <Pressable
+                onPress={handleServicesConfirm}
+                disabled={selectedServices.length === 0}
+                className="h-14 rounded-2xl items-center justify-center flex-row gap-2 mt-1"
+                style={{ backgroundColor: selectedServices.length === 0 ? "#d4d4d8" : primary }}
+              >
+                <Text className="text-white font-black text-base">
+                  {selectedServices.length === 0
+                    ? "Selecione pelo menos um serviço"
+                    : `Continuar com ${selectedServices.length} serviço${selectedServices.length > 1 ? "s" : ""}`}
+                </Text>
+                {selectedServices.length > 0 && <Ionicons name="arrow-forward" size={18} color="white" />}
+              </Pressable>
             </View>
           )}
         </ScrollView>
@@ -747,7 +862,37 @@ export default function BookingScreen() {
 
             {/* Summary card */}
             <View className="bg-white rounded-2xl border border-zinc-100 overflow-hidden mb-6">
-              <SummaryRow icon="cut-outline" label="Serviço" value={form.serviceName} primary={primary} />
+              {selectedServices.length > 1 ? (
+                <View className="flex-row items-start gap-3 px-4 py-3.5 border-b border-zinc-50">
+                  <View
+                    className="h-8 w-8 rounded-xl items-center justify-center shrink-0"
+                    style={{ backgroundColor: primary + "18" }}
+                  >
+                    <Ionicons name="cut-outline" size={16} color={primary} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-zinc-400 font-semibold text-xs mb-0.5">Serviços</Text>
+                    {selectedServices.map((s, idx) => (
+                      <View key={s.id} className="flex-row items-center justify-between">
+                        <Text className="text-zinc-900 font-semibold text-sm flex-1" numberOfLines={1}>{s.name}</Text>
+                        <Text className="text-zinc-400 font-medium text-xs ml-2">
+                          R$ {(s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price).toFixed(2)}
+                        </Text>
+                      </View>
+                    ))}
+                    <View className="flex-row justify-between mt-1 pt-1 border-t border-zinc-100">
+                      <Text className="text-zinc-600 font-bold text-xs">
+                        Total • {selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0)} min
+                      </Text>
+                      <Text className="text-zinc-900 font-black text-xs">
+                        R$ {selectedServices.reduce((sum, s) => sum + (s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price), 0).toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <SummaryRow icon="cut-outline" label="Serviço" value={form.serviceName} primary={primary} />
+              )}
               <SummaryRow icon="person-outline" label="Profissional" value={form.employeeName || "Qualquer profissional"} primary={primary} />
               <SummaryRow icon="calendar-outline" label="Data" value={formatDate(form.date)} primary={primary} />
               <SummaryRow icon="time-outline" label="Horário" value={form.time} primary={primary} last />
@@ -830,7 +975,19 @@ export default function BookingScreen() {
 
           {/* Summary chip */}
           <View className="bg-white rounded-2xl border border-zinc-100 px-5 py-4 w-full mb-8 gap-1.5">
-            <Text className="text-zinc-900 font-black text-base">{form.serviceName}</Text>
+            {selectedServices.length > 1 ? (
+              selectedServices.map((s, idx) => (
+                <Text
+                  key={s.id}
+                  className="font-black text-zinc-900"
+                  style={{ fontSize: idx === 0 ? 16 : 14, color: idx === 0 ? "#18181b" : "#71717a", fontWeight: idx === 0 ? "900" : "600" }}
+                >
+                  {s.name}
+                </Text>
+              ))
+            ) : (
+              <Text className="text-zinc-900 font-black text-base">{form.serviceName}</Text>
+            )}
             <Text className="text-zinc-500 font-semibold text-sm">
               {formatDate(form.date)} às {form.time}
             </Text>
