@@ -120,10 +120,8 @@ namespace VoroSalonCrm.Application.Services
             if (tenant == null) return new PublicBookingResponseDto(false, "Estabelecimento não encontrado.", null);
 
             var serviceIds = dto.ResolvedServiceIds();
-            if (serviceIds.Count == 0)
-                return new PublicBookingResponseDto(false, "Nenhum serviço informado.", null);
 
-            // Load all requested services
+            // Load all requested services (pode ser vazio quando múltiplos serviços vêm na description)
             var services = new List<Service>();
             foreach (var sid in serviceIds)
             {
@@ -186,14 +184,14 @@ namespace VoroSalonCrm.Application.Services
             if (existingAppointment != null)
                 return new PublicBookingResponseDto(true, "Agendamento realizado com sucesso!", existingAppointment.Id);
 
-            // For backward-compat, set ServiceId to the first service
-            var primaryService = services[0];
+            // ServiceId = primeiro serviço quando houver, null quando múltiplos (nomes vêm na Description)
+            var primaryService = services.Count > 0 ? services[0] : null;
 
             var appointment = new Appointment
             {
                 TenantId = tenant.Id,
                 ClientId = client.Id,
-                ServiceId = primaryService.Id,
+                ServiceId = primaryService?.Id,
                 EmployeeId = dto.EmployeeId,
                 ScheduledDateTime = dto.ScheduledDateTime.ToUniversalTime(),
                 DurationMinutes = totalDuration,
@@ -235,9 +233,9 @@ namespace VoroSalonCrm.Application.Services
                     var dateStr = localTime.ToString("dd/MM/yyyy");
                     var timeStr = localTime.ToString("HH:mm");
 
-                    var servicesSummary = services.Count == 1
-                        ? services[0].Name
-                        : string.Join(", ", services.Select(s => s.Name));
+                    var servicesSummary = services.Count > 0
+                        ? (services.Count == 1 ? services[0].Name : string.Join(", ", services.Select(s => s.Name)))
+                        : (dto.Description ?? "Múltiplos serviços");
 
                     await _expoPushNotificationService.SendToUsersAsync(
                         ownerIds,

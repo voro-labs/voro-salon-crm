@@ -503,9 +503,15 @@ export default function PublicBookingPage() {
       const dialCode = flags[countryCode]?.dialCodeOnlyNumber || ""
       const phoneForApi = `${dialCode}${form.phone}`
 
-      const serviceIdsToSend = selectedServices.length > 0
-        ? selectedServices.map(s => s.id)
-        : form.serviceId ? [form.serviceId] : []
+      // Quando múltiplos serviços: não vincula serviço, coloca os nomes na description
+      const isMultiService = selectedServices.length > 1
+      const serviceNamesDescription = isMultiService
+        ? selectedServices.map(s => s.name).join(", ")
+        : ""
+
+      const finalDescription = isMultiService
+        ? [serviceNamesDescription, form.description].filter(Boolean).join(" | ")
+        : form.description
 
       const res = await apiCall<any>(API_CONFIG.ENDPOINTS.PUBLIC_BOOKING, {
         method: "POST",
@@ -513,11 +519,11 @@ export default function PublicBookingPage() {
           tenantSlug: slug,
           clientName: form.name,
           clientPhone: phoneForApi,
-          serviceId: form.serviceId || null,
-          serviceIds: serviceIdsToSend,
+          serviceId: isMultiService ? null : (selectedServices.length === 1 ? selectedServices[0].id : (form.serviceId || null)),
+          serviceIds: isMultiService ? null : (selectedServices.length === 1 ? [selectedServices[0].id] : (form.serviceId ? [form.serviceId] : [])),
           employeeId: !form.employeeId || form.employeeId === 'none' ? null : form.employeeId,
           scheduledDateTime,
-          description: form.description,
+          description: finalDescription,
           reminderMinutes: form.reminderMinutes,
         })
       })
