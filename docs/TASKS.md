@@ -1,126 +1,76 @@
-# Importante
+# Tarefas - Agendamento: Melhoria de Interface, Bug de Duração e Persistência de Serviços
 
-## Booking Web (Funil de Agendamento Online)
+## Contexto
 
-### Welcome Screen
-- [x] Exibir imagem de capa + logo do estabelecimento (buscar de `TenantSettings`)
-- [x] Exibir horários de funcionamento formatados por dia da semana
-- [x] Exibir mapa embutido (Google Maps iframe ou link) com o endereço do estabelecimento
-- [x] Fallback gracioso caso o endereço não esteja cadastrado (ocultar seção de mapa)
+Os formulários de agendamento (`/appointments/new` e `/appointments/[id]`) precisam de melhorias visuais na seleção de cliente/serviços/funcionário, correção do bug de duração com múltiplos serviços, e implementação do salvamento dos serviços na tabela `AppointmentServices`.
 
 ---
 
-## Melhorias Futuras
+## Task 1: Melhorar a interface de seleção de Cliente / Serviços / Funcionário
 
-### Agendamento com múltiplos serviços
-- [x] Permitir ao cliente selecionar mais de um serviço por agendamento
-- [x] Recalcular duração total somando os `DurationMinutes` de cada serviço selecionado
-- [x] Verificar disponibilidade do slot considerando a duração total acumulada
-- [x] Exibir resumo dos serviços selecionados + preço total antes de confirmar
-- [x] Ajustar notificações WhatsApp para listar todos os serviços do agendamento
-- [x] Fazer esse ajuste no web e mobile + api
+**Arquivos**: `app/appointments/new/page.tsx`, `app/appointments/[id]/page.tsx`
 
+**Problema**: A forma atual de escolher serviços (grid de botões pequenos) ficou ruim visualmente. Cliente, serviços e funcionário estão misturados no mesmo grid sem separação clara.
 
-### Tasks de implementação — IA WhatsApp Bot
+**O que fazer**:
+- [x] Separar visualmente as seções de Cliente, Serviços e Funcionário em blocos distintos (possivelmente com bordas/headers leves)
+- [x] Melhorar o card de serviço: mostrar nome, preço e duração de forma mais legível, com melhor feedback visual ao selecionar
+- [ ] Considerar agrupar serviços por categoria quando houver categoria definida
+- [x] Melhorar o resumo de serviços selecionados (sticky ou mais destacado)
+- [x] Aplicar as mesmas melhorias nas duas páginas (new e [id])
 
-#### Backend
-- [x] Criar entidade `AIConversationMessage` (tenantId, phoneNumber, role, content, createdAt)
-- [x] Criar `IAIConversationRepository` + implementação EF
-- [x] Criar `AIConversationService` com método `RespondAsync(tenantId, phoneNumber, userMessage)`
-  - Busca histórico das últimas 10 mensagens da conversa
-  - Monta system prompt com contexto do tenant
-  - Chama LLM via HTTP (Gemini Flash ou configurável via `appsettings`)
-  - Persiste mensagem do usuário + resposta da IA
-  - Retorna texto da resposta
-- [x] Criar `IGeminiService` (ou `ILLMService` agnóstico ao provedor)
-- [x] Configurar `appsettings.json`: `AISettings:Provider`, `AISettings:ApiKey`, `AISettings:Model`
-- [x] Integrar `AIConversationService` no `WhatsAppBotService` (fallback no `default:` do state machine)
-- [x] Endpoint admin: `GET /admin/ai-conversations/{tenantId}` para visualizar histórico
-- [x] Endpoint admin: `POST /admin/ai-conversations/reset` para limpar histórico
+---
 
-#### Caso 2 — SDR Vorolabs (contexto separado)
-- [ ] System prompt dedicado com script de vendas do Voro
-- [ ] Número WhatsApp separado para o bot de vendas
-- [ ] Webhook separado ou roteamento por número destino no mesmo webhook
-- [ ] Dashboard básico de leads atendidos pela IA
+## Task 2: Bug - Duração não suporta cálculo com vários serviços
 
-#### Frontend (admin)
-- [ ] Tela de configuração da IA por tenant: ativar/desativar, personalizar tom/instruções extras
-- [ ] Visualizador de conversas IA no painel admin
+**Arquivos**: `app/appointments/new/page.tsx`, `app/appointments/[id]/page.tsx`
 
-#### Infraestrutura
-- [ ] Variável de ambiente `GEMINI_API_KEY` no deploy (definir `AISettings:ApiKey`)
-- [ ] Rate limiting por tenant para evitar abuso (máx. N mensagens IA / hora)
-- [ ] Logging de tokens consumidos por tenant para monitorar custo
+**Problema**: O `<Select>` de duração tem opções fixas de 15, 30, 45, 60, 90 e 120 minutos. Quando o usuário seleciona vários serviços cujo total de duração excede 120 min (ou cai em valor intermediário como 75 min), o `<Select>` não tem esse valor e não consegue mostrar a duração correta.
 
-## BUGS
+**O que fazer**:
+- [x] Quando há serviços selecionados, calcular a duração total automaticamente e mostrar em um campo somente-leitura (ou label informativo) ao invés de depender do Select fixo
+- [x] Permitir ao usuário sobrescrever manualmente se quiser (trocar para input numérico ou adicionar as opções faltantes dinamicamente)
+- [x] Garantir que `form.durationMinutes` seja corretamente atualizado com o total dos serviços selecionados (a lógica no `toggleService` já faz isso, mas o Select não reflete quando o valor não está nas opções)
+- [x] Aplicar nas duas páginas (new e [id])
 
-#### Domínio
-- [x] Criar entidade ou record `PendingPlanChange` (tenantId, currentPlanId, currentSubscriptionSnapshot, requestedPlanId, createdAt, expiresAt)
-- [x] Definir `SubscriptionChangeType` enum: `NewSubscription`, `Upgrade`, `Downgrade`, `LateralSwitch`
-- [x] Adicionar método `IsUpgrade(SubscriptionPlan current, SubscriptionPlan requested): bool` em `SubscriptionPlan` ou service
-- [x] Regra: `PromoPrice` só é aplicado se `ChangeType == NewSubscription || ChangeType == Upgrade`
+---
 
-#### Backend — SubscriptionService
-- [x] Criar `InitiatePlanChangeAsync(tenantId, newPlanId)`:
-  - Salva snapshot do plano/assinatura atual em `PendingPlanChange`
-  - Inicia checkout normalmente (Cartão ou Pix)
-  - Retorna `checkoutUrl` ou dados Pix
-- [x] Criar `CancelPendingPlanChangeAsync(tenantId)`:
-  - Remove `PendingPlanChange`
-  - Restaura/mantém estado original da `TenantSubscription` (sem alterar nada)
-  - Chamado quando: dialog fechado, timeout, ou cliente solicita cancelamento
-- [x] Atualizar `ProcessWebhookAsync`:
-  - Ao confirmar pagamento, verificar se há `PendingPlanChange` para o tenant
-  - Se houver: aplicar novo plano e resolver `ChangeType`
-  - Aplicar `PromoPrice` somente se `ChangeType == NewSubscription || Upgrade`
-  - Remover `PendingPlanChange` após conclusão
-- [x] Job de limpeza: expirar `PendingPlanChange` com mais de 2 horas sem conclusão (chama `CancelPendingPlanChangeAsync`)
+## Task 3: Salvar serviços escolhidos na tabela AppointmentServices
 
-#### Backend — Lógica de exibição de preço
-- [x] Criar `ResolveDisplayPriceAsync(tenantId, planId): decimal`:
-  - Se tenant **não tem histórico** de assinatura (novo): retorna `PromoPrice` se disponível
-  - Se tenant tem assinatura **ativa**: retorna `PromoPrice` somente se `IsUpgrade`
-  - Se tenant tem assinatura **inativa/expirada**: retorna **preço cheio** (`Price`) independente de promo
-- [x] Endpoint `GET /subscription/plans/resolved-prices` retornar o preço correto por tenant
+**Arquivos backend**:
+- `VoroSalonCrm.Application/DTOs/CRM/AppointmentDtos.cs`
+- `VoroSalonCrm.Application/Services/AppointmentService.cs`
+- `VoroSalonCrm.Domain/Entities/AppointmentService.cs` (entidade join table - JA EXISTE)
+- `VoroSalonCrm.Domain/Entities/Appointment.cs` (propriedade `Services` - JA EXISTE)
 
-#### Backend — API
-- [x] `POST /subscription/change-plan` → chama `InitiatePlanChangeAsync`
-- [x] `DELETE /subscription/pending-change` → chama `CancelPendingPlanChangeAsync` (chamado ao fechar dialog)
+**Arquivos frontend**:
+- `hooks/use-appointment-form.hook.ts`
+- `hooks/use-appointment-detail.hook.ts`
+- `app/appointments/new/page.tsx`
+- `app/appointments/[id]/page.tsx`
 
-#### Frontend Web
-- [x] Ao abrir dialog de checkout para trocar plano, registrar `PendingPlanChange` via `POST /subscription/change-plan`
-- [x] Ao fechar dialog (X, ESC, clique fora) **sem concluir**: chamar `DELETE /subscription/pending-change`
-- [x] Tela `subscription/page.tsx` e `prices/page.tsx`: buscar preço via endpoint personalizado por tenant em vez do preço global do plano
-- [x] Ocultar badge de promoção e riscar preço original para clientes inativos (mostrar só preço cheio)
-- [x] Exibir label informativo: _"Promoção disponível apenas para novos clientes ou upgrades"_ quando cliente inativo tentar acessar promo
+**Problema**: O frontend permite selecionar múltiplos serviços, mas envia apenas `serviceId` (um só) para a API. A tabela `AppointmentServices` já existe no banco mas nunca é populada. O DTO de criação/atualização não tem campo para lista de serviços.
 
-#### Frontend Mobile
-- [x] Mesma lógica: ao fechar tela de checkout de troca de plano sem pagar → chamar endpoint de cancelamento
-- [x] Tela de planos: exibir preço correto conforme status do tenant (cheio para inativos)
+**O que fazer**:
 
-#### Bug Pix — QR Code sumia antes de pagamento
-- [x] Polling não deve tratar `"Inactive"` como falha — corrigido em `subscription/page.tsx` e `prices/page.tsx` (só `"cancelled"` encerra o QR)
+### Backend
+- [x] Adicionar `List<Guid>? ServiceIds` ao `CreateAppointmentDto`
+- [x] Adicionar `List<Guid>? ServiceIds` ao `UpdateAppointmentDto`
+- [x] No `CreateAsync`, popular `appointment.Services` com os `ServiceIds` recebidos
+- [x] No `UpdateAsync`, atualizar `AppointmentServices` (remover antigas, inserir novas)
+- [x] Adicionar `List<AppointmentServiceDto>? Services` ao `AppointmentDto` para retornar os serviços
+- [x] Criar `AppointmentServiceDto` com `ServiceId`, `ServiceName`, `Price`, `DurationMinutes`
 
-#### Bug Pix — Erro MercadoPago "Collector user without key enabled for QR render"
-- [ ] Problema de configuração da conta MercadoPago — habilitar QR Code no painel MP (não é código)
+### Frontend
+- [x] No `use-appointment-form.hook.ts`, adicionar `serviceIds: string[]` ao form e enviar no POST
+- [x] No `use-appointment-detail.hook.ts`, adicionar `serviceIds: string[]` ao form e enviar no PUT
+- [x] Na página `new`, preencher `serviceIds` a partir de `selectedServices`
+- [x] Na página `[id]`, inicializar `selectedServices` a partir de `appointment.services` (lista da API)
 
-#### Bug — WhatsApp Connect
-- [x] URL do Embedded Signup corrigida: `extras` agora inclui `{"sessionInfoVersion":"3","version":"v4"}` e é concatenada corretamente na URL (estava sendo montada mas não usada) — corrigido em `settings/page.tsx`, `settings/whatsapp/page.tsx` e `whatsapp.tsx` mobile
-- [ ] "Sorry, this content isn't available right now" — verificar configuração do App no Meta Business Manager (App ID, Config ID, permissões do app)
+---
 
-#### Bug Crítico — Duplicação de agendamento
-- [x] Idempotency check em `CreateBookingAsync`: retorna agendamento existente se criado nos últimos 30s com mesmo tenant+client+employee+horário
-- [x] Unique index parcial no banco: `IX_Appointments_TenantId_EmployeeId_ScheduledAt` (filter: `EmployeeId IS NOT NULL`)
-- [x] Migration `20260414210000_AddAppointmentUniqueIndex.cs` + snapshot atualizado
-- [x] Frontend web e mobile: botão já estava com `disabled={submitting}` — nenhuma mudança necessária
+## Ordem de execução sugerida
 
-NOVOS BUGS:
-
-- [x] Guardar o body no AuditLog — adicionado campo `RequestBody` em `RouteAuditLog` e captura no `AuditMiddleware` (POST/PUT/PATCH, max 8KB)
-- [x] Erro de birthDate retorna via `ResponseViewModel` — configurado `InvalidModelStateResponseFactory` no `ApiBehaviorOptions` e atualizado `ValidateModelFilter` para retornar `ResponseViewModel<object>.Fail()` com as mensagens de erro de validação
-
-PENDENTES:
-
-- [ ] Adicionar suporte de multiple language no sistema e no bot do WhatsApp (enum `SupportedLanguage` e `SharedResource` já criados em VoroSalonCrm.Shared — falta configurar localization no Program.cs, criar .resx, adicionar campo Language no Tenant, e adaptar WhatsappChatService + GeminiService)
-- [x] Adicionar envio de e-mail para os erros log@vorolabs.app, titulo do sistema e corpo com o erro — implementado no `ExceptionHandlingMiddleware`
+1. **Task 2** (bug duração) - fix rápido e isolado
+2. **Task 3** (persistência backend + frontend) - estrutural, precisa ser feito antes da UI
+3. **Task 1** (melhoria visual) - pode ser feito por último com tudo funcionando

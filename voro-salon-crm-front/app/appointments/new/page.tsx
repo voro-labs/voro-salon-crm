@@ -21,6 +21,15 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  if (remaining === 0) return `${hours}h`
+  return `${hours}h ${remaining}min`
+}
+
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { QuickCreateClient } from "@/components/custom/quick-create-client"
@@ -118,13 +127,14 @@ export default function NovoAgendamentoPage() {
       }
 
       if (next.length === 0) {
-        setForm(p => ({ ...p, serviceId: "none" }))
+        setForm(p => ({ ...p, serviceId: "none", serviceIds: [] }))
       } else if (next.length === 1) {
         const svc = next[0]
         const effectivePrice = svc.hasPromotion && svc.promotionalPrice ? svc.promotionalPrice : svc.price
         setForm(p => ({
           ...p,
           serviceId: svc.id,
+          serviceIds: [svc.id],
           employeeId: "none",
           amount: effectivePrice,
           durationMinutes: svc.durationMinutes,
@@ -133,7 +143,7 @@ export default function NovoAgendamentoPage() {
       } else {
         const totalAmount = next.reduce((sum, svc) => sum + (svc.hasPromotion && svc.promotionalPrice ? svc.promotionalPrice : svc.price), 0)
         const totalDuration = next.reduce((sum, svc) => sum + svc.durationMinutes, 0)
-        setForm(p => ({ ...p, serviceId: "none", employeeId: "none", amount: totalAmount, durationMinutes: totalDuration, description: next.map(svc => svc.name).join(", ") }))
+        setForm(p => ({ ...p, serviceId: "none", serviceIds: next.map(svc => svc.id), employeeId: "none", amount: totalAmount, durationMinutes: totalDuration, description: next.map(svc => svc.name).join(", ") }))
       }
       return next
     })
@@ -216,10 +226,11 @@ export default function NovoAgendamentoPage() {
               onSubmit={(e) => { e.preventDefault(); createAppointment({ ...form, isEncaixe } as any) }}
               className="flex flex-col gap-5"
             >
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-5">
+                {/* Cliente */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="clientId">Cliente *</Label>
+                    <Label htmlFor="clientId" className="text-sm font-semibold text-foreground">Cliente *</Label>
                     {!isSalonEmployee && (
                       <QuickCreateClient
                         onSuccess={async (id) => {
@@ -239,7 +250,7 @@ export default function NovoAgendamentoPage() {
                     emptyText="Nenhum cliente encontrado."
                   />
                   {activeMembership && (
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
                         Usa assinatura: {activeMembership.planName}
                         {activeMembership.remainingSessions !== null && (
@@ -250,10 +261,11 @@ export default function NovoAgendamentoPage() {
                   )}
                 </div>
 
+                {/* Serviços */}
                 {isModuleEnabled(3) && (
-                  <div className="flex flex-col gap-2 sm:col-span-2">
+                  <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
                     <div className="flex items-center justify-between">
-                      <Label>Serviços (Opcional)</Label>
+                      <Label className="text-sm font-semibold text-foreground">Serviços <span className="text-muted-foreground font-normal">(Opcional)</span></Label>
                       {!isSalonEmployee && (
                         <QuickCreateService
                           onSuccess={async (id, serviceData) => {
@@ -263,46 +275,71 @@ export default function NovoAgendamentoPage() {
                         />
                       )}
                     </div>
-                    {services && services.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                        {services.map((s: any) => {
-                          const isSelected = selectedServices.some(sel => sel.id === s.id)
-                          const effectivePrice = s.hasPromotion && s.promotionalPrice ? s.promotionalPrice : s.price
-                          return (
-                            <Button
-                              key={s.id}
-                              type="button"
-                              variant={isSelected ? "default" : "outline"}
-                              className={cn(
-                                "h-auto py-2 px-2.5 flex flex-col items-start gap-0.5 text-left transition-all",
-                                isSelected
-                                  ? "bg-primary text-primary-foreground border-primary"
-                                  : "bg-background hover:bg-primary/5 hover:border-primary hover:text-primary"
+                    {services && services.length > 0 ? (() => {
+                      const grouped: Record<string, any[]> = {}
+                      for (const s of services) {
+                        const key = s.category || ""
+                        if (!grouped[key]) grouped[key] = []
+                        grouped[key].push(s)
+                      }
+                      const hasCategories = Object.keys(grouped).some(k => k !== "")
+
+                      const renderServiceButton = (s: any) => {
+                        const isSelected = selectedServices.some(sel => sel.id === s.id)
+                        const effectivePrice = s.hasPromotion && s.promotionalPrice ? s.promotionalPrice : s.price
+                        return (
+                          <Button
+                            key={s.id}
+                            type="button"
+                            variant={isSelected ? "default" : "outline"}
+                            className={cn(
+                              "h-auto py-2.5 px-3 flex flex-col items-start gap-1 text-left transition-all",
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                : "bg-background hover:bg-primary/5 hover:border-primary hover:text-primary"
+                            )}
+                            onClick={() => toggleService(s)}
+                          >
+                            <div className="flex items-center gap-1 w-full">
+                              <span className="font-semibold text-xs line-clamp-1 flex-1">{s.name}</span>
+                              {s.hasPromotion && (
+                                <span className={cn(
+                                  "text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0",
+                                  isSelected ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
+                                )}>%</span>
                               )}
-                              onClick={() => toggleService(s)}
-                            >
-                              <div className="flex items-center gap-1 w-full">
-                                <span className="font-semibold text-xs line-clamp-1 flex-1">{s.name}</span>
-                                {s.hasPromotion && (
-                                  <span className={cn(
-                                    "text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0",
-                                    isSelected ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
-                                  )}>%</span>
-                                )}
+                            </div>
+                            <span className={cn("text-[10px]", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                              {s.durationMinutes} min • R$ {effectivePrice.toFixed(2)}
+                            </span>
+                          </Button>
+                        )
+                      }
+
+                      return hasCategories ? (
+                        <div className="flex flex-col gap-3">
+                          {Object.entries(grouped).map(([category, items]) => (
+                            <div key={category} className="flex flex-col gap-1.5">
+                              {category && (
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground ml-0.5">{category}</span>
+                              )}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                {items.map(renderServiceButton)}
                               </div>
-                              <span className={cn("text-[10px]", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                                {s.durationMinutes} min • R$ {effectivePrice.toFixed(2)}
-                              </span>
-                            </Button>
-                          )
-                        })}
-                      </div>
-                    ) : (
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          {services.map(renderServiceButton)}
+                        </div>
+                      )
+                    })() : (
                       <p className="text-xs text-muted-foreground">Nenhum serviço cadastrado.</p>
                     )}
                     {selectedServices.length > 1 && (
-                      <div className="rounded-lg border border-border bg-muted/30 px-3 py-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{selectedServices.length} serviços • {selectedServices.reduce((s, svc) => s + svc.durationMinutes, 0)} min</span>
+                      <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{selectedServices.length} serviços • {formatDuration(selectedServices.reduce((s, svc) => s + svc.durationMinutes, 0))}</span>
                         <span className="font-bold text-foreground">
                           R$ {selectedServices.reduce((s, svc) => s + (svc.hasPromotion && svc.promotionalPrice ? svc.promotionalPrice : svc.price), 0).toFixed(2)}
                         </span>
@@ -325,10 +362,11 @@ export default function NovoAgendamentoPage() {
                   </div>
                 )}
 
+                {/* Funcionário */}
                 {isModuleEnabled(4) && !isSalonEmployee && (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="employeeId">Funcionário (Opcional)</Label>
+                      <Label htmlFor="employeeId" className="text-sm font-semibold text-foreground">Funcionário <span className="text-muted-foreground font-normal">(Opcional)</span></Label>
                       <QuickCreateEmployee
                         onSuccess={async (id) => {
                           await mutateEmployees()
@@ -388,23 +426,37 @@ export default function NovoAgendamentoPage() {
 
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="durationMinutes">Duração Estimada</Label>
-                  <Select
-                    key={form.durationMinutes}
-                    value={form.durationMinutes.toString()}
-                    onValueChange={(v) => setForm((p) => ({ ...p, durationMinutes: parseInt(v) }))}
-                  >
-                    <SelectTrigger id="durationMinutes" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15">15 min</SelectItem>
-                      <SelectItem value="30">30 min</SelectItem>
-                      <SelectItem value="45">45 min</SelectItem>
-                      <SelectItem value="60">1 hora</SelectItem>
-                      <SelectItem value="90">1h 30min</SelectItem>
-                      <SelectItem value="120">2 horas</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {selectedServices.length > 0 ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="durationMinutes"
+                        type="number"
+                        min={1}
+                        value={form.durationMinutes}
+                        onChange={(e) => setForm((p) => ({ ...p, durationMinutes: parseInt(e.target.value) || 0 }))}
+                        className="w-full"
+                      />
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">min</span>
+                    </div>
+                  ) : (
+                    <Select
+                      key={form.durationMinutes}
+                      value={form.durationMinutes.toString()}
+                      onValueChange={(v) => setForm((p) => ({ ...p, durationMinutes: parseInt(v) }))}
+                    >
+                      <SelectTrigger id="durationMinutes" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 min</SelectItem>
+                        <SelectItem value="30">30 min</SelectItem>
+                        <SelectItem value="45">45 min</SelectItem>
+                        <SelectItem value="60">1 hora</SelectItem>
+                        <SelectItem value="90">1h 30min</SelectItem>
+                        <SelectItem value="120">2 horas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
 
@@ -462,6 +514,24 @@ export default function NovoAgendamentoPage() {
                         )}
                       </>
                     )}
+                    {/* Input manual de hora/minuto */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                      <span className="text-xs text-muted-foreground shrink-0">Horário manual:</span>
+                      <input
+                        type="time"
+                        className="h-8 rounded-md border border-input bg-background px-2 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={form.scheduledDateTime ? format(new Date(form.scheduledDateTime), "HH:mm") : ""}
+                        onChange={(e) => {
+                          if (!e.target.value || !selectedDate) return
+                          const [h, m] = e.target.value.split(":").map(Number)
+                          const d = new Date(selectedDate)
+                          d.setHours(h, m, 0, 0)
+                          const tzOffset = d.getTimezoneOffset() * 60000
+                          const localISO = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+                          setForm((p) => ({ ...p, scheduledDateTime: localISO }))
+                        }}
+                      />
+                    </div>
                   </div>
                 )
               })()}

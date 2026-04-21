@@ -147,45 +147,11 @@ function WelcomeCard({ tenant }: { tenant: PublicTenant }) {
   const hasBusinessHours = sortedHours.length > 0
 
   return (
-    <div className="rounded-2xl rounded-tl-none border bg-background shadow-sm overflow-hidden max-w-[85%]">
-      {/* Cover image */}
-      {tenant.coverImageUrl && (
-        <div className="w-full h-28 overflow-hidden">
-          <img
-            src={tenant.coverImageUrl}
-            alt={`Capa de ${tenant.name}`}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+    <div className="rounded-2xl rounded-tl-none border bg-background shadow-sm overflow-hidden w-full">
+      
 
       <div className="p-4 flex flex-col gap-4">
-        {/* Logo + name row */}
-        <div className="flex items-center gap-3">
-          {tenant.logoUrl ? (
-            <img
-              src={tenant.logoUrl}
-              alt={tenant.name}
-              className="h-14 w-14 rounded-full object-cover border-2 border-border shadow-sm shrink-0"
-            />
-          ) : (
-            <div className="h-14 w-14 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-              {getInitials(tenant.name)}
-            </div>
-          )}
-          <div className="flex flex-col min-w-0">
-            <span className="font-bold text-base text-foreground leading-tight truncate">
-              {tenant.name}
-            </span>
-            <Badge
-              variant="outline"
-              className="w-fit text-[10px] h-4 py-0 text-green-600 bg-green-50 mt-1"
-            >
-              Agendamento Online
-            </Badge>
-          </div>
-        </div>
-
+        
         {/* Business hours */}
         {hasBusinessHours && (
           <div className="flex flex-col gap-1.5">
@@ -203,7 +169,8 @@ function WelcomeCard({ tenant }: { tenant: PublicTenant }) {
                     <span className="text-destructive/70 font-medium">Fechado</span>
                   ) : (
                     <span className="text-foreground font-medium text-right">
-                      {bh.ranges
+                      {[...bh.ranges]
+                        .sort((a, b) => a.openTime.localeCompare(b.openTime))
                         .map((r) => `${formatTime(r.openTime)} – ${formatTime(r.closeTime)}`)
                         .join(" | ")}
                     </span>
@@ -290,6 +257,7 @@ export default function PublicBookingPage() {
   // App banner
   const [showAppBanner, setShowAppBanner] = useState(false)
   const [showStoreLinks, setShowStoreLinks] = useState(false)
+  const [activeCategory, setActiveCategory] = useState<string>("__all__")
   const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent)
   const isIOS = typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
@@ -311,7 +279,7 @@ export default function PublicBookingPage() {
 
   useEffect(() => {
     async function init() {
-      try {
+      try { 
         const res = await apiCall<any>(`${API_CONFIG.ENDPOINTS.PUBLIC_TENANT}/${slug}`)
         if (res.hasError) {
           toast.error("Estabelecimento não encontrado.")
@@ -560,8 +528,8 @@ export default function PublicBookingPage() {
           tenantSlug: slug,
           clientName: form.name,
           clientPhone: phoneForApi,
-          serviceId: isMultiService ? null : (selectedServices.length === 1 ? selectedServices[0].id : (form.serviceId || null)),
-          serviceIds: isMultiService ? null : (selectedServices.length === 1 ? [selectedServices[0].id] : (form.serviceId ? [form.serviceId] : [])),
+          serviceId: selectedServices.length > 0 ? selectedServices[0].id : null,
+          serviceIds: selectedServices.map(s => s.id),
           employeeId: !form.employeeId || form.employeeId === 'none' ? null : form.employeeId,
           scheduledDateTime,
           description: finalDescription,
@@ -857,14 +825,20 @@ export default function PublicBookingPage() {
             const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0)
             const totalPrice = selectedServices.reduce((sum, s) => sum + (s.hasPromotion && s.promotionalPrice != null ? s.promotionalPrice : s.price), 0)
 
-            // Group services by category; uncategorized go under empty key
+            // Group services by category
             const grouped: Record<string, any[]> = {}
             for (const s of services) {
               const key = s.category || ""
               if (!grouped[key]) grouped[key] = []
               grouped[key].push(s)
             }
-            const hasCategories = Object.keys(grouped).some(k => k !== "")
+            const categories = Object.keys(grouped)
+            const hasCategories = categories.some(k => k !== "")
+
+            // Services visible in current tab
+            const visibleServices = hasCategories && activeCategory !== "__all__"
+              ? (grouped[activeCategory] ?? [])
+              : services
 
             const renderServiceButton = (s: any) => {
               const isSelected = selectedServices.some(sel => sel.id === s.id)
@@ -905,24 +879,42 @@ export default function PublicBookingPage() {
 
             return (
               <div className="flex flex-col gap-3">
-                {hasCategories ? (
-                  <div className="flex flex-col gap-3">
-                    {Object.entries(grouped).map(([category, items]) => (
-                      <div key={category} className="flex flex-col gap-1.5">
-                        {category && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground ml-0.5">{category}</span>
+                {/* Category tabs — só aparece quando há categorias */}
+                {hasCategories && (
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                    <button
+                      onClick={() => setActiveCategory("__all__")}
+                      className={cn(
+                        "shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap",
+                        activeCategory === "__all__"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:text-foreground hover:border-primary/40"
+                      )}
+                    >
+                      Todos
+                    </button>
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={cn(
+                          "shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap",
+                          activeCategory === cat
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background text-muted-foreground border-border hover:text-foreground hover:border-primary/40"
                         )}
-                        <div className="grid grid-cols-2 gap-2">
-                          {items.map(renderServiceButton)}
-                        </div>
-                      </div>
+                      >
+                        {cat || "Outros"}
+                      </button>
                     ))}
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {services.map(renderServiceButton)}
-                  </div>
                 )}
+
+                <div className="overflow-y-auto max-h-[228px] pr-0.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    {visibleServices.map(renderServiceButton)}
+                  </div>
+                </div>
 
                 {selectedServices.length > 0 && (
                   <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 flex items-center justify-between text-xs text-muted-foreground">

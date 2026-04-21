@@ -8,6 +8,7 @@ import { fetcher } from "@/lib/fetcher"
 export interface NewAppointmentForm {
   clientId: string
   serviceId: string
+  serviceIds: string[]
   employeeId: string
   scheduledDateTime: string
   durationMinutes: number
@@ -21,6 +22,7 @@ export interface NewAppointmentForm {
 const DEFAULT_FORM: NewAppointmentForm = {
   clientId: "",
   serviceId: "none",
+  serviceIds: [],
   employeeId: "none",
   scheduledDateTime: "",
   durationMinutes: 30,
@@ -113,6 +115,7 @@ export function useAppointmentForm() {
           scheduledDateTime: date.toISOString(),
           serviceId: f.serviceId === "none" ? null : f.serviceId,
           employeeId: f.employeeId === "none" ? null : f.employeeId,
+          serviceIds: f.serviceIds.length > 0 ? f.serviceIds : undefined,
           isEncaixe: f.isEncaixe ?? false,
         }),
       })

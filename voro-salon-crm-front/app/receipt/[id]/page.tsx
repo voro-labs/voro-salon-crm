@@ -31,6 +31,7 @@ interface ReceiptData {
   id: string
   clientName: string
   serviceName: string
+  serviceNames?: string[]
   employeeName?: string
   scheduledDateTime: string
   durationMinutes: number
@@ -224,7 +225,15 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Serviço</span>
-                  <span className="text-base font-bold">{data.serviceName}</span>
+                  {data.serviceNames && data.serviceNames.length > 1 ? (
+                    <div className="flex flex-col gap-0.5 mt-0.5">
+                      {data.serviceNames.map((name, i) => (
+                        <span key={i} className="text-base font-bold leading-snug">{name}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-base font-bold">{data.serviceName}</span>
+                  )}
                   <span className="text-sm text-muted-foreground">{data.durationMinutes} minutos · R$ {data.amount.toFixed(2)}</span>
                 </div>
               </div>

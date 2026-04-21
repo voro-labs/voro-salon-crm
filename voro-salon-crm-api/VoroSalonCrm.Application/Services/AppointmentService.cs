@@ -70,6 +70,20 @@ namespace VoroSalonCrm.Application.Services
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
+            if (dto.ServiceIds != null && dto.ServiceIds.Count > 0)
+            {
+                foreach (var serviceId in dto.ServiceIds)
+                {
+                    appointment.Services.Add(new Domain.Entities.AppointmentService
+                    {
+                        AppointmentId = appointment.Id,
+                        ServiceId = serviceId,
+                    });
+                }
+                if (dto.ServiceIds.Count == 1 && !dto.ServiceId.HasValue)
+                    appointment.ServiceId = dto.ServiceIds[0];
+            }
+
             await _appointmentRepository.AddAsync(appointment);
             await _unitOfWork.SaveChangesAsync();
 
@@ -116,6 +130,8 @@ namespace VoroSalonCrm.Application.Services
                 .Include(a => a.Employee!)
                 .Include(a => a.Membership!)
                 .ThenInclude(m => m.Plan)
+                .Include(a => a.Services)
+                .ThenInclude(s => s.Service)
                 .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
             if (appointment == null) return null;
@@ -129,6 +145,8 @@ namespace VoroSalonCrm.Application.Services
                 .Include(a => a.Employee!)
                 .Include(a => a.Membership!)
                 .ThenInclude(m => m.Plan)
+                .Include(a => a.Services)
+                .ThenInclude(s => s.Service)
                 .Where(a => !a.IsDeleted);
 
             if (clientId.HasValue)
@@ -147,6 +165,8 @@ namespace VoroSalonCrm.Application.Services
                 .Include(a => a.Employee!)
                 .Include(a => a.Membership!)
                 .ThenInclude(m => m.Plan)
+                .Include(a => a.Services)
+                .ThenInclude(s => s.Service)
                 .Where(a => !a.IsDeleted);
 
             if (clientId.HasValue)
@@ -179,7 +199,8 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<AppointmentDto> UpdateAsync(Guid id, UpdateAppointmentDto dto)
         {
-            var appointment = await _appointmentRepository.GetByIdAsync(false, id)
+            var appointment = await _appointmentRepository.Include(a => a.Services)
+                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted)
                 ?? throw new KeyNotFoundException($"Appointment '{id}' not found.");
 
             var oldDateTime = appointment.ScheduledDateTime;
@@ -195,6 +216,23 @@ namespace VoroSalonCrm.Application.Services
             if (dto.Amount.HasValue) appointment.Amount = dto.Amount.Value;
             if (dto.Notes != null) appointment.Notes = dto.Notes;
             if (dto.IsEncaixe.HasValue) appointment.IsEncaixe = dto.IsEncaixe.Value;
+
+            if (dto.ServiceIds != null)
+            {
+                appointment.Services.Clear();
+                foreach (var serviceId in dto.ServiceIds)
+                {
+                    appointment.Services.Add(new Domain.Entities.AppointmentService
+                    {
+                        AppointmentId = appointment.Id,
+                        ServiceId = serviceId,
+                    });
+                }
+                if (dto.ServiceIds.Count == 1)
+                    appointment.ServiceId = dto.ServiceIds[0];
+                else if (dto.ServiceIds.Count > 1)
+                    appointment.ServiceId = null;
+            }
 
             appointment.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -829,6 +867,15 @@ namespace VoroSalonCrm.Application.Services
 
         private static AppointmentDto MapToDto(Appointment a)
         {
+            var services = a.Services.Count > 0
+                ? a.Services.Select(s => new AppointmentServiceDto(
+                    s.ServiceId,
+                    s.Service?.Name ?? "",
+                    s.Service?.Price ?? 0,
+                    s.Service?.DurationMinutes ?? 0
+                )).ToList()
+                : null;
+
             return new AppointmentDto(
                 a.Id,
                 a.ClientId,
@@ -849,7 +896,8 @@ namespace VoroSalonCrm.Application.Services
                 a.Membership?.RemainingSessions,
                 a.EmployeeId,
                 a.Employee?.Name,
-                a.Source
+                a.Source,
+                services
             );
         }
     }

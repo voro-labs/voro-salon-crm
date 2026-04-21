@@ -12,7 +12,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         decimal Amount,
         string? Notes,
         bool IsEncaixe = false,
-        AppointmentSource Source = AppointmentSource.Internal
+        AppointmentSource Source = AppointmentSource.Internal,
+        List<Guid>? ServiceIds = null
     );
 
     public record UpdateAppointmentDto
@@ -27,7 +28,15 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         public decimal? Amount { get; init; }
         public string? Notes { get; init; }
         public bool? IsEncaixe { get; init; }
+        public List<Guid>? ServiceIds { get; init; }
     }
+
+    public record AppointmentServiceDto(
+        Guid ServiceId,
+        string ServiceName,
+        decimal Price,
+        int DurationMinutes
+    );
 
     public record AppointmentDto(
         Guid Id,
@@ -49,7 +58,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         int? MembershipRemainingSessions = null,
         Guid? EmployeeId = null,
         string? EmployeeName = null,
-        AppointmentSource Source = AppointmentSource.Internal
+        AppointmentSource Source = AppointmentSource.Internal,
+        List<AppointmentServiceDto>? Services = null
     );
 
     public record AvailabilitySlotDto(

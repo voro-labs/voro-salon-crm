@@ -91,7 +91,8 @@ const KANBAN_COLUMNS: { state: string; label: string; color: string; headerColor
   { state: "AWAITING_CONFIRMATION",  label: "Aguardando Confirmação",  color: "border-rose-300",    headerColor: "bg-rose-100 text-rose-700",     description: "Revisando o resumo do agendamento antes de confirmar." },
   { state: "AWAITING_REMINDER_TIME", label: "Definindo Lembrete",      color: "border-indigo-300",  headerColor: "bg-indigo-100 text-indigo-700", description: "Configurando quando quer receber o lembrete do agendamento." },
   { state: "COMPLETED",              label: "Agendado",                color: "border-emerald-300", headerColor: "bg-emerald-100 text-emerald-700", description: "Agendamento criado com sucesso via Bot, App ou Site." },
-  { state: "CANCELLED",              label: "Cancelado",               color: "border-gray-300",    headerColor: "bg-gray-100 text-gray-700",     description: "Agendamento cancelado ou o visitante abandonou o fluxo." },
+  { state: "ABANDONED",              label: "Abandonado",              color: "border-yellow-300",  headerColor: "bg-yellow-100 text-yellow-700",  description: "Visitante iniciou mas não completou o agendamento (sessão expirou)." },
+  { state: "CANCELLED",              label: "Cancelado",               color: "border-gray-300",    headerColor: "bg-gray-100 text-gray-700",     description: "Agendamento cancelado pelo cliente ou estabelecimento." },
 ]
 
 // ─── Legend modal ─────────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ function LegendModal({ onClose }: { onClose: () => void }) {
 export default function FunnelPage() {
   const [showAll, setShowAll] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
+  const [showAbandoned, setShowAbandoned] = useState(false)
 
   const { data: kanbanAppointments, isLoading, mutate } = useSWR<KanbanAppointment[]>(
     API_CONFIG.ENDPOINTS.FUNNEL_APPOINTMENTS,
@@ -181,6 +183,18 @@ export default function FunnelPage() {
                     Todas
                   </button>
                 </div>
+
+                <button
+                  onClick={() => setShowAbandoned(v => !v)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[10px] font-medium transition-colors",
+                    showAbandoned
+                      ? "bg-yellow-100 text-yellow-700 border-yellow-300"
+                      : "bg-muted/40 text-muted-foreground border-border hover:text-foreground"
+                  )}
+                >
+                  Abandonados
+                </button>
 
                 <Button variant="outline" size="sm" onClick={() => setShowLegend(true)}>
                   <Info className="mr-1.5 h-4 w-4" />
@@ -228,6 +242,7 @@ export default function FunnelPage() {
                   })
 
                   const alwaysShow = col.state === "COMPLETED" || col.state === "CANCELLED"
+                  if (col.state === "ABANDONED" && !showAbandoned) return null
                   if (!showAll && !alwaysShow && items.length === 0) return null
 
                   return (

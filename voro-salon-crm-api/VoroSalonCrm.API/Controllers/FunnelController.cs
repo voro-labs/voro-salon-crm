@@ -41,7 +41,7 @@ namespace VoroSalonCrm.API.Controllers
                 {
                     foreach (var stale in staleSessions)
                     {
-                        stale.FunnelState = "CANCELLED";
+                        stale.FunnelState = "ABANDONED";
                         stale.UpdatedAt = DateTimeOffset.UtcNow;
                     }
                     funnelRepository.UpdateRange(staleSessions);
@@ -74,11 +74,11 @@ namespace VoroSalonCrm.API.Controllers
                     ));
                 }
 
-                // 1b. Sessions canceladas dentro do período (incluindo as auto-canceladas)
+                // 1b. Sessions canceladas/abandonadas dentro do período
                 var cancelledSessions = await funnelRepository
                     .Query(s => s.TenantId == tenantId
                         && s.CreatedAt >= since
-                        && s.FunnelState == "CANCELLED")
+                        && (s.FunnelState == "CANCELLED" || s.FunnelState == "ABANDONED"))
                     .ToListAsync();
 
                 foreach (var s in cancelledSessions)
@@ -94,7 +94,7 @@ namespace VoroSalonCrm.API.Controllers
                         Amount: null,
                         Source: s.Source,
                         EmployeeName: null,
-                        FunnelState: "CANCELLED",
+                        FunnelState: s.FunnelState,
                         SessionId: s.SessionId
                     ));
                 }

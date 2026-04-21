@@ -406,8 +406,8 @@ function CalendarWeekView({
                       }}
                     >
                       <p className="font-semibold truncate leading-tight">{apt.clientName}</p>
-                      {height > 30 && apt.serviceName && (
-                        <p className="truncate text-[9px] opacity-70">{apt.serviceName}</p>
+                      {height > 30 && (apt.serviceName || apt.description) && (
+                        <p className="truncate text-[9px] opacity-70">{apt.serviceName || apt.description}</p>
                       )}
                     </div>
                   )
@@ -780,10 +780,10 @@ export default function AppointmentsPage() {
                               <Clock className="h-3 w-3" />
                               {format(date, "HH:mm")} ({apt.durationMinutes} min)
                             </span>
-                            {apt.serviceName && isModuleEnabled(3) && (
+                            {(apt.serviceName || apt.description) && isModuleEnabled(3) && (
                               <span className="flex items-center gap-1">
                                 <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-                                {apt.serviceName}
+                                {apt.serviceName || apt.description}
                               </span>
                             )}
                           </div>
