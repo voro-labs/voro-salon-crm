@@ -28,5 +28,8 @@ namespace VoroSalonCrm.Domain.Entities
         public DateTimeOffset LastMessageAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset? UpdatedAt { get; set; }
+
+        /// <summary>Quando preenchido, a conversa foi excluída pelo operador (soft delete).</summary>
+        public DateTimeOffset? DeletedAt { get; set; }
     }
 }

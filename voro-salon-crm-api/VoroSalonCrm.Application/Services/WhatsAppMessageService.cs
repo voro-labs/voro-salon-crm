@@ -85,7 +85,7 @@ namespace VoroSalonCrm.Application.Services
         public async Task<IEnumerable<WhatsAppConversationDto>> GetConversationsAsync(Guid tenantId)
         {
             var conversations = await conversationRepository
-                .Query(c => c.TenantId == tenantId)
+                .Query(c => c.TenantId == tenantId && c.DeletedAt == null)
                 .OrderByDescending(c => c.LastMessageAt)
                 .Select(c => new WhatsAppConversationDto(
                     c.Id, c.PhoneNumber, c.ContactName, c.State,

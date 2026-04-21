@@ -28,6 +28,26 @@ namespace VoroSalonCrm.API.Controllers
                 var since = DateTimeOffset.UtcNow.AddDays(-days);
                 var items = new List<FunnelItemDto>();
 
+                // Auto-cancelar sessões abandonadas (não atualizadas há mais de 2 horas)
+                var staleThreshold = DateTimeOffset.UtcNow.AddHours(-2);
+                var staleSessions = await funnelRepository
+                    .Query(s => s.TenantId == tenantId
+                        && s.FunnelState != "COMPLETED"
+                        && s.FunnelState != "CANCELLED"
+                        && s.UpdatedAt < staleThreshold, false)
+                    .ToListAsync();
+
+                if (staleSessions.Count > 0)
+                {
+                    foreach (var stale in staleSessions)
+                    {
+                        stale.FunnelState = "CANCELLED";
+                        stale.UpdatedAt = DateTimeOffset.UtcNow;
+                    }
+                    funnelRepository.UpdateRange(staleSessions);
+                    await funnelRepository.SaveChangesAsync();
+                }
+
                 // 1. Sessions em progresso (não completados/cancelados)
                 var sessions = await funnelRepository
                     .Query(s => s.TenantId == tenantId
@@ -50,6 +70,31 @@ namespace VoroSalonCrm.API.Controllers
                         Source: s.Source,
                         EmployeeName: null,
                         FunnelState: s.FunnelState,
+                        SessionId: s.SessionId
+                    ));
+                }
+
+                // 1b. Sessions canceladas dentro do período (incluindo as auto-canceladas)
+                var cancelledSessions = await funnelRepository
+                    .Query(s => s.TenantId == tenantId
+                        && s.CreatedAt >= since
+                        && s.FunnelState == "CANCELLED")
+                    .ToListAsync();
+
+                foreach (var s in cancelledSessions)
+                {
+                    items.Add(new FunnelItemDto(
+                        Id: s.Id,
+                        ClientName: s.ContactName ?? "Visitante",
+                        ClientPhone: s.PhoneNumber,
+                        ServiceName: null,
+                        ScheduledDateTime: null,
+                        DurationMinutes: null,
+                        Status: null,
+                        Amount: null,
+                        Source: s.Source,
+                        EmployeeName: null,
+                        FunnelState: "CANCELLED",
                         SessionId: s.SessionId
                     ));
                 }

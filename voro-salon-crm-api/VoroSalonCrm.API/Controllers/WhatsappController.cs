@@ -420,6 +420,28 @@ namespace VoroSalonCrm.API.Controllers
                         };
 
                         var success = await whatsappService.SendTemplateMessageAsync(templateMsg, phoneNumberId);
+
+                        if (success)
+                        {
+                            var resolvedParams = dto.BodyParams
+                                .Select(p => p == "__CLIENT_NAME__" ? client.Name : p)
+                                .Where(p => !string.IsNullOrWhiteSpace(p))
+                                .ToList();
+                            var templateBody = resolvedParams.Count > 0
+                                ? $"[Template: {dto.TemplateName}] " + string.Join(" · ", resolvedParams)
+                                : $"[Template: {dto.TemplateName}]";
+
+                            try
+                            {
+                                await _whatsAppMessageService.SaveOutboundAsync(
+                                    tenantId: tenantId,
+                                    from: tenant?.WhatsAppDisplayPhone ?? tenant?.ContactPhone ?? "business",
+                                    to: client.Phone.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", ""),
+                                    body: templateBody);
+                            }
+                            catch { /* não-crítico */ }
+                        }
+
                         results.Add(new SendTemplateResultDto(client.Id, client.Name, client.Phone, success, success ? null : "Falha no envio"));
                     }
                     catch (Exception ex)
@@ -429,6 +451,33 @@ namespace VoroSalonCrm.API.Controllers
                 }
 
                 return ResponseViewModel<IEnumerable<SendTemplateResultDto>>.Success(results).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("conversations/{id:guid}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteConversation(
+            [FromRoute] Guid id,
+            [FromServices] ICurrentUserService currentUserService,
+            [FromServices] IWhatsAppConversationRepository conversationRepository)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var conversation = await conversationRepository.GetByIdAsync(false, id);
+
+                if (conversation == null || conversation.TenantId != tenantId)
+                    return ResponseViewModel<object>.Fail("Conversa não encontrada.").ToActionResult();
+
+                conversation.DeletedAt = DateTimeOffset.UtcNow;
+                conversationRepository.Update(conversation);
+                await conversationRepository.SaveChangesAsync();
+
+                return ResponseViewModel<object>.SuccessWithMessage("Conversa excluída.", null).ToActionResult();
             }
             catch (Exception ex)
             {

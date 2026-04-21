@@ -7,7 +7,7 @@ import useSWR from "swr"
 import {
   MessageCircle, RefreshCw, Loader2, User, Send, X,
   CheckCircle, AlertCircle, ExternalLink, ChevronRight, Settings2,
-  MessageSquare,
+  MessageSquare, Trash2,
 } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -70,13 +70,16 @@ interface WhatsAppMessage {
 function ChatView({
   conversations,
   isLoading,
+  onRefresh,
 }: {
   conversations: WhatsAppConversation[]
   isLoading: boolean
+  onRefresh: () => void
 }) {
   const router = useRouter()
   const [selected, setSelected] = useState<WhatsAppConversation | null>(null)
   const [search, setSearch] = useState("")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { data: messages, isLoading: loadingMessages } = useSWR<WhatsAppMessage[]>(
@@ -121,6 +124,22 @@ function ChatView({
     return groups
   }
 
+  const handleDeleteConversation = async (conv: WhatsAppConversation) => {
+    if (!confirm(`Excluir conversa com ${displayName(conv)}? O histórico será mantido no banco de dados.`)) return
+    setDeletingId(conv.id)
+    try {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS}/${conv.id}`, { method: "DELETE" })
+      if (res.hasError) { toast.error(res.message || "Erro ao excluir."); return }
+      toast.success("Conversa excluída.")
+      if (selected?.id === conv.id) setSelected(null)
+      onRefresh()
+    } catch {
+      toast.error("Erro de conexão.")
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -149,13 +168,13 @@ function ChatView({
             filtered.map((conv) => {
               const isActive = selected?.id === conv.id
               return (
-                <button
+                <div
                   key={conv.id}
-                  onClick={() => setSelected(conv)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-muted/50 transition-colors",
+                    "group relative flex items-center gap-3 px-3 py-3 hover:bg-muted/50 transition-colors cursor-pointer",
                     isActive && "bg-primary/5 border-l-2 border-l-primary"
                   )}
+                  onClick={() => setSelected(conv)}
                 >
                   {/* Avatar */}
                   <div className={cn(
@@ -176,7 +195,19 @@ function ChatView({
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate">{conv.lastMessageBody || "—"}</p>
                   </div>
-                </button>
+
+                  {/* Botão excluir (aparece no hover) */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv) }}
+                    disabled={deletingId === conv.id}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-rose-100 hover:text-rose-600 text-muted-foreground"
+                  >
+                    {deletingId === conv.id
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Trash2 className="h-3.5 w-3.5" />
+                    }
+                  </button>
+                </div>
               )
             })
           )}
@@ -603,7 +634,7 @@ export default function WhatsAppPage() {
               className="overflow-hidden"
               style={chatHeight > 0 ? { height: chatHeight } : { height: "60vh" }}
             >
-              <ChatView conversations={conversations ?? []} isLoading={isLoading} />
+              <ChatView conversations={conversations ?? []} isLoading={isLoading} onRefresh={mutate} />
             </div>
           </div>
         )}
