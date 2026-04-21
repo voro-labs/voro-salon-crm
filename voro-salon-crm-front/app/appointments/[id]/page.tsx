@@ -543,40 +543,42 @@ export default function AppointmentDetailPage() {
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <Label htmlFor="durationMinutes" className="text-sm font-semibold text-foreground">Duração Estimada</Label>
-                        {selectedServices.length > 0 ? (
-                          <div className="flex items-center gap-2">
+                        <Label className="text-sm font-semibold text-foreground">Duração Estimada</Label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 flex-1">
                             <Input
-                              id="durationMinutes"
                               type="number"
-                              min={1}
-                              value={form.durationMinutes}
-                              onChange={(e) => setForm((p) => ({ ...p, durationMinutes: parseInt(e.target.value) || 0 }))}
+                              min={0}
+                              placeholder="0"
                               disabled={isFormLocked}
-                              className="w-full"
+                              value={Math.floor(form.durationMinutes / 60) || ""}
+                              onChange={(e) => {
+                                const h = parseInt(e.target.value) || 0
+                                const m = form.durationMinutes % 60
+                                setForm((p) => ({ ...p, durationMinutes: h * 60 + m }))
+                              }}
+                              className="w-full text-center"
                             />
-                            <span className="text-sm text-muted-foreground whitespace-nowrap">min</span>
+                            <span className="text-sm text-muted-foreground shrink-0">h</span>
                           </div>
-                        ) : (
-                          <Select
-                            key={`duration-${form.durationMinutes}`}
-                            value={form.durationMinutes.toString()}
-                            onValueChange={(v) => setForm((p) => ({ ...p, durationMinutes: parseInt(v) }))}
-                            disabled={isFormLocked}
-                          >
-                            <SelectTrigger id="durationMinutes" className="w-full">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="15">15 min</SelectItem>
-                              <SelectItem value="30">30 min</SelectItem>
-                              <SelectItem value="45">45 min</SelectItem>
-                              <SelectItem value="60">1 hora</SelectItem>
-                              <SelectItem value="90">1h 30min</SelectItem>
-                              <SelectItem value="120">2 horas</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
+                          <div className="flex items-center gap-1 flex-1">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={59}
+                              placeholder="0"
+                              disabled={isFormLocked}
+                              value={form.durationMinutes % 60 || ""}
+                              onChange={(e) => {
+                                const m = Math.min(59, parseInt(e.target.value) || 0)
+                                const h = Math.floor(form.durationMinutes / 60)
+                                setForm((p) => ({ ...p, durationMinutes: h * 60 + m }))
+                              }}
+                              className="w-full text-center"
+                            />
+                            <span className="text-sm text-muted-foreground shrink-0">min</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -664,25 +666,6 @@ export default function AppointmentDetailPage() {
                             )}
                           </>
                         )}
-                        {/* Input manual de hora/minuto */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-border/40">
-                          <span className="text-xs text-muted-foreground shrink-0">Horário manual:</span>
-                          <input
-                            type="time"
-                            disabled={isFormLocked}
-                            className="h-8 rounded-md border border-input bg-background px-2 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                            value={form.scheduledDateTime ? format(new Date(form.scheduledDateTime), "HH:mm") : ""}
-                            onChange={(e) => {
-                              if (!e.target.value || !selectedDate) return
-                              const [h, m] = e.target.value.split(":").map(Number)
-                              const d = new Date(selectedDate)
-                              d.setHours(h, m, 0, 0)
-                              const tzOffset = d.getTimezoneOffset() * 60000
-                              const localISO = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
-                              setForm((p) => ({ ...p, scheduledDateTime: localISO }))
-                            }}
-                          />
-                        </div>
                       </div>
                     )
                   })()}
