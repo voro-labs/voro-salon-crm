@@ -85,21 +85,46 @@ export default function NovoAgendamentoPage() {
 
   const searchParams = useSearchParams()
 
-  // Pre-fill date/time from calendar slot click
+  // Pre-fill date/time from calendar slot click or audio transcription
   useEffect(() => {
     const dateParam = searchParams.get("date")
     const hourParam = searchParams.get("hour")
-    if (!dateParam || !hourParam) return
-    const hour = parseInt(hourParam, 10)
-    const minute = parseInt(searchParams.get("minute") ?? "0", 10)
-    const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`)
-    if (isNaN(dateObj.getTime())) return
-    setSelectedDate(dateObj)
-    const tzOffset = dateObj.getTimezoneOffset() * 60000
-    const localISOTime = new Date(dateObj.getTime() - tzOffset).toISOString().slice(0, 16)
-    setForm((p) => ({ ...p, scheduledDateTime: localISOTime }))
+    const descriptionParam = searchParams.get("description")
+    const amountParam = searchParams.get("amount")
+    const durationParam = searchParams.get("durationMinutes")
+
+    const updates: Partial<typeof form> = {}
+
+    if (dateParam && hourParam) {
+      const hour = parseInt(hourParam, 10)
+      const minute = parseInt(searchParams.get("minute") ?? "0", 10)
+      const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`)
+      if (!isNaN(dateObj.getTime())) {
+        setSelectedDate(dateObj)
+        const tzOffset = dateObj.getTimezoneOffset() * 60000
+        updates.scheduledDateTime = new Date(dateObj.getTime() - tzOffset).toISOString().slice(0, 16)
+      }
+    }
+
+    if (descriptionParam) updates.description = descriptionParam
+    if (amountParam) updates.amount = parseFloat(amountParam)
+    if (durationParam) updates.durationMinutes = parseInt(durationParam, 10)
+
+    if (Object.keys(updates).length > 0) setForm((p) => ({ ...p, ...updates }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Pre-fill client by name from audio transcription (match when clients load)
+  useEffect(() => {
+    const clientNameParam = searchParams.get("clientName")
+    if (!clientNameParam || !clients?.length || form.clientId) return
+    const lower = clientNameParam.toLowerCase()
+    const match = clients.find((c: any) =>
+      (c.name ?? c.clientName ?? "").toLowerCase().includes(lower)
+    )
+    if (match) setForm((p) => ({ ...p, clientId: match.id }))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients])
 
   const { data: myEmployee } = useSWR<any>(
     isSalonEmployee ? API_CONFIG.ENDPOINTS.EMPLOYEE_ME : null,

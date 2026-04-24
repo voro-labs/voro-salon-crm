@@ -1,9 +1,12 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Employee;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
@@ -179,6 +182,78 @@ namespace VoroSalonCrm.API.Controllers
             {
                 var result = await _appointmentService.GetAvailableSlotsAsync(date, serviceId, employeeId);
                 return ResponseViewModel<IEnumerable<AvailabilitySlotDto>>.Success(result).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("transcribe-audio")]
+        [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB
+        public async Task<IActionResult> TranscribeAudio(
+            IFormFile audio,
+            [FromServices] IWhisperService whisperService,
+            [FromServices] IGeminiService geminiService,
+            [FromServices] IServiceService serviceService)
+        {
+            try
+            {
+                if (audio == null || audio.Length == 0)
+                    return ResponseViewModel<object>.Fail("Nenhum arquivo de áudio enviado.").ToActionResult();
+
+                // 1. Transcrever com Whisper
+                await using var stream = audio.OpenReadStream();
+                var transcript = await whisperService.TranscribeAsync(stream, audio.FileName);
+
+                if (string.IsNullOrWhiteSpace(transcript))
+                    return ResponseViewModel<object>.Fail("Não foi possível transcrever o áudio.").ToActionResult();
+
+                // 2. Buscar serviços do tenant para contexto
+                var services = await serviceService.GetAllAsync();
+                var serviceContext = services.Any()
+                    ? string.Join("\n", services.Select(s => $"- {s.Name} (R${s.Price:F2}, {s.DurationMinutes}min)"))
+                    : "Nenhum serviço cadastrado.";
+
+                // 3. Extrair dados com Gemini
+                var today = DateTimeOffset.Now.ToString("yyyy-MM-dd");
+                var systemPrompt =
+                    "Você é um assistente especializado em extrair informações de agendamento de salão de beleza a partir de transcrições de áudio.\n" +
+                    $"Hoje é {today}.\n\n" +
+                    "Retorne SOMENTE um JSON válido (sem markdown, sem blocos de código, sem explicações) com exatamente estes campos:\n" +
+                    "{\n" +
+                    "  \"nome_do_cliente\": \"string ou null\",\n" +
+                    "  \"servico\": \"string ou null\",\n" +
+                    "  \"valor\": number ou null,\n" +
+                    "  \"duracao\": number (minutos) ou null,\n" +
+                    "  \"dia_marcado\": \"YYYY-MM-DD ou null\",\n" +
+                    "  \"horario\": \"HH:mm ou null\"\n" +
+                    "}\n\n" +
+                    "Regras:\n" +
+                    $"- Datas relativas (\"amanhã\", \"sexta\", \"semana que vem\") devem ser convertidas para YYYY-MM-DD relativo a hoje ({today})\n" +
+                    "- Se o serviço mencionado existir na lista abaixo, use o valor e duração cadastrados quando não informados explicitamente\n" +
+                    "- valor deve ser um número (sem R$, sem símbolos)\n" +
+                    "- duracao deve ser em minutos (número inteiro)\n" +
+                    "- horario no formato HH:mm (24h)\n\n" +
+                    "Serviços disponíveis no estabelecimento:\n" +
+                    serviceContext;
+
+                var rawResult = await geminiService.GenerateResponseAsync(systemPrompt, [], transcript);
+
+                // Limpar markdown caso Gemini envolva em ```json
+                var cleaned = Regex.Replace(rawResult.Trim(), @"^```(?:json)?\s*|\s*```$", "", RegexOptions.Multiline).Trim();
+
+                JsonElement parsedData;
+                try
+                {
+                    parsedData = JsonSerializer.Deserialize<JsonElement>(cleaned);
+                }
+                catch
+                {
+                    return ResponseViewModel<object>.Fail("IA não retornou JSON válido.").ToActionResult();
+                }
+
+                return Ok(new { transcript, data = parsedData });
             }
             catch (Exception ex)
             {

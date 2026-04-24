@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react"
+import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List, CalendarDays, Mic, Square } from "lucide-react"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,7 +14,7 @@ import { format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, isSameDa
 import { ptBR } from "date-fns/locale"
 import type { PagedResult } from "@/hooks/use-data-list.hook"
 
-import { API_CONFIG } from "@/lib/api"
+import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useAuth } from "@/contexts/auth.context"
 
@@ -421,23 +421,264 @@ function CalendarWeekView({
   )
 }
 
+// ─── Agenda day view ──────────────────────────────────────────────────────────
+
+function AgendaDayView({
+  day,
+  appointments,
+  businessHours,
+  calStartHour,
+  calEndHour,
+  onSlotClick,
+}: {
+  day: Date
+  appointments: any[]
+  businessHours?: BusinessHoursDay[]
+  calStartHour: number
+  calEndHour: number
+  onSlotClick: (date: Date, hour: number, minute: number) => void
+}) {
+  const router = useRouter()
+
+  const slots: { hour: number; minute: number }[] = []
+  for (let h = calStartHour; h < calEndHour; h++) {
+    slots.push({ hour: h, minute: 0 })
+    slots.push({ hour: h, minute: 30 })
+  }
+
+  function isDayClosed() {
+    if (!businessHours?.length) return false
+    const dow = day.getDay()
+    const bh = businessHours.find((d) => d.dayOfWeek === dow)
+    return !bh || !bh.isOpen
+  }
+
+  function isInBusinessHours(hour: number, minute: number) {
+    if (!businessHours?.length) return true
+    const dow = day.getDay()
+    const bh = businessHours.find((d) => d.dayOfWeek === dow)
+    if (!bh || !bh.isOpen) return false
+    const slotMin = hour * 60 + minute
+    return bh.ranges.some((r) => {
+      const [oh, om] = r.openTime.split(":").map(Number)
+      const [ch, cm] = r.closeTime.split(":").map(Number)
+      return slotMin >= oh * 60 + om && slotMin + 30 <= ch * 60 + cm
+    })
+  }
+
+  function isSlotPast(hour: number, minute: number) {
+    const t = new Date(day)
+    t.setHours(hour, minute, 0, 0)
+    return t < new Date()
+  }
+
+  type SlotInfo =
+    | { type: "appointment"; apt: any }
+    | { type: "continuation"; apt: any }
+    | { type: "empty" }
+
+  const slotMap = new Map<string, SlotInfo>()
+
+  const dayAppts = appointments
+    .filter((a) => {
+      if (!isSameDay(new Date(a.scheduledDateTime), day)) return false
+      if (a.status === 3) return false
+      return true
+    })
+    .sort((a, b) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
+
+  for (const apt of dayAppts) {
+    const start = new Date(apt.scheduledDateTime)
+    const startMin = start.getHours() * 60 + start.getMinutes()
+    const duration = apt.durationMinutes || 30
+    const startSlot = Math.floor(startMin / 30) * 30
+
+    for (let m = startSlot; m < startMin + duration; m += 30) {
+      const h = Math.floor(m / 60)
+      const min = m % 60
+      const key = `${h}_${min}`
+      if (!slotMap.has(key)) {
+        slotMap.set(key, m === startSlot ? { type: "appointment", apt } : { type: "continuation", apt })
+      }
+    }
+  }
+
+  const closed = isDayClosed()
+
+  return (
+    <div className="border rounded-xl overflow-hidden bg-card">
+      {closed && (
+        <div className="text-center py-2.5 text-xs text-muted-foreground bg-muted/30 border-b">
+          Estabelecimento fechado neste dia
+        </div>
+      )}
+      <div className="divide-y divide-border/40">
+        {slots.map(({ hour, minute }) => {
+          const key = `${hour}_${minute}`
+          const inBH = isInBusinessHours(hour, minute)
+          const past = isSlotPast(hour, minute)
+          const info: SlotInfo = slotMap.get(key) ?? { type: "empty" }
+          const timeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+
+          if (!inBH && info.type === "empty") {
+            return (
+              <div key={key} className="flex items-center gap-3 px-4 py-1.5 bg-muted/10">
+                <span className="text-[10px] text-muted-foreground/30 w-10 shrink-0 font-mono">{timeStr}</span>
+                <div className="flex-1 border-t border-dashed border-border/10" />
+              </div>
+            )
+          }
+
+          if (info.type === "continuation") {
+            const colorClass = STATUS_COLORS[info.apt.status] ?? STATUS_COLORS[0]
+            return (
+              <div
+                key={key}
+                className={`flex items-center gap-3 px-4 py-1.5 opacity-50 cursor-pointer hover:opacity-70 transition-opacity border-l-4 ${colorClass}`}
+                onClick={() => router.push(`/appointments/${info.apt.id}`)}
+              >
+                <span className="text-[10px] text-muted-foreground/60 w-10 shrink-0 font-mono">{timeStr}</span>
+                <div className="flex-1 h-3 bg-current/10 rounded-full opacity-30" />
+              </div>
+            )
+          }
+
+          if (info.type === "appointment") {
+            const { apt } = info
+            const colorClass = STATUS_COLORS[apt.status] ?? STATUS_COLORS[0]
+            return (
+              <div
+                key={key}
+                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity border-l-4 ${colorClass}`}
+                onClick={() => router.push(`/appointments/${apt.id}`)}
+              >
+                <span className="text-xs font-mono font-semibold w-10 shrink-0">{timeStr}</span>
+                <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
+                  <span className="font-semibold text-sm truncate">{apt.clientName}</span>
+                  {apt.serviceName && (
+                    <>
+                      <span className="text-muted-foreground/60">·</span>
+                      <span className="text-muted-foreground text-xs truncate">{apt.serviceName}</span>
+                    </>
+                  )}
+                  {apt.amount > 0 && (
+                    <>
+                      <span className="text-muted-foreground/60">·</span>
+                      <span className="text-xs font-medium">
+                        {Number(apt.amount).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          }
+
+          // Empty slot within business hours
+          return (
+            <button
+              key={key}
+              disabled={past}
+              className={`flex items-center gap-3 px-4 py-2 w-full text-left transition-colors ${
+                past ? "opacity-30 cursor-default" : "hover:bg-accent/10 cursor-pointer"
+              }`}
+              onClick={() => !past && onSlotClick(day, hour, minute)}
+            >
+              <span className="text-[10px] text-muted-foreground/60 font-mono w-10 shrink-0">{timeStr}</span>
+              <div className="flex-1 border-t border-dashed border-border/25" />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AppointmentsPage() {
   const router = useRouter()
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
+  const [viewMode, setViewMode] = useState<"list" | "calendar" | "agenda">("list")
 
   useEffect(() => {
-    const saved = localStorage.getItem("apt_view_mode") as "list" | "calendar" | null
-    if (saved === "list" || saved === "calendar") setViewMode(saved)
+    const saved = localStorage.getItem("apt_view_mode") as "list" | "calendar" | "agenda" | null
+    if (saved === "list" || saved === "calendar" || saved === "agenda") setViewMode(saved)
   }, [])
 
-  function handleSetViewMode(mode: "list" | "calendar") {
+  function handleSetViewMode(mode: "list" | "calendar" | "agenda") {
     setViewMode(mode)
     localStorage.setItem("apt_view_mode", mode)
   }
 
   const [calendarWeek, setCalendarWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }))
+  const [agendaDay, setAgendaDay] = useState(() => startOfDay(new Date()))
+
+  // ── Audio recording state ──────────────────────────────────────────────────
+  const [isRecording, setIsRecording] = useState(false)
+  const [audioProcessing, setAudioProcessing] = useState(false)
+  const [transcriptionResult, setTranscriptionResult] = useState<{
+    nome_do_cliente?: string
+    servico?: string
+    valor?: number | null
+    duracao?: number | null
+    dia_marcado?: string | null
+    horario?: string | null
+  } | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream)
+      chunksRef.current = []
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" })
+        setAudioProcessing(true)
+        try {
+          const fd = new FormData()
+          fd.append("audio", blob, "recording.webm")
+          const result = await secureApiCall<any>(
+            `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/transcribe-audio`,
+            { method: "POST", body: fd }
+          )
+          if (!result.hasError && result.data) {
+            setTranscriptionResult(result.data.data ?? result.data)
+          }
+        } finally {
+          setAudioProcessing(false)
+        }
+      }
+      mr.start()
+      mediaRecorderRef.current = mr
+      setIsRecording(true)
+    } catch {
+      alert("Não foi possível acessar o microfone.")
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop()
+    setIsRecording(false)
+  }
+
+  function buildAppointmentUrl() {
+    if (!transcriptionResult) return "/appointments/new"
+    const params = new URLSearchParams()
+    if (transcriptionResult.dia_marcado && transcriptionResult.horario) {
+      const [h, m] = transcriptionResult.horario.split(":").map(Number)
+      params.set("date", transcriptionResult.dia_marcado)
+      params.set("hour", String(h))
+      params.set("minute", String(m ?? 0))
+    }
+    if (transcriptionResult.nome_do_cliente) params.set("clientName", transcriptionResult.nome_do_cliente)
+    if (transcriptionResult.servico) params.set("description", transcriptionResult.servico)
+    if (transcriptionResult.valor != null) params.set("amount", String(transcriptionResult.valor))
+    if (transcriptionResult.duracao != null) params.set("durationMinutes", String(transcriptionResult.duracao))
+    return `/appointments/new?${params.toString()}`
+  }
   const [periodFilter, setPeriodFilter] = useState("today")
 
   interface AppointmentItem {
@@ -470,9 +711,9 @@ export default function AppointmentsPage() {
   const { user } = useAuth()
   const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
 
-  // Calendar: fetch a broader window of appointments
+  // Calendar/Agenda: fetch a broader window of appointments
   const { data: calendarRaw } = useSWR<PagedResult<AppointmentItem>>(
-    viewMode === "calendar"
+    viewMode === "calendar" || viewMode === "agenda"
       ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?page=1&pageSize=500`
       : null,
     fetcher
@@ -600,7 +841,7 @@ export default function AppointmentsPage() {
                       <TabsTrigger value="all" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Tudo</TabsTrigger>
                     </TabsList>
                   </Tabs>
-                ) : (
+                ) : viewMode === "calendar" ? (
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => subWeeks(w, 1))}>
                       <ChevronLeft className="h-4 w-4" />
@@ -615,22 +856,61 @@ export default function AppointmentsPage() {
                       Hoje
                     </Button>
                   </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgendaDay(d => addDays(d, -1))}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap capitalize">
+                      {format(agendaDay, "EEE, dd 'de' MMM yyyy", { locale: ptBR })}
+                    </span>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgendaDay(d => addDays(d, 1))}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 text-xs text-primary" onClick={() => setAgendaDay(startOfDay(new Date()))}>
+                      Hoje
+                    </Button>
+                  </div>
                 )}
-                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Mic button */}
                   <button
-                    onClick={() => handleSetViewMode("list")}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={audioProcessing}
+                    className={`flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
+                      isRecording
+                        ? "bg-red-500 border-red-500 text-white hover:bg-red-600"
+                        : audioProcessing
+                        ? "bg-muted border-border text-muted-foreground cursor-wait"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent/10"
+                    }`}
+                    title={isRecording ? "Parar gravação" : "Gravar agendamento por áudio"}
                   >
-                    <List className="h-3 w-3" />
-                    Lista
+                    {isRecording ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                   </button>
-                  <button
-                    onClick={() => handleSetViewMode("calendar")}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    <LayoutGrid className="h-3 w-3" />
-                    Calendário
-                  </button>
+                  <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
+                    <button
+                      onClick={() => handleSetViewMode("list")}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      <List className="h-3 w-3" />
+                      Lista
+                    </button>
+                    <button
+                      onClick={() => handleSetViewMode("agenda")}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "agenda" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      <CalendarDays className="h-3 w-3" />
+                      Agenda
+                    </button>
+                    <button
+                      onClick={() => handleSetViewMode("calendar")}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      <LayoutGrid className="h-3 w-3" />
+                      Grade
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -675,9 +955,97 @@ export default function AppointmentsPage() {
           </div>
         )}
 
+        {/* Resultado de transcrição de áudio */}
+        {audioProcessing && (
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground animate-pulse">
+            <Mic className="h-4 w-4 shrink-0" />
+            Transcrevendo áudio com IA...
+          </div>
+        )}
+
+        {transcriptionResult && !audioProcessing && (
+          <div className="relative rounded-xl border border-primary/30 bg-primary/5 px-4 py-4 flex flex-col gap-3">
+            <button
+              onClick={() => setTranscriptionResult(null)}
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Mic className="h-4 w-4 text-primary" />
+              Agendamento detectado no áudio
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+              {transcriptionResult.nome_do_cliente && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Cliente</span>
+                  <span className="font-medium">{transcriptionResult.nome_do_cliente}</span>
+                </div>
+              )}
+              {transcriptionResult.servico && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Serviço</span>
+                  <span className="font-medium">{transcriptionResult.servico}</span>
+                </div>
+              )}
+              {transcriptionResult.valor != null && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Valor</span>
+                  <span className="font-medium">
+                    {Number(transcriptionResult.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+              )}
+              {transcriptionResult.duracao != null && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Duração</span>
+                  <span className="font-medium">{transcriptionResult.duracao} min</span>
+                </div>
+              )}
+              {transcriptionResult.dia_marcado && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Data</span>
+                  <span className="font-medium">
+                    {format(new Date(transcriptionResult.dia_marcado + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                </div>
+              )}
+              {transcriptionResult.horario && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Horário</span>
+                  <span className="font-medium">{transcriptionResult.horario}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" asChild>
+                <Link href={buildAppointmentUrl()}>
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Criar Agendamento
+                </Link>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setTranscriptionResult(null)}>
+                Descartar
+              </Button>
+            </div>
+          </div>
+        )}
+
         {viewMode === "calendar" ? (
           <CalendarWeekView
             weekStart={calendarWeek}
+            appointments={calendarItems}
+            businessHours={businessHours}
+            calStartHour={calStartHour}
+            calEndHour={calEndHour}
+            onSlotClick={(date, hour, minute) => {
+              const iso = format(date, "yyyy-MM-dd")
+              router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
+            }}
+          />
+        ) : viewMode === "agenda" ? (
+          <AgendaDayView
+            day={agendaDay}
             appointments={calendarItems}
             businessHours={businessHours}
             calStartHour={calStartHour}
