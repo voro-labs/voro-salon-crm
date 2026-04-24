@@ -4,13 +4,16 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List, CalendarDays, Mic, Square } from "lucide-react"
+import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List, CalendarDays, Mic, Square, Zap } from "lucide-react"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { SearchableSelect } from "@/components/ui/custom/searchable-select"
+import { CurrencyInput } from "@/components/currency-input"
 import { format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, isSameDay, addWeeks, subWeeks, isToday } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import type { PagedResult } from "@/hooks/use-data-list.hook"
@@ -522,11 +525,12 @@ function AgendaDayView({
           const isFullHour = minute === 0
           const timeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
 
+          // Fora do horário comercial → "(pausa)"
           if (!inBH && info.type === "empty") {
             return (
-              <div key={key} className="flex items-center gap-3 px-4 py-1.5 bg-muted/10">
-                <span className="text-[10px] text-muted-foreground/30 w-11 shrink-0 font-mono">{timeStr}</span>
-                <div className="flex-1 border-t border-dashed border-border/10" />
+              <div key={key} className="relative flex items-center gap-3 px-4 py-1.5 bg-muted/10">
+                <span className="text-[20px] text-muted-foreground/30 w-11 shrink-0 font-mono">{timeStr}</span>
+                <span className="text-[20px] text-muted-foreground/35 italic select-none">Intervalo</span>
               </div>
             )
           }
@@ -536,10 +540,11 @@ function AgendaDayView({
             return (
               <div
                 key={key}
-                className={`flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:opacity-80 transition-opacity border-l-4 ${past ? "opacity-30" : "opacity-50"} ${colorClass}`}
+                className={`relative flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:opacity-80 transition-opacity border-l-4 ${past ? "opacity-30" : "opacity-50"} ${colorClass}`}
                 onClick={() => router.push(`/appointments/${info.apt.id}`)}
               >
-                <span className={`w-11 shrink-0 font-mono ${isFullHour ? "text-[11px] text-muted-foreground/50" : "text-[10px] text-muted-foreground/30"}`}>{timeStr}</span>
+                {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/25 pointer-events-none" />}
+                <span className={`w-11 shrink-0 font-mono ${isFullHour ? "text-[11px] text-muted-foreground/50" : "text-[10px] text-muted-foreground/50"}`}>{timeStr}</span>
                 <span className="text-[10px] text-muted-foreground/40 italic truncate">{info.apt.clientName}</span>
               </div>
             )
@@ -551,9 +556,10 @@ function AgendaDayView({
             return (
               <div
                 key={key}
-                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity border-l-4 ${colorClass} ${past ? "opacity-40" : ""}`}
+                className={`relative flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity border-l-4 ${colorClass} ${past ? "opacity-40" : ""}`}
                 onClick={() => router.push(`/appointments/${apt.id}`)}
               >
+                {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/30 pointer-events-none" />}
                 <span className={`font-mono font-semibold w-11 shrink-0 ${isFullHour ? "text-xs" : "text-[11px]"}`}>{timeStr}</span>
                 <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
                   <span className="font-semibold text-sm truncate">{apt.clientName}</span>
@@ -582,26 +588,27 @@ function AgendaDayView({
             )
           }
 
-          // Empty slot within business hours
+          // Slot vazio dentro do horário comercial
           return (
             <button
               key={key}
               disabled={past}
-              className={`flex items-center gap-3 px-4 w-full text-left transition-colors ${
+              className={`relative flex items-center gap-3 px-4 w-full text-left transition-colors ${
                 isFullHour ? "py-2.5" : "py-1.5"
               } ${
-                past ? "opacity-20 cursor-default bg-muted/5" : "hover:bg-accent/10 cursor-pointer"
+                past ? "opacity-95 cursor-default bg-muted/5" : "hover:bg-accent/10 cursor-pointer"
               }`}
               onClick={() => !past && onSlotClick(day, hour, minute)}
             >
+              {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/20 pointer-events-none" />}
               <span className={`font-mono w-11 shrink-0 ${
                 past
-                  ? "text-muted-foreground/40"
+                  ? "text-[20px] text-muted-foreground/35"
                   : isFullHour
-                  ? "text-[11px] text-muted-foreground font-medium"
-                  : "text-[10px] text-muted-foreground/50"
+                  ? "text-[21px] text-muted-foreground"
+                  : "text-[20px] text-muted-foreground"
               }`}>{timeStr}</span>
-              <div className={`flex-1 border-t border-dashed ${past ? "border-border/10" : "border-border/25"}`} />
+              {!past && <div className={`flex-1 border-t border-dashed border-border/25`} />}
             </button>
           )
         })}
@@ -628,6 +635,61 @@ export default function AppointmentsPage() {
 
   const [calendarWeek, setCalendarWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }))
   const [agendaDay, setAgendaDay] = useState(() => startOfDay(new Date()))
+
+  // ── Quick create state ────────────────────────────────────────────────────
+  const [quickCreateSlot, setQuickCreateSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null)
+  const [qcForm, setQcForm] = useState({ clientId: "", serviceId: "none", description: "", amount: 0, durationMinutes: 30 })
+  const [qcSaving, setQcSaving] = useState(false)
+
+  function openQuickCreate(date: Date, hour: number, minute: number) {
+    setQcForm({ clientId: "", serviceId: "none", description: "", amount: 0, durationMinutes: 30 })
+    setQuickCreateSlot({ date, hour, minute })
+  }
+
+  function handleQcServiceChange(serviceId: string) {
+    const svc = qcServices.find((s: any) => s.id === serviceId)
+    setQcForm((p) => ({
+      ...p,
+      serviceId,
+      amount: svc ? (svc.hasPromotion && svc.promotionalPrice ? svc.promotionalPrice : svc.price) : p.amount,
+      durationMinutes: svc?.durationMinutes ?? p.durationMinutes,
+      description: svc?.name ?? p.description,
+    }))
+  }
+
+  async function submitQuickCreate() {
+    if (!quickCreateSlot || !qcForm.clientId) return
+    if (!qcForm.description.trim()) { return }
+    setQcSaving(true)
+    try {
+      const { date, hour, minute } = quickCreateSlot
+      const dt = new Date(date)
+      dt.setHours(hour, minute, 0, 0)
+      const res = await secureApiCall<any>(API_CONFIG.ENDPOINTS.APPOINTMENTS, {
+        method: "POST",
+        body: JSON.stringify({
+          clientId: qcForm.clientId,
+          serviceId: qcForm.serviceId === "none" ? null : qcForm.serviceId,
+          scheduledDateTime: dt.toISOString(),
+          durationMinutes: qcForm.durationMinutes,
+          amount: qcForm.amount,
+          description: qcForm.description,
+          status: 0,
+          notes: "",
+          employeeId: null,
+          serviceIds: qcForm.serviceId !== "none" ? [qcForm.serviceId] : [],
+        }),
+      })
+      if (res.hasError) {
+        alert(res.message || "Erro ao criar agendamento.")
+        return
+      }
+      setQuickCreateSlot(null)
+      mutateCalendar()
+    } finally {
+      setQcSaving(false)
+    }
+  }
 
   // ── Audio recording state ──────────────────────────────────────────────────
   const [showAudioModal, setShowAudioModal] = useState(false)
@@ -730,13 +792,17 @@ export default function AppointmentsPage() {
   const isSalonEmployee = user?.roles?.some((r: any) => r.name === "SalonEmployee") ?? false
 
   // Calendar/Agenda: fetch a broader window of appointments
-  const { data: calendarRaw } = useSWR<PagedResult<AppointmentItem>>(
-    viewMode === "calendar" || viewMode === "agenda"
-      ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?page=1&pageSize=500`
-      : null,
-    fetcher
-  )
+  const calendarSWRKey = viewMode === "calendar" || viewMode === "agenda"
+    ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?page=1&pageSize=500`
+    : null
+  const { data: calendarRaw, mutate: mutateCalendar } = useSWR<PagedResult<AppointmentItem>>(calendarSWRKey, fetcher)
   const calendarItems = calendarRaw?.items ?? []
+
+  // Quick create: clients and services (always fetched so they're ready when dialog opens)
+  const { data: qcClientsRaw } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
+  const { data: qcServicesRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const qcClients: any[] = qcClientsRaw?.items ?? (Array.isArray(qcClientsRaw) ? qcClientsRaw : [])
+  const qcServices: any[] = qcServicesRaw?.items ?? (Array.isArray(qcServicesRaw) ? qcServicesRaw : [])
 
   // Business hours for calendar grid
   const { data: businessHours } = useSWR<BusinessHoursDay[]>(
@@ -812,6 +878,136 @@ export default function AppointmentsPage() {
 
   return (
     <>
+    {/* ── Quick create dialog ──────────────────────────────────────────────── */}
+    <Dialog open={quickCreateSlot !== null} onOpenChange={(open) => { if (!open) setQuickCreateSlot(null) }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" />
+            Agendamento Rápido
+          </DialogTitle>
+          {quickCreateSlot && (
+            <DialogDescription className="font-medium text-foreground/80">
+              {format(quickCreateSlot.date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              {" · "}
+              {String(quickCreateSlot.hour).padStart(2, "0")}:{String(quickCreateSlot.minute).padStart(2, "0")}
+            </DialogDescription>
+          )}
+        </DialogHeader>
+
+        <div className="flex flex-col gap-4 pt-1">
+          {/* Cliente */}
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-semibold">Cliente *</Label>
+            <SearchableSelect
+              value={qcForm.clientId}
+              onValueChange={(v) => setQcForm((p) => ({ ...p, clientId: v }))}
+              options={qcClients.map((c: any) => ({ value: c.id, label: c.name }))}
+              placeholder="Selecione um cliente"
+              searchPlaceholder="Buscar cliente..."
+              emptyText="Nenhum cliente encontrado."
+            />
+          </div>
+
+          {/* Serviço */}
+          {qcServices.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Serviço <span className="text-muted-foreground font-normal">(Opcional)</span></Label>
+              <SearchableSelect
+                value={qcForm.serviceId}
+                onValueChange={handleQcServiceChange}
+                options={[
+                  { value: "none", label: "Nenhum" },
+                  ...qcServices.map((s: any) => ({
+                    value: s.id,
+                    label: s.name,
+                    badge: s.price > 0 ? `R$ ${Number(s.price).toFixed(2).replace(".", ",")}` : undefined,
+                  })),
+                ]}
+                placeholder="Selecione um serviço"
+                searchPlaceholder="Buscar serviço..."
+                emptyText="Nenhum serviço encontrado."
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Duração */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Duração</Label>
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 flex-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={Math.floor(qcForm.durationMinutes / 60) || ""}
+                    onChange={(e) => {
+                      const h = parseInt(e.target.value) || 0
+                      const m = qcForm.durationMinutes % 60
+                      setQcForm((p) => ({ ...p, durationMinutes: h * 60 + m }))
+                    }}
+                    className="text-center"
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">h</span>
+                </div>
+                <div className="flex items-center gap-1 flex-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={59}
+                    placeholder="0"
+                    value={qcForm.durationMinutes % 60 || ""}
+                    onChange={(e) => {
+                      const m = Math.min(59, parseInt(e.target.value) || 0)
+                      const h = Math.floor(qcForm.durationMinutes / 60)
+                      setQcForm((p) => ({ ...p, durationMinutes: h * 60 + m }))
+                    }}
+                    className="text-center"
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Valor */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">Valor *</Label>
+              <CurrencyInput
+                value={qcForm.amount}
+                onChange={(v) => setQcForm((p) => ({ ...p, amount: v }))}
+              />
+            </div>
+          </div>
+
+          {/* Descrição */}
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-semibold">Descrição *</Label>
+            <Input
+              placeholder="Ex: Corte + barba"
+              value={qcForm.description}
+              onChange={(e) => setQcForm((p) => ({ ...p, description: e.target.value }))}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            className="flex-1"
+            onClick={submitQuickCreate}
+            disabled={qcSaving || !qcForm.clientId || !qcForm.description.trim() || qcForm.amount <= 0}
+          >
+            {qcSaving ? "Salvando..." : "Salvar"}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}` : "/appointments/new"}>
+              Completo
+            </Link>
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
     {/* Modal de instrução para gravação de áudio */}
     <Dialog open={showAudioModal} onOpenChange={setShowAudioModal}>
       <DialogContent className="max-w-sm">
@@ -1126,10 +1322,7 @@ export default function AppointmentsPage() {
             businessHours={businessHours}
             calStartHour={calStartHour}
             calEndHour={calEndHour}
-            onSlotClick={(date, hour, minute) => {
-              const iso = format(date, "yyyy-MM-dd")
-              router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
-            }}
+            onSlotClick={openQuickCreate}
           />
         ) : (
         <>

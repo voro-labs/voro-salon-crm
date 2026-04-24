@@ -1,109 +1,129 @@
 # Tasks
 
-## Task 1: Modo de Visualização "Agenda"
-
-### Contexto
-A página de agendamentos (`app/appointments/page.tsx`) já possui dois modos de visualização: `"list"` (lista paginada) e `"calendar"` (grade semanal). Precisamos adicionar um terceiro modo: `"agenda"`.
-
-### Objetivo
-Criar uma visualização estilo agenda diária com slots de 30 minutos, onde cada horário mostra os dados do agendamento ou aparece vazio/disponível.
-
-### Layout Esperado
-```
-13:00  ─────────────────────────────
-13:30  João Silva · Corte Masculino · R$ 45,00
-14:00  ░░░░░░ bloqueado ░░░░░░░░░░  (serviço anterior dura 60min)
-14:30  ─────────────────────────────
-15:00  Maria Santos · Escova · R$ 80,00
-```
-
-### Regras
-- Slots de 30 minutos, do horário de abertura ao fechamento (usar `businessHours`)
-- Cada slot mostra: **horário** — **nome do cliente** · **serviço** · **R$ valor**
-- Se o serviço (`durationMinutes`) > 30 min, os slots seguintes ficam **bloqueados** visualmente (cor diferente, texto "ocupado" ou similar)
-- Slots passados ficam esmaecidos
-- Slots fora do horário comercial ficam ocultos ou marcados como "fechado"
-- Clicar em slot vazio abre o formulário de novo agendamento (mesmo comportamento do calendar)
-- Visualização por dia (com navegação prev/next para trocar o dia)
-
-### Implementação
-
-1. **Atualizar o type do viewMode** de `"list" | "calendar"` para `"list" | "calendar" | "agenda"` (linha ~428)
-2. **Adicionar botão "Agenda"** no seletor de modos (junto com List e Calendar, linha ~618)
-3. **Criar componente `AgendaDayView`** dentro do mesmo arquivo ou em arquivo separado:
-   - Recebe: `date`, `appointments`, `businessHours`, `onSlotClick`
-   - Gera slots de 30min entre `calStartHour` e `calEndHour`
-   - Para cada slot, verifica se há appointment (`scheduledDateTime` cai naquele slot)
-   - Se appointment existe, mostra: `clientName · serviceName · R$ amount`
-   - Se appointment anterior tem `durationMinutes > 30`, marca slots cobertos como "bloqueado"
-   - Usa a mesma lógica de `isInBusinessHours`, `isSlotPast`, `hasConflict` que já existe
-4. **Navegação de dia**: seletor de data com prev/next (similar ao mobile do calendar)
-5. **Renderizar o componente** na seção condicional de viewMode (linha ~678)
-
-### Dados Disponíveis (interface AppointmentItem)
-```ts
-interface AppointmentItem {
-  id: string
-  clientName: string
-  serviceName?: string
-  scheduledDateTime: string
-  durationMinutes: number
-  status: number
-  amount: number
-  description?: string
-}
-```
+## ~~Task 1: Modo de Visualização "Agenda"~~ ✅
+## ~~Task 2: Whisper + IA para Transcrição de Áudio~~ ✅
 
 ---
 
-## Task 2: Whisper + IA para Transcrição de Áudio → JSON de Agendamento
+## Task 3: Popup de Cadastro Rápido na Agenda
 
 ### Contexto
-Permitir que o usuário grave/envie um áudio descrevendo um agendamento, e a IA transcreva e extraia os dados estruturados automaticamente.
+Atualmente, ao clicar em um slot vazio na agenda, o usuário é redirecionado para `/appointments/new` — uma tela completa com muitos campos. Para o dia a dia do salão, isso é lento. Precisamos de um popup inline que permita criar um agendamento em poucos cliques, sem sair da tela.
 
-### Objetivo
-Usar a API Whisper (OpenAI) para transcrever o áudio e um LLM para extrair os campos do agendamento em formato JSON.
+**Escopo:** apenas na visualização "Agenda". O modo "Lista" e o botão "Novo Agendamento" continuam abrindo a tela completa.
 
-### Fluxo
-1. Usuário clica em botão de microfone (na página de agendamentos ou no formulário de novo agendamento)
-2. Grava áudio via `MediaRecorder` API do browser
-3. Envia o áudio para o backend
-4. Backend transcreve com Whisper (OpenAI API)
-5. Backend envia o texto transcrito para um LLM (Gemini Flash, que já é usado no projeto) com prompt para extrair os campos
-6. Retorna JSON estruturado para o frontend
-7. Frontend preenche o formulário automaticamente
+### Fluxo do Usuário
+1. Usuário clica em um slot vazio na agenda (ex: 14:30)
+2. Abre um Dialog com o horário já preenchido
+3. Preenche: cliente, serviço (opcional), valor, duração
+4. Clica "Salvar"
+5. Dialog fecha, agenda atualiza instantaneamente
 
-### JSON de Saída
-```json
-{
-  "nome_do_cliente": "string",
-  "servico": "string",
-  "valor": "number | null",
-  "duracao": "number (minutos)",
-  "dia_marcado": "string (ISO date)",
-  "horario": "string (HH:mm)"
-}
-```
+### Campos do Popup
+
+| Campo | Tipo | Obrigatório | Comportamento |
+|-------|------|-------------|---------------|
+| Data/Hora | Display (não editável) | — | Preenchido automaticamente pelo slot clicado |
+| Cliente | `SearchableSelect` | Sim | Lista de clientes do tenant (`/client?pageSize=500`) |
+| Serviço | `SearchableSelect` | Não | Lista de serviços do tenant (`/services?pageSize=500`). Ao selecionar, preenche valor + duração + descrição automaticamente |
+| Valor (R$) | `CurrencyInput` | Sim | Editável manualmente ou preenchido pelo serviço |
+| Duração | Input `number` (minutos) | Sim | Default: 30min. Preenchido pelo serviço se selecionado |
+| Descrição | `Input` texto | Sim | Preenchida pelo nome do serviço ou digitação livre |
 
 ### Implementação
 
-#### Frontend
-1. **Componente `AudioRecorder`**: botão de microfone que usa `navigator.mediaDevices.getUserMedia` + `MediaRecorder`
-2. **Estado**: gravando / processando / pronto
-3. **Upload**: enviar blob de áudio como `multipart/form-data` para endpoint do backend
-4. **Auto-preenchimento**: mapear campos do JSON retornado para os campos do formulário de agendamento
+#### 1. Estado no `AppointmentsPage`
+```ts
+const [quickCreateSlot, setQuickCreateSlot] = useState<{
+  date: Date
+  hour: number
+  minute: number
+} | null>(null)
+```
 
-#### Backend (C# / ASP.NET)
-1. **Endpoint**: `POST /api/appointments/transcribe-audio`
-2. **Whisper**: chamar API da OpenAI (`/v1/audio/transcriptions`) com o arquivo de áudio
-3. **Extração com LLM**: enviar texto transcrito para Gemini Flash com prompt estruturado:
-   - Prompt pede para extrair: nome do cliente, serviço, valor, duração, dia, horário
-   - Se o valor não for mencionado mas o serviço existir no catálogo, buscar o valor do catálogo
-   - Retornar JSON válido
-4. **Response**: retornar o JSON parseado para o frontend
+#### 2. Mudar `onSlotClick` apenas na agenda
+Atualmente, o `onSlotClick` da `AgendaDayView` navega para `/appointments/new?date=...&hour=...&minute=...`.
 
-#### Considerações
-- Se o estabelecimento tem serviços cadastrados, o LLM deve receber a lista para fazer match
-- Datas relativas ("amanhã", "sexta-feira") devem ser resolvidas para datas absolutas
-- Valor só é obrigatório se não houver serviço cadastrado com aquele nome
-- Tratar erros de gravação (permissão negada, sem microfone)
+Mudar para:
+```tsx
+<AgendaDayView
+  ...
+  onSlotClick={(date, hour, minute) => {
+    setQuickCreateSlot({ date, hour, minute })
+  }}
+/>
+```
+
+O calendar e o botão "Novo Agendamento" continuam navegando normalmente.
+
+#### 3. Dialog `QuickCreateAppointment`
+Criar um `Dialog` controlado por `quickCreateSlot !== null`.
+
+**Dados necessários (SWR):**
+- Clientes: `API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500"` → `fetcher`
+- Serviços: `API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500"` → `fetcher`
+
+**Estado local do formulário:**
+```ts
+const [qf, setQf] = useState({
+  clientId: "",
+  serviceId: "none",
+  description: "",
+  amount: 0,
+  durationMinutes: 30,
+})
+```
+
+**Ao selecionar serviço:** preencher `amount`, `durationMinutes`, `description` com os dados do serviço.
+
+**Ao submeter:** chamar diretamente:
+```ts
+await secureApiCall(API_CONFIG.ENDPOINTS.APPOINTMENTS, {
+  method: "POST",
+  body: JSON.stringify({
+    clientId: qf.clientId,
+    serviceId: qf.serviceId === "none" ? null : qf.serviceId,
+    scheduledDateTime: new Date(date + "T" + hour + ":" + minute).toISOString(),
+    durationMinutes: qf.durationMinutes,
+    amount: qf.amount,
+    description: qf.description,
+    status: 0,
+    notes: "",
+    employeeId: null,
+  }),
+})
+```
+
+**Ao sucesso:**
+- `toast.success("Agendamento criado!")`
+- Fechar o dialog: `setQuickCreateSlot(null)`
+- Mutar o SWR do calendário: `mutate(calendarSWRKey)` para atualizar a agenda sem reload
+
+#### 4. Layout do Dialog
+```
+┌─────────────────────────────────────┐
+│  ⚡ Agendamento Rápido             │
+│  📅 Sexta, 25 de Abril · 14:30     │
+│                                     │
+│  Cliente *          [🔍 Buscar...] │
+│  Serviço            [🔍 Buscar...] │
+│                                     │
+│  Duração    [__30__] min            │
+│  Valor      [R$ ___0,00___]        │
+│  Descrição  [________________]     │
+│                                     │
+│  [Cancelar]          [💾 Salvar]   │
+└─────────────────────────────────────┘
+```
+
+#### 5. Componentes a reutilizar
+- `SearchableSelect` de `@/components/ui/custom/searchable-select`
+- `CurrencyInput` de `@/components/currency-input`
+- `Dialog, DialogContent, DialogHeader, DialogTitle` (já importados)
+- `Button`, `Input`, `Label` (já importados)
+
+#### 6. Considerações
+- O popup NÃO tem: seletor de funcionário, picker de calendário, grid de disponibilidade, encaixe, membership badges, promoções — isso é para a tela completa
+- Reset do formulário ao fechar o dialog (limpar campos quando `quickCreateSlot` vira `null`)
+- Se o usuário quiser mais controle, pode clicar "Novo Agendamento" para ir para a tela completa
+- Usar `useSWR` com as mesmas keys do `useAppointmentForm` para reaproveitar cache
