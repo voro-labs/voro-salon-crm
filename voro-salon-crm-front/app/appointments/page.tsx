@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, isSameDay, addWeeks, subWeeks, isToday } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import type { PagedResult } from "@/hooks/use-data-list.hook"
@@ -518,12 +519,13 @@ function AgendaDayView({
           const inBH = isInBusinessHours(hour, minute)
           const past = isSlotPast(hour, minute)
           const info: SlotInfo = slotMap.get(key) ?? { type: "empty" }
+          const isFullHour = minute === 0
           const timeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
 
           if (!inBH && info.type === "empty") {
             return (
               <div key={key} className="flex items-center gap-3 px-4 py-1.5 bg-muted/10">
-                <span className="text-[10px] text-muted-foreground/30 w-10 shrink-0 font-mono">{timeStr}</span>
+                <span className="text-[10px] text-muted-foreground/30 w-11 shrink-0 font-mono">{timeStr}</span>
                 <div className="flex-1 border-t border-dashed border-border/10" />
               </div>
             )
@@ -534,11 +536,11 @@ function AgendaDayView({
             return (
               <div
                 key={key}
-                className={`flex items-center gap-3 px-4 py-1.5 opacity-50 cursor-pointer hover:opacity-70 transition-opacity border-l-4 ${colorClass}`}
+                className={`flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:opacity-80 transition-opacity border-l-4 ${past ? "opacity-30" : "opacity-50"} ${colorClass}`}
                 onClick={() => router.push(`/appointments/${info.apt.id}`)}
               >
-                <span className="text-[10px] text-muted-foreground/60 w-10 shrink-0 font-mono">{timeStr}</span>
-                <div className="flex-1 h-3 bg-current/10 rounded-full opacity-30" />
+                <span className={`w-11 shrink-0 font-mono ${isFullHour ? "text-[11px] text-muted-foreground/50" : "text-[10px] text-muted-foreground/30"}`}>{timeStr}</span>
+                <span className="text-[10px] text-muted-foreground/40 italic truncate">{info.apt.clientName}</span>
               </div>
             )
           }
@@ -549,10 +551,10 @@ function AgendaDayView({
             return (
               <div
                 key={key}
-                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity border-l-4 ${colorClass}`}
+                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity border-l-4 ${colorClass} ${past ? "opacity-40" : ""}`}
                 onClick={() => router.push(`/appointments/${apt.id}`)}
               >
-                <span className="text-xs font-mono font-semibold w-10 shrink-0">{timeStr}</span>
+                <span className={`font-mono font-semibold w-11 shrink-0 ${isFullHour ? "text-xs" : "text-[11px]"}`}>{timeStr}</span>
                 <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
                   <span className="font-semibold text-sm truncate">{apt.clientName}</span>
                   {apt.serviceName && (
@@ -569,6 +571,12 @@ function AgendaDayView({
                       </span>
                     </>
                   )}
+                  {apt.durationMinutes > 30 && (
+                    <>
+                      <span className="text-muted-foreground/60">·</span>
+                      <span className="text-[10px] text-muted-foreground">{apt.durationMinutes}min</span>
+                    </>
+                  )}
                 </div>
               </div>
             )
@@ -579,13 +587,21 @@ function AgendaDayView({
             <button
               key={key}
               disabled={past}
-              className={`flex items-center gap-3 px-4 py-2 w-full text-left transition-colors ${
-                past ? "opacity-30 cursor-default" : "hover:bg-accent/10 cursor-pointer"
+              className={`flex items-center gap-3 px-4 w-full text-left transition-colors ${
+                isFullHour ? "py-2.5" : "py-1.5"
+              } ${
+                past ? "opacity-20 cursor-default bg-muted/5" : "hover:bg-accent/10 cursor-pointer"
               }`}
               onClick={() => !past && onSlotClick(day, hour, minute)}
             >
-              <span className="text-[10px] text-muted-foreground/60 font-mono w-10 shrink-0">{timeStr}</span>
-              <div className="flex-1 border-t border-dashed border-border/25" />
+              <span className={`font-mono w-11 shrink-0 ${
+                past
+                  ? "text-muted-foreground/40"
+                  : isFullHour
+                  ? "text-[11px] text-muted-foreground font-medium"
+                  : "text-[10px] text-muted-foreground/50"
+              }`}>{timeStr}</span>
+              <div className={`flex-1 border-t border-dashed ${past ? "border-border/10" : "border-border/25"}`} />
             </button>
           )
         })}
@@ -614,6 +630,7 @@ export default function AppointmentsPage() {
   const [agendaDay, setAgendaDay] = useState(() => startOfDay(new Date()))
 
   // ── Audio recording state ──────────────────────────────────────────────────
+  const [showAudioModal, setShowAudioModal] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [audioProcessing, setAudioProcessing] = useState(false)
   const [transcriptionResult, setTranscriptionResult] = useState<{
@@ -627,7 +644,8 @@ export default function AppointmentsPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
-  async function startRecording() {
+  async function beginRecording() {
+    setShowAudioModal(false)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mr = new MediaRecorder(stream)
@@ -793,6 +811,64 @@ export default function AppointmentsPage() {
   const finalFiltered = items
 
   return (
+    <>
+    {/* Modal de instrução para gravação de áudio */}
+    <Dialog open={showAudioModal} onOpenChange={setShowAudioModal}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Mic className="h-4 w-4 text-primary" />
+            Agendar por voz
+          </DialogTitle>
+          <DialogDescription>
+            Fale as informações do agendamento em voz alta. A IA vai extrair os dados automaticamente.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-3 py-1">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Diga algo como:</p>
+          <div className="rounded-lg bg-muted/40 border border-border/60 px-4 py-3">
+            <p className="text-sm text-foreground leading-relaxed italic">
+              "Agendar a Maria Silva para corte e escova na sexta-feira às 14h, vai durar 1 hora e meia, valor R$ 120."
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-1">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">O sistema vai detectar:</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { emoji: "👤", label: "Nome do cliente" },
+                { emoji: "✂️", label: "Serviço" },
+                { emoji: "📅", label: "Data / dia da semana" },
+                { emoji: "🕐", label: "Horário" },
+                { emoji: "⏱️", label: "Duração" },
+                { emoji: "💰", label: "Valor" },
+              ].map(({ emoji, label }) => (
+                <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{emoji}</span>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+            Campos não mencionados ficam em branco no formulário. Se o serviço estiver cadastrado, o valor e duração são preenchidos automaticamente.
+          </p>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <Button className="flex-1" onClick={beginRecording}>
+            <Mic className="mr-2 h-4 w-4" />
+            Iniciar gravação
+          </Button>
+          <Button variant="outline" onClick={() => setShowAudioModal(false)}>
+            Cancelar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
       <div className="flex flex-col gap-6 p-6">
         <PageHeader
@@ -800,7 +876,7 @@ export default function AppointmentsPage() {
           action={
             <div className="flex flex-col gap-2 w-full">
               {/* Linha 2: ações — ícone-only nos secundários em mobile */}
-              <div className="flex flex-wrap items-center gap-1.5 justify-between sm:justify-start">
+              <div className="flex flex-wrap items-center gap-1.5 justify-end">
                 <ExportMenu
                   size="sm"
                   rows={finalFiltered}
@@ -832,7 +908,7 @@ export default function AppointmentsPage() {
                 </Button>
               </div>
               {/* Linha 1: filtro de período + toggle de visualização */}
-              <div className="flex items-center justify-between w-full gap-2">
+              <div className="flex flex-wrap items-center justify-between w-full gap-2">
                 {viewMode === "list" ? (
                   <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
                     <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
@@ -842,73 +918,73 @@ export default function AppointmentsPage() {
                     </TabsList>
                   </Tabs>
                 ) : viewMode === "calendar" ? (
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => subWeeks(w, 1))}>
-                      <ChevronLeft className="h-4 w-4" />
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCalendarWeek(w => subWeeks(w, 1))}>
+                      <ChevronLeft className="h-3.5 w-3.5" />
                     </Button>
-                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap min-w-0">
                       {format(calendarWeek, "dd MMM", { locale: ptBR })} — {format(addDays(calendarWeek, 6), "dd MMM yyyy", { locale: ptBR })}
                     </span>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => addWeeks(w, 1))}>
-                      <ChevronRight className="h-4 w-4" />
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCalendarWeek(w => addWeeks(w, 1))}>
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 text-xs text-primary" onClick={() => setCalendarWeek(startOfWeek(new Date(), { weekStartsOn: 0 }))}>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary px-2" onClick={() => setCalendarWeek(startOfWeek(new Date(), { weekStartsOn: 0 }))}>
                       Hoje
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgendaDay(d => addDays(d, -1))}>
-                      <ChevronLeft className="h-4 w-4" />
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setAgendaDay(d => addDays(d, -1))}>
+                      <ChevronLeft className="h-3.5 w-3.5" />
                     </Button>
-                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap capitalize">
+                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap capitalize min-w-0">
                       {format(agendaDay, "EEE, dd 'de' MMM yyyy", { locale: ptBR })}
                     </span>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgendaDay(d => addDays(d, 1))}>
-                      <ChevronRight className="h-4 w-4" />
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setAgendaDay(d => addDays(d, 1))}>
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 text-xs text-primary" onClick={() => setAgendaDay(startOfDay(new Date()))}>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary px-2" onClick={() => setAgendaDay(startOfDay(new Date()))}>
                       Hoje
                     </Button>
                   </div>
                 )}
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {/* Mic button */}
                   <button
-                    onClick={isRecording ? stopRecording : startRecording}
+                    onClick={isRecording ? stopRecording : () => setShowAudioModal(true)}
                     disabled={audioProcessing}
-                    className={`flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
+                    className={`flex items-center justify-center h-7 w-7 rounded-md border transition-colors ${
                       isRecording
-                        ? "bg-red-500 border-red-500 text-white hover:bg-red-600"
+                        ? "bg-red-500 border-red-500 text-white hover:bg-red-600 animate-pulse"
                         : audioProcessing
                         ? "bg-muted border-border text-muted-foreground cursor-wait"
                         : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent/10"
                     }`}
                     title={isRecording ? "Parar gravação" : "Gravar agendamento por áudio"}
                   >
-                    {isRecording ? <Square className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                    {isRecording ? <Square className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
                   </button>
-                  <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
+                  <div className="flex items-center rounded-md border border-border p-0.5 bg-muted/40 h-7">
                     <button
                       onClick={() => handleSetViewMode("list")}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <List className="h-3 w-3" />
-                      Lista
+                      <span className="hidden sm:inline">Lista</span>
                     </button>
                     <button
                       onClick={() => handleSetViewMode("agenda")}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "agenda" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${viewMode === "agenda" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <CalendarDays className="h-3 w-3" />
-                      Agenda
+                      <span className="hidden sm:inline">Agenda</span>
                     </button>
                     <button
                       onClick={() => handleSetViewMode("calendar")}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <LayoutGrid className="h-3 w-3" />
-                      Grade
+                      <span className="hidden sm:inline">Grade</span>
                     </button>
                   </div>
                 </div>
@@ -1216,5 +1292,6 @@ export default function AppointmentsPage() {
         )}
       </div>
     </AuthGuard>
+    </>
   )
 }
