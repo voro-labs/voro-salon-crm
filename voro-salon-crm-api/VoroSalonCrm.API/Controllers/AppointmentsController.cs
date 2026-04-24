@@ -195,7 +195,9 @@ namespace VoroSalonCrm.API.Controllers
             IFormFile audio,
             [FromServices] IWhisperService whisperService,
             [FromServices] IGeminiService geminiService,
-            [FromServices] IServiceService serviceService)
+            [FromServices] IServiceService serviceService,
+            [FromServices] IIntegrationAuditService integrationAuditService,
+            [FromServices] ICurrentUserService currentUserService)
         {
             try
             {
@@ -205,6 +207,20 @@ namespace VoroSalonCrm.API.Controllers
                 // 1. Transcrever com Whisper
                 await using var stream = audio.OpenReadStream();
                 var transcript = await whisperService.TranscribeAsync(stream, audio.FileName);
+
+                // Auditoria Whisper
+                try
+                {
+                    await integrationAuditService.LogAsync(
+                        "Whisper",
+                        "https://api.openai.com/v1/audio/transcriptions",
+                        $"file={audio.FileName}, size={audio.Length}bytes, lang=pt",
+                        string.IsNullOrWhiteSpace(transcript) ? null : (transcript.Length > 500 ? transcript[..500] : transcript),
+                        string.IsNullOrWhiteSpace(transcript) ? 422 : 200,
+                        currentUserService.TenantId != Guid.Empty ? currentUserService.TenantId : null
+                    );
+                }
+                catch { /* não bloquear a transcrição se a auditoria falhar */ }
 
                 if (string.IsNullOrWhiteSpace(transcript))
                     return ResponseViewModel<object>.Fail("Não foi possível transcrever o áudio.").ToActionResult();
@@ -239,6 +255,20 @@ namespace VoroSalonCrm.API.Controllers
                     serviceContext;
 
                 var rawResult = await geminiService.GenerateResponseAsync(systemPrompt, [], transcript);
+
+                // Auditoria Gemini
+                try
+                {
+                    await integrationAuditService.LogAsync(
+                        "Gemini-Transcription",
+                        "generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+                        $"systemPrompt length={systemPrompt.Length}, userMessage length={transcript.Length}",
+                        rawResult.Length > 500 ? rawResult[..500] : rawResult,
+                        200,
+                        currentUserService.TenantId != Guid.Empty ? currentUserService.TenantId : null
+                    );
+                }
+                catch { /* não bloquear a extração se a auditoria falhar */ }
 
                 // Limpar markdown caso Gemini envolva em ```json
                 var cleaned = Regex.Replace(rawResult.Trim(), @"^```(?:json)?\s*|\s*```$", "", RegexOptions.Multiline).Trim();

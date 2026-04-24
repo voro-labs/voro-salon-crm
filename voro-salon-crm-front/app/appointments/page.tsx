@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List, CalendarDays, Mic, Square, Zap } from "lucide-react"
+import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List, CalendarDays, Mic, Square, Zap, Check } from "lucide-react"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,7 +27,9 @@ import { useSubscription } from "@/hooks/use-subscription.hook"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { EmptyState } from "@/components/ui/custom/empty-state"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
-import { StatusBadge } from "@/components/ui/custom/status-badge"
+import { StatusBadge, appointmentStatusConfig } from "@/components/ui/custom/status-badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 import { fetcher } from "@/lib/fetcher"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,6 +52,45 @@ const STATUS_COLORS: Record<number, string> = {
   4: "bg-gray-100 border-gray-300 text-gray-700",
 }
 
+// ─── Status dropdown ─────────────────────────────────────────────────────────
+
+function StatusDropdown({
+  appointmentId,
+  currentStatus,
+  onStatusChange,
+}: {
+  appointmentId: string
+  currentStatus: number
+  onStatusChange: (id: string, newStatus: number) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => { e.stopPropagation(); e.preventDefault() }}>
+        <button className="cursor-pointer">
+          <StatusBadge status={currentStatus} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[140px]">
+        {(Object.entries(appointmentStatusConfig) as [string, typeof appointmentStatusConfig[0]][]).map(([key, config]) => {
+          const Icon = config.icon
+          const isActive = currentStatus === Number(key)
+          return (
+            <DropdownMenuItem
+              key={key}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onStatusChange(appointmentId, Number(key)) }}
+              className={isActive ? "font-semibold" : ""}
+            >
+              <Icon className="h-4 w-4 mr-2 shrink-0" />
+              {config.label}
+              {isActive && <Check className="ml-auto h-3 w-3" />}
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 // ─── Calendar week view ───────────────────────────────────────────────────────
 
 function CalendarWeekView({
@@ -59,6 +100,7 @@ function CalendarWeekView({
   businessHours,
   calStartHour,
   calEndHour,
+  onStatusChange,
 }: {
   weekStart: Date
   appointments: any[]
@@ -66,6 +108,7 @@ function CalendarWeekView({
   businessHours?: BusinessHoursDay[]
   calStartHour: number
   calEndHour: number
+  onStatusChange: (appointmentId: string, newStatus: number) => void
 }) {
   const router = useRouter()
   const [blockedKey, setBlockedKey] = useState<string | null>(null)
@@ -287,6 +330,11 @@ function CalendarWeekView({
                     {height > 30 && apt.serviceName && (
                       <p className="truncate text-[9px] opacity-70">{apt.serviceName}</p>
                     )}
+                    {height > 40 && (
+                      <div className="mt-0.5">
+                        <StatusDropdown appointmentId={apt.id} currentStatus={apt.status} onStatusChange={onStatusChange} />
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -413,6 +461,11 @@ function CalendarWeekView({
                       {height > 30 && (apt.serviceName || apt.description) && (
                         <p className="truncate text-[9px] opacity-70">{apt.serviceName || apt.description}</p>
                       )}
+                      {height > 40 && (
+                        <div className="mt-0.5">
+                          <StatusDropdown appointmentId={apt.id} currentStatus={apt.status} onStatusChange={onStatusChange} />
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -434,6 +487,7 @@ function AgendaDayView({
   calStartHour,
   calEndHour,
   onSlotClick,
+  onStatusChange,
 }: {
   day: Date
   appointments: any[]
@@ -441,6 +495,7 @@ function AgendaDayView({
   calStartHour: number
   calEndHour: number
   onSlotClick: (date: Date, hour: number, minute: number) => void
+  onStatusChange: (appointmentId: string, newStatus: number) => void
 }) {
   const router = useRouter()
 
@@ -584,6 +639,7 @@ function AgendaDayView({
                     </>
                   )}
                 </div>
+                <StatusDropdown appointmentId={apt.id} currentStatus={apt.status} onStatusChange={onStatusChange} />
               </div>
             )
           }
@@ -635,6 +691,18 @@ export default function AppointmentsPage() {
 
   const [calendarWeek, setCalendarWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }))
   const [agendaDay, setAgendaDay] = useState(() => startOfDay(new Date()))
+
+  // ── Status update ─────────────────────────────────────────────────────────
+  async function updateAppointmentStatus(id: string, newStatus: number) {
+    const statusLabels: Record<number, string> = { 0: "Pendente", 1: "Confirmado", 2: "Concluído", 3: "Cancelado", 4: "Faltou" }
+    const res = await secureApiCall(
+      `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`,
+      { method: "PATCH", body: JSON.stringify(newStatus) }
+    )
+    if ((res as any).hasError) { toast.error("Erro ao atualizar status."); return }
+    toast.success(`Status atualizado para ${statusLabels[newStatus]}`)
+    mutateCalendar()
+  }
 
   // ── Quick create state ────────────────────────────────────────────────────
   const [quickCreateSlot, setQuickCreateSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null)
@@ -1314,6 +1382,7 @@ export default function AppointmentsPage() {
               const iso = format(date, "yyyy-MM-dd")
               router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
             }}
+            onStatusChange={updateAppointmentStatus}
           />
         ) : viewMode === "agenda" ? (
           <AgendaDayView
@@ -1323,6 +1392,7 @@ export default function AppointmentsPage() {
             calStartHour={calStartHour}
             calEndHour={calEndHour}
             onSlotClick={openQuickCreate}
+            onStatusChange={updateAppointmentStatus}
           />
         ) : (
         <>
@@ -1409,7 +1479,7 @@ export default function AppointmentsPage() {
                             <span className="truncate font-bold text-foreground">
                               {apt.clientName}
                             </span>
-                            <StatusBadge status={apt.status} />
+                            <StatusDropdown appointmentId={apt.id} currentStatus={apt.status} onStatusChange={updateAppointmentStatus} />
                           </div>
 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
