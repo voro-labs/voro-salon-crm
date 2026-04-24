@@ -67,10 +67,10 @@ function StatusDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => { e.stopPropagation(); e.preventDefault() }}>
         <button className="cursor-pointer">
-          <StatusBadge status={currentStatus} />
+          <StatusBadge status={currentStatus} showChevron />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[140px]">
+      <DropdownMenuContent align="end" className="min-w-[160px]">
         {(Object.entries(appointmentStatusConfig) as [string, typeof appointmentStatusConfig[0]][]).map(([key, config]) => {
           const Icon = config.icon
           const isActive = currentStatus === Number(key)
@@ -216,7 +216,7 @@ function CalendarWeekView({
         {/* Mobile header with prev/next */}
         <div className="flex items-center justify-between px-3 h-12 border-b bg-muted/30 sticky top-0 z-10">
           <button
-            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-30"
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
             onClick={() => setMobileDayIdx((i) => Math.max(i - 1, 0))}
             disabled={mobileDayIdx === 0}
             aria-label="Dia anterior"
@@ -237,14 +237,14 @@ function CalendarWeekView({
               {format(visibleDay, "EEE, dd MMM", { locale: ptBR })}
             </span>
             {closed && (
-              <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider leading-none">
+              <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider leading-none">
                 fechado
               </span>
             )}
           </div>
 
           <button
-            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-30"
+            className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent/20 transition-colors disabled:opacity-50"
             onClick={() => setMobileDayIdx((i) => Math.min(i + 1, 6))}
             disabled={mobileDayIdx === 6}
             aria-label="Próximo dia"
@@ -261,7 +261,7 @@ function CalendarWeekView({
               {hours.map((h) => (
                 <div
                   key={h}
-                  className="border-b text-[10px] text-muted-foreground text-right pr-2 flex items-start pt-1"
+                  className="border-b text-xs text-muted-foreground text-right pr-2 flex items-start pt-1"
                   style={{ height: HOUR_HEIGHT }}
                 >
                   {String(h).padStart(2, "0")}:00
@@ -294,7 +294,7 @@ function CalendarWeekView({
                         isBlocked
                           ? "bg-red-100 dark:bg-red-900/30"
                           : past
-                          ? "bg-muted/40 cursor-default opacity-60"
+                          ? "bg-muted/40 cursor-default opacity-75"
                           : closed || !inBH
                           ? "bg-muted/30 cursor-default"
                           : hasConflict(visibleDay, h, m)
@@ -319,7 +319,7 @@ function CalendarWeekView({
                 return (
                   <div
                     key={apt.id}
-                    className={`absolute inset-x-0.5 rounded border text-[10px] px-1 py-0.5 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 ${colorClass}`}
+                    className={`absolute inset-x-0.5 rounded border text-[11px] px-1.5 py-1 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 ${colorClass}`}
                     style={{ top, height }}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -328,7 +328,7 @@ function CalendarWeekView({
                   >
                     <p className="font-semibold truncate leading-tight">{apt.clientName}</p>
                     {height > 30 && apt.serviceName && (
-                      <p className="truncate text-[9px] opacity-70">{apt.serviceName}</p>
+                      <p className="truncate text-[10px] opacity-90">{apt.serviceName}</p>
                     )}
                     {height > 40 && (
                       <div className="mt-0.5">
@@ -359,7 +359,7 @@ function CalendarWeekView({
               key={day.toISOString()}
               className={`h-12 flex flex-col items-center justify-center text-xs border-r last:border-r-0 ${
                 isToday(day) ? "bg-primary/10" : isPastDay ? "bg-muted/20" : ""
-              } ${closed || isPastDay ? "opacity-50" : ""}`}
+              } ${closed || isPastDay ? "opacity-70" : ""}`}
             >
               <span className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">
                 {format(day, "EEE", { locale: ptBR })}
@@ -368,7 +368,7 @@ function CalendarWeekView({
                 {format(day, "dd")}
               </span>
               {closed && !isPastDay && (
-                <span className="text-[8px] text-muted-foreground/60 uppercase tracking-wider leading-none">
+                <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider leading-none">
                   fechado
                 </span>
               )}
@@ -385,7 +385,7 @@ function CalendarWeekView({
             {hours.map((h) => (
               <div
                 key={h}
-                className="border-b text-[10px] text-muted-foreground text-right pr-2 flex items-start pt-1"
+                className="border-b text-xs text-muted-foreground text-right pr-2 flex items-start pt-1"
                 style={{ height: HOUR_HEIGHT }}
               >
                 {String(h).padStart(2, "0")}:00
@@ -424,7 +424,7 @@ function CalendarWeekView({
                           isBlocked
                             ? "bg-red-100 dark:bg-red-900/30"
                             : past
-                            ? "bg-muted/40 cursor-default opacity-60"
+                            ? "bg-muted/40 cursor-default opacity-75"
                             : closed || !inBH
                             ? "bg-muted/30 cursor-default"
                             : hasConflict(day, h, m)
@@ -450,7 +450,7 @@ function CalendarWeekView({
                   return (
                     <div
                       key={apt.id}
-                      className={`absolute inset-x-0.5 rounded border text-[10px] px-1 py-0.5 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 ${colorClass}`}
+                      className={`absolute inset-x-0.5 rounded border text-[11px] px-1.5 py-1 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 ${colorClass}`}
                       style={{ top, height }}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -459,7 +459,7 @@ function CalendarWeekView({
                     >
                       <p className="font-semibold truncate leading-tight">{apt.clientName}</p>
                       {height > 30 && (apt.serviceName || apt.description) && (
-                        <p className="truncate text-[9px] opacity-70">{apt.serviceName || apt.description}</p>
+                        <p className="truncate text-[10px] opacity-90">{apt.serviceName || apt.description}</p>
                       )}
                       {height > 40 && (
                         <div className="mt-0.5">
@@ -584,8 +584,8 @@ function AgendaDayView({
           if (!inBH && info.type === "empty") {
             return (
               <div key={key} className="relative flex items-center gap-3 px-4 py-1.5 bg-muted/10">
-                <span className="text-[20px] text-muted-foreground/30 w-11 shrink-0 font-mono">{timeStr}</span>
-                <span className="text-[20px] text-muted-foreground/35 italic select-none">Intervalo</span>
+                <span className="text-[20px] text-muted-foreground/70 w-11 shrink-0 font-mono">{timeStr}</span>
+                <span className="text-[20px] text-muted-foreground/70 italic select-none">Fechado</span>
               </div>
             )
           }
@@ -595,12 +595,11 @@ function AgendaDayView({
             return (
               <div
                 key={key}
-                className={`relative flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:opacity-80 transition-opacity border-l-4 ${past ? "opacity-30" : "opacity-50"} ${colorClass}`}
+                className={`relative flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:opacity-80 transition-opacity border-l-4 ${past ? "opacity-70" : "opacity-70"} ${colorClass}`}
                 onClick={() => router.push(`/appointments/${info.apt.id}`)}
               >
-                {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/25 pointer-events-none" />}
-                <span className={`w-11 shrink-0 font-mono ${isFullHour ? "text-[11px] text-muted-foreground/50" : "text-[10px] text-muted-foreground/50"}`}>{timeStr}</span>
-                <span className="text-[10px] text-muted-foreground/40 italic truncate">{info.apt.clientName}</span>
+                <span className={`w-11 shrink-0 font-mono ${isFullHour ? "text-[11px] text-muted-foreground/70" : "text-[10px] text-muted-foreground/70"}`}>{timeStr}</span>
+                <span className="text-[10px] text-muted-foreground/70 italic truncate">{info.apt.clientName}</span>
               </div>
             )
           }
@@ -611,10 +610,9 @@ function AgendaDayView({
             return (
               <div
                 key={key}
-                className={`relative flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity border-l-4 ${colorClass} ${past ? "opacity-40" : ""}`}
+                className={`relative flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:opacity-90 transition-opacity border-l-4 ${colorClass} ${past ? "opacity-70" : ""}`}
                 onClick={() => router.push(`/appointments/${apt.id}`)}
               >
-                {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/30 pointer-events-none" />}
                 <span className={`font-mono font-semibold w-11 shrink-0 ${isFullHour ? "text-xs" : "text-[11px]"}`}>{timeStr}</span>
                 <div className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
                   <span className="font-semibold text-sm truncate">{apt.clientName}</span>
@@ -635,7 +633,7 @@ function AgendaDayView({
                   {apt.durationMinutes > 30 && (
                     <>
                       <span className="text-muted-foreground/60">·</span>
-                      <span className="text-[10px] text-muted-foreground">{apt.durationMinutes}min</span>
+                      <span className="text-xs text-muted-foreground">{apt.durationMinutes}min</span>
                     </>
                   )}
                 </div>
@@ -656,10 +654,10 @@ function AgendaDayView({
               }`}
               onClick={() => !past && onSlotClick(day, hour, minute)}
             >
-              {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/20 pointer-events-none" />}
+              {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/40 pointer-events-none" />}
               <span className={`font-mono w-11 shrink-0 ${
                 past
-                  ? "text-[20px] text-muted-foreground/35"
+                  ? "text-[20px] text-muted-foreground/70"
                   : isFullHour
                   ? "text-[21px] text-muted-foreground"
                   : "text-[20px] text-muted-foreground"
@@ -1176,38 +1174,38 @@ export default function AppointmentsPage() {
                 {viewMode === "list" ? (
                   <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
                     <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
-                      <TabsTrigger value="today" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Hoje</TabsTrigger>
-                      <TabsTrigger value="week" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Semana</TabsTrigger>
-                      <TabsTrigger value="all" className="flex-1 sm:flex-none text-[10px] h-7 px-3">Tudo</TabsTrigger>
+                      <TabsTrigger value="today" className="flex-1 sm:flex-none text-xs h-7 px-3">Hoje</TabsTrigger>
+                      <TabsTrigger value="week" className="flex-1 sm:flex-none text-xs h-7 px-3">Semana</TabsTrigger>
+                      <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs h-7 px-3">Tudo</TabsTrigger>
                     </TabsList>
                   </Tabs>
                 ) : viewMode === "calendar" ? (
                   <div className="flex items-center gap-1.5">
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCalendarWeek(w => subWeeks(w, 1))}>
-                      <ChevronLeft className="h-3.5 w-3.5" />
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => subWeeks(w, 1))}>
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <span className="text-xs font-medium text-muted-foreground whitespace-nowrap min-w-0">
                       {format(calendarWeek, "dd MMM", { locale: ptBR })} — {format(addDays(calendarWeek, 6), "dd MMM yyyy", { locale: ptBR })}
                     </span>
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCalendarWeek(w => addWeeks(w, 1))}>
-                      <ChevronRight className="h-3.5 w-3.5" />
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => addWeeks(w, 1))}>
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary px-2" onClick={() => setCalendarWeek(startOfWeek(new Date(), { weekStartsOn: 0 }))}>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-primary px-2" onClick={() => setCalendarWeek(startOfWeek(new Date(), { weekStartsOn: 0 }))}>
                       Hoje
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5">
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setAgendaDay(d => addDays(d, -1))}>
-                      <ChevronLeft className="h-3.5 w-3.5" />
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgendaDay(d => addDays(d, -1))}>
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <span className="text-xs font-medium text-muted-foreground whitespace-nowrap capitalize min-w-0">
                       {format(agendaDay, "EEE, dd 'de' MMM yyyy", { locale: ptBR })}
                     </span>
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setAgendaDay(d => addDays(d, 1))}>
-                      <ChevronRight className="h-3.5 w-3.5" />
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgendaDay(d => addDays(d, 1))}>
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary px-2" onClick={() => setAgendaDay(startOfDay(new Date()))}>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs text-primary px-2" onClick={() => setAgendaDay(startOfDay(new Date()))}>
                       Hoje
                     </Button>
                   </div>
@@ -1231,21 +1229,21 @@ export default function AppointmentsPage() {
                   <div className="flex items-center rounded-md border border-border p-0.5 bg-muted/40 h-7">
                     <button
                       onClick={() => handleSetViewMode("list")}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <List className="h-3 w-3" />
                       <span className="hidden sm:inline">Lista</span>
                     </button>
                     <button
                       onClick={() => handleSetViewMode("agenda")}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${viewMode === "agenda" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${viewMode === "agenda" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <CalendarDays className="h-3 w-3" />
                       <span className="hidden sm:inline">Agenda</span>
                     </button>
                     <button
                       onClick={() => handleSetViewMode("calendar")}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${viewMode === "calendar" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     >
                       <LayoutGrid className="h-3 w-3" />
                       <span className="hidden sm:inline">Grade</span>
@@ -1318,19 +1316,19 @@ export default function AppointmentsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               {transcriptionResult.nome_do_cliente && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Cliente</span>
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Cliente</span>
                   <span className="font-medium">{transcriptionResult.nome_do_cliente}</span>
                 </div>
               )}
               {transcriptionResult.servico && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Serviço</span>
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Serviço</span>
                   <span className="font-medium">{transcriptionResult.servico}</span>
                 </div>
               )}
               {transcriptionResult.valor != null && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Valor</span>
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Valor</span>
                   <span className="font-medium">
                     {Number(transcriptionResult.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </span>
@@ -1338,13 +1336,13 @@ export default function AppointmentsPage() {
               )}
               {transcriptionResult.duracao != null && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Duração</span>
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Duração</span>
                   <span className="font-medium">{transcriptionResult.duracao} min</span>
                 </div>
               )}
               {transcriptionResult.dia_marcado && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Data</span>
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Data</span>
                   <span className="font-medium">
                     {format(new Date(transcriptionResult.dia_marcado + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
                   </span>
@@ -1352,7 +1350,7 @@ export default function AppointmentsPage() {
               )}
               {transcriptionResult.horario && (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-muted-foreground uppercase tracking-wider text-[9px]">Horário</span>
+                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">Horário</span>
                   <span className="font-medium">{transcriptionResult.horario}</span>
                 </div>
               )}
@@ -1418,7 +1416,7 @@ export default function AppointmentsPage() {
                     <button
                       key={n}
                       onClick={() => setPageSize(n)}
-                      className={`h-6 min-w-7 px-1.5 rounded text-xs font-medium transition-colors ${
+                      className={`h-7 min-w-8 px-1.5 rounded text-xs font-medium transition-colors ${
                         pageSize === n
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -1466,7 +1464,7 @@ export default function AppointmentsPage() {
                     <Card className="transition-colors hover:bg-accent/10">
                       <CardContent className="flex items-center gap-4 p-4">
                         <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
-                          <span className="text-[10px] font-bold uppercase leading-none">
+                          <span className="text-xs font-bold uppercase leading-none">
                             {format(date, "MMM", { locale: ptBR })}
                           </span>
                           <span className="text-lg font-bold leading-tight">
@@ -1516,7 +1514,7 @@ export default function AppointmentsPage() {
                     <button
                       key={n}
                       onClick={() => setPageSize(n)}
-                      className={`h-6 min-w-7 px-1.5 rounded text-xs font-medium transition-colors ${
+                      className={`h-7 min-w-8 px-1.5 rounded text-xs font-medium transition-colors ${
                         pageSize === n
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
