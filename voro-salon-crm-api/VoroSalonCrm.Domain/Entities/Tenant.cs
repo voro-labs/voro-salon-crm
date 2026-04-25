@@ -34,6 +34,8 @@ namespace VoroSalonCrm.Domain.Entities
         public DateTimeOffset? WhatsAppTokenExpiresAt { get; set; }
         
         public string ThemeMode { get; set; } = "system";
+        public string? DefaultPage { get; set; }
+        public string? AppointmentViewMode { get; set; }
 
         public EstablishmentType EstablishmentType { get; set; } = EstablishmentType.Salon;
 

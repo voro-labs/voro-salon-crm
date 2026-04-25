@@ -68,7 +68,9 @@ namespace VoroSalonCrm.Application.Services
                 tenant.PrimaryColor,
                 tenant.SecondaryColor,
                 tenant.ThemeMode?.ToString(),
-                isBookingEnabled
+                isBookingEnabled,
+                tenant.DefaultPage,
+                tenant.AppointmentViewMode
             )
             {
                 BusinessHours = businessHoursDtos.Count > 0 ? businessHoursDtos : null

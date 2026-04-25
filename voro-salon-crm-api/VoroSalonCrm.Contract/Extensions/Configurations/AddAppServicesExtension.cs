@@ -54,6 +54,12 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            services.AddHttpClient("openai", client =>
+            {
+                client.BaseAddress = new Uri("https://api.openai.com/");
+                client.Timeout = TimeSpan.FromSeconds(120);
+            });
+
             services.Configure<BlobUtil>(configuration.GetSection("BlobSettings"));
             services.Configure<MailUtil>(configuration.GetSection("EmailSettings"));
             services.Configure<CookieUtil>(configuration.GetSection("CookieSettings"));
@@ -135,6 +141,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IWhatsAppOnboardingService, WhatsAppOnboardingService>();
             services.AddScoped<IClientMembershipService, ClientMembershipService>();
             services.AddScoped<IGeminiService, GeminiService>();
+            services.AddScoped<IWhisperService, WhisperService>();
             services.AddScoped<IAIConversationService, AIConversationService>();
             services.AddScoped<IEmployeeGoalRepository, EmployeeGoalRepository>();
             services.AddScoped<IEmployeeGoalService, EmployeeGoalService>();

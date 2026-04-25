@@ -1,76 +1,170 @@
-# Tarefas - Agendamento: Melhoria de Interface, Bug de Duração e Persistência de Serviços
+# Tasks
 
-## Contexto
-
-Os formulários de agendamento (`/appointments/new` e `/appointments/[id]`) precisam de melhorias visuais na seleção de cliente/serviços/funcionário, correção do bug de duração com múltiplos serviços, e implementação do salvamento dos serviços na tabela `AppointmentServices`.
-
----
-
-## Task 1: Melhorar a interface de seleção de Cliente / Serviços / Funcionário
-
-**Arquivos**: `app/appointments/new/page.tsx`, `app/appointments/[id]/page.tsx`
-
-**Problema**: A forma atual de escolher serviços (grid de botões pequenos) ficou ruim visualmente. Cliente, serviços e funcionário estão misturados no mesmo grid sem separação clara.
-
-**O que fazer**:
-- [x] Separar visualmente as seções de Cliente, Serviços e Funcionário em blocos distintos (possivelmente com bordas/headers leves)
-- [x] Melhorar o card de serviço: mostrar nome, preço e duração de forma mais legível, com melhor feedback visual ao selecionar
-- [ ] Considerar agrupar serviços por categoria quando houver categoria definida
-- [x] Melhorar o resumo de serviços selecionados (sticky ou mais destacado)
-- [x] Aplicar as mesmas melhorias nas duas páginas (new e [id])
+## ~~Task 1: Modo de Visualização "Agenda"~~ ✅
+## ~~Task 2: Whisper + IA para Transcrição de Áudio~~ ✅
+## ~~Task 3: Popup de Cadastro Rápido na Agenda~~ ✅
 
 ---
 
-## Task 2: Bug - Duração não suporta cálculo com vários serviços
+## ~~Task 4: Alterar Status Inline nas 3 Visualizações~~ ✅
 
-**Arquivos**: `app/appointments/new/page.tsx`, `app/appointments/[id]/page.tsx`
+### Contexto
+Atualmente, para alterar o status de um agendamento (Pendente → Confirmado → Concluído → Cancelado → Faltou), o usuário precisa abrir a página de detalhe (`/appointments/[id]`). Isso é lento no dia a dia. Precisamos de um dropdown/popover inline em cada agendamento, nas 3 visualizações (Lista, Agenda, Grade).
 
-**Problema**: O `<Select>` de duração tem opções fixas de 15, 30, 45, 60, 90 e 120 minutos. Quando o usuário seleciona vários serviços cujo total de duração excede 120 min (ou cai em valor intermediário como 75 min), o `<Select>` não tem esse valor e não consegue mostrar a duração correta.
+### API existente
+```
+PATCH /api/v1/appointments/{id}/status
+Body: number (0 = Pendente, 1 = Confirmado, 2 = Concluído, 3 = Cancelado, 4 = Faltou)
+```
 
-**O que fazer**:
-- [x] Quando há serviços selecionados, calcular a duração total automaticamente e mostrar em um campo somente-leitura (ou label informativo) ao invés de depender do Select fixo
-- [x] Permitir ao usuário sobrescrever manualmente se quiser (trocar para input numérico ou adicionar as opções faltantes dinamicamente)
-- [x] Garantir que `form.durationMinutes` seja corretamente atualizado com o total dos serviços selecionados (a lógica no `toggleService` já faz isso, mas o Select não reflete quando o valor não está nas opções)
-- [x] Aplicar nas duas páginas (new e [id])
+### Status config existente (`components/ui/custom/status-badge.tsx`)
+```ts
+export const appointmentStatusConfig: Record<AppointmentStatusId, { label: string; color: string; icon: LucideIcon }> = {
+  0: { label: "Pendente", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Circle },
+  1: { label: "Confirmado", color: "bg-blue-100 text-blue-800 border-blue-200", icon: CalendarDays },
+  2: { label: "Concluído", color: "bg-green-100 text-green-800 border-green-200", icon: CheckCircle2 },
+  3: { label: "Cancelado", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle },
+  4: { label: "Faltou", color: "bg-gray-100 text-gray-800 border-gray-200", icon: AlertCircle },
+}
+```
+
+### Implementação
+
+#### 1. Função `updateAppointmentStatus` no `AppointmentsPage`
+```ts
+async function updateAppointmentStatus(id: string, newStatus: number) {
+  const res = await secureApiCall(
+    `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`,
+    { method: "PATCH", body: JSON.stringify(newStatus) }
+  )
+  if (res.hasError) { toast.error("Erro ao atualizar status."); return }
+  toast.success(`Status atualizado para ${statusLabels[newStatus]}`)
+  mutateCalendar()   // atualiza agenda/grade
+  // TODO: mutar também a lista se estiver em modo lista
+}
+```
+
+Precisa importar `toast` de `sonner` e adicionar `mutate` do SWR de items da lista.
+
+#### 2. Componente `StatusDropdown`
+Um `DropdownMenu` (já existe em `components/ui/dropdown-menu.tsx`) que:
+- Trigger: o `StatusBadge` existente, com cursor pointer
+- Content: 5 itens (um por status), cada um com ícone + label + destaque no status atual
+- Ao clicar em um item: chama `updateAppointmentStatus(apt.id, newStatus)`
+- Enquanto está salvando: desabilita os itens
+
+```tsx
+function StatusDropdown({ appointmentId, currentStatus, onStatusChange }: {
+  appointmentId: string
+  currentStatus: number
+  onStatusChange: (id: string, newStatus: number) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <button><StatusBadge status={currentStatus} /></button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {Object.entries(appointmentStatusConfig).map(([key, config]) => {
+          const Icon = config.icon
+          const isActive = currentStatus === Number(key)
+          return (
+            <DropdownMenuItem
+              key={key}
+              onClick={(e) => { e.stopPropagation(); onStatusChange(appointmentId, Number(key)) }}
+              className={isActive ? "font-bold" : ""}
+            >
+              <Icon className="h-4 w-4 mr-2" />
+              {config.label}
+              {isActive && <Check className="ml-auto h-3 w-3" />}
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+```
+
+**`e.stopPropagation()`** é essencial — sem isso, o clique no badge propagaria para o row e abriria a tela de detalhe ou navegaria.
+
+#### 3. Integrar nas 3 visualizações
+
+**Lista** (cards em `finalFiltered.map()`): substituir `<StatusBadge status={apt.status} />` pelo `<StatusDropdown>`. O card inteiro é um `<Link>`, então o dropdown precisa de `e.preventDefault()` + `e.stopPropagation()` no trigger.
+
+**Agenda** (`AgendaDayView` — slot `info.type === "appointment"`): adicionar o `StatusDropdown` no final da row do appointment, passando um callback `onStatusChange` como prop do componente.
+
+**Grade** (`CalendarWeekView` — blocos de appointment): mais apertado por espaço. Adicionar o dropdown no bloco de appointment, com trigger menor.
+
+#### 4. Props novas para `AgendaDayView` e `CalendarWeekView`
+```ts
+onStatusChange: (appointmentId: string, newStatus: number) => void
+```
+
+#### 5. Considerações
+- `stopPropagation` em todos os triggers para não abrir a tela de detalhe
+- Na grade (calendar), se o bloco for muito pequeno (duração < 30min), mostrar o dropdown icon-only
+- Mutar tanto `mutateCalendar` quanto `mutate(listSWRKey)` para manter tudo sincronizado
+- Não precisa de confirmação para trocar status (é reversível e inline)
 
 ---
 
-## Task 3: Salvar serviços escolhidos na tabela AppointmentServices
+## ~~Task 5: Auditoria de Uso do Whisper por Tenant~~ ✅
 
-**Arquivos backend**:
-- `VoroSalonCrm.Application/DTOs/CRM/AppointmentDtos.cs`
-- `VoroSalonCrm.Application/Services/AppointmentService.cs`
-- `VoroSalonCrm.Domain/Entities/AppointmentService.cs` (entidade join table - JA EXISTE)
-- `VoroSalonCrm.Domain/Entities/Appointment.cs` (propriedade `Services` - JA EXISTE)
+### Contexto
+O endpoint `POST /api/v1/appointments/transcribe-audio` usa o Whisper (OpenAI) e o Gemini. Precisamos registrar cada uso para saber qual tenant está consumindo mais, para futura cobrança proporcional.
 
-**Arquivos frontend**:
-- `hooks/use-appointment-form.hook.ts`
-- `hooks/use-appointment-detail.hook.ts`
-- `app/appointments/new/page.tsx`
-- `app/appointments/[id]/page.tsx`
+### Infraestrutura existente
+Já existe `IntegrationAuditLog` com campos perfeitos para isso:
+- `IntegrationName` → `"Whisper"` ou `"Gemini"`
+- `Endpoint` → URL da API chamada
+- `StatusCode` → HTTP status da resposta
+- `RequestPayload` → metadata (nome do arquivo, tamanho, idioma)
+- `ResponsePayload` → texto transcrito (ou erro)
+- `TenantId` → qual tenant usou
+- `Timestamp` → quando
 
-**Problema**: O frontend permite selecionar múltiplos serviços, mas envia apenas `serviceId` (um só) para a API. A tabela `AppointmentServices` já existe no banco mas nunca é populada. O DTO de criação/atualização não tem campo para lista de serviços.
+`IIntegrationAuditService.LogAsync()` já faz o INSERT. Só precisa chamar.
 
-**O que fazer**:
+### Implementação
 
-### Backend
-- [x] Adicionar `List<Guid>? ServiceIds` ao `CreateAppointmentDto`
-- [x] Adicionar `List<Guid>? ServiceIds` ao `UpdateAppointmentDto`
-- [x] No `CreateAsync`, popular `appointment.Services` com os `ServiceIds` recebidos
-- [x] No `UpdateAsync`, atualizar `AppointmentServices` (remover antigas, inserir novas)
-- [x] Adicionar `List<AppointmentServiceDto>? Services` ao `AppointmentDto` para retornar os serviços
-- [x] Criar `AppointmentServiceDto` com `ServiceId`, `ServiceName`, `Price`, `DurationMinutes`
+No `TranscribeAudio` do `AppointmentsController.cs`:
 
-### Frontend
-- [x] No `use-appointment-form.hook.ts`, adicionar `serviceIds: string[]` ao form e enviar no POST
-- [x] No `use-appointment-detail.hook.ts`, adicionar `serviceIds: string[]` ao form e enviar no PUT
-- [x] Na página `new`, preencher `serviceIds` a partir de `selectedServices`
-- [x] Na página `[id]`, inicializar `selectedServices` a partir de `appointment.services` (lista da API)
+1. Injetar `IIntegrationAuditService` e `ICurrentUserService` via `[FromServices]`
+2. Após chamar Whisper, registrar:
+```csharp
+await integrationAuditService.LogAsync(
+    "Whisper",
+    "https://api.openai.com/v1/audio/transcriptions",
+    $"file={audio.FileName}, size={audio.Length}bytes, lang=pt",
+    transcript.Length > 500 ? transcript[..500] : transcript,
+    200,   // ou status real
+    currentUserService.TenantId
+);
+```
+3. Após chamar Gemini, registrar:
+```csharp
+await integrationAuditService.LogAsync(
+    "Gemini-Transcription",
+    "generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+    $"systemPrompt length={systemPrompt.Length}, userMessage length={transcript.Length}",
+    rawResult.Length > 500 ? rawResult[..500] : rawResult,
+    200,
+    currentUserService.TenantId
+);
+```
 
----
+### Resultado
+Com isso, para gerar relatórios de uso basta:
+```sql
+SELECT TenantId, IntegrationName, COUNT(*) as total_calls, MIN(Timestamp) as first_use, MAX(Timestamp) as last_use
+FROM IntegrationAuditLogs
+WHERE IntegrationName IN ('Whisper', 'Gemini-Transcription')
+GROUP BY TenantId, IntegrationName
+ORDER BY total_calls DESC;
+```
 
-## Ordem de execução sugerida
-
-1. **Task 2** (bug duração) - fix rápido e isolado
-2. **Task 3** (persistência backend + frontend) - estrutural, precisa ser feito antes da UI
-3. **Task 1** (melhoria visual) - pode ser feito por último com tudo funcionando
+### Considerações
+- Não bloquear a transcrição se a auditoria falhar (try/catch isolado)
+- Não armazenar o áudio em si, apenas metadata (filename, size)
+- Truncar payloads longos (max 500 chars) para não inflar o banco

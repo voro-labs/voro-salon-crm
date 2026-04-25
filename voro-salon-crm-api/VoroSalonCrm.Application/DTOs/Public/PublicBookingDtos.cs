@@ -17,7 +17,9 @@ namespace VoroSalonCrm.Application.DTOs.Public
         string? PrimaryColor,
         string? SecondaryColor,
         string? ThemeMode,
-        bool IsBookingEnabled
+        bool IsBookingEnabled,
+        string? DefaultPage = null,
+        string? AppointmentViewMode = null
     )
     {
         public List<PublicBusinessHourDto>? BusinessHours { get; init; }

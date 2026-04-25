@@ -85,21 +85,51 @@ export default function NovoAgendamentoPage() {
 
   const searchParams = useSearchParams()
 
-  // Pre-fill date/time from calendar slot click
+  // Pre-fill date/time from calendar slot click or audio transcription
   useEffect(() => {
     const dateParam = searchParams.get("date")
     const hourParam = searchParams.get("hour")
-    if (!dateParam || !hourParam) return
-    const hour = parseInt(hourParam, 10)
-    const minute = parseInt(searchParams.get("minute") ?? "0", 10)
-    const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`)
-    if (isNaN(dateObj.getTime())) return
-    setSelectedDate(dateObj)
-    const tzOffset = dateObj.getTimezoneOffset() * 60000
-    const localISOTime = new Date(dateObj.getTime() - tzOffset).toISOString().slice(0, 16)
-    setForm((p) => ({ ...p, scheduledDateTime: localISOTime }))
+    const descriptionParam = searchParams.get("description")
+    const amountParam = searchParams.get("amount")
+    const durationParam = searchParams.get("durationMinutes")
+
+    const updates: Partial<typeof form> = {}
+
+    if (dateParam && hourParam) {
+      const hour = parseInt(hourParam, 10)
+      const minute = parseInt(searchParams.get("minute") ?? "0", 10)
+      const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`)
+      if (!isNaN(dateObj.getTime())) {
+        setSelectedDate(dateObj)
+        const tzOffset = dateObj.getTimezoneOffset() * 60000
+        updates.scheduledDateTime = new Date(dateObj.getTime() - tzOffset).toISOString().slice(0, 16)
+      }
+    }
+
+    if (descriptionParam) updates.description = descriptionParam
+    if (amountParam) updates.amount = parseFloat(amountParam)
+    if (durationParam) updates.durationMinutes = parseInt(durationParam, 10)
+
+    if (Object.keys(updates).length > 0) setForm((p) => ({ ...p, ...updates }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Pre-fill client by name from audio transcription (match when clients load)
+  useEffect(() => {
+    const clientNameParam = searchParams.get("clientName")
+    if (!clientNameParam || !clients?.length || form.clientId) return
+    const lower = clientNameParam.toLowerCase()
+    const match = clients.find((c: any) =>
+      (c.name ?? c.clientName ?? "").toLowerCase().includes(lower)
+    )
+    if (match) {
+      setForm((p) => ({ ...p, clientId: match.id }))
+    } else {
+      setQuickClientName(clientNameParam)
+      setQuickClientOpen(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients])
 
   const { data: myEmployee } = useSWR<any>(
     isSalonEmployee ? API_CONFIG.ENDPOINTS.EMPLOYEE_ME : null,
@@ -109,6 +139,12 @@ export default function NovoAgendamentoPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [isEncaixe, setIsEncaixe] = useState(false)
   const [selectedServices, setSelectedServices] = useState<SelectedServiceItem[]>([])
+  const [quickClientOpen, setQuickClientOpen] = useState(false)
+  const [quickClientName, setQuickClientName] = useState("")
+
+  const isHistoricDate = selectedDate
+    ? selectedDate < new Date(new Date().setHours(0, 0, 0, 0))
+    : false
 
   function toggleService(s: any) {
     setSelectedServices(prev => {
@@ -164,6 +200,16 @@ export default function NovoAgendamentoPage() {
   }
 
   const selectedDateClosed = selectedDate ? isDateClosed(selectedDate) : false
+
+  // Quando data histórica, forçar status Concluído por padrão
+  useEffect(() => {
+    if (isHistoricDate && form.status !== 2 && form.status !== 3) {
+      setForm((p) => ({ ...p, status: 2 }))
+    } else if (!isHistoricDate && (form.status === 2 || form.status === 3)) {
+      setForm((p) => ({ ...p, status: 0 }))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHistoricDate])
 
   const { data: availability, isLoading: loadingAvailability } = useSWR(
     selectedDate && !selectedDateClosed
@@ -223,7 +269,7 @@ export default function NovoAgendamentoPage() {
           </CardHeader>
           <CardContent>
             <form
-              onSubmit={(e) => { e.preventDefault(); createAppointment({ ...form, isEncaixe } as any) }}
+              onSubmit={(e) => { e.preventDefault(); createAppointment({ ...form, isEncaixe: isHistoricDate ? true : isEncaixe } as any) }}
               className="flex flex-col gap-5"
             >
               <div className="flex flex-col gap-5">
@@ -236,7 +282,12 @@ export default function NovoAgendamentoPage() {
                         onSuccess={async (id) => {
                           await mutateClients()
                           setForm((p) => ({ ...p, clientId: id }))
+                          setQuickClientOpen(false)
+                          setQuickClientName("")
                         }}
+                        initialName={quickClientName}
+                        externalOpen={quickClientOpen}
+                        onExternalOpenChange={setQuickClientOpen}
                       />
                     )}
                   </div>
@@ -389,14 +440,17 @@ export default function NovoAgendamentoPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                  <Label>Data e Horário Disponível *</Label>
+                  <Label>
+                    {isHistoricDate ? "Data (Histórico)" : "Data e Horário Disponível *"}
+                  </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
-                          !selectedDate && "text-muted-foreground"
+                          !selectedDate && "text-muted-foreground",
+                          isHistoricDate && "border-amber-400 text-amber-800"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -412,10 +466,11 @@ export default function NovoAgendamentoPage() {
                           setForm((p) => ({ ...p, scheduledDateTime: "" }))
                         }}
                         disabled={(date) => {
+                          // permitir datas passadas (histórico) — apenas bloqueia dias sem expediente
                           const today = new Date()
                           today.setHours(0, 0, 0, 0)
-                          if (date < today) return true
-                          return isDateClosed(date)
+                          if (date > today) return isDateClosed(date)
+                          return false
                         }}
                         initialFocus
                         locale={ptBR}
@@ -462,7 +517,55 @@ export default function NovoAgendamentoPage() {
                 </div>
               </div>
 
-              {selectedDate && (() => {
+              {selectedDate && (isHistoricDate ? (
+                // ── Histórico: input manual de horário ──────────────────────
+                <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">Agendamento histórico</span>
+                    <span className="text-xs text-amber-700 dark:text-amber-300">· sem notificação</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">Horário *</Label>
+                    <Input
+                      type="time"
+                      className="w-40"
+                      value={form.scheduledDateTime ? format(new Date(form.scheduledDateTime), "HH:mm") : ""}
+                      onChange={(e) => {
+                        if (!selectedDate || !e.target.value) return
+                        const [h, m] = e.target.value.split(":").map(Number)
+                        const d = new Date(selectedDate)
+                        d.setHours(h, m, 0, 0)
+                        const tzOffset = d.getTimezoneOffset() * 60000
+                        setForm((p) => ({ ...p, scheduledDateTime: new Date(d.getTime() - tzOffset).toISOString().slice(0, 16) }))
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-sm font-medium">Status *</Label>
+                    <div className="flex gap-2">
+                      {([2, 3] as const).map((s) => {
+                        const labels: Record<number, string> = { 2: "Concluído", 3: "Cancelado" }
+                        const colors: Record<number, string> = {
+                          2: form.status === s ? "bg-emerald-600 text-white border-emerald-600" : "border-emerald-400 text-emerald-700 hover:bg-emerald-50",
+                          3: form.status === s ? "bg-red-500 text-white border-red-500" : "border-red-400 text-red-700 hover:bg-red-50",
+                        }
+                        return (
+                          <Button
+                            key={s}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className={cn("h-9 px-4 text-sm font-medium", colors[s])}
+                            onClick={() => setForm((p) => ({ ...p, status: s }))}
+                          >
+                            {labels[s]}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (() => {
                 const now = new Date()
                 const isToday = selectedDate.toDateString() === now.toDateString()
                 const visibleSlots = (availability ?? []).filter((slot: any) => {
@@ -518,7 +621,7 @@ export default function NovoAgendamentoPage() {
                     )}
                   </div>
                 )
-              })()}
+              })())}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
@@ -552,20 +655,22 @@ export default function NovoAgendamentoPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-3 py-1">
-                <Switch
-                  id="encaixe"
-                  checked={isEncaixe}
-                  onCheckedChange={setIsEncaixe}
-                />
-                <div>
-                  <Label htmlFor="encaixe" className="flex items-center gap-1.5 cursor-pointer">
-                    <Zap className="h-3.5 w-3.5 text-amber-500" />
-                    Encaixe
-                  </Label>
-                  <p className="text-xs text-muted-foreground">Permite agendar em horários já ocupados</p>
+              {!isHistoricDate && (
+                <div className="flex items-center gap-3 py-1">
+                  <Switch
+                    id="encaixe"
+                    checked={isEncaixe}
+                    onCheckedChange={setIsEncaixe}
+                  />
+                  <div>
+                    <Label htmlFor="encaixe" className="flex items-center gap-1.5 cursor-pointer">
+                      <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      Encaixe
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Permite agendar em horários já ocupados</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
                 <Button type="button" variant="outline" asChild className="w-full sm:w-auto h-11 text-sm sm:text-base">
@@ -574,11 +679,11 @@ export default function NovoAgendamentoPage() {
                 <Button
                   type="submit"
                   disabled={isCreating || !form.scheduledDateTime}
-                  title={!form.scheduledDateTime ? "Selecione um horário disponível" : undefined}
+                  title={!form.scheduledDateTime ? "Selecione um horário" : undefined}
                   className="w-full sm:w-auto h-11 text-sm sm:text-base"
                 >
                   {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Confirmar Agendamento
+                  {isHistoricDate ? "Salvar no Histórico" : "Confirmar Agendamento"}
                 </Button>
               </div>
             </form>

@@ -19,12 +19,18 @@ namespace VoroSalonCrm.API.Middlewares
                 || HttpMethods.IsPut(context.Request.Method)
                 || HttpMethods.IsPatch(context.Request.Method))
             {
-                context.Request.EnableBuffering();
-                using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
-                requestBody = await reader.ReadToEndAsync();
-                if (requestBody.Length > MaxBodyLength)
-                    requestBody = requestBody[..MaxBodyLength] + "...[truncated]";
-                context.Request.Body.Position = 0;
+                var contentType = context.Request.ContentType ?? "";
+                // Skip binary/multipart bodies — they contain raw bytes (0x00)
+                // that PostgreSQL cannot store in text columns.
+                if (!contentType.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Request.EnableBuffering();
+                    using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
+                    requestBody = await reader.ReadToEndAsync();
+                    if (requestBody.Length > MaxBodyLength)
+                        requestBody = requestBody[..MaxBodyLength] + "...[truncated]";
+                    context.Request.Body.Position = 0;
+                }
             }
 
             var sw = Stopwatch.StartNew();

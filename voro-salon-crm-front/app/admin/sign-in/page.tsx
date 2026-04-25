@@ -33,7 +33,20 @@ export default function SignInPage() {
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (!authLoading && user?.token) {
-      window.location.replace(redirectTo)
+      if (redirectTo !== "/") {
+        window.location.replace(redirectTo)
+        return
+      }
+      const doRedirect = async () => {
+        try {
+          const { secureApiCall: call, API_CONFIG: cfg } = await import("@/lib/api")
+          const res = await call<{ defaultPage: string | null }>(cfg.ENDPOINTS.TENANT_ME)
+          window.location.replace(res.data?.defaultPage || "/")
+        } catch {
+          window.location.replace("/")
+        }
+      }
+      doRedirect()
     }
   }, [user, authLoading, redirectTo])
 
