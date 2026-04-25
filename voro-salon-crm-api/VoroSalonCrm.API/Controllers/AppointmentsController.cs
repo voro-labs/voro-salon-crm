@@ -261,7 +261,7 @@ namespace VoroSalonCrm.API.Controllers
                 {
                     await integrationAuditService.LogAsync(
                         "Gemini-Transcription",
-                        "generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+                        "generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent",
                         $"systemPrompt length={systemPrompt.Length}, userMessage length={transcript.Length}",
                         rawResult.Length > 500 ? rawResult[..500] : rawResult,
                         200,

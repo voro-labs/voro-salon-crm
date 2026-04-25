@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +25,9 @@ import useSWR from "swr"
 
 interface QuickCreateClientProps {
   onSuccess: (clientId: string) => void
+  initialName?: string
+  externalOpen?: boolean
+  onExternalOpenChange?: (open: boolean) => void
 }
 
 const fetcher = async (url: string) => {
@@ -33,19 +36,28 @@ const fetcher = async (url: string) => {
   return result.data
 }
 
-export function QuickCreateClient({ onSuccess }: QuickCreateClientProps) {
-  const [open, setOpen] = useState(false)
+export function QuickCreateClient({ onSuccess, initialName, externalOpen, onExternalOpenChange }: QuickCreateClientProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = externalOpen || internalOpen
+  const setOpen = (val: boolean) => {
+    setInternalOpen(val)
+    onExternalOpenChange?.(val)
+  }
   const [loading, setLoading] = useState(false)
   const [countryCode, setCountryCode] = useState("BR")
   const [showAnamnesis, setShowAnamnesis] = useState(false)
   const [anamnesisResponses, setAnamnesisResponses] = useState<any[]>([])
   const [duplicateFound, setDuplicateFound] = useState<{ id: string; name: string } | null>(null)
   const [form, setForm] = useState({
-    name: "",
+    name: initialName ?? "",
     phone: "",
     email: "",
     notes: "",
   })
+
+  useEffect(() => {
+    if (initialName) setForm(p => ({ ...p, name: initialName }))
+  }, [initialName])
 
   const { data: _clientsRaw } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
   const existingClients = _clientsRaw?.items ?? (Array.isArray(_clientsRaw) ? _clientsRaw : []) ?? []

@@ -29,6 +29,8 @@ import { EmptyState } from "@/components/ui/custom/empty-state"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { StatusBadge, appointmentStatusConfig } from "@/components/ui/custom/status-badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { QuickCreateClient } from "@/components/custom/quick-create-client"
+import { QuickCreateService } from "@/components/custom/quick-create-service"
 import { toast } from "sonner"
 import { fetcher } from "@/lib/fetcher"
 
@@ -197,7 +199,18 @@ function CalendarWeekView({
 
   function handleSlotClick(date: Date, hour: number, minute: number) {
     const key = `${date.toISOString()}_${hour}_${minute}`
-    if (isSlotPast(date, hour, minute) || isDayClosed(date) || !isInBusinessHours(date, hour, minute) || hasConflict(date, hour, minute)) {
+    const past = isSlotPast(date, hour, minute)
+    // Slots passados: permitir clique para histórico, bloqueando apenas dia fechado ou conflito
+    if (past) {
+      if (isDayClosed(date) || hasConflict(date, hour, minute)) {
+        setBlockedKey(key)
+        setTimeout(() => setBlockedKey(null), 700)
+        return
+      }
+      onSlotClick(date, hour, minute)
+      return
+    }
+    if (isDayClosed(date) || !isInBusinessHours(date, hour, minute) || hasConflict(date, hour, minute)) {
       setBlockedKey(key)
       setTimeout(() => setBlockedKey(null), 700)
       return
@@ -294,7 +307,7 @@ function CalendarWeekView({
                         isBlocked
                           ? "bg-red-100 dark:bg-red-900/30"
                           : past
-                          ? "bg-muted/40 cursor-default opacity-75"
+                          ? "bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
                           : closed || !inBH
                           ? "bg-muted/30 cursor-default"
                           : hasConflict(visibleDay, h, m)
@@ -424,7 +437,7 @@ function CalendarWeekView({
                           isBlocked
                             ? "bg-red-100 dark:bg-red-900/30"
                             : past
-                            ? "bg-muted/40 cursor-default opacity-75"
+                            ? "bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
                             : closed || !inBH
                             ? "bg-muted/30 cursor-default"
                             : hasConflict(day, h, m)
@@ -646,13 +659,14 @@ function AgendaDayView({
           return (
             <button
               key={key}
-              disabled={past}
               className={`relative flex items-center gap-3 px-4 w-full text-left transition-colors ${
                 isFullHour ? "py-2.5" : "py-1.5"
               } ${
-                past ? "opacity-95 cursor-default bg-muted/5" : "hover:bg-accent/10 cursor-pointer"
+                past
+                  ? "opacity-75 hover:bg-amber-50/50 cursor-pointer"
+                  : "hover:bg-accent/10 cursor-pointer"
               }`}
-              onClick={() => !past && onSlotClick(day, hour, minute)}
+              onClick={() => onSlotClick(day, hour, minute)}
             >
               {past && <div className="absolute inset-x-0 top-1/2 h-px bg-muted-foreground/40 pointer-events-none" />}
               <span className={`font-mono w-11 shrink-0 ${
@@ -703,13 +717,16 @@ export default function AppointmentsPage() {
   }
 
   // ── Quick create state ────────────────────────────────────────────────────
-  const [quickCreateSlot, setQuickCreateSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null)
-  const [qcForm, setQcForm] = useState({ clientId: "", serviceId: "none", description: "", amount: 0, durationMinutes: 30 })
+  const [quickCreateSlot, setQuickCreateSlot] = useState<{ date: Date; hour: number; minute: number; isHistoric: boolean } | null>(null)
+  const [qcForm, setQcForm] = useState({ clientId: "", serviceId: "none", description: "", amount: 0, durationMinutes: 30, status: 0 })
   const [qcSaving, setQcSaving] = useState(false)
 
   function openQuickCreate(date: Date, hour: number, minute: number) {
-    setQcForm({ clientId: "", serviceId: "none", description: "", amount: 0, durationMinutes: 30 })
-    setQuickCreateSlot({ date, hour, minute })
+    const slotTime = new Date(date)
+    slotTime.setHours(hour, minute, 0, 0)
+    const isHistoric = slotTime < new Date()
+    setQcForm({ clientId: "", serviceId: "none", description: "", amount: 0, durationMinutes: 30, status: isHistoric ? 2 : 0 })
+    setQuickCreateSlot({ date, hour, minute, isHistoric })
   }
 
   function handleQcServiceChange(serviceId: string) {
@@ -728,7 +745,7 @@ export default function AppointmentsPage() {
     if (!qcForm.description.trim()) { return }
     setQcSaving(true)
     try {
-      const { date, hour, minute } = quickCreateSlot
+      const { date, hour, minute, isHistoric } = quickCreateSlot
       const dt = new Date(date)
       dt.setHours(hour, minute, 0, 0)
       const res = await secureApiCall<any>(API_CONFIG.ENDPOINTS.APPOINTMENTS, {
@@ -740,10 +757,12 @@ export default function AppointmentsPage() {
           durationMinutes: qcForm.durationMinutes,
           amount: qcForm.amount,
           description: qcForm.description,
-          status: 0,
+          status: qcForm.status,
           notes: "",
           employeeId: null,
           serviceIds: qcForm.serviceId !== "none" ? [qcForm.serviceId] : [],
+          isEncaixe: isHistoric ? true : false,
+          skipNotification: isHistoric ? true : undefined,
         }),
       })
       if (res.hasError) {
@@ -758,8 +777,10 @@ export default function AppointmentsPage() {
   }
 
   // ── Audio recording state ──────────────────────────────────────────────────
+  const MAX_RECORDING_SECONDS = 60
   const [showAudioModal, setShowAudioModal] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [audioProcessing, setAudioProcessing] = useState(false)
   const [transcriptionResult, setTranscriptionResult] = useState<{
     nome_do_cliente?: string
@@ -771,6 +792,7 @@ export default function AppointmentsPage() {
   } | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   async function beginRecording() {
     setShowAudioModal(false)
@@ -781,6 +803,8 @@ export default function AppointmentsPage() {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
+        if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null }
+        setRecordingSeconds(0)
         const blob = new Blob(chunksRef.current, { type: "audio/webm" })
         setAudioProcessing(true)
         try {
@@ -800,6 +824,16 @@ export default function AppointmentsPage() {
       mr.start()
       mediaRecorderRef.current = mr
       setIsRecording(true)
+      setRecordingSeconds(0)
+      let elapsed = 0
+      recordingTimerRef.current = setInterval(() => {
+        elapsed++
+        setRecordingSeconds(elapsed)
+        if (elapsed >= MAX_RECORDING_SECONDS) {
+          mr.stop()
+          setIsRecording(false)
+        }
+      }, 1000)
     } catch {
       alert("Não foi possível acessar o microfone.")
     }
@@ -808,6 +842,8 @@ export default function AppointmentsPage() {
   function stopRecording() {
     mediaRecorderRef.current?.stop()
     setIsRecording(false)
+    if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null }
+    setRecordingSeconds(0)
   }
 
   function buildAppointmentUrl() {
@@ -865,8 +901,8 @@ export default function AppointmentsPage() {
   const calendarItems = calendarRaw?.items ?? []
 
   // Quick create: clients and services (always fetched so they're ready when dialog opens)
-  const { data: qcClientsRaw } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
-  const { data: qcServicesRaw } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
+  const { data: qcClientsRaw, mutate: mutateQcClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
+  const { data: qcServicesRaw, mutate: mutateQcServices } = useSWR(API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500", fetcher)
   const qcClients: any[] = qcClientsRaw?.items ?? (Array.isArray(qcClientsRaw) ? qcClientsRaw : [])
   const qcServices: any[] = qcServicesRaw?.items ?? (Array.isArray(qcServicesRaw) ? qcServicesRaw : [])
 
@@ -949,14 +985,15 @@ export default function AppointmentsPage() {
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
-            Agendamento Rápido
+            <Zap className={`h-4 w-4 ${quickCreateSlot?.isHistoric ? "text-amber-500" : "text-primary"}`} />
+            {quickCreateSlot?.isHistoric ? "Registrar no Histórico" : "Agendamento Rápido"}
           </DialogTitle>
           {quickCreateSlot && (
             <DialogDescription className="font-medium text-foreground/80">
               {format(quickCreateSlot.date, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               {" · "}
               {String(quickCreateSlot.hour).padStart(2, "0")}:{String(quickCreateSlot.minute).padStart(2, "0")}
+              {quickCreateSlot.isHistoric && <span className="ml-2 text-amber-600 text-xs font-normal">· sem notificação</span>}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -964,7 +1001,15 @@ export default function AppointmentsPage() {
         <div className="flex flex-col gap-4 pt-1">
           {/* Cliente */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-semibold">Cliente *</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold">Cliente *</Label>
+              <QuickCreateClient
+                onSuccess={async (id) => {
+                  await mutateQcClients()
+                  setQcForm((p) => ({ ...p, clientId: id }))
+                }}
+              />
+            </div>
             <SearchableSelect
               value={qcForm.clientId}
               onValueChange={(v) => setQcForm((p) => ({ ...p, clientId: v }))}
@@ -976,26 +1021,32 @@ export default function AppointmentsPage() {
           </div>
 
           {/* Serviço */}
-          {qcServices.length > 0 && (
-            <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">Serviço <span className="text-muted-foreground font-normal">(Opcional)</span></Label>
-              <SearchableSelect
-                value={qcForm.serviceId}
-                onValueChange={handleQcServiceChange}
-                options={[
-                  { value: "none", label: "Nenhum" },
-                  ...qcServices.map((s: any) => ({
-                    value: s.id,
-                    label: s.name,
-                    badge: s.price > 0 ? `R$ ${Number(s.price).toFixed(2).replace(".", ",")}` : undefined,
-                  })),
-                ]}
-                placeholder="Selecione um serviço"
-                searchPlaceholder="Buscar serviço..."
-                emptyText="Nenhum serviço encontrado."
+              <QuickCreateService
+                onSuccess={async (id, serviceData) => {
+                  await mutateQcServices()
+                  handleQcServiceChange(id)
+                }}
               />
             </div>
-          )}
+            <SearchableSelect
+              value={qcForm.serviceId}
+              onValueChange={handleQcServiceChange}
+              options={[
+                { value: "none", label: "Nenhum" },
+                ...qcServices.map((s: any) => ({
+                  value: s.id,
+                  label: s.name,
+                  badge: s.price > 0 ? `R$ ${Number(s.price).toFixed(2).replace(".", ",")}` : undefined,
+                })),
+              ]}
+              placeholder="Selecione um serviço"
+              searchPlaceholder="Buscar serviço..."
+              emptyText="Nenhum serviço encontrado."
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Duração */}
@@ -1057,13 +1108,40 @@ export default function AppointmentsPage() {
           </div>
         </div>
 
+        {quickCreateSlot?.isHistoric && (
+          <div className="flex flex-col gap-1.5 pt-1">
+            <Label className="text-xs font-semibold">Status *</Label>
+            <div className="flex gap-2">
+              {([2, 3] as const).map((s) => {
+                const labels: Record<number, string> = { 2: "Concluído", 3: "Cancelado" }
+                const active = qcForm.status === s
+                return (
+                  <Button
+                    key={s}
+                    type="button"
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    className={active
+                      ? s === 2 ? "bg-emerald-600 border-emerald-600 hover:bg-emerald-700 flex-1" : "bg-red-500 border-red-500 hover:bg-red-600 flex-1"
+                      : s === 2 ? "border-emerald-400 text-emerald-700 hover:bg-emerald-50 flex-1" : "border-red-400 text-red-700 hover:bg-red-50 flex-1"
+                    }
+                    onClick={() => setQcForm((p) => ({ ...p, status: s }))}
+                  >
+                    {labels[s]}
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2 pt-2">
           <Button
             className="flex-1"
             onClick={submitQuickCreate}
             disabled={qcSaving || !qcForm.clientId || !qcForm.description.trim() || qcForm.amount <= 0}
           >
-            {qcSaving ? "Salvando..." : "Salvar"}
+            {qcSaving ? "Salvando..." : quickCreateSlot?.isHistoric ? "Salvar Histórico" : "Salvar"}
           </Button>
           <Button variant="outline" asChild>
             <Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}` : "/appointments/new"}>
@@ -1211,21 +1289,28 @@ export default function AppointmentsPage() {
                   </div>
                 )}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Mic button */}
-                  <button
-                    onClick={isRecording ? stopRecording : () => setShowAudioModal(true)}
-                    disabled={audioProcessing}
-                    className={`flex items-center justify-center h-7 w-7 rounded-md border transition-colors ${
-                      isRecording
-                        ? "bg-red-500 border-red-500 text-white hover:bg-red-600 animate-pulse"
-                        : audioProcessing
-                        ? "bg-muted border-border text-muted-foreground cursor-wait"
-                        : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent/10"
-                    }`}
-                    title={isRecording ? "Parar gravação" : "Gravar agendamento por áudio"}
-                  >
-                    {isRecording ? <Square className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-                  </button>
+                  {/* Mic button + timer */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={isRecording ? stopRecording : () => setShowAudioModal(true)}
+                      disabled={audioProcessing}
+                      className={`flex items-center justify-center h-7 w-7 rounded-md border transition-colors ${
+                        isRecording
+                          ? "bg-red-500 border-red-500 text-white hover:bg-red-600 animate-pulse"
+                          : audioProcessing
+                          ? "bg-muted border-border text-muted-foreground cursor-wait"
+                          : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent/10"
+                      }`}
+                      title={isRecording ? "Parar gravação" : "Gravar agendamento por áudio"}
+                    >
+                      {isRecording ? <Square className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                    </button>
+                    {isRecording && (
+                      <span className="text-xs font-mono text-red-500 tabular-nums w-8">
+                        {MAX_RECORDING_SECONDS - recordingSeconds}s
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center rounded-md border border-border p-0.5 bg-muted/40 h-7">
                     <button
                       onClick={() => handleSetViewMode("list")}
@@ -1377,8 +1462,14 @@ export default function AppointmentsPage() {
             calStartHour={calStartHour}
             calEndHour={calEndHour}
             onSlotClick={(date, hour, minute) => {
-              const iso = format(date, "yyyy-MM-dd")
-              router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
+              const slotTime = new Date(date)
+              slotTime.setHours(hour, minute, 0, 0)
+              if (slotTime < new Date()) {
+                openQuickCreate(date, hour, minute)
+              } else {
+                const iso = format(date, "yyyy-MM-dd")
+                router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
+              }
             }}
             onStatusChange={updateAppointmentStatus}
           />

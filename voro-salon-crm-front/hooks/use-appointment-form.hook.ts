@@ -108,6 +108,7 @@ export function useAppointmentForm() {
     setIsCreating(true)
     try {
       const date = new Date(f.scheduledDateTime)
+      const isPast = date < new Date()
       const res = await secureApiCall(API_CONFIG.ENDPOINTS.APPOINTMENTS, {
         method: "POST",
         body: JSON.stringify({
@@ -117,6 +118,7 @@ export function useAppointmentForm() {
           employeeId: f.employeeId === "none" ? null : f.employeeId,
           serviceIds: f.serviceIds.length > 0 ? f.serviceIds : undefined,
           isEncaixe: f.isEncaixe ?? false,
+          skipNotification: isPast ? true : undefined,
         }),
       })
       if (res.hasError) {

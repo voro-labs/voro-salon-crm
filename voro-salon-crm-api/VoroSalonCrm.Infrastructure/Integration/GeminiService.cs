@@ -33,7 +33,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             string userMessage)
         {
             var apiKey = _configuration["AISettings:ApiKey"];
-            var model = _configuration["AISettings:Model"] ?? "gemini-1.5-flash";
+            var model = _configuration["AISettings:Model"] ?? "gemini-3.1-flash-lite-preview";
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
