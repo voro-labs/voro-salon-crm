@@ -33,6 +33,10 @@ import {
   WifiOff,
   CheckCircle,
   AlertTriangle,
+  Home,
+  Calendar,
+  Users,
+  DollarSign,
 } from "lucide-react"
 import useSWR from "swr"
 import { Badge } from "@/components/ui/badge"
@@ -109,6 +113,13 @@ const RADIUS_PRESETS = [
   { label: "Pill", value: "1.5rem" },
 ]
 
+const DEFAULT_PAGE_OPTIONS = [
+  { value: "/", label: "Dashboard", icon: Home },
+  { value: "/appointments", label: "Agendamentos", icon: Calendar },
+  { value: "/clients", label: "Clientes", icon: Users },
+  { value: "/finance", label: "Finanças", icon: DollarSign },
+]
+
 
 function applyRadius(value: string) {
   document.documentElement.style.setProperty("--radius", value)
@@ -120,6 +131,8 @@ export default function ConfiguracoesPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
+  const [defaultPage, setDefaultPage] = useState("/")
+  const [appointmentViewMode, setAppointmentViewMode] = useState("list")
   const { user, refreshUser } = useAuth()
   const { planName, hasWhatsAppBot, hasAnamnesis } = usePlanLimits()
 
@@ -188,6 +201,13 @@ export default function ConfiguracoesPage() {
     exportData: handleExport,
     updateModule: handleModuleUpdate,
   } = useSettings()
+
+  useEffect(() => {
+    if (tenant) {
+      if (tenant.defaultPage) setDefaultPage(tenant.defaultPage)
+      if (tenant.appointmentViewMode) setAppointmentViewMode(tenant.appointmentViewMode)
+    }
+  }, [tenant])
 
   useEffect(() => {
     if (tenant && !wpPhoneNumberId && !wpBusinessAccountId) {
@@ -308,6 +328,26 @@ export default function ConfiguracoesPage() {
   const handleRadiusChange = useCallback((value: string) => {
     setCurrentRadius(value)
     applyRadius(value)
+  }, [])
+
+  const handleDefaultPageChange = useCallback(async (value: string) => {
+    setDefaultPage(value)
+    try {
+      await secureApiCall(API_CONFIG.ENDPOINTS.TENANT_ME, {
+        method: "PATCH",
+        body: JSON.stringify({ defaultPage: value }),
+      })
+    } catch { }
+  }, [])
+
+  const handleAppointmentViewModeChange = useCallback(async (value: string) => {
+    setAppointmentViewMode(value)
+    try {
+      await secureApiCall(API_CONFIG.ENDPOINTS.TENANT_ME, {
+        method: "PATCH",
+        body: JSON.stringify({ appointmentViewMode: value }),
+      })
+    } catch { }
   }, [])
 
 
@@ -816,6 +856,72 @@ export default function ConfiguracoesPage() {
                       style={{ borderRadius: `var(--radius)` }}
                     />
                     <span className="text-xs text-muted-foreground">Pré-visualização</span>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Página inicial */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Home className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium text-foreground">Página inicial após login</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">Escolha para qual página você será redirecionado ao entrar.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {DEFAULT_PAGE_OPTIONS.map((opt) => {
+                      const Icon = opt.icon
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleDefaultPageChange(opt.value)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-all ${
+                            defaultPage === opt.value
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "border-border text-foreground hover:border-primary"
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Modo de visualização de agendamentos */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <LayoutGrid className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-medium text-foreground">Visualização padrão de agendamentos</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">Como a lista de agendamentos será exibida por padrão.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: "list", label: "Lista", icon: ClipboardList },
+                      { value: "calendar", label: "Grade", icon: Calendar },
+                      { value: "agenda", label: "Agenda", icon: Clock },
+                    ].map((opt) => {
+                      const Icon = opt.icon
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleAppointmentViewModeChange(opt.value)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-all ${
+                            appointmentViewMode === opt.value
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "border-border text-foreground hover:border-primary"
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          {opt.label}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               </CardContent>

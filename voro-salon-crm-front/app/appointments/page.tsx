@@ -690,15 +690,22 @@ function AgendaDayView({
 export default function AppointmentsPage() {
   const router = useRouter()
   const [viewMode, setViewMode] = useState<"list" | "calendar" | "agenda">("list")
+  const { data: tenantMe } = useSWR<{ appointmentViewMode: string | null }>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
 
   useEffect(() => {
-    const saved = localStorage.getItem("apt_view_mode") as "list" | "calendar" | "agenda" | null
+    if (!tenantMe) return
+    const saved = tenantMe.appointmentViewMode as "list" | "calendar" | "agenda" | null
     if (saved === "list" || saved === "calendar" || saved === "agenda") setViewMode(saved)
-  }, [])
+  }, [tenantMe])
 
-  function handleSetViewMode(mode: "list" | "calendar" | "agenda") {
+  async function handleSetViewMode(mode: "list" | "calendar" | "agenda") {
     setViewMode(mode)
-    localStorage.setItem("apt_view_mode", mode)
+    try {
+      await secureApiCall(API_CONFIG.ENDPOINTS.TENANT_ME, {
+        method: "PATCH",
+        body: JSON.stringify({ appointmentViewMode: mode }),
+      })
+    } catch { }
   }
 
   const [calendarWeek, setCalendarWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }))

@@ -66,6 +66,7 @@ export function useSignIn() {
           establishmentType: number
           primaryColor: string | null
           secondaryColor: string | null
+          defaultPage: string | null
         }>(API_CONFIG.ENDPOINTS.TENANT_ME, { method: "GET" })
 
         if (!tenantRes.hasError && tenantRes.data) {
@@ -90,13 +91,14 @@ export function useSignIn() {
           requiresProfileCompletion: !!response.data.requiresProfileCompletion,
         }))
 
+        const defaultPage = redirectTo === "/" ? (tenantRes.data?.defaultPage || "/") : redirectTo
         const dest = response.data.requiresPasswordChange
           ? "/admin/change-password"
           : response.data.requiresTermsAcceptance
             ? "/admin/terms"
             : response.data.requiresProfileCompletion
               ? "/admin/complete-profile"
-              : redirectTo
+              : defaultPage
         window.location.replace(dest)
         didRedirect = true
         return { success: true }
