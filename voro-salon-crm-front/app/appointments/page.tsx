@@ -307,7 +307,7 @@ function CalendarWeekView({
                         isBlocked
                           ? "bg-red-100 dark:bg-red-900/30"
                           : past
-                          ? "bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
+                          ? "bg-muted/40 cursor-pointer hover:bg-accent/15"
                           : closed || !inBH
                           ? "bg-muted/30 cursor-default"
                           : hasConflict(visibleDay, h, m)
@@ -362,7 +362,7 @@ function CalendarWeekView({
   return (
     <div className="border rounded-xl overflow-hidden bg-card">
       {/* Day headers */}
-      <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10">
+      <div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10 overflow-y-scroll scrollbar-hide">
         <div className="h-12 border-r" />
         {days.map((day) => {
           const closed = isDayClosed(day)
@@ -391,7 +391,7 @@ function CalendarWeekView({
       </div>
 
       {/* Grid body */}
-      <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)" }}>
+      <div className="overflow-y-scroll scrollbar-hide" style={{ maxHeight: "calc(100vh - 300px)" }}>
         <div className="grid grid-cols-8" style={{ minHeight: totalHeight }}>
           {/* Hour labels */}
           <div className="border-r">
@@ -437,7 +437,7 @@ function CalendarWeekView({
                           isBlocked
                             ? "bg-red-100 dark:bg-red-900/30"
                             : past
-                            ? "bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
+                            ? "bg-muted/40 cursor-pointer hover:bg-accent/15"
                             : closed || !inBH
                             ? "bg-muted/30 cursor-default"
                             : hasConflict(day, h, m)
@@ -802,7 +802,6 @@ export default function AppointmentsPage() {
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   async function beginRecording() {
-    setShowAudioModal(false)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mr = new MediaRecorder(stream)
@@ -839,6 +838,7 @@ export default function AppointmentsPage() {
         if (elapsed >= MAX_RECORDING_SECONDS) {
           mr.stop()
           setIsRecording(false)
+          setShowAudioModal(false)
         }
       }, 1000)
     } catch {
@@ -1151,7 +1151,7 @@ export default function AppointmentsPage() {
             {qcSaving ? "Salvando..." : quickCreateSlot?.isHistoric ? "Salvar Histórico" : "Salvar"}
           </Button>
           <Button variant="outline" asChild>
-            <Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}` : "/appointments/new"}>
+            <Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}${qcForm.clientId ? `&clientId=${qcForm.clientId}` : ""}${qcForm.serviceId && qcForm.serviceId !== "none" ? `&serviceId=${qcForm.serviceId}` : ""}` : "/appointments/new"}>
               Completo
             </Link>
           </Button>
@@ -1160,59 +1160,95 @@ export default function AppointmentsPage() {
     </Dialog>
 
     {/* Modal de instrução para gravação de áudio */}
-    <Dialog open={showAudioModal} onOpenChange={setShowAudioModal}>
+    <Dialog
+      open={showAudioModal}
+      onOpenChange={(open) => {
+        if (!open && isRecording) return
+        setShowAudioModal(open)
+      }}
+    >
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mic className="h-4 w-4 text-primary" />
-            Agendar por voz
+            {isRecording ? "Gravando..." : "Agendar por voz"}
           </DialogTitle>
-          <DialogDescription>
-            Fale as informações do agendamento em voz alta. A IA vai extrair os dados automaticamente.
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3 py-1">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Diga algo como:</p>
-          <div className="rounded-lg bg-muted/40 border border-border/60 px-4 py-3">
-            <p className="text-sm text-foreground leading-relaxed italic">
-              "Agendar a Maria Silva para corte e escova na sexta-feira às 14h, vai durar 1 hora e meia, valor R$ 120."
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2 pt-1">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">O sistema vai detectar:</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                { emoji: "👤", label: "Nome do cliente" },
-                { emoji: "✂️", label: "Serviço" },
-                { emoji: "📅", label: "Data / dia da semana" },
-                { emoji: "🕐", label: "Horário" },
-                { emoji: "⏱️", label: "Duração" },
-                { emoji: "💰", label: "Valor" },
-              ].map(({ emoji, label }) => (
-                <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{emoji}</span>
-                  <span>{label}</span>
-                </div>
-              ))}
+        {isRecording ? (
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 animate-pulse">
+              <Mic className="h-8 w-8 text-red-500" />
             </div>
+            <p className="text-lg font-mono font-bold text-red-500 tabular-nums">
+              {MAX_RECORDING_SECONDS - recordingSeconds}s
+            </p>
+            <div className="rounded-lg bg-muted/40 border border-border/60 px-4 py-3 w-full">
+              <p className="text-sm text-foreground leading-relaxed italic">
+                "Agendar a Maria Silva para corte e escova na sexta-feira às 14h, vai durar 1 hora e meia, valor R$ 120."
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => {
+                stopRecording()
+                setShowAudioModal(false)
+              }}
+            >
+              <Square className="mr-2 h-4 w-4" />
+              Parar gravação
+            </Button>
           </div>
+        ) : (
+          <>
+            <DialogDescription>
+              Fale as informações do agendamento em voz alta. A IA vai extrair os dados automaticamente.
+            </DialogDescription>
 
-          <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
-            Campos não mencionados ficam em branco no formulário. Se o serviço estiver cadastrado, o valor e duração são preenchidos automaticamente.
-          </p>
-        </div>
+            <div className="flex flex-col gap-3 py-1">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Diga algo como:</p>
+              <div className="rounded-lg bg-muted/40 border border-border/60 px-4 py-3">
+                <p className="text-sm text-foreground leading-relaxed italic">
+                  "Agendar a Maria Silva para corte e escova na sexta-feira às 14h, vai durar 1 hora e meia, valor R$ 120."
+                </p>
+              </div>
 
-        <div className="flex gap-2 pt-1">
-          <Button className="flex-1" onClick={beginRecording}>
-            <Mic className="mr-2 h-4 w-4" />
-            Iniciar gravação
-          </Button>
-          <Button variant="outline" onClick={() => setShowAudioModal(false)}>
-            Cancelar
-          </Button>
-        </div>
+              <div className="flex flex-col gap-2 pt-1">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">O sistema vai detectar:</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { emoji: "👤", label: "Nome do cliente" },
+                    { emoji: "✂️", label: "Serviço" },
+                    { emoji: "📅", label: "Data / dia da semana" },
+                    { emoji: "🕐", label: "Horário" },
+                    { emoji: "⏱️", label: "Duração" },
+                    { emoji: "💰", label: "Valor" },
+                  ].map(({ emoji, label }) => (
+                    <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{emoji}</span>
+                      <span>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                Campos não mencionados ficam em branco no formulário. Se o serviço estiver cadastrado, o valor e duração são preenchidos automaticamente.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button className="flex-1" onClick={beginRecording}>
+                <Mic className="mr-2 h-4 w-4" />
+                Iniciar gravação
+              </Button>
+              <Button variant="outline" onClick={() => setShowAudioModal(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
 
@@ -1469,14 +1505,7 @@ export default function AppointmentsPage() {
             calStartHour={calStartHour}
             calEndHour={calEndHour}
             onSlotClick={(date, hour, minute) => {
-              const slotTime = new Date(date)
-              slotTime.setHours(hour, minute, 0, 0)
-              if (slotTime < new Date()) {
-                openQuickCreate(date, hour, minute)
-              } else {
-                const iso = format(date, "yyyy-MM-dd")
-                router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
-              }
+              openQuickCreate(date, hour, minute)
             }}
             onStatusChange={updateAppointmentStatus}
           />

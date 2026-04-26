@@ -92,6 +92,8 @@ export default function NovoAgendamentoPage() {
     const descriptionParam = searchParams.get("description")
     const amountParam = searchParams.get("amount")
     const durationParam = searchParams.get("durationMinutes")
+    const clientIdParam = searchParams.get("clientId")
+    const serviceIdParam = searchParams.get("serviceId")
 
     const updates: Partial<typeof form> = {}
 
@@ -109,6 +111,8 @@ export default function NovoAgendamentoPage() {
     if (descriptionParam) updates.description = descriptionParam
     if (amountParam) updates.amount = parseFloat(amountParam)
     if (durationParam) updates.durationMinutes = parseInt(durationParam, 10)
+    if (clientIdParam) updates.clientId = clientIdParam
+    if (serviceIdParam) updates.serviceIds = [serviceIdParam]
 
     if (Object.keys(updates).length > 0) setForm((p) => ({ ...p, ...updates }))
   // eslint-disable-next-line react-hooks/exhaustive-deps

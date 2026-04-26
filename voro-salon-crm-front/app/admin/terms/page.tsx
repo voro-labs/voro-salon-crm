@@ -49,7 +49,7 @@ export default function TermsPage() {
       flags.requiresTermsAcceptance = false
       sessionStorage.setItem("post_login_flags", JSON.stringify(flags))
 
-      const next = flags.requiresProfileCompletion ? "/admin/complete-profile" : "/"
+      const next = flags.requiresProfileCompletion ? "/admin/complete-profile" : (flags.defaultPage || "/")
       setTimeout(() => router.replace(next), 1000)
     } catch {
       setError("Erro inesperado. Tente novamente.")

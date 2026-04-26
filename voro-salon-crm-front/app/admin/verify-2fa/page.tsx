@@ -149,10 +149,12 @@ export default function VerifyTwoFactorPage() {
       setSuccess(true)
 
       // Armazenar flags pós-login para encadeamento entre páginas
+      const defaultPage = tenantRes.data?.defaultPage || redirectTo || "/"
       sessionStorage.setItem("post_login_flags", JSON.stringify({
         requiresPasswordChange: !!response.data.requiresPasswordChange,
         requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
         requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+        defaultPage,
       }))
 
       // Usar window.location para garantir navegação completa (evita race condition
@@ -163,7 +165,7 @@ export default function VerifyTwoFactorPage() {
           ? "/admin/terms"
           : response.data.requiresProfileCompletion
             ? "/admin/complete-profile"
-            : redirectTo
+            : defaultPage
       window.location.replace(dest)
     } catch {
       setError("Erro inesperado. Tente novamente.")
