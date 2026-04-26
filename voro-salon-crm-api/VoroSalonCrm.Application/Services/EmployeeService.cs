@@ -8,6 +8,7 @@ using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Blob;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 using VoroSalonCrm.Shared.Constants;
@@ -25,7 +26,8 @@ namespace VoroSalonCrm.Application.Services
         IUserTenantRepository userTenantRepository,
         INotificationService notificationService,
         ITenantRepository tenantRepository,
-        IConfiguration configuration) : IEmployeeService
+        IConfiguration configuration,
+        ICacheService cacheService) : IEmployeeService
     {
         private readonly IEmployeeRepository _repository = repository;
         private readonly ICurrentUserService _currentUser = currentUser;
@@ -38,11 +40,21 @@ namespace VoroSalonCrm.Application.Services
         private readonly INotificationService _notificationService = notificationService;
         private readonly ITenantRepository _tenantRepository = tenantRepository;
         private readonly IConfiguration _configuration = configuration;
+        private readonly ICacheService _cacheService = cacheService;
 
         public async Task<IEnumerable<EmployeeDto>> GetAllAsync()
         {
-            var employees = await _repository.GetByTenantWithSpecialtiesAsync(_currentUser.TenantId);
-            return employees.Select(MapToDto);
+            var tenantId = _currentUser.TenantId;
+            var cacheKey = $"employees:tenant:{tenantId}";
+
+            var cached = await _cacheService.GetAsync<List<EmployeeDto>>(cacheKey);
+            if (cached is not null) return cached;
+
+            var employees = await _repository.GetByTenantWithSpecialtiesAsync(tenantId);
+            var result = employees.Select(MapToDto).ToList();
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));
+            return result;
         }
 
         public async Task<PagedResult<EmployeeDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
@@ -119,6 +131,8 @@ namespace VoroSalonCrm.Application.Services
                 await _unitOfWork.CommitAsync();
             }
 
+            await _cacheService.RemoveAsync($"employees:tenant:{_currentUser.TenantId}");
+
             return MapToDto(employee);
         }
 
@@ -139,6 +153,7 @@ namespace VoroSalonCrm.Application.Services
             await _repository.UpdateSpecialtiesAsync(id, dto.SpecialtyIds);
 
             await _unitOfWork.CommitAsync();
+            await _cacheService.RemoveAsync($"employees:tenant:{_currentUser.TenantId}");
         }
 
         public async Task DeleteAsync(Guid id)
@@ -148,6 +163,7 @@ namespace VoroSalonCrm.Application.Services
 
             _repository.Delete(employee);
             await _unitOfWork.CommitAsync();
+            await _cacheService.RemoveAsync($"employees:tenant:{_currentUser.TenantId}");
         }
 
         public async Task<IEnumerable<EmployeeDto>> GetAvailableForServiceAsync(Guid serviceId)
@@ -239,6 +255,7 @@ namespace VoroSalonCrm.Application.Services
             _repository.Update(employee);
 
             await _unitOfWork.CommitAsync();
+            await _cacheService.RemoveAsync($"employees:tenant:{_currentUser.TenantId}");
 
             // Enviar e-mail com credenciais de acesso
             var tenant = await _tenantRepository.GetByIdAsync(false, _currentUser.TenantId);
@@ -273,6 +290,7 @@ namespace VoroSalonCrm.Application.Services
             _repository.Update(employee);
 
             await _unitOfWork.CommitAsync();
+            await _cacheService.RemoveAsync($"employees:tenant:{_currentUser.TenantId}");
         }
 
         private static EmployeeDto MapToDto(Employee e) => new()
