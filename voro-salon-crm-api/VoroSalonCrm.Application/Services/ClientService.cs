@@ -4,6 +4,7 @@ using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
@@ -15,7 +16,8 @@ namespace VoroSalonCrm.Application.Services
         ICurrentUserService currentUserService,
         ITenantSubscriptionRepository subscriptionRepository,
         IUserNotificationService userNotificationService,
-        IWhatsAppMessageService whatsAppMessageService) : IClientService
+        IWhatsAppMessageService whatsAppMessageService,
+        ICacheService cacheService) : IClientService
     {
         private readonly IClientRepository _clientRepository = clientRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
@@ -23,6 +25,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITenantSubscriptionRepository _subscriptionRepository = subscriptionRepository;
         private readonly IUserNotificationService _userNotificationService = userNotificationService;
         private readonly IWhatsAppMessageService _whatsAppMessageService = whatsAppMessageService;
+        private readonly ICacheService _cacheService = cacheService;
 
         public async Task<ClientDto> CreateAsync(CreateClientDto dto)
         {
@@ -52,6 +55,8 @@ namespace VoroSalonCrm.Application.Services
             await _clientRepository.AddAsync(client);
             await _unitOfWork.SaveChangesAsync();
 
+            await _cacheService.RemoveAsync($"clients:tenant:{tenantId}");
+
             return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt, client.BirthDate);
         }
 
@@ -65,14 +70,23 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<IEnumerable<ClientDto>> GetAllAsync()
         {
+            var tenantId = _currentUserService.TenantId;
+            var cacheKey = $"clients:tenant:{tenantId}";
+
+            var cached = await _cacheService.GetAsync<List<ClientDto>>(cacheKey);
+            if (cached is not null) return cached;
+
             var clients = await _clientRepository.GetAllAsync();
-            return clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate));
+            var result = clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate)).ToList();
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));
+            return result;
         }
 
         public async Task<PagedResult<ClientDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
         {
-            var clients = await _clientRepository.GetAllAsync();
-            var dtos = clients.Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate));
+            var clients = await GetAllAsync();
+            var dtos = clients.ToList();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -80,18 +94,17 @@ namespace VoroSalonCrm.Application.Services
                 dtos = dtos.Where(c =>
                     (c.Name?.ToLowerInvariant().Contains(term) ?? false) ||
                     (c.Email?.ToLowerInvariant().Contains(term) ?? false) ||
-                    (c.Phone?.ToLowerInvariant().Contains(term) ?? false));
+                    (c.Phone?.ToLowerInvariant().Contains(term) ?? false)).ToList();
             }
 
-            var list = dtos.ToList();
             var desc = sortDirection?.ToLowerInvariant() == "desc";
-            list = (orderBy?.ToLowerInvariant()) switch
+            dtos = (orderBy?.ToLowerInvariant()) switch
             {
-                "name" or _ => desc ? list.OrderByDescending(c => c.Name).ToList() : list.OrderBy(c => c.Name).ToList(),
+                "name" or _ => desc ? dtos.OrderByDescending(c => c.Name).ToList() : dtos.OrderBy(c => c.Name).ToList(),
             };
 
-            var totalCount = list.Count;
-            var items = list.Skip((page - 1) * pageSize).Take(pageSize);
+            var totalCount = dtos.Count;
+            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
 
             return new PagedResult<ClientDto>(items, totalCount, page, pageSize);
         }
@@ -112,6 +125,8 @@ namespace VoroSalonCrm.Application.Services
             _clientRepository.Update(client);
             await _unitOfWork.SaveChangesAsync();
 
+            await _cacheService.RemoveAsync($"clients:tenant:{client.TenantId}");
+
             return new ClientDto(client.Id, client.Name, client.Phone, client.Email, client.Notes, client.CreatedAt, client.BirthDate);
         }
 
@@ -128,6 +143,8 @@ namespace VoroSalonCrm.Application.Services
 
             _clientRepository.Update(client);
             await _unitOfWork.SaveChangesAsync();
+
+            await _cacheService.RemoveAsync($"clients:tenant:{tenantId}");
 
             await _userNotificationService.DeleteByRelatedEntityIdAsync(id);
 
