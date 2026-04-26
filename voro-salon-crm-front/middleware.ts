@@ -53,6 +53,7 @@ const PROTECTED_PATHS = [
   "/finance",
   "/appointments",
   "/settings",
+  "/reports",
   "/admin/change-password",
   "/admin/terms",
   "/admin/complete-profile",

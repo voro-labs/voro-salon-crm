@@ -66,8 +66,10 @@ export default function CompleteProfilePage() {
       }
 
       setSuccess(true)
+      const flagsRaw = sessionStorage.getItem("post_login_flags")
+      const defaultPage = flagsRaw ? (JSON.parse(flagsRaw).defaultPage || "/") : "/"
       sessionStorage.removeItem("post_login_flags")
-      setTimeout(() => router.replace("/"), 1500)
+      setTimeout(() => router.replace(defaultPage), 1500)
     } catch {
       setError("Erro inesperado. Tente novamente.")
     } finally {

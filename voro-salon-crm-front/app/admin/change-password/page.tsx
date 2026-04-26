@@ -69,7 +69,7 @@ export default function ChangePasswordPage() {
         ? "/admin/terms"
         : flags.requiresProfileCompletion
           ? "/admin/complete-profile"
-          : "/"
+          : (flags.defaultPage || "/")
       setTimeout(() => router.replace(next), 1500)
     } catch {
       setError("Erro inesperado. Tente novamente.")

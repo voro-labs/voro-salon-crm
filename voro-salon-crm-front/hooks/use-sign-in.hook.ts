@@ -89,6 +89,7 @@ export function useSignIn() {
           requiresPasswordChange: !!response.data.requiresPasswordChange,
           requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
           requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+          defaultPage: tenantRes.data?.defaultPage || "/",
         }))
 
         const defaultPage = redirectTo === "/" ? (tenantRes.data?.defaultPage || "/") : redirectTo
