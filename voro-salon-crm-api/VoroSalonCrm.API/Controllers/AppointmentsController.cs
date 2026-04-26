@@ -10,6 +10,7 @@ using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
+using VoroSalonCrm.API.Attributes;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -23,6 +24,7 @@ namespace VoroSalonCrm.API.Controllers
         private readonly IEmployeeService _employeeService = employeeService;
 
         [HttpPost]
+        [Idempotent]
         public async Task<IActionResult> Create(CreateAppointmentDto dto)
         {
             try
@@ -122,6 +124,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPut("{id:guid}")]
+        [Idempotent]
         public async Task<IActionResult> Update(Guid id, UpdateAppointmentDto dto)
         {
             try

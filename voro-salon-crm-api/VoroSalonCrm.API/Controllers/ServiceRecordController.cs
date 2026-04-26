@@ -5,6 +5,7 @@ using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.ViewModels;
+using VoroSalonCrm.API.Attributes;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -53,6 +54,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost]
+        [Idempotent]
         public async Task<IActionResult> Create([FromBody] CreateServiceRecordDto dto)
         {
             try
