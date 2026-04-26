@@ -936,6 +936,16 @@ export default function AppointmentsPage() {
     return { calStartHour: Math.max(minH - 1, 0), calEndHour: Math.min(maxH + 1, 24) }
   }, [businessHours])
 
+  // Count unresolved past appointments in current page (Pending=0 or Confirmed=1, before now)
+  const pastCount = useMemo(() => {
+    if (!items?.length) return 0
+    const now = new Date()
+    return items.filter((apt: AppointmentItem) => {
+      const aptDate = new Date(apt.scheduledDateTime)
+      return aptDate < now && (apt.status === 0 || apt.status === 1)
+    }).length
+  }, [items])
+
   // Sync extraParams with periodFilter for server-side date filtering
   useEffect(() => {
     const now = new Date()
@@ -948,6 +958,13 @@ export default function AppointmentsPage() {
       setExtraParams({
         dateFrom: startOfDay(now).toISOString(),
         dateTo: endOfDay(addDays(now, 7)).toISOString(),
+      })
+    } else if (periodFilter === "past") {
+      const thirtyDaysAgo = new Date(now)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      setExtraParams({
+        dateFrom: startOfDay(thirtyDaysAgo).toISOString(),
+        dateTo: now.toISOString(),
       })
     } else {
       setExtraParams({})
@@ -1295,9 +1312,17 @@ export default function AppointmentsPage() {
                 {viewMode === "list" ? (
                   <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
                     <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
-                      <TabsTrigger value="today" className="flex-1 sm:flex-none text-xs h-7 px-3">Hoje</TabsTrigger>
+                      <TabsTrigger value="today" className="flex-1 sm:flex-none text-xs h-7 px-3">
+                        Hoje
+                        {periodFilter !== "past" && pastCount > 0 && (
+                          <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                            {pastCount}
+                          </span>
+                        )}
+                      </TabsTrigger>
                       <TabsTrigger value="week" className="flex-1 sm:flex-none text-xs h-7 px-3">Semana</TabsTrigger>
                       <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs h-7 px-3">Tudo</TabsTrigger>
+                      <TabsTrigger value="past" className="flex-1 sm:flex-none text-xs h-7 px-3">Anteriores</TabsTrigger>
                     </TabsList>
                   </Tabs>
                 ) : viewMode === "calendar" ? (
@@ -1604,6 +1629,11 @@ export default function AppointmentsPage() {
                             <span className="truncate font-bold text-foreground">
                               {apt.clientName}
                             </span>
+                            {new Date(apt.scheduledDateTime) < new Date() && (apt.status === 0 || apt.status === 1) && (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 shrink-0">
+                                Atrasado
+                              </span>
+                            )}
                             <StatusDropdown appointmentId={apt.id} currentStatus={apt.status} onStatusChange={updateAppointmentStatus} />
                           </div>
 
