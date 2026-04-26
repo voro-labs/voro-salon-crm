@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.API.Attributes;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -13,6 +14,7 @@ namespace VoroSalonCrm.API.Controllers
     {
         [HttpPost("mercadopago")]
         [AllowAnonymous]
+        [Idempotent(ExpirationHours = 48)]
         public async Task<IActionResult> MercadoPagoWebhook()
         {
             try

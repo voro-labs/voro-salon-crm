@@ -3,6 +3,7 @@ using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
@@ -12,12 +13,14 @@ namespace VoroSalonCrm.Application.Services
         IServiceRepository serviceRepository,
         IServicePromotionRepository servicePromotionRepository,
         IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService) : IServiceService
+        ICurrentUserService currentUserService,
+        ICacheService cacheService) : IServiceService
     {
         private readonly IServiceRepository _serviceRepository = serviceRepository;
         private readonly IServicePromotionRepository _servicePromotionRepository = servicePromotionRepository;
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly ICacheService _cacheService = cacheService;
 
         public async Task<ServiceDto> CreateAsync(CreateServiceDto dto)
         {
@@ -40,6 +43,8 @@ namespace VoroSalonCrm.Application.Services
             await _serviceRepository.AddAsync(service);
             await _unitOfWork.SaveChangesAsync();
 
+            await _cacheService.RemoveAsync($"services:tenant:{tenantId}");
+
             return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt, service.Category);
         }
 
@@ -53,9 +58,14 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<IEnumerable<ServiceDto>> GetAllAsync()
         {
+            var tenantId = _currentUserService.TenantId;
+            var cacheKey = $"services:tenant:{tenantId}";
+
+            var cached = await _cacheService.GetAsync<List<ServiceDto>>(cacheKey);
+            if (cached is not null) return cached;
+
             var services = await _serviceRepository.GetAllAsync();
 
-            var tenantId = _currentUserService.TenantId;
             var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
             var todayDow = (int)today.DayOfWeek;
 
@@ -69,12 +79,15 @@ namespace VoroSalonCrm.Application.Services
                 .IgnoreQueryFilters()
                 .ToListAsync();
 
-            return services.Select(s =>
+            var result = services.Select(s =>
             {
                 var promo = promotions.FirstOrDefault(p => p.ServiceId == s.Id);
                 return new ServiceDto(s.Id, s.Name, s.Description, s.Price, s.DurationMinutes, s.CreatedAt,
                     s.Category, promo?.PromotionalPrice, promo != null);
-            });
+            }).ToList();
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));
+            return result;
         }
 
         public async Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
@@ -118,6 +131,8 @@ namespace VoroSalonCrm.Application.Services
             _serviceRepository.Update(service);
             await _unitOfWork.SaveChangesAsync();
 
+            await _cacheService.RemoveAsync($"services:tenant:{service.TenantId}");
+
             return new ServiceDto(service.Id, service.Name, service.Description, service.Price, service.DurationMinutes, service.CreatedAt, service.Category);
         }
 
@@ -131,6 +146,8 @@ namespace VoroSalonCrm.Application.Services
 
             _serviceRepository.Update(service);
             await _unitOfWork.SaveChangesAsync();
+
+            await _cacheService.RemoveAsync($"services:tenant:{service.TenantId}");
 
             return true;
         }
