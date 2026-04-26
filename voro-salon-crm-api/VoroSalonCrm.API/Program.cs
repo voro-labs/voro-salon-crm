@@ -44,6 +44,7 @@ builder.Services
     .AddJwtAuthentication(builder.Configuration)
     .AddRateLimitingConf()
     .AddMemoryCache()
+    .AddRedisCache(builder.Configuration)
     .AddLogging()
     .AddHttpContextAccessor()
     .AddHttpClient()
@@ -104,6 +105,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapControllers();
 

@@ -1,457 +1,722 @@
-# Tasks
+# Idempotência & Cache Redis — Plano de Implementação
 
-## ~~Task 1: Modo de Visualização "Agenda"~~ ✅
-## ~~Task 2: Whisper + IA para Transcrição de Áudio~~ ✅
-## ~~Task 3: Popup de Cadastro Rápido na Agenda~~ ✅
-## ~~Task 4: Alterar Status Inline nas 3 Visualizações~~ ✅
-## ~~Task 5: Auditoria de Uso do Whisper por Tenant~~ ✅
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Implementar idempotência em endpoints de mutação (POST/PUT/PATCH/DELETE) para evitar duplicação de requisições, e adicionar uma camada de cache distribuído com Redis para reduzir carga no PostgreSQL.
+
+**Architecture:** Idempotência via header `Idempotency-Key` processado por um middleware ASP.NET Core que armazena respostas no Redis com TTL de 24h. Cache distribuído via `IDistributedCache` do .NET com Redis como backend, abstraído por uma interface `ICacheService` na camada Application. O middleware de idempotência intercepta requisições antes de chegarem aos controllers — se uma chave já foi processada, retorna a resposta armazenada sem executar a lógica de negócio.
+
+**Tech Stack:** .NET 9, ASP.NET Core, Redis (StackExchange.Redis), Microsoft.Extensions.Caching.StackExchangeRedis, PostgreSQL (existente)
 
 ---
 
-## Task 6: Popup do Whisper deve continuar aberto durante gravação
+## Estrutura de Arquivos
 
-### Contexto
-Quando o usuário clica em "Iniciar gravação" no popup de instrução do Whisper, o popup fecha imediatamente (`setShowAudioModal(false)` na linha 805 de `beginRecording()`). O usuário perde a referência visual do que falar. O popup deve permanecer aberto mostrando o timer e o exemplo de frase enquanto o áudio está sendo gravado.
+| Ação | Arquivo | Responsabilidade |
+|------|---------|-----------------|
+| Criar | `VoroSalonCrm.Domain/Interfaces/Cache/ICacheService.cs` | Interface abstrata de cache |
+| Criar | `VoroSalonCrm.Infrastructure/Cache/RedisCacheService.cs` | Implementação do cache com Redis |
+| Criar | `VoroSalonCrm.API/Middlewares/IdempotencyMiddleware.cs` | Middleware de idempotência |
+| Criar | `VoroSalonCrm.API/Attributes/IdempotentAttribute.cs` | Atributo para marcar endpoints idempotentes |
+| Modificar | `VoroSalonCrm.Infrastructure/VoroSalonCrm.Infrastructure.csproj` | Adicionar pacote Redis |
+| Modificar | `VoroSalonCrm.API/VoroSalonCrm.API.csproj` | Adicionar pacote Redis cache |
+| Modificar | `VoroSalonCrm.Contract/Extensions/Configurations/AddAppServicesExtension.cs` | Registrar `ICacheService` |
+| Criar | `VoroSalonCrm.Contract/Extensions/Configurations/AddRedisExtension.cs` | Configuração do Redis no DI |
+| Modificar | `VoroSalonCrm.API/Program.cs` | Registrar middleware e Redis |
+| Modificar | `VoroSalonCrm.API/Controllers/SubscriptionWebhookController.cs` | Aplicar `[Idempotent]` |
+| Modificar | `VoroSalonCrm.API/Controllers/AppointmentsController.cs` | Aplicar `[Idempotent]` nos POST/PUT |
+| Criar | `VoroSalonCrm.Tests.Integration/Cache/RedisCacheServiceTests.cs` | Testes de integração do cache |
+| Criar | `VoroSalonCrm.Tests.Integration/Middleware/IdempotencyMiddlewareTests.cs` | Testes de integração da idempotência |
 
-### Arquivo
-- `voro-salon-crm-front/app/appointments/page.tsx`
+---
 
-### Implementação
+## Task 1: Adicionar pacotes NuGet do Redis
 
-**1. Remover o `setShowAudioModal(false)` do início de `beginRecording()` (linha 805)**
+**Files:**
+- Modify: `voro-salon-crm-api/VoroSalonCrm.Infrastructure/VoroSalonCrm.Infrastructure.csproj`
+- Modify: `voro-salon-crm-api/VoroSalonCrm.API/VoroSalonCrm.API.csproj`
 
-**2. Alterar o conteúdo do Dialog para mostrar estado de gravação quando `isRecording === true`**
+- [ ] **Step 1: Adicionar pacote StackExchange.Redis no Infrastructure**
 
-Dentro do Dialog `showAudioModal` (linhas 1163-1217), renderizar condicionalmente:
-- Se `isRecording === false`: conteúdo atual (instruções + botão "Iniciar gravação")
-- Se `isRecording === true`: mostrar timer com countdown (`MAX_RECORDING_SECONDS - recordingSeconds`), ícone pulsante vermelho, o exemplo de frase ainda visível, e botão "Parar gravação"
-
-```tsx
-{/* Dentro do DialogContent do showAudioModal */}
-{isRecording ? (
-  <div className="flex flex-col items-center gap-4 py-4">
-    <div className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 animate-pulse">
-      <Mic className="h-8 w-8 text-red-500" />
-    </div>
-    <p className="text-lg font-mono font-bold text-red-500 tabular-nums">
-      {MAX_RECORDING_SECONDS - recordingSeconds}s
-    </p>
-    <div className="rounded-lg bg-muted/40 border border-border/60 px-4 py-3 w-full">
-      <p className="text-sm text-foreground leading-relaxed italic">
-        "Agendar a Maria Silva para corte e escova na sexta-feira às 14h, vai durar 1 hora e meia, valor R$ 120."
-      </p>
-    </div>
-    <Button variant="destructive" className="w-full" onClick={() => { stopRecording(); setShowAudioModal(false) }}>
-      <Square className="mr-2 h-4 w-4" />
-      Parar gravação
-    </Button>
-  </div>
-) : (
-  /* conteúdo atual de instruções + botão iniciar */
-)}
+```bash
+cd voro-salon-crm-api && dotnet add VoroSalonCrm.Infrastructure/VoroSalonCrm.Infrastructure.csproj package Microsoft.Extensions.Caching.StackExchangeRedis
 ```
 
-**3. Fechar o modal ao parar a gravação**
+- [ ] **Step 2: Adicionar pacote StackExchange.Redis no API**
 
-No `stopRecording()` e no auto-stop por tempo (linha 840-841), adicionar `setShowAudioModal(false)` após parar:
+```bash
+cd voro-salon-crm-api && dotnet add VoroSalonCrm.API/VoroSalonCrm.API.csproj package Microsoft.Extensions.Caching.StackExchangeRedis
+```
 
-```tsx
-// No auto-stop dentro do setInterval (linha 839-841):
-if (elapsed >= MAX_RECORDING_SECONDS) {
-  mr.stop()
-  setIsRecording(false)
-  setShowAudioModal(false) // ← adicionar
+- [ ] **Step 3: Verificar que o projeto compila**
+
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add VoroSalonCrm.Infrastructure/VoroSalonCrm.Infrastructure.csproj VoroSalonCrm.API/VoroSalonCrm.API.csproj
+git commit -m "chore: add StackExchange.Redis packages for cache and idempotency"
+```
+
+---
+
+## Task 2: Criar a interface ICacheService
+
+**Files:**
+- Create: `voro-salon-crm-api/VoroSalonCrm.Domain/Interfaces/Cache/ICacheService.cs`
+
+- [ ] **Step 1: Criar a interface**
+
+```csharp
+namespace VoroSalonCrm.Domain.Interfaces.Cache
+{
+    public interface ICacheService
+    {
+        Task<T?> GetAsync<T>(string key, CancellationToken ct = default);
+        Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default);
+        Task RemoveAsync(string key, CancellationToken ct = default);
+        Task<bool> ExistsAsync(string key, CancellationToken ct = default);
+
+        // Idempotência: armazena a resposta HTTP completa
+        Task<string?> GetRawAsync(string key, CancellationToken ct = default);
+        Task SetRawAsync(string key, string value, TimeSpan? expiration = null, CancellationToken ct = default);
+    }
 }
 ```
 
-No botão "Parar gravação" do modal, já incluir `setShowAudioModal(false)` no onClick (como mostrado acima).
+- [ ] **Step 2: Verificar que o projeto compila**
 
-**4. Impedir fechar o modal durante gravação**
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
 
-No `<Dialog>` do `showAudioModal`, impedir fechar clicando fora enquanto grava:
+- [ ] **Step 3: Commit**
 
-```tsx
-<Dialog
-  open={showAudioModal}
-  onOpenChange={(open) => {
-    if (!open && isRecording) return // bloqueia fechar durante gravação
-    setShowAudioModal(open)
-  }}
->
+```bash
+git add VoroSalonCrm.Domain/Interfaces/Cache/ICacheService.cs
+git commit -m "feat: add ICacheService interface for distributed cache abstraction"
 ```
 
 ---
 
-## Task 7: Botão "Completo" do Quick Action deve enviar cliente e serviço
+## Task 3: Implementar RedisCacheService
 
-### Contexto
-No popup de agendamento rápido (quick create), o botão "Completo" redireciona para `/appointments/new` passando apenas `date`, `hour`, `minute`. Não envia `clientId` nem `serviceId`, então o formulário completo abre vazio.
+**Files:**
+- Create: `voro-salon-crm-api/VoroSalonCrm.Infrastructure/Cache/RedisCacheService.cs`
 
-### Arquivos
-- `voro-salon-crm-front/app/appointments/page.tsx` (link do botão Completo, linha 1154)
-- `voro-salon-crm-front/app/appointments/new/page.tsx` (leitura dos searchParams, linhas 89-115)
+- [ ] **Step 1: Implementar o serviço**
 
-### Implementação
+```csharp
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Distributed;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 
-**1. Atualizar o href do botão "Completo" (linha 1153-1156 de `appointments/page.tsx`)**
+namespace VoroSalonCrm.Infrastructure.Cache
+{
+    public class RedisCacheService(IDistributedCache cache) : ICacheService
+    {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
 
-Substituir:
-```tsx
-<Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}` : "/appointments/new"}>
-```
+        public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
+        {
+            var data = await cache.GetStringAsync(key, ct);
+            if (data is null) return default;
+            return JsonSerializer.Deserialize<T>(data, JsonOptions);
+        }
 
-Por:
-```tsx
-<Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}${qcForm.clientId ? `&clientId=${qcForm.clientId}` : ""}${qcForm.serviceId && qcForm.serviceId !== "none" ? `&serviceId=${qcForm.serviceId}` : ""}` : "/appointments/new"}>
-```
+        public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default)
+        {
+            var options = new DistributedCacheEntryOptions();
+            if (expiration.HasValue)
+                options.AbsoluteExpirationRelativeToNow = expiration;
 
-**2. Ler `clientId` e `serviceId` nos searchParams do `new/page.tsx`**
+            var json = JsonSerializer.Serialize(value, JsonOptions);
+            await cache.SetStringAsync(key, json, options, ct);
+        }
 
-No `useEffect` de pré-preenchimento (linhas 89-115), adicionar:
+        public async Task RemoveAsync(string key, CancellationToken ct = default)
+        {
+            await cache.RemoveAsync(key, ct);
+        }
 
-```tsx
-const clientIdParam = searchParams.get("clientId")
-const serviceIdParam = searchParams.get("serviceId")
+        public async Task<bool> ExistsAsync(string key, CancellationToken ct = default)
+        {
+            var data = await cache.GetStringAsync(key, ct);
+            return data is not null;
+        }
 
-if (clientIdParam) updates.clientId = clientIdParam
-if (serviceIdParam) {
-  updates.serviceId = serviceIdParam
-  // Se serviceIds array é usado, popular também
-  // Buscar dados do serviço para preencher amount/duration
+        public async Task<string?> GetRawAsync(string key, CancellationToken ct = default)
+        {
+            return await cache.GetStringAsync(key, ct);
+        }
+
+        public async Task SetRawAsync(string key, string value, TimeSpan? expiration = null, CancellationToken ct = default)
+        {
+            var options = new DistributedCacheEntryOptions();
+            if (expiration.HasValue)
+                options.AbsoluteExpirationRelativeToNow = expiration;
+
+            await cache.SetStringAsync(key, value, options, ct);
+        }
+    }
 }
 ```
 
-Verificar se o hook `useAppointmentForm` aceita `serviceId` via `setForm`. Caso use `serviceIds` (array), adaptar para `updates.serviceIds = [serviceIdParam]`.
+- [ ] **Step 2: Verificar que o projeto compila**
+
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add VoroSalonCrm.Infrastructure/Cache/RedisCacheService.cs
+git commit -m "feat: implement RedisCacheService with IDistributedCache"
+```
 
 ---
 
-## Task 8: Header dos dias da semana desalinhado na grade (Calendar)
+## Task 4: Criar extensão de configuração do Redis
 
-### Contexto
-Na visualização de grade semanal (`CalendarWeekView`), o header com os dias da semana está deslocado para a direita em relação às colunas do body. Isso acontece porque o body tem `overflow-y-auto` (barra de scroll vertical), e o header não. A scrollbar do body reduz a largura útil das colunas, causando desalinhamento.
+**Files:**
+- Create: `voro-salon-crm-api/VoroSalonCrm.Contract/Extensions/Configurations/AddRedisExtension.cs`
 
-### Arquivo
-- `voro-salon-crm-front/app/appointments/page.tsx` — função `CalendarWeekView` (linhas 362-491)
+- [ ] **Step 1: Criar a extensão**
 
-### Implementação
+```csharp
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using VoroSalonCrm.Domain.Interfaces.Cache;
+using VoroSalonCrm.Infrastructure.Cache;
 
-**Abordagem: esconder a scrollbar nativa e manter scroll funcional**
+namespace VoroSalonCrm.Contract.Extensions.Configurations
+{
+    public static class AddRedisExtension
+    {
+        public static IServiceCollection AddRedisCache(this IServiceCollection services, IConfiguration configuration)
+        {
+            var redisConnectionString = configuration.GetValue<string>("Redis:ConnectionString");
 
-Adicionar uma classe CSS utilitária para esconder a scrollbar. No div do body (linha 394):
+            if (string.IsNullOrEmpty(redisConnectionString))
+            {
+                // Fallback para cache em memória se Redis não estiver configurado
+                services.AddDistributedMemoryCache();
+            }
+            else
+            {
+                services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConnectionString;
+                    options.InstanceName = "jasmim:";
+                });
+            }
 
-```tsx
-<div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: "calc(100vh - 300px)" }}>
-```
+            services.AddSingleton<ICacheService, RedisCacheService>();
 
-Adicionar o CSS globalmente (em `globals.css` ou equivalente):
-
-```css
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+            return services;
+        }
+    }
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+```
+
+- [ ] **Step 2: Registrar no Program.cs**
+
+No arquivo `voro-salon-crm-api/VoroSalonCrm.API/Program.cs`, adicionar a chamada `.AddRedisCache(builder.Configuration)` na cadeia de services, logo após `.AddMemoryCache()`:
+
+```csharp
+// Antes:
+.AddMemoryCache()
+.AddLogging()
+
+// Depois:
+.AddMemoryCache()
+.AddRedisCache(builder.Configuration)
+.AddLogging()
+```
+
+- [ ] **Step 3: Verificar que o projeto compila**
+
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add VoroSalonCrm.Contract/Extensions/Configurations/AddRedisExtension.cs VoroSalonCrm.API/Program.cs
+git commit -m "feat: add Redis configuration extension with memory cache fallback"
+```
+
+---
+
+## Task 5: Criar o atributo IdempotentAttribute
+
+**Files:**
+- Create: `voro-salon-crm-api/VoroSalonCrm.API/Attributes/IdempotentAttribute.cs`
+
+- [ ] **Step 1: Criar o atributo**
+
+```csharp
+namespace VoroSalonCrm.API.Attributes
+{
+    /// <summary>
+    /// Marca um endpoint como idempotente. Requisições com o mesmo header
+    /// Idempotency-Key retornarão a resposta cacheada sem re-executar a lógica.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+    public class IdempotentAttribute : Attribute
+    {
+        /// <summary>
+        /// Tempo de vida da chave de idempotência no cache. Default: 24 horas.
+        /// </summary>
+        public int ExpirationHours { get; set; } = 24;
+    }
 }
 ```
 
-**OU abordagem alternativa: adicionar `overflow-y: scroll` ao header**
+- [ ] **Step 2: Verificar que o projeto compila**
 
-Forçar o header a ter a mesma scrollbar (invisível) que o body:
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
 
-```tsx
-{/* Header */}
-<div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10 overflow-y-scroll scrollbar-hide">
+- [ ] **Step 3: Commit**
+
+```bash
+git add VoroSalonCrm.API/Attributes/IdempotentAttribute.cs
+git commit -m "feat: add IdempotentAttribute for marking idempotent endpoints"
 ```
-
-E aplicar `overflow-y: scroll` no body também (em vez de `auto`), para que ambos sempre reservem espaço para scrollbar.
-
-**Verificar também a versão mobile** — o mobile usa `grid-cols-2` e provavelmente não tem esse problema, mas conferir.
 
 ---
 
-## Task 9: Hover verde pisca e desaparece em horários passados na grade
+## Task 6: Implementar o IdempotencyMiddleware
 
-### Contexto
-Na grade semanal, quando o mouse passa sobre um slot de horário que já passou, o hover verde aparece brevemente e some. O problema está na combinação de classes CSS nos slots passados.
+**Files:**
+- Create: `voro-salon-crm-api/VoroSalonCrm.API/Middlewares/IdempotencyMiddleware.cs`
 
-### Arquivo
-- `voro-salon-crm-front/app/appointments/page.tsx` — slots da `CalendarWeekView`
+- [ ] **Step 1: Criar o middleware**
 
-### Análise
-Slots passados (linhas 438-440, desktop / 304-309, mobile) têm:
+```csharp
+using System.Text.Json;
+using VoroSalonCrm.API.Attributes;
+using VoroSalonCrm.Domain.Interfaces.Cache;
+
+namespace VoroSalonCrm.API.Middlewares
+{
+    public class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMiddleware> logger)
+    {
+        private const string IdempotencyKeyHeader = "Idempotency-Key";
+
+        public async Task InvokeAsync(HttpContext context, ICacheService cacheService)
+        {
+            // Só processa métodos de mutação
+            var method = context.Request.Method;
+            if (method is "GET" or "HEAD" or "OPTIONS")
+            {
+                await next(context);
+                return;
+            }
+
+            // Verifica se o endpoint tem o atributo [Idempotent]
+            var endpoint = context.GetEndpoint();
+            var idempotentAttr = endpoint?.Metadata.GetMetadata<IdempotentAttribute>();
+            if (idempotentAttr is null)
+            {
+                await next(context);
+                return;
+            }
+
+            // Verifica se o header Idempotency-Key foi enviado
+            if (!context.Request.Headers.TryGetValue(IdempotencyKeyHeader, out var idempotencyKey) ||
+                string.IsNullOrWhiteSpace(idempotencyKey))
+            {
+                // Sem header — processa normalmente (não bloqueia a requisição)
+                await next(context);
+                return;
+            }
+
+            var cacheKey = $"idempotency:{idempotencyKey}";
+            var expiration = TimeSpan.FromHours(idempotentAttr.ExpirationHours);
+
+            // Verifica se já existe resposta cacheada
+            var cachedResponse = await cacheService.GetRawAsync(cacheKey);
+            if (cachedResponse is not null)
+            {
+                logger.LogInformation("Idempotency hit for key {Key}. Returning cached response.", idempotencyKey.ToString());
+
+                var cached = JsonSerializer.Deserialize<IdempotencyResponse>(cachedResponse);
+                if (cached is not null)
+                {
+                    context.Response.StatusCode = cached.StatusCode;
+                    context.Response.ContentType = cached.ContentType ?? "application/json";
+                    if (cached.Body is not null)
+                        await context.Response.WriteAsync(cached.Body);
+                    return;
+                }
+            }
+
+            // Marca como "em processamento" para evitar race conditions
+            var lockKey = $"idempotency-lock:{idempotencyKey}";
+            var lockAcquired = !(await cacheService.ExistsAsync(lockKey));
+
+            if (!lockAcquired)
+            {
+                // Outra requisição com a mesma chave está em processamento
+                context.Response.StatusCode = 409;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { message = "Requisição duplicada em processamento. Tente novamente em alguns segundos." });
+                return;
+            }
+
+            // Seta lock por 30s
+            await cacheService.SetRawAsync(lockKey, "processing", TimeSpan.FromSeconds(30));
+
+            // Captura o response body
+            var originalBodyStream = context.Response.Body;
+            using var memoryStream = new MemoryStream();
+            context.Response.Body = memoryStream;
+
+            try
+            {
+                await next(context);
+
+                // Lê o body da resposta
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                var responseBody = await new StreamReader(memoryStream).ReadToEndAsync();
+
+                // Armazena no cache
+                var idempotencyResponse = new IdempotencyResponse
+                {
+                    StatusCode = context.Response.StatusCode,
+                    ContentType = context.Response.ContentType,
+                    Body = responseBody
+                };
+
+                var serialized = JsonSerializer.Serialize(idempotencyResponse);
+                await cacheService.SetRawAsync(cacheKey, serialized, expiration);
+
+                // Copia a resposta de volta para o stream original
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                await memoryStream.CopyToAsync(originalBodyStream);
+            }
+            finally
+            {
+                context.Response.Body = originalBodyStream;
+                await cacheService.RemoveAsync(lockKey);
+            }
+        }
+
+        private sealed class IdempotencyResponse
+        {
+            public int StatusCode { get; set; }
+            public string? ContentType { get; set; }
+            public string? Body { get; set; }
+        }
+    }
+}
 ```
-"bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
+
+- [ ] **Step 2: Registrar o middleware no Program.cs**
+
+No arquivo `voro-salon-crm-api/VoroSalonCrm.API/Program.cs`, adicionar o middleware **após** `UseAuthorization()` e **antes** de `MapControllers()`:
+
+```csharp
+// Antes:
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Depois:
+app.UseAuthorization();
+
+app.UseMiddleware<IdempotencyMiddleware>();
+
+app.MapControllers();
 ```
 
-O `opacity-60` afeta TODA a div incluindo o hover. Combinado com `transition-colors duration-150`, o efeito hover fica quase invisível. Se o tema usa `accent` verde, pode haver conflito com slots vizinhos.
+- [ ] **Step 3: Verificar que o projeto compila**
 
-### Implementação
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
 
-**1. Remover `opacity-60` dos slots passados e usar cor de fundo mais escura como indicador de "passado"**
+- [ ] **Step 4: Commit**
 
-Substituir (em AMBOS desktop e mobile, linhas ~438 e ~304):
-
-De:
+```bash
+git add VoroSalonCrm.API/Middlewares/IdempotencyMiddleware.cs VoroSalonCrm.API/Program.cs
+git commit -m "feat: implement IdempotencyMiddleware with Redis-backed response caching"
 ```
-past ? "bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
-```
-
-Para:
-```
-past ? "bg-muted/40 cursor-pointer hover:bg-accent/15"
-```
-
-Isso remove o `opacity-60` que causa o efeito fantasma e usa `hover:bg-accent/15` que é consistente com os slots disponíveis (que usam `hover:bg-accent/10`), só um pouco mais suave.
-
-**2. Aplicar nos dois locais (desktop e mobile)**
-
-- Desktop: linha ~438 dentro do `days.map()` → `hours.flatMap()` → slot div
-- Mobile: linha ~304 dentro do `hours.flatMap()` → slot div
 
 ---
 
-## Task 10: Grade deve abrir Quick Action em vez de navegar para nova página
+## Task 7: Aplicar [Idempotent] nos endpoints críticos
 
-### Contexto
-Na grade semanal, ao clicar num slot de horário **futuro**, o sistema navega para `/appointments/new`. Deveria abrir o popup de Quick Action (agendamento rápido) igual faz para slots passados.
+**Files:**
+- Modify: `voro-salon-crm-api/VoroSalonCrm.API/Controllers/SubscriptionWebhookController.cs`
+- Modify: `voro-salon-crm-api/VoroSalonCrm.API/Controllers/AppointmentsController.cs`
+- Modify: `voro-salon-crm-api/VoroSalonCrm.API/Controllers/TransactionsController.cs`
+- Modify: `voro-salon-crm-api/VoroSalonCrm.API/Controllers/ServiceRecordController.cs`
 
-### Arquivo
-- `voro-salon-crm-front/app/appointments/page.tsx` — callback `onSlotClick` da `CalendarWeekView` (linhas 1471-1479)
+- [ ] **Step 1: Aplicar no SubscriptionWebhookController**
 
-### Implementação
+Adicionar o using e o atributo no método `MercadoPagoWebhook`:
 
-Substituir o callback `onSlotClick` passado ao `CalendarWeekView` (linhas 1471-1479):
+```csharp
+using VoroSalonCrm.API.Attributes;
 
-De:
-```tsx
-onSlotClick={(date, hour, minute) => {
-  const slotTime = new Date(date)
-  slotTime.setHours(hour, minute, 0, 0)
-  if (slotTime < new Date()) {
-    openQuickCreate(date, hour, minute)
-  } else {
-    const iso = format(date, "yyyy-MM-dd")
-    router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
+// No método:
+[HttpPost("mercadopago")]
+[AllowAnonymous]
+[Idempotent(ExpirationHours = 48)]
+public async Task<IActionResult> MercadoPagoWebhook()
+```
+
+- [ ] **Step 2: Aplicar no AppointmentsController**
+
+Adicionar o using e o atributo nos métodos `Create` e `Update`:
+
+```csharp
+using VoroSalonCrm.API.Attributes;
+
+// No Create:
+[HttpPost]
+[Idempotent]
+public async Task<IActionResult> Create(CreateAppointmentDto dto)
+
+// No Update:
+[HttpPut("{id:guid}")]
+[Idempotent]
+public async Task<IActionResult> Update(Guid id, UpdateAppointmentDto dto)
+```
+
+- [ ] **Step 3: Aplicar no TransactionsController**
+
+Adicionar o using e o atributo nos métodos de criação (`HttpPost`):
+
+```csharp
+using VoroSalonCrm.API.Attributes;
+
+// Nos métodos HttpPost:
+[HttpPost]
+[Idempotent]
+public async Task<IActionResult> Create(...)
+```
+
+- [ ] **Step 4: Aplicar no ServiceRecordController**
+
+Adicionar o using e o atributo nos métodos de criação (`HttpPost`):
+
+```csharp
+using VoroSalonCrm.API.Attributes;
+
+// No método Create:
+[HttpPost]
+[Idempotent]
+public async Task<IActionResult> Create(...)
+```
+
+- [ ] **Step 5: Verificar que o projeto compila**
+
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add VoroSalonCrm.API/Controllers/SubscriptionWebhookController.cs \
+       VoroSalonCrm.API/Controllers/AppointmentsController.cs \
+       VoroSalonCrm.API/Controllers/TransactionsController.cs \
+       VoroSalonCrm.API/Controllers/ServiceRecordController.cs
+git commit -m "feat: apply [Idempotent] attribute to critical mutation endpoints"
+```
+
+---
+
+## Task 8: Adicionar cache nos services de leitura mais acessados
+
+**Files:**
+- Modify: `voro-salon-crm-api/VoroSalonCrm.Application/Services/ServiceService.cs`
+- Modify: `voro-salon-crm-api/VoroSalonCrm.Application/Services/TenantService.cs`
+- Modify: `voro-salon-crm-api/VoroSalonCrm.Application/Services/EmployeeService.cs`
+
+O padrão de cache é simples — cache-aside com invalidação no write:
+
+- [ ] **Step 1: Injetar ICacheService no ServiceService**
+
+No construtor do `ServiceService`, adicionar `ICacheService cacheService` e usar no `GetAllAsync`:
+
+```csharp
+using VoroSalonCrm.Domain.Interfaces.Cache;
+
+// No construtor — adicionar parâmetro ICacheService cacheService
+
+// No GetAllAsync:
+public async Task<IEnumerable<ServiceDto>> GetAllAsync()
+{
+    var tenantId = _currentUserService.TenantId;
+    var cacheKey = $"services:tenant:{tenantId}";
+
+    var cached = await _cacheService.GetAsync<IEnumerable<ServiceDto>>(cacheKey);
+    if (cached is not null) return cached;
+
+    // Lógica existente de buscar do banco...
+    var result = /* resultado existente */;
+
+    await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));
+    return result;
+}
+```
+
+- [ ] **Step 2: Invalidar cache nos métodos de escrita do ServiceService**
+
+Em cada método que modifica dados (Create, Update, Delete), adicionar invalidação:
+
+```csharp
+// No final de Create/Update/Delete:
+var tenantId = _currentUserService.TenantId;
+await _cacheService.RemoveAsync($"services:tenant:{tenantId}");
+```
+
+- [ ] **Step 3: Repetir padrão para TenantService**
+
+Cache key: `tenant:{tenantId}` com TTL de 30 minutos nos dados do tenant.
+
+Invalidar no `UpdateAsync`.
+
+- [ ] **Step 4: Repetir padrão para EmployeeService**
+
+Cache key: `employees:tenant:{tenantId}` com TTL de 10 minutos.
+
+Invalidar nos Create/Update/Delete.
+
+- [ ] **Step 5: Verificar que o projeto compila**
+
+Run: `cd voro-salon-crm-api && dotnet build`
+Expected: Build succeeded
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add VoroSalonCrm.Application/Services/ServiceService.cs \
+       VoroSalonCrm.Application/Services/TenantService.cs \
+       VoroSalonCrm.Application/Services/EmployeeService.cs
+git commit -m "feat: add Redis cache-aside pattern to high-read services"
+```
+
+---
+
+## Task 9: Configurar Redis no ambiente de deploy
+
+**Files:**
+- Modify: `voro-salon-crm-api/fly.toml`
+- Modify: `voro-salon-crm-api/VoroSalonCrm.API/appsettings.json` (ou secrets)
+
+- [ ] **Step 1: Provisionar Redis no Fly.io**
+
+```bash
+cd voro-salon-crm-api
+fly redis create --name jasmim-redis --region gru --plan free
+```
+
+- [ ] **Step 2: Configurar a connection string como secret no Fly.io**
+
+```bash
+fly secrets set Redis__ConnectionString="redis://default:PASSWORD@jasmim-redis.upstash.io:6379"
+```
+
+Nota: O Fly.io converte `Redis__ConnectionString` para a chave de configuração `Redis:ConnectionString` automaticamente.
+
+- [ ] **Step 3: Adicionar configuração local no appsettings.Development.json**
+
+```json
+{
+  "Redis": {
+    "ConnectionString": ""
   }
-}}
-```
-
-Para:
-```tsx
-onSlotClick={(date, hour, minute) => {
-  openQuickCreate(date, hour, minute)
-}}
-```
-
-Isso faz a grade funcionar igual à agenda (`AgendaDayView`), que já usa `openQuickCreate` para todos os slots (linha 1490).
-
-A função `openQuickCreate` já detecta se o slot é passado ou futuro (via `isHistoric`) e ajusta o status padrão do formulário.
-
----
-
-## Task 11: Relatórios mensais para acompanhamento
-
-### Contexto
-Adicionar uma página de relatórios mensais no frontend. No futuro, esses relatórios serão enviados por e-mail em PDF automaticamente. Por enquanto, criar a visualização na plataforma.
-
-### Dados já disponíveis na API
-
-O endpoint `GET /api/v1/dashboard/metrics` já retorna:
-- `monthlyRevenue` — faturamento do mês
-- `monthlyServiceCount` — qtd de serviços no mês
-- `totalClients` — total de clientes
-- `revenueByMonth` — array com `{ month, monthLabel, total, count }` dos últimos meses
-- `topClients` — array com `{ name, serviceCount, totalSpent }`
-
-### Arquivos a criar/modificar
-
-- **Criar:** `voro-salon-crm-front/app/reports/page.tsx`
-- **Criar:** `voro-salon-crm-front/app/reports/layout.tsx` (com AuthGuard)
-- **Modificar:** `voro-salon-crm-front/components/layout/admin/sidebar.tsx` — adicionar link "Relatórios"
-- **Modificar:** `voro-salon-crm-front/middleware.ts` — adicionar `/reports` em `PROTECTED_PATHS`
-- **Modificar:** `voro-salon-crm-front/app/settings/page.tsx` — adicionar `/reports` no `DEFAULT_PAGE_OPTIONS`
-
-### Implementação da página
-
-**1. Layout (`reports/layout.tsx`)**
-```tsx
-import { AuthGuard } from "@/components/auth/auth.guard"
-export default function ReportsLayout({ children }: { children: React.ReactNode }) {
-  return <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>{children}</AuthGuard>
 }
 ```
 
-**2. Página (`reports/page.tsx`)**
+Com a string vazia, o fallback para `DistributedMemoryCache` será usado no dev local (configurado na Task 4).
 
-Estrutura:
-- `PageHeader` com título "Relatórios"
-- Seletor de mês/ano (usar `date-fns` para navegar entre meses)
-- Cards de métricas: Faturamento, Serviços realizados, Novos clientes
-- Gráfico de faturamento mensal (últimos 6 meses) — usar `recharts` se já instalado, senão barras CSS simples
-- Tabela de top clientes
+- [ ] **Step 4: Commit**
 
-Usar `useSWR` com `API_CONFIG.ENDPOINTS.DASHBOARD_METRICS` (ou `/api/v1/dashboard/metrics`).
-
-Verificar se `API_CONFIG.ENDPOINTS` já tem `DASHBOARD_METRICS`. Caso não, adicionar em `lib/api.ts`:
-```ts
-DASHBOARD_METRICS: `${BASE}/dashboard/metrics`,
+```bash
+git add fly.toml appsettings.Development.json
+git commit -m "chore: configure Redis connection for Fly.io deployment"
 ```
-
-**3. Estilo dos cards de métrica**
-```tsx
-<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-  <Card>
-    <CardContent className="p-4">
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">Faturamento</p>
-      <p className="text-2xl font-bold">{formatCurrency(metrics.monthlyRevenue)}</p>
-    </CardContent>
-  </Card>
-  {/* ... mais cards */}
-</div>
-```
-
-**4. Gráfico de barras simples (sem dependência extra)**
-```tsx
-{metrics.revenueByMonth.map((m) => (
-  <div key={m.month} className="flex items-end gap-1">
-    <div
-      className="bg-primary rounded-t w-full min-h-[4px]"
-      style={{ height: `${(m.total / maxRevenue) * 100}%` }}
-    />
-    <span className="text-[10px] text-muted-foreground">{m.monthLabel}</span>
-  </div>
-))}
-```
-
-**5. Tabela de top clientes**
-```tsx
-<table className="w-full text-sm">
-  <thead>
-    <tr className="border-b text-left text-xs text-muted-foreground">
-      <th className="py-2">Cliente</th>
-      <th className="py-2 text-right">Serviços</th>
-      <th className="py-2 text-right">Total gasto</th>
-    </tr>
-  </thead>
-  <tbody>
-    {metrics.topClients.map((c) => (
-      <tr key={c.name} className="border-b">
-        <td className="py-2 font-medium">{c.name}</td>
-        <td className="py-2 text-right">{c.serviceCount}</td>
-        <td className="py-2 text-right">{formatCurrency(c.totalSpent)}</td>
-      </tr>
-    ))}
-  </tbody>
-</table>
-```
-
-**6. Sidebar**
-Adicionar item no array de navegação da sidebar:
-```tsx
-{ href: "/reports", label: "Relatórios", icon: BarChart3 }
-```
-Importar `BarChart3` de `lucide-react`. Posicionar após "Finanças".
-
-**7. Middleware**
-Em `PROTECTED_PATHS` (linha 48-64 de `middleware.ts`), adicionar:
-```ts
-"/reports",
-```
-
-### Considerações
-- Somente `SalonOwner` e `Owner` têm acesso (não `SalonEmployee`)
-- O endpoint de métricas já filtra por tenant automaticamente
-- Para o envio por e-mail em PDF no futuro, a API precisará de um endpoint novo — não implementar agora
-- Verificar se `recharts` está no `package.json`; se sim, usar para gráficos. Se não, usar barras CSS puras
 
 ---
 
-## Task 12: Primeiro login redireciona para dashboard em vez da página configurada
+## Task 10: Enviar header Idempotency-Key no frontend
 
-### Contexto
-Quando o usuário faz login e tem etapas de onboarding (aceitar termos, completar perfil), ao finalizar a última etapa ele é redirecionado para `/` (dashboard) em vez da página configurada como principal (`defaultPage` do tenant).
+**Files:**
+- Criar ou modificar: o client HTTP do frontend (Next.js) para enviar o header automaticamente
 
-### Arquivos
-- `voro-salon-crm-front/app/admin/complete-profile/page.tsx` — linha 70: `router.replace("/")`
-- `voro-salon-crm-front/app/admin/terms/page.tsx` — linha 52: fallback `"/"`
-- `voro-salon-crm-front/app/admin/change-password/page.tsx` — linha 73: mesma lógica
-- `voro-salon-crm-front/hooks/use-sign-in.hook.ts` — onde `defaultPage` é resolvido
-- `voro-salon-crm-front/app/admin/verify-2fa/page.tsx` — linha 166: usa `redirectTo` sem consultar `defaultPage`
+- [ ] **Step 1: Localizar o client HTTP do frontend**
 
-### Causa raiz
-As páginas de onboarding (`terms`, `complete-profile`, `change-password`) redirecionam com `router.replace("/")` quando terminam, sem consultar o `defaultPage` do tenant. O `verify-2fa` usa `redirectTo` (que por padrão é `/`) sem consultar o `defaultPage`.
+Buscar onde as chamadas de API são feitas no `voro-salon-crm-front` (provavelmente um `fetch` wrapper ou `axios` instance).
 
-### Implementação
+- [ ] **Step 2: Criar utilitário de geração de chave**
 
-**1. Salvar `defaultPage` no sessionStorage durante o login**
-
-No `use-sign-in.hook.ts`, após buscar o tenant (linha 88), salvar:
-
-```tsx
-sessionStorage.setItem("post_login_flags", JSON.stringify({
-  requiresPasswordChange: !!response.data.requiresPasswordChange,
-  requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
-  requiresProfileCompletion: !!response.data.requiresProfileCompletion,
-  defaultPage: tenantRes.data?.defaultPage || "/",  // ← adicionar
-}))
+```typescript
+// utils/idempotency.ts
+export function generateIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
 ```
 
-**2. No `verify-2fa/page.tsx`, salvar também:**
+- [ ] **Step 3: Adicionar o header nas chamadas de mutação (POST/PUT/PATCH)**
 
-Na linha ~152, adicionar `defaultPage` ao `post_login_flags`:
+No wrapper HTTP ou nos pontos onde `fetch`/`axios` é chamado para mutações, adicionar:
 
-```tsx
-sessionStorage.setItem("post_login_flags", JSON.stringify({
-  requiresPasswordChange: !!response.data.requiresPasswordChange,
-  requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
-  requiresProfileCompletion: !!response.data.requiresProfileCompletion,
-  defaultPage: tenantRes.data?.defaultPage || redirectTo || "/",  // ← adicionar
-}))
+```typescript
+headers: {
+  ...existingHeaders,
+  'Idempotency-Key': generateIdempotencyKey(),
+}
 ```
 
-E na linha 166, usar `defaultPage` do tenant:
-```tsx
-const defaultPage = tenantRes.data?.defaultPage || redirectTo || "/"
-// ...
-: defaultPage  // em vez de apenas redirectTo
+**IMPORTANTE:** A chave deve ser gerada uma vez por ação do usuário (ex: no onClick do botão), não por retry. Se usar retry automático, reutilizar a mesma chave.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add voro-salon-crm-front/utils/idempotency.ts # e outros arquivos modificados
+git commit -m "feat: send Idempotency-Key header on mutation requests from frontend"
 ```
 
-**3. `complete-profile/page.tsx` — usar `defaultPage` do flags (linha 70)**
+---
 
-Substituir:
-```tsx
-setTimeout(() => router.replace("/"), 1500)
-```
+## Resumo de decisões arquiteturais
 
-Por:
-```tsx
-const flagsRaw = sessionStorage.getItem("post_login_flags")
-const defaultPage = flagsRaw ? (JSON.parse(flagsRaw).defaultPage || "/") : "/"
-sessionStorage.removeItem("post_login_flags")
-setTimeout(() => router.replace(defaultPage), 1500)
-```
+| Decisão | Justificativa |
+|---------|--------------|
+| `IDistributedCache` como abstração | Permite trocar Redis por outro provider sem alterar código de negócio |
+| Fallback para `DistributedMemoryCache` | Dev local funciona sem Redis instalado |
+| Middleware ao invés de Action Filter | Intercepta antes de model binding — mais eficiente para rejeitar duplicatas |
+| Header `Idempotency-Key` opcional | Não quebra clientes existentes — degradação graciosa |
+| Lock com TTL de 30s | Evita race conditions sem deadlock permanente |
+| Cache-aside ao invés de write-through | Mais simples, invalidação explícita é suficiente para este volume |
+| TTL de 24h na idempotência | Suficiente para cobrir retries de webhooks (MP pode retentar por horas) |
+| `ICacheService` como Singleton | `IDistributedCache` é thread-safe e não depende de DbContext |
 
-**4. `terms/page.tsx` — usar `defaultPage` quando é a última etapa (linha 52)**
+---
 
-Substituir:
-```tsx
-const next = flags.requiresProfileCompletion ? "/admin/complete-profile" : "/"
-```
+## Endpoints prioritários para idempotência
 
-Por:
-```tsx
-const next = flags.requiresProfileCompletion ? "/admin/complete-profile" : (flags.defaultPage || "/")
-```
+| Controller | Método | Motivo |
+|-----------|--------|--------|
+| `SubscriptionWebhookController` | `MercadoPagoWebhook` | MP reenvia webhooks — maior risco de duplicação |
+| `AppointmentsController` | `Create`, `Update` | Duplo clique no frontend pode criar agendamento duplicado |
+| `TransactionsController` | `Create` | Transação financeira duplicada é crítica |
+| `ServiceRecordController` | `Create` | Atendimento duplicado afeta relatórios |
 
-**5. `change-password/page.tsx` — mesma lógica (linha 73)**
+## Endpoints prioritários para cache
 
-Substituir o redirect final para ler `defaultPage` dos flags, similar ao `terms/page.tsx`.
-
-### Teste
-1. Configurar a página principal como `/appointments` nas configurações
-2. Fazer logout
-3. Fazer login novamente
-4. Completar etapas de onboarding (se houver)
-5. Verificar que redireciona para `/appointments` e não para `/`
-
+| Service | Key | TTL | Motivo |
+|---------|-----|-----|--------|
+| `ServiceService.GetAllAsync` | `services:tenant:{id}` | 10 min | Lista de serviços muda raramente, acessada em toda tela |
+| `TenantService.GetByIdAsync` | `tenant:{id}` | 30 min | Dados do tenant mudam quase nunca |
+| `EmployeeService.GetAllAsync` | `employees:tenant:{id}` | 10 min | Lista de funcionários consultada em agenda e formulários |

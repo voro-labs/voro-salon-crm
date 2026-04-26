@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using VoroSalonCrm.Application.DTOs.CRM.Financial;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Shared.ViewModels;
+using VoroSalonCrm.API.Attributes;
 
 namespace VoroSalonCrm.API.Controllers
 {
@@ -33,6 +34,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost]
+        [Idempotent]
         public async Task<IActionResult> Create(CreateTransactionDto dto, CancellationToken ct)
         {
             var transaction = await _service.CreateAsync(dto, ct);

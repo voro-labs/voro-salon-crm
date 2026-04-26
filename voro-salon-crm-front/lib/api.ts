@@ -138,6 +138,7 @@ export function removeRefreshToken(): void {
 
 import { WebTokenAdapter } from "./auth-token-adapter"
 import { AuthTokenManager } from "./auth-token-manager"
+import { getOrGenerateIdempotencyKey } from "./idempotency"
 
 // Instância única para gerenciar a renovação de tokens no navegador
 const tokenAdapter = new WebTokenAdapter()
@@ -158,11 +159,18 @@ export async function apiCall<T>(endpoint: string, options: ApiOptions = {}): Pr
     const token = await tokenManager.getValidToken()
     
     const isFormData = options.body instanceof FormData
+    const method = options.method?.toUpperCase() || "GET"
+    const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method)
 
     const headers = {
       ...(isFormData ? API_CONFIG.HEADERS_FORM : API_CONFIG.HEADERS),
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
+    }
+
+    // Adiciona o header Idempotency-Key nas requisições de mutação
+    if (isMutation && !headers["Idempotency-Key"]) {
+      headers["Idempotency-Key"] = getOrGenerateIdempotencyKey(endpoint, options.body)
     }
 
     const response = await fetch(url, { ...options, headers })
