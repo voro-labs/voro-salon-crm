@@ -454,3 +454,4 @@ Substituir o redirect final para ler `defaultPage` dos flags, similar ao `terms/
 3. Fazer login novamente
 4. Completar etapas de onboarding (se houver)
 5. Verificar que redireciona para `/appointments` e não para `/`
+
