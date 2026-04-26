@@ -44,6 +44,7 @@ builder.Services
     .AddJwtAuthentication(builder.Configuration)
     .AddRateLimitingConf()
     .AddMemoryCache()
+    .AddRedisCache(builder.Configuration)
     .AddLogging()
     .AddHttpContextAccessor()
     .AddHttpClient()
