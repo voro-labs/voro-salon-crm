@@ -21,7 +21,7 @@ export default function ReportsPage() {
   const [currentDate, setCurrentDate] = useState(() => startOfMonth(new Date()))
 
   const { data: metrics, isLoading } = useSWR(
-    `${API_CONFIG.ENDPOINTS.DASHBOARD || "/api/v1/dashboard"}/metrics`,
+    `${API_CONFIG.ENDPOINTS.DASHBOARD || "/api/v1/dashboard/metrics"}`,
     fetcher
   )
 
@@ -47,7 +47,7 @@ export default function ReportsPage() {
     <div className="flex flex-col gap-6 p-6">
       <PageHeader
         title="Relatórios"
-        subtitle="Acompanhe o desempenho do seu estabelecimento"
+        description="Acompanhe o desempenho do seu estabelecimento"
       />
 
       {isLoading ? (

@@ -19,6 +19,7 @@ import {
   DollarSign,
   User,
   GitBranch,
+  BarChart3,
 } from "lucide-react"
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
@@ -102,6 +103,13 @@ const navItems = [
     icon: GitBranch,
     roles: ["SalonOwner", "Owner"],
     moduleId: 9
+  },
+  {
+    title: "Relatórios",
+    href: "/reports",
+    icon: BarChart3,
+    roles: ["SalonOwner", "Owner"],
+    moduleId: 6 // Reports
   },
   {
     title: "Perfil",
