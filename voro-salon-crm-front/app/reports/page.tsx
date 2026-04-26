@@ -98,7 +98,7 @@ export default function ReportsPage() {
                   {revenueByMonth.slice(-6).map((m: any) => (
                     <div key={m.month} className="flex flex-col items-center flex-1 gap-1">
                       <div
-                        className="bg-primary rounded-t w-full min-h-[4px] transition-all hover:bg-primary/80"
+                        className="bg-primary rounded-t w-full min-h-1 transition-all hover:bg-primary/80"
                         style={{
                           height: maxRevenue > 0 ? `${(m.total / maxRevenue) * 100}%` : "4px",
                         }}
