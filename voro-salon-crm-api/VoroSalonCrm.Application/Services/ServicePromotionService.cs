@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
@@ -11,15 +12,25 @@ namespace VoroSalonCrm.Application.Services
         IServicePromotionRepository promotionRepository,
         IServiceRepository serviceRepository,
         ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork) : IServicePromotionService
+        IUnitOfWork unitOfWork,
+        ICacheService cacheService) : IServicePromotionService
     {
         public async Task<IEnumerable<ServicePromotionDto>> GetAllAsync()
         {
+            var tenantId = currentUserService.TenantId;
+            var cacheKey = $"promotions:tenant:{tenantId}";
+
+            var cached = await cacheService.GetAsync<List<ServicePromotionDto>>(cacheKey);
+            if (cached is not null) return cached;
+
             var promotions = await promotionRepository
                 .Include(p => p.Service)
                 .ToListAsync();
 
-            return promotions.Select(MapToDto);
+            var result = promotions.Select(MapToDto).ToList();
+
+            await cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));
+            return result;
         }
 
         public async Task<ServicePromotionDto?> GetByIdAsync(Guid id)
@@ -56,6 +67,9 @@ namespace VoroSalonCrm.Application.Services
             await promotionRepository.AddAsync(promotion);
             await unitOfWork.SaveChangesAsync();
 
+            await cacheService.RemoveAsync($"promotions:tenant:{tenantId}");
+            await cacheService.RemoveAsync($"services:tenant:{tenantId}");
+
             promotion.Service = service;
             return MapToDto(promotion);
         }
@@ -77,6 +91,10 @@ namespace VoroSalonCrm.Application.Services
             promotionRepository.Update(promotion);
             await unitOfWork.SaveChangesAsync();
 
+            var tenantId = currentUserService.TenantId;
+            await cacheService.RemoveAsync($"promotions:tenant:{tenantId}");
+            await cacheService.RemoveAsync($"services:tenant:{tenantId}");
+
             return MapToDto(promotion);
         }
 
@@ -87,6 +105,10 @@ namespace VoroSalonCrm.Application.Services
 
             promotionRepository.Delete(promotion);
             await unitOfWork.SaveChangesAsync();
+
+            var tenantId = currentUserService.TenantId;
+            await cacheService.RemoveAsync($"promotions:tenant:{tenantId}");
+            await cacheService.RemoveAsync($"services:tenant:{tenantId}");
 
             return true;
         }
