@@ -3,168 +3,454 @@
 ## ~~Task 1: Modo de Visualização "Agenda"~~ ✅
 ## ~~Task 2: Whisper + IA para Transcrição de Áudio~~ ✅
 ## ~~Task 3: Popup de Cadastro Rápido na Agenda~~ ✅
-
----
-
 ## ~~Task 4: Alterar Status Inline nas 3 Visualizações~~ ✅
-
-### Contexto
-Atualmente, para alterar o status de um agendamento (Pendente → Confirmado → Concluído → Cancelado → Faltou), o usuário precisa abrir a página de detalhe (`/appointments/[id]`). Isso é lento no dia a dia. Precisamos de um dropdown/popover inline em cada agendamento, nas 3 visualizações (Lista, Agenda, Grade).
-
-### API existente
-```
-PATCH /api/v1/appointments/{id}/status
-Body: number (0 = Pendente, 1 = Confirmado, 2 = Concluído, 3 = Cancelado, 4 = Faltou)
-```
-
-### Status config existente (`components/ui/custom/status-badge.tsx`)
-```ts
-export const appointmentStatusConfig: Record<AppointmentStatusId, { label: string; color: string; icon: LucideIcon }> = {
-  0: { label: "Pendente", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Circle },
-  1: { label: "Confirmado", color: "bg-blue-100 text-blue-800 border-blue-200", icon: CalendarDays },
-  2: { label: "Concluído", color: "bg-green-100 text-green-800 border-green-200", icon: CheckCircle2 },
-  3: { label: "Cancelado", color: "bg-red-100 text-red-800 border-red-200", icon: XCircle },
-  4: { label: "Faltou", color: "bg-gray-100 text-gray-800 border-gray-200", icon: AlertCircle },
-}
-```
-
-### Implementação
-
-#### 1. Função `updateAppointmentStatus` no `AppointmentsPage`
-```ts
-async function updateAppointmentStatus(id: string, newStatus: number) {
-  const res = await secureApiCall(
-    `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`,
-    { method: "PATCH", body: JSON.stringify(newStatus) }
-  )
-  if (res.hasError) { toast.error("Erro ao atualizar status."); return }
-  toast.success(`Status atualizado para ${statusLabels[newStatus]}`)
-  mutateCalendar()   // atualiza agenda/grade
-  // TODO: mutar também a lista se estiver em modo lista
-}
-```
-
-Precisa importar `toast` de `sonner` e adicionar `mutate` do SWR de items da lista.
-
-#### 2. Componente `StatusDropdown`
-Um `DropdownMenu` (já existe em `components/ui/dropdown-menu.tsx`) que:
-- Trigger: o `StatusBadge` existente, com cursor pointer
-- Content: 5 itens (um por status), cada um com ícone + label + destaque no status atual
-- Ao clicar em um item: chama `updateAppointmentStatus(apt.id, newStatus)`
-- Enquanto está salvando: desabilita os itens
-
-```tsx
-function StatusDropdown({ appointmentId, currentStatus, onStatusChange }: {
-  appointmentId: string
-  currentStatus: number
-  onStatusChange: (id: string, newStatus: number) => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <button><StatusBadge status={currentStatus} /></button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {Object.entries(appointmentStatusConfig).map(([key, config]) => {
-          const Icon = config.icon
-          const isActive = currentStatus === Number(key)
-          return (
-            <DropdownMenuItem
-              key={key}
-              onClick={(e) => { e.stopPropagation(); onStatusChange(appointmentId, Number(key)) }}
-              className={isActive ? "font-bold" : ""}
-            >
-              <Icon className="h-4 w-4 mr-2" />
-              {config.label}
-              {isActive && <Check className="ml-auto h-3 w-3" />}
-            </DropdownMenuItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-```
-
-**`e.stopPropagation()`** é essencial — sem isso, o clique no badge propagaria para o row e abriria a tela de detalhe ou navegaria.
-
-#### 3. Integrar nas 3 visualizações
-
-**Lista** (cards em `finalFiltered.map()`): substituir `<StatusBadge status={apt.status} />` pelo `<StatusDropdown>`. O card inteiro é um `<Link>`, então o dropdown precisa de `e.preventDefault()` + `e.stopPropagation()` no trigger.
-
-**Agenda** (`AgendaDayView` — slot `info.type === "appointment"`): adicionar o `StatusDropdown` no final da row do appointment, passando um callback `onStatusChange` como prop do componente.
-
-**Grade** (`CalendarWeekView` — blocos de appointment): mais apertado por espaço. Adicionar o dropdown no bloco de appointment, com trigger menor.
-
-#### 4. Props novas para `AgendaDayView` e `CalendarWeekView`
-```ts
-onStatusChange: (appointmentId: string, newStatus: number) => void
-```
-
-#### 5. Considerações
-- `stopPropagation` em todos os triggers para não abrir a tela de detalhe
-- Na grade (calendar), se o bloco for muito pequeno (duração < 30min), mostrar o dropdown icon-only
-- Mutar tanto `mutateCalendar` quanto `mutate(listSWRKey)` para manter tudo sincronizado
-- Não precisa de confirmação para trocar status (é reversível e inline)
-
----
-
 ## ~~Task 5: Auditoria de Uso do Whisper por Tenant~~ ✅
 
+---
+
+## Task 6: Popup do Whisper deve continuar aberto durante gravação
+
 ### Contexto
-O endpoint `POST /api/v1/appointments/transcribe-audio` usa o Whisper (OpenAI) e o Gemini. Precisamos registrar cada uso para saber qual tenant está consumindo mais, para futura cobrança proporcional.
+Quando o usuário clica em "Iniciar gravação" no popup de instrução do Whisper, o popup fecha imediatamente (`setShowAudioModal(false)` na linha 805 de `beginRecording()`). O usuário perde a referência visual do que falar. O popup deve permanecer aberto mostrando o timer e o exemplo de frase enquanto o áudio está sendo gravado.
 
-### Infraestrutura existente
-Já existe `IntegrationAuditLog` com campos perfeitos para isso:
-- `IntegrationName` → `"Whisper"` ou `"Gemini"`
-- `Endpoint` → URL da API chamada
-- `StatusCode` → HTTP status da resposta
-- `RequestPayload` → metadata (nome do arquivo, tamanho, idioma)
-- `ResponsePayload` → texto transcrito (ou erro)
-- `TenantId` → qual tenant usou
-- `Timestamp` → quando
-
-`IIntegrationAuditService.LogAsync()` já faz o INSERT. Só precisa chamar.
+### Arquivo
+- `voro-salon-crm-front/app/appointments/page.tsx`
 
 ### Implementação
 
-No `TranscribeAudio` do `AppointmentsController.cs`:
+**1. Remover o `setShowAudioModal(false)` do início de `beginRecording()` (linha 805)**
 
-1. Injetar `IIntegrationAuditService` e `ICurrentUserService` via `[FromServices]`
-2. Após chamar Whisper, registrar:
-```csharp
-await integrationAuditService.LogAsync(
-    "Whisper",
-    "https://api.openai.com/v1/audio/transcriptions",
-    $"file={audio.FileName}, size={audio.Length}bytes, lang=pt",
-    transcript.Length > 500 ? transcript[..500] : transcript,
-    200,   // ou status real
-    currentUserService.TenantId
-);
-```
-3. Após chamar Gemini, registrar:
-```csharp
-await integrationAuditService.LogAsync(
-    "Gemini-Transcription",
-    "generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-    $"systemPrompt length={systemPrompt.Length}, userMessage length={transcript.Length}",
-    rawResult.Length > 500 ? rawResult[..500] : rawResult,
-    200,
-    currentUserService.TenantId
-);
+**2. Alterar o conteúdo do Dialog para mostrar estado de gravação quando `isRecording === true`**
+
+Dentro do Dialog `showAudioModal` (linhas 1163-1217), renderizar condicionalmente:
+- Se `isRecording === false`: conteúdo atual (instruções + botão "Iniciar gravação")
+- Se `isRecording === true`: mostrar timer com countdown (`MAX_RECORDING_SECONDS - recordingSeconds`), ícone pulsante vermelho, o exemplo de frase ainda visível, e botão "Parar gravação"
+
+```tsx
+{/* Dentro do DialogContent do showAudioModal */}
+{isRecording ? (
+  <div className="flex flex-col items-center gap-4 py-4">
+    <div className="flex items-center justify-center h-16 w-16 rounded-full bg-red-100 animate-pulse">
+      <Mic className="h-8 w-8 text-red-500" />
+    </div>
+    <p className="text-lg font-mono font-bold text-red-500 tabular-nums">
+      {MAX_RECORDING_SECONDS - recordingSeconds}s
+    </p>
+    <div className="rounded-lg bg-muted/40 border border-border/60 px-4 py-3 w-full">
+      <p className="text-sm text-foreground leading-relaxed italic">
+        "Agendar a Maria Silva para corte e escova na sexta-feira às 14h, vai durar 1 hora e meia, valor R$ 120."
+      </p>
+    </div>
+    <Button variant="destructive" className="w-full" onClick={() => { stopRecording(); setShowAudioModal(false) }}>
+      <Square className="mr-2 h-4 w-4" />
+      Parar gravação
+    </Button>
+  </div>
+) : (
+  /* conteúdo atual de instruções + botão iniciar */
+)}
 ```
 
-### Resultado
-Com isso, para gerar relatórios de uso basta:
-```sql
-SELECT TenantId, IntegrationName, COUNT(*) as total_calls, MIN(Timestamp) as first_use, MAX(Timestamp) as last_use
-FROM IntegrationAuditLogs
-WHERE IntegrationName IN ('Whisper', 'Gemini-Transcription')
-GROUP BY TenantId, IntegrationName
-ORDER BY total_calls DESC;
+**3. Fechar o modal ao parar a gravação**
+
+No `stopRecording()` e no auto-stop por tempo (linha 840-841), adicionar `setShowAudioModal(false)` após parar:
+
+```tsx
+// No auto-stop dentro do setInterval (linha 839-841):
+if (elapsed >= MAX_RECORDING_SECONDS) {
+  mr.stop()
+  setIsRecording(false)
+  setShowAudioModal(false) // ← adicionar
+}
+```
+
+No botão "Parar gravação" do modal, já incluir `setShowAudioModal(false)` no onClick (como mostrado acima).
+
+**4. Impedir fechar o modal durante gravação**
+
+No `<Dialog>` do `showAudioModal`, impedir fechar clicando fora enquanto grava:
+
+```tsx
+<Dialog
+  open={showAudioModal}
+  onOpenChange={(open) => {
+    if (!open && isRecording) return // bloqueia fechar durante gravação
+    setShowAudioModal(open)
+  }}
+>
+```
+
+---
+
+## Task 7: Botão "Completo" do Quick Action deve enviar cliente e serviço
+
+### Contexto
+No popup de agendamento rápido (quick create), o botão "Completo" redireciona para `/appointments/new` passando apenas `date`, `hour`, `minute`. Não envia `clientId` nem `serviceId`, então o formulário completo abre vazio.
+
+### Arquivos
+- `voro-salon-crm-front/app/appointments/page.tsx` (link do botão Completo, linha 1154)
+- `voro-salon-crm-front/app/appointments/new/page.tsx` (leitura dos searchParams, linhas 89-115)
+
+### Implementação
+
+**1. Atualizar o href do botão "Completo" (linha 1153-1156 de `appointments/page.tsx`)**
+
+Substituir:
+```tsx
+<Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}` : "/appointments/new"}>
+```
+
+Por:
+```tsx
+<Link href={quickCreateSlot ? `/appointments/new?date=${format(quickCreateSlot.date, "yyyy-MM-dd")}&hour=${quickCreateSlot.hour}&minute=${quickCreateSlot.minute}${qcForm.clientId ? `&clientId=${qcForm.clientId}` : ""}${qcForm.serviceId && qcForm.serviceId !== "none" ? `&serviceId=${qcForm.serviceId}` : ""}` : "/appointments/new"}>
+```
+
+**2. Ler `clientId` e `serviceId` nos searchParams do `new/page.tsx`**
+
+No `useEffect` de pré-preenchimento (linhas 89-115), adicionar:
+
+```tsx
+const clientIdParam = searchParams.get("clientId")
+const serviceIdParam = searchParams.get("serviceId")
+
+if (clientIdParam) updates.clientId = clientIdParam
+if (serviceIdParam) {
+  updates.serviceId = serviceIdParam
+  // Se serviceIds array é usado, popular também
+  // Buscar dados do serviço para preencher amount/duration
+}
+```
+
+Verificar se o hook `useAppointmentForm` aceita `serviceId` via `setForm`. Caso use `serviceIds` (array), adaptar para `updates.serviceIds = [serviceIdParam]`.
+
+---
+
+## Task 8: Header dos dias da semana desalinhado na grade (Calendar)
+
+### Contexto
+Na visualização de grade semanal (`CalendarWeekView`), o header com os dias da semana está deslocado para a direita em relação às colunas do body. Isso acontece porque o body tem `overflow-y-auto` (barra de scroll vertical), e o header não. A scrollbar do body reduz a largura útil das colunas, causando desalinhamento.
+
+### Arquivo
+- `voro-salon-crm-front/app/appointments/page.tsx` — função `CalendarWeekView` (linhas 362-491)
+
+### Implementação
+
+**Abordagem: esconder a scrollbar nativa e manter scroll funcional**
+
+Adicionar uma classe CSS utilitária para esconder a scrollbar. No div do body (linha 394):
+
+```tsx
+<div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: "calc(100vh - 300px)" }}>
+```
+
+Adicionar o CSS globalmente (em `globals.css` ou equivalente):
+
+```css
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+```
+
+**OU abordagem alternativa: adicionar `overflow-y: scroll` ao header**
+
+Forçar o header a ter a mesma scrollbar (invisível) que o body:
+
+```tsx
+{/* Header */}
+<div className="grid grid-cols-8 border-b bg-muted/30 sticky top-0 z-10 overflow-y-scroll scrollbar-hide">
+```
+
+E aplicar `overflow-y: scroll` no body também (em vez de `auto`), para que ambos sempre reservem espaço para scrollbar.
+
+**Verificar também a versão mobile** — o mobile usa `grid-cols-2` e provavelmente não tem esse problema, mas conferir.
+
+---
+
+## Task 9: Hover verde pisca e desaparece em horários passados na grade
+
+### Contexto
+Na grade semanal, quando o mouse passa sobre um slot de horário que já passou, o hover verde aparece brevemente e some. O problema está na combinação de classes CSS nos slots passados.
+
+### Arquivo
+- `voro-salon-crm-front/app/appointments/page.tsx` — slots da `CalendarWeekView`
+
+### Análise
+Slots passados (linhas 438-440, desktop / 304-309, mobile) têm:
+```
+"bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
+```
+
+O `opacity-60` afeta TODA a div incluindo o hover. Combinado com `transition-colors duration-150`, o efeito hover fica quase invisível. Se o tema usa `accent` verde, pode haver conflito com slots vizinhos.
+
+### Implementação
+
+**1. Remover `opacity-60` dos slots passados e usar cor de fundo mais escura como indicador de "passado"**
+
+Substituir (em AMBOS desktop e mobile, linhas ~438 e ~304):
+
+De:
+```
+past ? "bg-muted/30 cursor-pointer opacity-60 hover:bg-amber-50/50"
+```
+
+Para:
+```
+past ? "bg-muted/40 cursor-pointer hover:bg-accent/15"
+```
+
+Isso remove o `opacity-60` que causa o efeito fantasma e usa `hover:bg-accent/15` que é consistente com os slots disponíveis (que usam `hover:bg-accent/10`), só um pouco mais suave.
+
+**2. Aplicar nos dois locais (desktop e mobile)**
+
+- Desktop: linha ~438 dentro do `days.map()` → `hours.flatMap()` → slot div
+- Mobile: linha ~304 dentro do `hours.flatMap()` → slot div
+
+---
+
+## Task 10: Grade deve abrir Quick Action em vez de navegar para nova página
+
+### Contexto
+Na grade semanal, ao clicar num slot de horário **futuro**, o sistema navega para `/appointments/new`. Deveria abrir o popup de Quick Action (agendamento rápido) igual faz para slots passados.
+
+### Arquivo
+- `voro-salon-crm-front/app/appointments/page.tsx` — callback `onSlotClick` da `CalendarWeekView` (linhas 1471-1479)
+
+### Implementação
+
+Substituir o callback `onSlotClick` passado ao `CalendarWeekView` (linhas 1471-1479):
+
+De:
+```tsx
+onSlotClick={(date, hour, minute) => {
+  const slotTime = new Date(date)
+  slotTime.setHours(hour, minute, 0, 0)
+  if (slotTime < new Date()) {
+    openQuickCreate(date, hour, minute)
+  } else {
+    const iso = format(date, "yyyy-MM-dd")
+    router.push(`/appointments/new?date=${iso}&hour=${hour}&minute=${minute}`)
+  }
+}}
+```
+
+Para:
+```tsx
+onSlotClick={(date, hour, minute) => {
+  openQuickCreate(date, hour, minute)
+}}
+```
+
+Isso faz a grade funcionar igual à agenda (`AgendaDayView`), que já usa `openQuickCreate` para todos os slots (linha 1490).
+
+A função `openQuickCreate` já detecta se o slot é passado ou futuro (via `isHistoric`) e ajusta o status padrão do formulário.
+
+---
+
+## Task 11: Relatórios mensais para acompanhamento
+
+### Contexto
+Adicionar uma página de relatórios mensais no frontend. No futuro, esses relatórios serão enviados por e-mail em PDF automaticamente. Por enquanto, criar a visualização na plataforma.
+
+### Dados já disponíveis na API
+
+O endpoint `GET /api/v1/dashboard/metrics` já retorna:
+- `monthlyRevenue` — faturamento do mês
+- `monthlyServiceCount` — qtd de serviços no mês
+- `totalClients` — total de clientes
+- `revenueByMonth` — array com `{ month, monthLabel, total, count }` dos últimos meses
+- `topClients` — array com `{ name, serviceCount, totalSpent }`
+
+### Arquivos a criar/modificar
+
+- **Criar:** `voro-salon-crm-front/app/reports/page.tsx`
+- **Criar:** `voro-salon-crm-front/app/reports/layout.tsx` (com AuthGuard)
+- **Modificar:** `voro-salon-crm-front/components/layout/admin/sidebar.tsx` — adicionar link "Relatórios"
+- **Modificar:** `voro-salon-crm-front/middleware.ts` — adicionar `/reports` em `PROTECTED_PATHS`
+- **Modificar:** `voro-salon-crm-front/app/settings/page.tsx` — adicionar `/reports` no `DEFAULT_PAGE_OPTIONS`
+
+### Implementação da página
+
+**1. Layout (`reports/layout.tsx`)**
+```tsx
+import { AuthGuard } from "@/components/auth/auth.guard"
+export default function ReportsLayout({ children }: { children: React.ReactNode }) {
+  return <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>{children}</AuthGuard>
+}
+```
+
+**2. Página (`reports/page.tsx`)**
+
+Estrutura:
+- `PageHeader` com título "Relatórios"
+- Seletor de mês/ano (usar `date-fns` para navegar entre meses)
+- Cards de métricas: Faturamento, Serviços realizados, Novos clientes
+- Gráfico de faturamento mensal (últimos 6 meses) — usar `recharts` se já instalado, senão barras CSS simples
+- Tabela de top clientes
+
+Usar `useSWR` com `API_CONFIG.ENDPOINTS.DASHBOARD_METRICS` (ou `/api/v1/dashboard/metrics`).
+
+Verificar se `API_CONFIG.ENDPOINTS` já tem `DASHBOARD_METRICS`. Caso não, adicionar em `lib/api.ts`:
+```ts
+DASHBOARD_METRICS: `${BASE}/dashboard/metrics`,
+```
+
+**3. Estilo dos cards de métrica**
+```tsx
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <Card>
+    <CardContent className="p-4">
+      <p className="text-xs text-muted-foreground uppercase tracking-wider">Faturamento</p>
+      <p className="text-2xl font-bold">{formatCurrency(metrics.monthlyRevenue)}</p>
+    </CardContent>
+  </Card>
+  {/* ... mais cards */}
+</div>
+```
+
+**4. Gráfico de barras simples (sem dependência extra)**
+```tsx
+{metrics.revenueByMonth.map((m) => (
+  <div key={m.month} className="flex items-end gap-1">
+    <div
+      className="bg-primary rounded-t w-full min-h-[4px]"
+      style={{ height: `${(m.total / maxRevenue) * 100}%` }}
+    />
+    <span className="text-[10px] text-muted-foreground">{m.monthLabel}</span>
+  </div>
+))}
+```
+
+**5. Tabela de top clientes**
+```tsx
+<table className="w-full text-sm">
+  <thead>
+    <tr className="border-b text-left text-xs text-muted-foreground">
+      <th className="py-2">Cliente</th>
+      <th className="py-2 text-right">Serviços</th>
+      <th className="py-2 text-right">Total gasto</th>
+    </tr>
+  </thead>
+  <tbody>
+    {metrics.topClients.map((c) => (
+      <tr key={c.name} className="border-b">
+        <td className="py-2 font-medium">{c.name}</td>
+        <td className="py-2 text-right">{c.serviceCount}</td>
+        <td className="py-2 text-right">{formatCurrency(c.totalSpent)}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+```
+
+**6. Sidebar**
+Adicionar item no array de navegação da sidebar:
+```tsx
+{ href: "/reports", label: "Relatórios", icon: BarChart3 }
+```
+Importar `BarChart3` de `lucide-react`. Posicionar após "Finanças".
+
+**7. Middleware**
+Em `PROTECTED_PATHS` (linha 48-64 de `middleware.ts`), adicionar:
+```ts
+"/reports",
 ```
 
 ### Considerações
-- Não bloquear a transcrição se a auditoria falhar (try/catch isolado)
-- Não armazenar o áudio em si, apenas metadata (filename, size)
-- Truncar payloads longos (max 500 chars) para não inflar o banco
+- Somente `SalonOwner` e `Owner` têm acesso (não `SalonEmployee`)
+- O endpoint de métricas já filtra por tenant automaticamente
+- Para o envio por e-mail em PDF no futuro, a API precisará de um endpoint novo — não implementar agora
+- Verificar se `recharts` está no `package.json`; se sim, usar para gráficos. Se não, usar barras CSS puras
+
+---
+
+## Task 12: Primeiro login redireciona para dashboard em vez da página configurada
+
+### Contexto
+Quando o usuário faz login e tem etapas de onboarding (aceitar termos, completar perfil), ao finalizar a última etapa ele é redirecionado para `/` (dashboard) em vez da página configurada como principal (`defaultPage` do tenant).
+
+### Arquivos
+- `voro-salon-crm-front/app/admin/complete-profile/page.tsx` — linha 70: `router.replace("/")`
+- `voro-salon-crm-front/app/admin/terms/page.tsx` — linha 52: fallback `"/"`
+- `voro-salon-crm-front/app/admin/change-password/page.tsx` — linha 73: mesma lógica
+- `voro-salon-crm-front/hooks/use-sign-in.hook.ts` — onde `defaultPage` é resolvido
+- `voro-salon-crm-front/app/admin/verify-2fa/page.tsx` — linha 166: usa `redirectTo` sem consultar `defaultPage`
+
+### Causa raiz
+As páginas de onboarding (`terms`, `complete-profile`, `change-password`) redirecionam com `router.replace("/")` quando terminam, sem consultar o `defaultPage` do tenant. O `verify-2fa` usa `redirectTo` (que por padrão é `/`) sem consultar o `defaultPage`.
+
+### Implementação
+
+**1. Salvar `defaultPage` no sessionStorage durante o login**
+
+No `use-sign-in.hook.ts`, após buscar o tenant (linha 88), salvar:
+
+```tsx
+sessionStorage.setItem("post_login_flags", JSON.stringify({
+  requiresPasswordChange: !!response.data.requiresPasswordChange,
+  requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
+  requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+  defaultPage: tenantRes.data?.defaultPage || "/",  // ← adicionar
+}))
+```
+
+**2. No `verify-2fa/page.tsx`, salvar também:**
+
+Na linha ~152, adicionar `defaultPage` ao `post_login_flags`:
+
+```tsx
+sessionStorage.setItem("post_login_flags", JSON.stringify({
+  requiresPasswordChange: !!response.data.requiresPasswordChange,
+  requiresTermsAcceptance: !!response.data.requiresTermsAcceptance,
+  requiresProfileCompletion: !!response.data.requiresProfileCompletion,
+  defaultPage: tenantRes.data?.defaultPage || redirectTo || "/",  // ← adicionar
+}))
+```
+
+E na linha 166, usar `defaultPage` do tenant:
+```tsx
+const defaultPage = tenantRes.data?.defaultPage || redirectTo || "/"
+// ...
+: defaultPage  // em vez de apenas redirectTo
+```
+
+**3. `complete-profile/page.tsx` — usar `defaultPage` do flags (linha 70)**
+
+Substituir:
+```tsx
+setTimeout(() => router.replace("/"), 1500)
+```
+
+Por:
+```tsx
+const flagsRaw = sessionStorage.getItem("post_login_flags")
+const defaultPage = flagsRaw ? (JSON.parse(flagsRaw).defaultPage || "/") : "/"
+sessionStorage.removeItem("post_login_flags")
+setTimeout(() => router.replace(defaultPage), 1500)
+```
+
+**4. `terms/page.tsx` — usar `defaultPage` quando é a última etapa (linha 52)**
+
+Substituir:
+```tsx
+const next = flags.requiresProfileCompletion ? "/admin/complete-profile" : "/"
+```
+
+Por:
+```tsx
+const next = flags.requiresProfileCompletion ? "/admin/complete-profile" : (flags.defaultPage || "/")
+```
+
+**5. `change-password/page.tsx` — mesma lógica (linha 73)**
+
+Substituir o redirect final para ler `defaultPage` dos flags, similar ao `terms/page.tsx`.
+
+### Teste
+1. Configurar a página principal como `/appointments` nas configurações
+2. Fazer logout
+3. Fazer login novamente
+4. Completar etapas de onboarding (se houver)
+5. Verificar que redireciona para `/appointments` e não para `/`
