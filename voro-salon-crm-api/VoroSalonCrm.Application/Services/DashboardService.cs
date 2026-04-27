@@ -2,19 +2,30 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 
 namespace VoroSalonCrm.Application.Services
 {
     public class DashboardService(
         IServiceRecordRepository serviceRepository,
-        IClientRepository clientRepository) : IDashboardService
+        IClientRepository clientRepository,
+        ICurrentUserService currentUserService,
+        ICacheService cacheService) : IDashboardService
     {
         private readonly IServiceRecordRepository _serviceRepository = serviceRepository;
         private readonly IClientRepository _clientRepository = clientRepository;
+        private readonly ICurrentUserService _currentUserService = currentUserService;
+        private readonly ICacheService _cacheService = cacheService;
 
         public async Task<DashboardMetricsDto> GetDashboardMetricsAsync()
         {
+            var tenantId = _currentUserService.TenantId;
+            var cacheKey = $"dashboard:tenant:{tenantId}";
+
+            var cached = await _cacheService.GetAsync<DashboardMetricsDto>(cacheKey);
+            if (cached is not null) return cached;
+
             var now = DateTimeOffset.UtcNow;
 
             // Current month limits
@@ -77,8 +88,6 @@ namespace VoroSalonCrm.Application.Services
             }
 
             // 4. Top Clients (Top 5 by revenue)
-            // Querying all services grouped by client since the beginning is expensive. 
-            // In SQL they joined over all services. We can do client groupings.
             var topClientsQuery = await _serviceRepository.Query()
                 .GroupBy(s => new { s.ClientId, s.Client.Name })
                 .Select(g => new
@@ -95,13 +104,16 @@ namespace VoroSalonCrm.Application.Services
                 .Select(x => new TopClientDto(x.Name, x.Count, x.TotalSpent))
                 .ToList();
 
-            return new DashboardMetricsDto(
+            var result = new DashboardMetricsDto(
                 MonthlyRevenue: monthlyRevenue,
                 MonthlyServiceCount: monthlyServiceCount,
                 TotalClients: totalClients,
                 RevenueByMonth: filledRevenueByMonth,
                 TopClients: topClientsDto
             );
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            return result;
         }
     }
 }

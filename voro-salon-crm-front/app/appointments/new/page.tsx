@@ -97,14 +97,23 @@ export default function NovoAgendamentoPage() {
 
     const updates: Partial<typeof form> = {}
 
-    if (dateParam && hourParam) {
-      const hour = parseInt(hourParam, 10)
-      const minute = parseInt(searchParams.get("minute") ?? "0", 10)
-      const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`)
-      if (!isNaN(dateObj.getTime())) {
-        setSelectedDate(dateObj)
-        const tzOffset = dateObj.getTimezoneOffset() * 60000
-        updates.scheduledDateTime = new Date(dateObj.getTime() - tzOffset).toISOString().slice(0, 16)
+    if (dateParam) {
+      if (hourParam) {
+        // Data + horário: pre-fill completo (scheduledDateTime)
+        const hour = parseInt(hourParam, 10)
+        const minute = parseInt(searchParams.get("minute") ?? "0", 10)
+        const dateObj = new Date(`${dateParam}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`)
+        if (!isNaN(dateObj.getTime())) {
+          setSelectedDate(dateObj)
+          const tzOffset = dateObj.getTimezoneOffset() * 60000
+          updates.scheduledDateTime = new Date(dateObj.getTime() - tzOffset).toISOString().slice(0, 16)
+        }
+      } else {
+        // Só data (sem horário): pre-fill apenas o calendário
+        const dateObj = new Date(`${dateParam}T12:00:00`)
+        if (!isNaN(dateObj.getTime())) {
+          setSelectedDate(dateObj)
+        }
       }
     }
 
@@ -244,7 +253,7 @@ export default function NovoAgendamentoPage() {
 
   // Set default date/time to now (rounded to next 30 min) — skip when URL params pre-fill
   useEffect(() => {
-    if (searchParams.get("date") && searchParams.get("hour") != null) return
+    if (searchParams.get("date")) return
     const now = new Date()
     now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30)
     now.setSeconds(0)

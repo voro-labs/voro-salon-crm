@@ -4,6 +4,7 @@ using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 using AppointmentServiceEntity = VoroSalonCrm.Domain.Entities.AppointmentService;
@@ -25,7 +26,8 @@ namespace VoroSalonCrm.Application.Services
         ITenantBusinessHoursRepository businessHoursRepository,
         IServicePromotionRepository servicePromotionRepository,
         IClientRatingRepository clientRatingRepository,
-        IBookingFunnelSessionRepository funnelRepository) : IPublicBookingService
+        IBookingFunnelSessionRepository funnelRepository,
+        ICacheService cacheService) : IPublicBookingService
     {
         private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
         private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
@@ -35,9 +37,14 @@ namespace VoroSalonCrm.Application.Services
         private readonly IServicePromotionRepository _servicePromotionRepository = servicePromotionRepository;
         private readonly IClientRatingRepository _clientRatingRepository = clientRatingRepository;
         private readonly IBookingFunnelSessionRepository _funnelRepository = funnelRepository;
+        private readonly ICacheService _cacheService = cacheService;
 
         public async Task<PublicTenantDto?> GetTenantBySlugAsync(string slug)
         {
+            var cacheKey = $"public:tenant:{slug}";
+            var cached = await _cacheService.GetAsync<PublicTenantDto>(cacheKey);
+            if (cached is not null) return cached;
+
             var tenant = await tenantRepository.GetBySlugAsync(slug);
             if (tenant == null) return null;
 
@@ -59,7 +66,7 @@ namespace VoroSalonCrm.Application.Services
                 h.Ranges.Select(r => new PublicBusinessHourRangeDto(r.OpenTime, r.CloseTime)).ToList()
             )).ToList();
 
-            return new PublicTenantDto(
+            var result = new PublicTenantDto(
                 tenant.Id,
                 tenant.Name,
                 tenant.Slug,
@@ -75,6 +82,9 @@ namespace VoroSalonCrm.Application.Services
             {
                 BusinessHours = businessHoursDtos.Count > 0 ? businessHoursDtos : null
             };
+
+            await _cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            return result;
         }
 
         public async Task<PublicClientDto?> CheckClientByPhoneAsync(string tenantSlug, string phone)
@@ -93,6 +103,10 @@ namespace VoroSalonCrm.Application.Services
             var tenant = await tenantRepository.GetBySlugAsync(tenantSlug);
             if (tenant == null) return Enumerable.Empty<PublicServiceDto>();
 
+            var cacheKey = $"public:services:{tenant.Id}";
+            var cachedServices = await _cacheService.GetAsync<List<PublicServiceDto>>(cacheKey);
+            if (cachedServices is not null) return cachedServices;
+
             var services = await serviceRepository.GetPublicActiveByTenantAsync(tenant.Id);
 
             var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
@@ -108,12 +122,15 @@ namespace VoroSalonCrm.Application.Services
                 .IgnoreQueryFilters()
                 .ToListAsync();
 
-            return services.Select(s =>
+            var serviceResult = services.Select(s =>
             {
                 var promo = promotions.FirstOrDefault(p => p.ServiceId == s.Id);
                 return new PublicServiceDto(s.Id, s.Name, s.Price, s.DurationMinutes,
                     s.Category, promo?.PromotionalPrice, promo != null);
-            });
+            }).ToList();
+
+            await _cacheService.SetAsync(cacheKey, serviceResult, TimeSpan.FromMinutes(5));
+            return serviceResult;
         }
 
         public async Task<IEnumerable<PublicEmployeeDto>> GetEmployeesByServiceAsync(string tenantSlug, Guid serviceId)
@@ -121,9 +138,16 @@ namespace VoroSalonCrm.Application.Services
             var tenant = await tenantRepository.GetBySlugAsync(tenantSlug);
             if (tenant == null) return Enumerable.Empty<PublicEmployeeDto>();
 
+            var cacheKey = $"public:employees:{tenant.Id}:{serviceId}";
+            var cachedEmployees = await _cacheService.GetAsync<List<PublicEmployeeDto>>(cacheKey);
+            if (cachedEmployees is not null) return cachedEmployees;
+
             var employees = await employeeRepository.GetPublicEmployeesByServiceAsync(tenant.Id, serviceId);
 
-            return employees.Select(e => new PublicEmployeeDto(e.Id, e.Name, e.PhotoUrl));
+            var employeeResult = employees.Select(e => new PublicEmployeeDto(e.Id, e.Name, e.PhotoUrl)).ToList();
+
+            await _cacheService.SetAsync(cacheKey, employeeResult, TimeSpan.FromMinutes(5));
+            return employeeResult;
         }
 
         public async Task<PublicBookingResponseDto> CreateBookingAsync(PublicBookingCreateDto dto)

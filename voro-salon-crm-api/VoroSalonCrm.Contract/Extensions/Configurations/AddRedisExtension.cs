@@ -13,14 +13,13 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
 
             if (string.IsNullOrEmpty(redisConnectionString))
             {
-                // Fallback para cache em memória se Redis não estiver configurado
                 services.AddDistributedMemoryCache();
             }
             else
             {
                 services.AddStackExchangeRedisCache(options =>
                 {
-                    options.Configuration = redisConnectionString;
+                    options.Configuration = NormalizeConnectionString(redisConnectionString);
                     options.InstanceName = "jasmim:";
                 });
             }
@@ -28,6 +27,31 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddSingleton<ICacheService, RedisCacheService>();
 
             return services;
+        }
+
+        private static string NormalizeConnectionString(string connectionString)
+        {
+            if (!connectionString.StartsWith("redis://", StringComparison.OrdinalIgnoreCase) &&
+                !connectionString.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase))
+                return connectionString;
+
+            var uri = new Uri(connectionString);
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : 6379;
+            var password = uri.UserInfo?.Contains(':') == true
+                ? uri.UserInfo.Split(':', 2)[1]
+                : uri.UserInfo;
+            var useSsl = connectionString.StartsWith("rediss://", StringComparison.OrdinalIgnoreCase);
+
+            var parts = new List<string> { $"{host}:{port}" };
+            if (!string.IsNullOrEmpty(password))
+                parts.Add($"password={password}");
+            if (useSsl)
+                parts.Add("ssl=true");
+            parts.Add("abortConnect=false");
+            parts.Add("connectTimeout=10000");
+
+            return string.Join(",", parts);
         }
     }
 }

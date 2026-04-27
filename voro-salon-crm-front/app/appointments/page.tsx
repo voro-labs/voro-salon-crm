@@ -4,14 +4,14 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List, CalendarDays, Mic, Square, Zap, Check } from "lucide-react"
+import { Plus, Search, Calendar, Clock, Lock, MessageCircle, Ban, X, ChevronLeft, ChevronRight, LayoutGrid, List, CalendarDays, Mic, Square, Zap, Check, AlertTriangle, Loader2 } from "lucide-react"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { SearchableSelect } from "@/components/ui/custom/searchable-select"
 import { CurrencyInput } from "@/components/currency-input"
 import { format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek, isSameDay, addWeeks, subWeeks, isToday } from "date-fns"
@@ -723,6 +723,25 @@ export default function AppointmentsPage() {
     mutateCalendar()
   }
 
+  // ── Overdue status update ─────────────────────────────────────────────────
+  async function handleOverdueStatusUpdate(id: string, newStatus: number) {
+    setUpdatingOverdueId(id)
+    try {
+      const res = await secureApiCall(
+        `${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`,
+        { method: "PATCH", body: JSON.stringify(newStatus) }
+      )
+      if ((res as any).hasError) { toast.error("Erro ao atualizar status."); return }
+      const statusLabels: Record<number, string> = { 2: "Concluído", 3: "Cancelado", 4: "Faltou" }
+      toast.success(`Status atualizado para ${statusLabels[newStatus] ?? newStatus}`)
+      mutateOverdue()
+      mutateList()
+      mutateCalendar()
+    } finally {
+      setUpdatingOverdueId(null)
+    }
+  }
+
   // ── Quick create state ────────────────────────────────────────────────────
   const [quickCreateSlot, setQuickCreateSlot] = useState<{ date: Date; hour: number; minute: number; isHistoric: boolean } | null>(null)
   const [qcForm, setQcForm] = useState({ clientId: "", serviceId: "none", description: "", amount: 0, durationMinutes: 30, status: 0 })
@@ -856,9 +875,11 @@ export default function AppointmentsPage() {
   function buildAppointmentUrl() {
     if (!transcriptionResult) return "/appointments/new"
     const params = new URLSearchParams()
-    if (transcriptionResult.dia_marcado && transcriptionResult.horario) {
-      const [h, m] = transcriptionResult.horario.split(":").map(Number)
+    if (transcriptionResult.dia_marcado) {
       params.set("date", transcriptionResult.dia_marcado)
+    }
+    if (transcriptionResult.horario) {
+      const [h, m] = transcriptionResult.horario.split(":").map(Number)
       params.set("hour", String(h))
       params.set("minute", String(m ?? 0))
     }
@@ -869,6 +890,8 @@ export default function AppointmentsPage() {
     return `/appointments/new?${params.toString()}`
   }
   const [periodFilter, setPeriodFilter] = useState("today")
+  const [showOverdueModal, setShowOverdueModal] = useState(false)
+  const [updatingOverdueId, setUpdatingOverdueId] = useState<string | null>(null)
 
   interface AppointmentItem {
     id: string
@@ -893,6 +916,7 @@ export default function AppointmentsPage() {
     setSearch,
     setExtraParams,
     isLoading,
+    mutate: mutateList,
   } = useDataList<AppointmentItem>(API_CONFIG.ENDPOINTS.APPOINTMENTS, { pageSize: 10 })
 
   const { data: modules } = useSWR(API_CONFIG.ENDPOINTS.TENANT_MODULES, fetcher)
@@ -906,6 +930,23 @@ export default function AppointmentsPage() {
     : null
   const { data: calendarRaw, mutate: mutateCalendar } = useSWR<PagedResult<AppointmentItem>>(calendarSWRKey, fetcher)
   const calendarItems = calendarRaw?.items ?? []
+
+  // Fetch dedicado para atrasados — chave estática, sem auto-revalidação
+  // Filtragem client-side para evitar chave dinâmica (data no key causa re-fetch a cada render)
+  const overdueKey = `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?page=1&pageSize=500`
+  const { data: overdueRaw, mutate: mutateOverdue } = useSWR<PagedResult<AppointmentItem>>(overdueKey, fetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 0,
+    revalidateOnReconnect: false,
+  })
+  const overdueItems = useMemo(() => {
+    const now = new Date()
+    return (overdueRaw?.items ?? []).filter(a => {
+      const aptDate = new Date(a.scheduledDateTime)
+      return aptDate < now && (Number(a.status) === 0 || Number(a.status) === 1)
+    })
+  }, [overdueRaw])
+  const overdueCount = overdueItems.length
 
   // Quick create: clients and services (always fetched so they're ready when dialog opens)
   const { data: qcClientsRaw, mutate: mutateQcClients } = useSWR(API_CONFIG.ENDPOINTS.CLIENTS + "?pageSize=500", fetcher)
@@ -936,6 +977,16 @@ export default function AppointmentsPage() {
     return { calStartHour: Math.max(minH - 1, 0), calEndHour: Math.min(maxH + 1, 24) }
   }, [businessHours])
 
+  // Count unresolved past appointments in current page (Pending=0 or Confirmed=1, before now)
+  const pastCount = useMemo(() => {
+    if (!items?.length) return 0
+    const now = new Date()
+    return items.filter((apt: AppointmentItem) => {
+      const aptDate = new Date(apt.scheduledDateTime)
+      return aptDate < now && (apt.status === 0 || apt.status === 1)
+    }).length
+  }, [items])
+
   // Sync extraParams with periodFilter for server-side date filtering
   useEffect(() => {
     const now = new Date()
@@ -948,6 +999,13 @@ export default function AppointmentsPage() {
       setExtraParams({
         dateFrom: startOfDay(now).toISOString(),
         dateTo: endOfDay(addDays(now, 7)).toISOString(),
+      })
+    } else if (periodFilter === "past") {
+      const thirtyDaysAgo = new Date(now)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      setExtraParams({
+        dateFrom: startOfDay(thirtyDaysAgo).toISOString(),
+        dateTo: now.toISOString(),
       })
     } else {
       setExtraParams({})
@@ -1293,13 +1351,37 @@ export default function AppointmentsPage() {
               {/* Linha 1: filtro de período + toggle de visualização */}
               <div className="flex flex-wrap items-center justify-between w-full gap-2">
                 {viewMode === "list" ? (
-                  <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
-                    <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
-                      <TabsTrigger value="today" className="flex-1 sm:flex-none text-xs h-7 px-3">Hoje</TabsTrigger>
-                      <TabsTrigger value="week" className="flex-1 sm:flex-none text-xs h-7 px-3">Semana</TabsTrigger>
-                      <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs h-7 px-3">Tudo</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
+                      <TabsList className="w-full sm:w-fit bg-muted/50 border border-border/40 h-8 p-0.5">
+                        <TabsTrigger value="today" className="flex-1 sm:flex-none text-xs h-7 px-3">
+                          Hoje
+                          {periodFilter !== "past" && pastCount > 0 && (
+                            <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                              {pastCount}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                        <TabsTrigger value="week" className="flex-1 sm:flex-none text-xs h-7 px-3">Semana</TabsTrigger>
+                        <TabsTrigger value="all" className="flex-1 sm:flex-none text-xs h-7 px-3">Tudo</TabsTrigger>
+                        <TabsTrigger value="past" className="flex-1 sm:flex-none text-xs h-7 px-3">Anteriores</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/20 shrink-0"
+                      onClick={() => setShowOverdueModal(true)}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                      Atrasados
+                      {overdueCount > 0 && (
+                        <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                          {overdueCount}
+                        </span>
+                      )}
+                    </Button>
+                  </div>
                 ) : viewMode === "calendar" ? (
                   <div className="flex items-center gap-1.5">
                     <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCalendarWeek(w => subWeeks(w, 1))}>
@@ -1604,13 +1686,18 @@ export default function AppointmentsPage() {
                             <span className="truncate font-bold text-foreground">
                               {apt.clientName}
                             </span>
+                            {new Date(apt.scheduledDateTime) < new Date() && (apt.status === 0 || apt.status === 1) && (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 shrink-0">
+                                Atrasado
+                              </span>
+                            )}
                             <StatusDropdown appointmentId={apt.id} currentStatus={apt.status} onStatusChange={updateAppointmentStatus} />
                           </div>
 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1 font-medium text-primary">
                               <Clock className="h-3 w-3" />
-                              {format(date, "HH:mm")} ({apt.durationMinutes} min)
+                              {format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} ({apt.durationMinutes} min)
                             </span>
                             {(apt.serviceName || apt.description) && isModuleEnabled(3) && (
                               <span className="flex items-center gap-1">
@@ -1679,6 +1766,87 @@ export default function AppointmentsPage() {
         </>
         )}
       </div>
+
+      {/* ── Dialog Atrasados ────────────────────────────────────────────────── */}
+      <Dialog open={showOverdueModal} onOpenChange={setShowOverdueModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              Agendamentos sem atualização
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Os agendamentos abaixo já passaram e ainda estão como pendente ou confirmado.
+            </p>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto py-1 pr-1">
+            {overdueItems.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                  <Check className="h-6 w-6 text-emerald-600" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Tudo certo!</p>
+                <p className="text-xs text-muted-foreground">Nenhum agendamento pendente.</p>
+              </div>
+            ) : (
+              overdueItems.map((apt) => {
+                const date = new Date(apt.scheduledDateTime)
+                const isUpdating = updatingOverdueId === apt.id
+                return (
+                  <div key={apt.id} className="flex flex-col gap-2 rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10 p-3">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-foreground truncate">{apt.clientName}</span>
+                      <span className="text-xs text-muted-foreground truncate">{apt.serviceName || apt.description || "Sem serviço"}</span>
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1 mt-0.5">
+                        <Clock className="h-3 w-3" />
+                        {format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        disabled={isUpdating}
+                        onClick={() => handleOverdueStatusUpdate(apt.id, 2)}
+                      >
+                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Concluído"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1 border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        disabled={isUpdating}
+                        onClick={() => handleOverdueStatusUpdate(apt.id, 3)}
+                      >
+                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Cancelado"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1 border-orange-200 dark:border-orange-900/60 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                        disabled={isUpdating}
+                        onClick={() => handleOverdueStatusUpdate(apt.id, 4)}
+                      >
+                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Faltou"}
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" className="w-full" onClick={() => setShowOverdueModal(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </AuthGuard>
     </>
   )

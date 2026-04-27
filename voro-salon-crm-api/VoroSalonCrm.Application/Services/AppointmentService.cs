@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using VoroSalonCrm.Application.DTOs;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -28,7 +29,8 @@ namespace VoroSalonCrm.Application.Services
         ITenantBusinessHoursRepository businessHoursRepository,
         ITransactionRepository transactionRepository,
         ITransactionCategoryRepository transactionCategoryRepository,
-        IMemoryCache memoryCache) : IAppointmentService
+        IMemoryCache memoryCache,
+        ICacheService cacheService) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -46,6 +48,7 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITransactionRepository _transactionRepository = transactionRepository;
         private readonly ITransactionCategoryRepository _transactionCategoryRepository = transactionCategoryRepository;
         private readonly IMemoryCache _memoryCache = memoryCache;
+        private readonly ICacheService _cacheService = cacheService;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
         {
@@ -86,6 +89,8 @@ namespace VoroSalonCrm.Application.Services
 
             await _appointmentRepository.AddAsync(appointment);
             await _unitOfWork.SaveChangesAsync();
+
+            await _cacheService.RemoveAsync($"dashboard:tenant:{tenantId}");
 
             // Notifica os donos do tenant sobre o novo agendamento
             try
@@ -253,6 +258,8 @@ namespace VoroSalonCrm.Application.Services
 
             await _unitOfWork.SaveChangesAsync();
 
+            await _cacheService.RemoveAsync($"dashboard:tenant:{_currentUserService.TenantId}");
+
             // Se mudou data/hora, notifica o reagendamento (se bot ativo)
             if (dto.ScheduledDateTime.HasValue && dto.ScheduledDateTime.Value != oldDateTime)
             {
@@ -277,6 +284,8 @@ namespace VoroSalonCrm.Application.Services
 
             _appointmentRepository.Update(appointment);
             await _unitOfWork.SaveChangesAsync();
+
+            await _cacheService.RemoveAsync($"dashboard:tenant:{appointment.TenantId}");
 
             return true;
         }
@@ -307,6 +316,8 @@ namespace VoroSalonCrm.Application.Services
             }
 
             await _unitOfWork.SaveChangesAsync();
+
+            await _cacheService.RemoveAsync($"dashboard:tenant:{appointment.TenantId}");
 
             // Send push notifications to tenant owners
             if (oldStatus != status && (status == AppointmentStatus.Confirmed || status == AppointmentStatus.Cancelled || status == AppointmentStatus.Completed))

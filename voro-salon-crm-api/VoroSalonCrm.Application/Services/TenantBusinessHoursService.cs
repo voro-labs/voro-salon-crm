@@ -1,6 +1,7 @@
 using VoroSalonCrm.Application.DTOs.Tenant;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
@@ -9,13 +10,22 @@ namespace VoroSalonCrm.Application.Services
     public class TenantBusinessHoursService(
         ITenantBusinessHoursRepository repository,
         ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork) : ITenantBusinessHoursService
+        IUnitOfWork unitOfWork,
+        ICacheService cacheService) : ITenantBusinessHoursService
     {
         public async Task<IEnumerable<BusinessHoursDayDto>> GetAsync()
         {
             var tenantId = currentUserService.TenantId;
+            var cacheKey = $"businesshours:tenant:{tenantId}";
+
+            var cached = await cacheService.GetAsync<List<BusinessHoursDayDto>>(cacheKey);
+            if (cached is not null) return cached;
+
             var hours = await repository.GetByTenantAsync(tenantId);
-            return hours.Select(MapToDto);
+            var result = hours.Select(MapToDto).ToList();
+
+            await cacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(30));
+            return result;
         }
 
         public async Task<IEnumerable<BusinessHoursDayDto>> UpsertAsync(UpsertBusinessHoursDto dto)
@@ -29,7 +39,7 @@ namespace VoroSalonCrm.Application.Services
             foreach (var day in dto.Days)
             {
                 var record = existing.FirstOrDefault(h => h.DayOfWeek == day.DayOfWeek);
-                
+
                 if (record == null)
                 {
                     record = new TenantBusinessHours
@@ -59,6 +69,8 @@ namespace VoroSalonCrm.Application.Services
             }
 
             await unitOfWork.SaveChangesAsync();
+
+            await cacheService.RemoveAsync($"businesshours:tenant:{tenantId}");
 
             var updated = await repository.GetByTenantAsync(tenantId);
             return updated.Select(MapToDto);
