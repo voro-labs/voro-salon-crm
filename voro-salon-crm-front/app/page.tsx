@@ -569,7 +569,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-muted-foreground truncate">{apt.serviceName || "Sem serviço"}</span>
                         <span className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1 mt-0.5">
                           <Clock className="h-3 w-3" />
-                          {format(date, "HH:mm")}
+                          {format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                         </span>
                       </div>
                     </div>
