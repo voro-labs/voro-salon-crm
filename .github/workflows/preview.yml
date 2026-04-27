@@ -47,7 +47,7 @@ jobs:
           cd ${{ secrets.FOLDER__API }}
           flyctl secrets set \
             JWTKEY="${{ secrets.JWTKEY }}" \
-            BIRTHDAY_API_KEY="${{ secrets.BIRTHDAY_API_KEY }}" \
+            APIKEYS__BIRTHDAYGREETINGS="${{ secrets.BIRTHDAY_API_KEY }}" \
             CONNECTIONSTRING__PRODUCTION__SERVER="${{ secrets.CONNECTIONSTRING__DEVELOPMENT__SERVER }}" \
             CONNECTIONSTRING__PRODUCTION__PORT="${{ secrets.CONNECTIONSTRING__DEVELOPMENT__PORT }}" \
             CONNECTIONSTRING__PRODUCTION__DATABASE="${{ secrets.CONNECTIONSTRING__DEVELOPMENT__DATABASE }}" \
