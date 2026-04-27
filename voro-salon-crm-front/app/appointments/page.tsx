@@ -929,14 +929,21 @@ export default function AppointmentsPage() {
   const { data: calendarRaw, mutate: mutateCalendar } = useSWR<PagedResult<AppointmentItem>>(calendarSWRKey, fetcher)
   const calendarItems = calendarRaw?.items ?? []
 
-  // Fetch dedicado para atrasados — sem auto-revalidação
-  const overdueKey = `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?page=1&pageSize=200&dateTo=${encodeURIComponent(new Date().toISOString())}`
+  // Fetch dedicado para atrasados — chave estática, sem auto-revalidação
+  // Filtragem client-side para evitar chave dinâmica (data no key causa re-fetch a cada render)
+  const overdueKey = `${API_CONFIG.ENDPOINTS.APPOINTMENTS}?page=1&pageSize=500`
   const { data: overdueRaw, mutate: mutateOverdue } = useSWR<PagedResult<AppointmentItem>>(overdueKey, fetcher, {
     revalidateOnFocus: false,
     refreshInterval: 0,
     revalidateOnReconnect: false,
   })
-  const overdueItems = (overdueRaw?.items ?? []).filter(a => a.status === 0 || a.status === 1)
+  const overdueItems = useMemo(() => {
+    const now = new Date()
+    return (overdueRaw?.items ?? []).filter(a => {
+      const aptDate = new Date(a.scheduledDateTime)
+      return aptDate < now && (Number(a.status) === 0 || Number(a.status) === 1)
+    })
+  }, [overdueRaw])
   const overdueCount = overdueItems.length
 
   // Quick create: clients and services (always fetched so they're ready when dialog opens)
