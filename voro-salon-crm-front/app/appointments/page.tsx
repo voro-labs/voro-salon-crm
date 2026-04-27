@@ -875,9 +875,11 @@ export default function AppointmentsPage() {
   function buildAppointmentUrl() {
     if (!transcriptionResult) return "/appointments/new"
     const params = new URLSearchParams()
-    if (transcriptionResult.dia_marcado && transcriptionResult.horario) {
-      const [h, m] = transcriptionResult.horario.split(":").map(Number)
+    if (transcriptionResult.dia_marcado) {
       params.set("date", transcriptionResult.dia_marcado)
+    }
+    if (transcriptionResult.horario) {
+      const [h, m] = transcriptionResult.horario.split(":").map(Number)
       params.set("hour", String(h))
       params.set("minute", String(m ?? 0))
     }
