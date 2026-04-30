@@ -106,10 +106,12 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var json = await InstanceGetAsync(instance.InstanceToken, "/instance/qr", ct);
 
             string? qrCode = null;
-            if (json.TryGetProperty("qr", out var qr))
-                qrCode = qr.GetString();
-            else if (json.TryGetProperty("base64", out var b64))
-                qrCode = b64.GetString();
+            var root = json.TryGetProperty("data", out var dataEl) ? dataEl : json;
+
+            if (root.TryGetProperty("Qrcode", out var qrc)) qrCode = qrc.GetString();
+            else if (root.TryGetProperty("qrcode", out var qrcLow)) qrCode = qrcLow.GetString();
+            else if (root.TryGetProperty("qr", out var qr)) qrCode = qr.GetString();
+            else if (root.TryGetProperty("base64", out var b64)) qrCode = b64.GetString();
 
             return new EvolutionInstanceQrDto(qrCode);
         }
