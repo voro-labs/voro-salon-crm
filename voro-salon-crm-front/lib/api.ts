@@ -74,7 +74,7 @@ export const API_CONFIG = {
     PUBLIC_BOOKING_TRACK: "/public/PublicBooking/track",
     CLIENT_MEMBERSHIP_PLANS: "/clientmemberships/plans",
     CLIENT_MEMBERSHIPS: "/clientmemberships",
-    EVOLUTION_INSTANCES: "/evolution/instances",
+    EVOLUTION_INSTANCES: "/EvolutionInstance",
   },
   HEADERS: {
     "Content-Type": "application/json",
