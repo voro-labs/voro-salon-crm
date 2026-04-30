@@ -48,7 +48,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (count >= MaxInstancesPerTenant)
                 throw new InvalidOperationException($"Limite de {MaxInstancesPerTenant} instância(s) por tenant atingido.");
 
-            var instanceId = $"voro-{Guid.NewGuid().ToString("N")[..8]}";
+            var instanceId = Guid.NewGuid().ToString();
             var instanceToken = Guid.NewGuid().ToString("N");
 
             // Criar no Evolution Go
