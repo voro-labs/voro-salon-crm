@@ -83,9 +83,13 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
             var json = await InstanceGetAsync(instance.InstanceToken, "/instance/status", ct);
 
-            var state = json.TryGetProperty("state", out var s) ? s.GetString() ?? "close" : "close";
-            var newStatus = state == "open" ? EvolutionInstanceStatus.Connected
-                          : state == "connecting" ? EvolutionInstanceStatus.Connecting
+            var dataEl = json.TryGetProperty("data", out var d) ? d : json;
+            var connected = dataEl.TryGetProperty("Connected", out var c) && c.GetBoolean();
+            var loggedIn = dataEl.TryGetProperty("LoggedIn", out var l) && l.GetBoolean();
+
+            var state = loggedIn ? "open" : connected ? "connecting" : "close";
+            var newStatus = loggedIn ? EvolutionInstanceStatus.Connected
+                          : connected ? EvolutionInstanceStatus.Connecting
                           : EvolutionInstanceStatus.Disconnected;
 
             if (instance.Status != newStatus)

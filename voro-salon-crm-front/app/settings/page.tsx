@@ -39,6 +39,7 @@ import {
   DollarSign,
 } from "lucide-react"
 import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
 import { Badge } from "@/components/ui/badge"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -62,6 +63,14 @@ import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { getBrandingByType } from "@/lib/branding"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 import { toast } from "sonner"
+
+interface EvolutionInstance {
+  id: string
+  instanceId: string
+  status: 0 | 1 | 2 // 0=Disconnected, 1=Connecting, 2=Connected
+  phoneNumber: string | null
+  connectedAt: string | null
+}
 
 interface OnboardingStatus {
   connected: boolean
@@ -155,6 +164,12 @@ export default function ConfiguracoesPage() {
     fetchOnboardingStatus,
     { fallbackData: null }
   )
+  const { data: evolutionInstances } = useSWR<EvolutionInstance[]>(
+    hasWhatsAppBot ? API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES : null,
+    fetcher,
+    { fallbackData: [] }
+  )
+  const evolutionInstance = evolutionInstances?.[0] ?? null
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
@@ -1173,46 +1188,65 @@ export default function ConfiguracoesPage() {
 
           {isSalonOwner && (
             <TabsContent value="whatsapp">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="h-5 w-5 text-primary" />
-                    <CardTitle>Integração WhatsApp Business</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Configure os IDs da sua conta WhatsApp Business para ativar o bot de agendamentos.
-                    Entre em contato com a equipe VoroLabs para obter esses dados.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-5">
+              <div className="flex flex-col gap-4">
 
-                  {/* Embedded Signup Connection Card */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-lg border bg-muted/30">
-                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${onboardingStatus?.connected ? "bg-emerald-100 dark:bg-emerald-950/30" : "bg-zinc-100 dark:bg-zinc-800"}`}>
-                      {statusLoading
-                        ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        : onboardingStatus?.connected
-                          ? <Wifi className="h-5 w-5 text-emerald-600" />
-                          : <WifiOff className="h-5 w-5 text-zinc-500" />}
+                {/* ── Escolha do método ── */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="h-5 w-5 text-primary" />
+                      <CardTitle>Conexão WhatsApp</CardTitle>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">Número WhatsApp Business</span>
-                        {!statusLoading && (
-                          onboardingStatus?.connected
-                            ? <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 gap-1 text-xs">
-                                <CheckCircle className="h-3 w-3" />
-                                Conectado
-                              </Badge>
-                            : <Badge variant="outline" className="text-zinc-500 border-zinc-300 text-xs">
-                                Desconectado
-                              </Badge>
-                        )}
+                    <CardDescription>
+                      Escolha como conectar seu número ao bot. Apenas um método fica ativo por vez.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-3">
+
+                    {/* ── Opção 1: API Oficial Meta ── */}
+                    <div className={`rounded-lg border p-4 flex flex-col gap-3 transition-colors ${onboardingStatus?.connected ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10 dark:border-emerald-800" : "bg-muted/20"}`}>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${onboardingStatus?.connected ? "bg-emerald-100 dark:bg-emerald-950/40" : "bg-muted"}`}>
+                            {statusLoading
+                              ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              : onboardingStatus?.connected
+                                ? <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm leading-tight">API Oficial Meta</p>
+                            <p className="text-xs text-muted-foreground">WhatsApp Business Platform</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!statusLoading && (
+                            onboardingStatus?.connected
+                              ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 gap-1 text-xs">
+                                  <CheckCircle className="h-3 w-3" /> Conectado
+                                </Badge>
+                              : <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>
+                          )}
+                          {onboardingStatus?.connected ? (
+                            <Button variant="outline" size="sm"
+                              className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-8 text-xs"
+                              onClick={() => setDisconnectDialogOpen(true)}
+                              disabled={disconnecting || statusLoading}>
+                              {disconnecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <WifiOff className="mr-1.5 h-3 w-3" />}
+                              Desconectar
+                            </Button>
+                          ) : (
+                            <Button size="sm" className="h-8 text-xs" onClick={handleConnect} disabled={connecting || statusLoading}>
+                              {connecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Wifi className="mr-1.5 h-3 w-3" />}
+                              {connecting ? "Aguardando..." : "Conectar"}
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      {onboardingStatus?.connected ? (
-                        <div className="flex flex-col gap-0.5 mt-0.5">
+                      {onboardingStatus?.connected && (
+                        <div className="flex flex-col gap-1 pl-12">
                           {onboardingStatus.displayPhone && (
-                            <p className="text-sm text-muted-foreground font-mono">{onboardingStatus.displayPhone}</p>
+                            <p className="text-sm font-mono text-muted-foreground">{onboardingStatus.displayPhone}</p>
                           )}
                           {onboardingStatus.tokenExpiresAt && (() => {
                             const d = new Date(onboardingStatus.tokenExpiresAt!)
@@ -1227,62 +1261,80 @@ export default function ConfiguracoesPage() {
                             )
                           })()}
                         </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-0.5">Conecte via Facebook para ativar o bot.</p>
                       )}
                     </div>
-                    <div className="shrink-0">
-                      {onboardingStatus?.connected ? (
-                        <Button variant="outline" size="sm"
-                          className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => setDisconnectDialogOpen(true)}
-                          disabled={disconnecting || statusLoading}>
-                          {disconnecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <WifiOff className="mr-2 h-4 w-4" />}
-                          Desconectar
-                        </Button>
-                      ) : (
-                        <Button size="sm" onClick={handleConnect} disabled={connecting || statusLoading}>
-                          {connecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wifi className="mr-2 h-4 w-4" />}
-                          {connecting ? "Aguardando..." : "Conectar"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="wp-phone-number-id">Phone Number ID</Label>
-                    <Input
-                      id="wp-phone-number-id"
-                      placeholder="Ex: 123456789012345"
-                      value={wpPhoneNumberId}
-                      onChange={(e) => setWpPhoneNumberId(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Encontrado no painel do Meta Business &gt; WhatsApp &gt; Configuração da API.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="wp-business-account-id">Business Account ID</Label>
-                    <Input
-                      id="wp-business-account-id"
-                      placeholder="Ex: 987654321098765"
-                      value={wpBusinessAccountId}
-                      onChange={(e) => setWpBusinessAccountId(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      ID da conta do WhatsApp Business no Meta Business Manager.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3 py-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-1">
-                        <Label htmlFor="whatsapp-booking-toggle" className="font-semibold">Ativar Agendamento pelo WhatsApp</Label>
-                        <p className="text-xs text-muted-foreground">Permite que clientes agendem via Bot. Requer configuração acima.</p>
+                    {/* ── Opção 2: Evolution Go ── */}
+                    <div className={`rounded-lg border p-4 flex flex-col gap-3 transition-colors ${evolutionInstance?.status === 2 ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10 dark:border-emerald-800" : "bg-muted/20"}`}>
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${evolutionInstance?.status === 2 ? "bg-emerald-100 dark:bg-emerald-950/40" : evolutionInstance?.status === 1 ? "bg-amber-100 dark:bg-amber-950/30" : "bg-muted"}`}>
+                            {evolutionInstance?.status === 2
+                              ? <CheckCircle className="h-4 w-4 text-emerald-600" />
+                              : evolutionInstance?.status === 1
+                                ? <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                                : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm leading-tight">Evolution Go</p>
+                            <p className="text-xs text-muted-foreground">WhatsApp via servidor próprio</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {evolutionInstance?.status === 2 && (
+                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 gap-1 text-xs">
+                              <CheckCircle className="h-3 w-3" /> Conectado
+                            </Badge>
+                          )}
+                          {evolutionInstance?.status === 1 && (
+                            <Badge className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400 gap-1 text-xs">
+                              <Loader2 className="h-3 w-3 animate-spin" /> Conectando
+                            </Badge>
+                          )}
+                          {!evolutionInstance && (
+                            <Badge variant="outline" className="text-muted-foreground text-xs">Sem instância</Badge>
+                          )}
+                          {evolutionInstance && evolutionInstance.status === 0 && (
+                            <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>
+                          )}
+                          <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
+                            <Link href="/settings/whatsapp/evolution">
+                              <Wifi className="mr-1.5 h-3 w-3" />
+                              Gerenciar
+                            </Link>
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {useWhatsappBooking ? "Ativado" : "Desativado"}
-                        </span>
+                      {evolutionInstance?.status === 2 && evolutionInstance.phoneNumber && (
+                        <p className="text-sm font-mono text-muted-foreground pl-12">{evolutionInstance.phoneNumber}</p>
+                      )}
+                      {!evolutionInstance && (
+                        <p className="text-xs text-muted-foreground pl-12">Crie uma instância para conectar um número WhatsApp.</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ── Bot e configurações avançadas ── */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 text-primary" />
+                      <CardTitle>Configurações do Bot</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-4">
+
+                    {/* Booking toggle */}
+                    <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+                      <div className="flex flex-col gap-0.5">
+                        <Label htmlFor="whatsapp-booking-toggle" className="font-semibold text-sm cursor-pointer">
+                          Agendamento pelo WhatsApp
+                        </Label>
+                        <p className="text-xs text-muted-foreground">Permite que clientes agendem via bot.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{useWhatsappBooking ? "Ativo" : "Inativo"}</span>
                         <Switch
                           id="whatsapp-booking-toggle"
                           checked={useWhatsappBooking}
@@ -1290,43 +1342,50 @@ export default function ConfiguracoesPage() {
                         />
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-semibold">Conexão Evolution Go</span>
-                      <p className="text-xs text-muted-foreground">Conecte seu número via Evolution Go (alternativo à API oficial)</p>
+                    {/* IDs manuais (colapsados) */}
+                    <div className="flex flex-col gap-3">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">IDs Meta (avançado)</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1.5">
+                          <Label htmlFor="wp-phone-number-id" className="text-xs">Phone Number ID</Label>
+                          <Input
+                            id="wp-phone-number-id"
+                            placeholder="123456789012345"
+                            value={wpPhoneNumberId}
+                            onChange={(e) => setWpPhoneNumberId(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <Label htmlFor="wp-business-account-id" className="text-xs">Business Account ID</Label>
+                          <Input
+                            id="wp-business-account-id"
+                            placeholder="987654321098765"
+                            value={wpBusinessAccountId}
+                            onChange={(e) => setWpBusinessAccountId(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/settings/whatsapp/evolution">
-                        <Wifi className="mr-2 h-4 w-4" />
-                        Gerenciar Conexão
-                      </Link>
-                    </Button>
-                  </div>
 
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-semibold">Templates de Mensagem</span>
-                      <p className="text-xs text-muted-foreground">Configurar e gerenciar modelos de mensagens do WhatsApp</p>
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5" asChild>
+                        <Link href="/settings/whatsapp">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Templates de mensagem
+                        </Link>
+                      </Button>
+                      <Button onClick={handleSaveWhatsapp} disabled={savingWp} size="sm" className="gap-2">
+                        {savingWp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        <Save className="h-3.5 w-3.5" />
+                        Salvar
+                      </Button>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/settings/whatsapp">
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Gerenciar Templates
-                      </Link>
-                    </Button>
-                  </div>
-
-                  <div className="flex justify-end pt-2">
-                    <Button onClick={handleSaveWhatsapp} disabled={savingWp} className="gap-2">
-                      {savingWp && <Loader2 className="h-4 w-4 animate-spin" />}
-                      <Save className="h-4 w-4" />
-                      Salvar configuração
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           )}
         </Tabs>
