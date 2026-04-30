@@ -3,6 +3,8 @@
     public class IntegrationUtil
     {
         public WhatsappUtil Whatsapp { get; set; } = null!;
+        /// <summary>URL pública desta API (usada para construir o webhook URL do Evolution Go).</summary>
+        public string ApiPublicUrl { get; set; } = string.Empty;
     }
 
     public class WhatsappUtil
@@ -16,5 +18,9 @@
         public string AppSecret { get; set; } = string.Empty;
         public string MasterAccessToken { get; set; } = string.Empty;
         public string ConfigId { get; set; } = string.Empty;
+        // Evolution Go — apenas configuração global (tokens por tenant ficam no banco)
+        public string Provider { get; set; } = "meta";
+        public string EvolutionUrl { get; set; } = string.Empty;
+        public string EvolutionAdminToken { get; set; } = string.Empty;
     }
 }

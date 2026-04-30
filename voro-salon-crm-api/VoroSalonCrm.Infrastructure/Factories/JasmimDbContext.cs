@@ -77,6 +77,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
         public DbSet<AIConversationMessage> AIConversationMessages { get; set; }
 
+        public DbSet<TenantEvolutionInstance> TenantEvolutionInstances { get; set; }
+
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var entries = ChangeTracker.Entries()
@@ -917,6 +919,27 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 e.Property(x => x.SubscriptionSnapshot).HasMaxLength(4000);
                 e.HasIndex(x => x.TenantId);
                 e.HasIndex(x => x.ExpiresAt);
+            });
+
+            // ---------------------------
+            // TENANT EVOLUTION INSTANCE
+            // ---------------------------
+            builder.Entity<TenantEvolutionInstance>(b =>
+            {
+                b.HasKey(e => e.Id);
+                b.Property(e => e.InstanceId).HasMaxLength(100).IsRequired();
+                b.Property(e => e.InstanceToken).HasMaxLength(200).IsRequired();
+                b.Property(e => e.PhoneNumber).HasMaxLength(30);
+                b.Property(e => e.Status).HasConversion<int>().IsRequired();
+                b.Property(e => e.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(e => e.TenantId).IsUnique();
+                b.HasIndex(e => e.InstanceId).IsUnique();
+
+                b.HasOne(e => e.Tenant)
+                 .WithMany()
+                 .HasForeignKey(e => e.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ---------------------------

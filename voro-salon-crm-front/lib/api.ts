@@ -61,7 +61,6 @@ export const API_CONFIG = {
     NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
     PUSH_TOKENS: "/push-tokens",
     TIME_SLOT_BLOCKS: "/timeslotblocks",
-    BUSINESS_HOURS: "/tenant/me/business-hours",
     WHATSAPP_MESSAGES: "/whatsapp/messages",
     WHATSAPP_CONVERSATIONS: "/whatsapp/conversations",
     WHATSAPP_TEMPLATES: "/whatsapp/templates",
@@ -75,6 +74,7 @@ export const API_CONFIG = {
     PUBLIC_BOOKING_TRACK: "/public/PublicBooking/track",
     CLIENT_MEMBERSHIP_PLANS: "/clientmemberships/plans",
     CLIENT_MEMBERSHIPS: "/clientmemberships",
+    EVOLUTION_INSTANCES: "/evolution/instances",
   },
   HEADERS: {
     "Content-Type": "application/json",

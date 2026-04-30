@@ -1294,6 +1294,19 @@ export default function ConfiguracoesPage() {
 
                   <div className="flex justify-between items-center pt-4 border-t">
                     <div className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold">Conexão Evolution Go</span>
+                      <p className="text-xs text-muted-foreground">Conecte seu número via Evolution Go (alternativo à API oficial)</p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/settings/whatsapp/evolution">
+                        <Wifi className="mr-2 h-4 w-4" />
+                        Gerenciar Conexão
+                      </Link>
+                    </Button>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <div className="flex flex-col gap-1">
                       <span className="text-sm font-semibold">Templates de Mensagem</span>
                       <p className="text-xs text-muted-foreground">Configurar e gerenciar modelos de mensagens do WhatsApp</p>
                     </div>

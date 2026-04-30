@@ -69,6 +69,118 @@ namespace VoroSalonCrm.API.Controllers
             return StatusCode(403);
         }
 
+        [HttpPost("evolution-webhook")]
+        public async Task<IActionResult> ReceiveEvolutionWebhook(
+            [FromBody] EvolutionWebhookDto webhook,
+            [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository)
+        {
+            if (webhook?.Event != "MESSAGE" || webhook.Data == null)
+                return Ok();
+
+            var data = webhook.Data;
+
+            // Ignorar mensagens enviadas pelo próprio bot
+            if (data.Key.FromMe)
+                return Ok();
+
+            // Extrair número do remetente (remover sufixo @s.whatsapp.net ou @c.us)
+            var from = data.Key.RemoteJid.Split('@')[0];
+            var contactName = data.PushName ?? "Cliente";
+            var messageId = data.Key.Id;
+            var instanceId = webhook.InstanceId;
+
+            // Resolver tenant pela instância no banco de dados
+            Guid? tenantId = null;
+            if (!string.IsNullOrEmpty(instanceId))
+            {
+                var evolutionInstance = await evolutionInstanceRepository.GetByInstanceIdAsync(instanceId);
+                if (evolutionInstance != null)
+                    tenantId = evolutionInstance.TenantId;
+            }
+
+            // Determinar tipo e conteúdo da mensagem
+            var (messageType, bodyText) = DetermineEvolutionMessageType(data.Message);
+
+            // Salvar mensagem inbound
+            if (tenantId.HasValue)
+            {
+                try
+                {
+                    await _whatsAppMessageService.SaveInboundAsync(
+                        tenantId: tenantId.Value,
+                        from: from,
+                        to: instanceId ?? string.Empty,
+                        body: bodyText,
+                        whatsAppMessageId: messageId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro ao salvar mensagem inbound Evolution Go.");
+                }
+            }
+
+            // Montar WhatsappMessageDto compatível com o HandleMessageAsync existente
+            var message = new WhatsappMessageDto
+            {
+                From = from,
+                Id = messageId,
+                Timestamp = data.MessageTimestamp.ToString(),
+                Type = messageType,
+                Text = messageType == "text" ? new WhatsappTextDto { Body = bodyText } : null,
+                Audio = messageType == "audio" && data.Message?.AudioMessage != null
+                    ? new WhatsappAudioDto { Id = messageId, Url = data.Message.AudioMessage.Url ?? string.Empty }
+                    : null,
+                Interactive = messageType == "interactive"
+                    ? BuildInteractiveFromEvolution(data.Message)
+                    : null
+            };
+
+            await _whatsappChatService.HandleMessageAsync(message, contactName, instanceId, instanceId);
+
+            return Ok();
+        }
+
+        private static (string type, string body) DetermineEvolutionMessageType(EvolutionMessageContentDto? msg)
+        {
+            if (msg == null) return ("text", string.Empty);
+            if (!string.IsNullOrEmpty(msg.Conversation)) return ("text", msg.Conversation);
+            if (msg.AudioMessage != null) return ("audio", "[Áudio]");
+            if (msg.ImageMessage != null) return ("image", "[Imagem]");
+            if (msg.DocumentMessage != null) return ("document", "[Documento]");
+            if (msg.ButtonsResponseMessage != null)
+                return ("interactive", msg.ButtonsResponseMessage.SelectedDisplayText ?? "[Botão]");
+            if (msg.ListResponseMessage != null)
+                return ("interactive", msg.ListResponseMessage.Title ?? "[Lista]");
+            return ("text", string.Empty);
+        }
+
+        private static WhatsappInteractiveDto? BuildInteractiveFromEvolution(EvolutionMessageContentDto? msg)
+        {
+            if (msg?.ButtonsResponseMessage != null)
+                return new WhatsappInteractiveDto
+                {
+                    Type = "button_reply",
+                    ButtonReply = new WhatsappButtonReplyDto
+                    {
+                        Id = msg.ButtonsResponseMessage.SelectedButtonId ?? string.Empty,
+                        Title = msg.ButtonsResponseMessage.SelectedDisplayText ?? string.Empty
+                    }
+                };
+
+            if (msg?.ListResponseMessage != null)
+                return new WhatsappInteractiveDto
+                {
+                    Type = "list_reply",
+                    ListReply = new WhatsappListReplyDto
+                    {
+                        Id = msg.ListResponseMessage.SingleSelectReply?.SelectedRowId ?? string.Empty,
+                        Title = msg.ListResponseMessage.Title ?? string.Empty
+                    }
+                };
+
+            return null;
+        }
+
         [HttpPost]
         public async Task<IActionResult> ReceiveWebhook([FromBody] WhatsappWebhookDto webhook)
         {

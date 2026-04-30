@@ -42,6 +42,11 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+            services.AddHttpClient("evolution-go", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             services.AddHttpClient("expo-push", client =>
             {
                 client.BaseAddress = new Uri("https://exp.host");
@@ -73,7 +78,11 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IMailKitEmailService, MailKitEmailService>();
             services.AddScoped<IIntegrationAuditService, IntegrationAuditService>();
-            services.AddScoped<IWhatsappService, WhatsappService>();
+            var whatsappProvider = configuration["IntegrationSettings:Whatsapp:Provider"] ?? "meta";
+            if (whatsappProvider.Equals("evolution", StringComparison.OrdinalIgnoreCase))
+                services.AddScoped<IWhatsappService, EvolutionWhatsappService>();
+            else
+                services.AddScoped<IWhatsappService, WhatsappService>();
             services.AddScoped<IWhatsappChatService, WhatsappChatService>();
             services.AddScoped<IWhatsAppMessageService, WhatsAppMessageService>();
 
@@ -146,12 +155,14 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IEmployeeGoalRepository, EmployeeGoalRepository>();
             services.AddScoped<IEmployeeGoalService, EmployeeGoalService>();
             services.AddScoped<IBirthdayGreetingService, BirthdayGreetingService>();
+            services.AddScoped<IEvolutionInstanceService, EvolutionInstanceService>();
             services.AddScoped<IServicePromotionRepository, ServicePromotionRepository>();
             services.AddScoped<IServicePromotionService, ServicePromotionService>();
             services.AddScoped<IClientRatingRepository, ClientRatingRepository>();
             services.AddScoped<IClientRatingService, ClientRatingService>();
             services.AddScoped<IBookingFunnelSessionRepository, BookingFunnelSessionRepository>();
             services.AddScoped<IAIConversationRepository, AIConversationRepository>();
+            services.AddScoped<ITenantEvolutionInstanceRepository, TenantEvolutionInstanceRepository>();
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();
