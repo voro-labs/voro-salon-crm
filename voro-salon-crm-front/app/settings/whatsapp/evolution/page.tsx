@@ -498,7 +498,7 @@ export default function EvolutionInstancesPage() {
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`data:image/png;base64,${qrCode}`}
+                src={`${qrCode}`}
                 alt="QR Code WhatsApp"
                 className="w-52 h-52 rounded-lg border"
               />
