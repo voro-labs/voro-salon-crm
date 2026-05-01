@@ -35,6 +35,6 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         [Required] string InstanceId,
         [Required] string To,
         [Required] Guid TemplateId,
-        string[] Params
+        [Required] string[] Params
     );
 }
