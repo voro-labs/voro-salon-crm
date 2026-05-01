@@ -44,6 +44,7 @@ interface EvolutionStatus {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const POLLING_INTERVAL = 3000
+const LIVE_STATUS_INTERVAL = 20_000 // background status sync
 
 function statusLabel(status: EvolutionInstance["status"]): {
   label: string
@@ -159,6 +160,10 @@ export default function EvolutionInstancesPage() {
 
   // Status em tempo real vindo do endpoint /status da Evolution API
   const [liveState, setLiveState] = useState<string | null>(null)
+
+  // Ref para sempre ler o valor atual de instance dentro de closures de polling
+  const instanceRef = useRef(instance)
+  useEffect(() => { instanceRef.current = instance }, [instance])
 
   // effectiveStatus: usa liveState quando disponível, cai para o valor do banco
   const effectiveStatus: 0 | 1 | 2 = (() => {
@@ -310,6 +315,7 @@ export default function EvolutionInstancesPage() {
     setPairOpen(false)
     setPairPhone("")
     setPairCode(null)
+    setLiveState(null)
   }
 
   // ── Polling de status em tempo real — roda sempre que a instância existe ──
@@ -319,17 +325,19 @@ export default function EvolutionInstancesPage() {
 
     const poll = async () => {
       const res = await secureApiCall<EvolutionStatus>(
-        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${instance.id}/status`
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${instanceRef.current!.id}/status`
       )
       if (!res.hasError && res.data?.state) {
         setLiveState(res.data.state)
         // Se voltou a ficar "open" sem estar conectado no banco, sincroniza
-        if (res.data.state === "open" && instance.status !== 2) mutate()
+        if (res.data.state === "open" && instanceRef.current!.status !== 2) mutate()
+      } else if (res.hasError) {
+        setLiveState(null) // fallback para DB em caso de erro
       }
     }
 
     poll() // verificação imediata ao montar
-    const intervalId = setInterval(poll, 20000) // polling a cada 20 s
+    const intervalId = setInterval(poll, LIVE_STATUS_INTERVAL) // polling a cada 20 s
 
     return () => clearInterval(intervalId)
   }, [instance?.id]) // eslint-disable-line react-hooks/exhaustive-deps
