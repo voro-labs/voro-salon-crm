@@ -526,6 +526,11 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
 export default function WhatsAppPage() {
   const [showSendModal, setShowSendModal] = useState(false)
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
+  const { data: evolutionInstances } = useSWR<{ id: string; status: 0 | 1 | 2 }[]>(
+    API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES,
+    fetcher
+  )
+  const evolutionConnected = (evolutionInstances ?? []).some((i) => i.status === 2)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [chatHeight, setChatHeight] = useState(0)
 
@@ -596,7 +601,7 @@ export default function WhatsAppPage() {
             />
 
             {/* Banner: configuração incompleta do WhatsApp */}
-            {tenant !== undefined && (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappBusinessAccountId) && (
+            {tenant !== undefined && !evolutionConnected && (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappBusinessAccountId) && (
               <div className="border border-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
