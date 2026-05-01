@@ -10,35 +10,66 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         [JsonPropertyName("instanceId")]
         public string InstanceId { get; set; } = string.Empty;
 
+        [JsonPropertyName("instanceName")]
+        public string? InstanceName { get; set; }
+
+        [JsonPropertyName("instanceToken")]
+        public string? InstanceToken { get; set; }
+
         [JsonPropertyName("data")]
         public EvolutionWebhookDataDto? Data { get; set; }
     }
 
     public class EvolutionWebhookDataDto
     {
-        [JsonPropertyName("key")]
-        public EvolutionMessageKeyDto Key { get; set; } = new();
+        [JsonPropertyName("Info")]
+        public EvolutionMessageInfoDto? Info { get; set; }
 
-        [JsonPropertyName("message")]
+        [JsonPropertyName("Message")]
         public EvolutionMessageContentDto? Message { get; set; }
 
-        [JsonPropertyName("messageTimestamp")]
-        public long MessageTimestamp { get; set; }
+        [JsonPropertyName("IsFromMe")]
+        public bool IsFromMe { get; set; }
 
-        [JsonPropertyName("pushName")]
-        public string? PushName { get; set; }
+        [JsonPropertyName("IsGroup")]
+        public bool IsGroup { get; set; }
+
+        [JsonPropertyName("IsEdit")]
+        public bool IsEdit { get; set; }
+
+        [JsonPropertyName("IsBotInvoke")]
+        public bool IsBotInvoke { get; set; }
     }
 
-    public class EvolutionMessageKeyDto
+    public class EvolutionMessageInfoDto
     {
-        [JsonPropertyName("id")]
+        [JsonPropertyName("ID")]
         public string Id { get; set; } = string.Empty;
 
-        [JsonPropertyName("fromMe")]
-        public bool FromMe { get; set; }
+        [JsonPropertyName("IsFromMe")]
+        public bool IsFromMe { get; set; }
 
-        [JsonPropertyName("remoteJid")]
-        public string RemoteJid { get; set; } = string.Empty;
+        [JsonPropertyName("IsGroup")]
+        public bool IsGroup { get; set; }
+
+        /// <summary>JID do remetente, ex: 555399416162@s.whatsapp.net</summary>
+        [JsonPropertyName("Sender")]
+        public string Sender { get; set; } = string.Empty;
+
+        /// <summary>JID do chat (mesmo que Sender em conversas individuais).</summary>
+        [JsonPropertyName("Chat")]
+        public string Chat { get; set; } = string.Empty;
+
+        [JsonPropertyName("PushName")]
+        public string? PushName { get; set; }
+
+        /// <summary>Timestamp ISO 8601, ex: 2026-04-30T23:14:58-03:00</summary>
+        [JsonPropertyName("Timestamp")]
+        public DateTimeOffset Timestamp { get; set; }
+
+        /// <summary>Tipo da mensagem: text, image, audio, document, etc.</summary>
+        [JsonPropertyName("Type")]
+        public string? Type { get; set; }
     }
 
     public class EvolutionMessageContentDto

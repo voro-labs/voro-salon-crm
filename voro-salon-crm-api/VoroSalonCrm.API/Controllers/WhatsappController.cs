@@ -71,14 +71,78 @@ namespace VoroSalonCrm.API.Controllers
 
         [HttpPost("evolution-webhook")]
         public async Task<IActionResult> ReceiveEvolutionWebhook(
-            [FromBody] System.Text.Json.JsonElement webhook,
+            [FromBody] EvolutionWebhookDto webhook,
             [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository)
         {
             Console.WriteLine("Received Evolution Webhook: " + System.Text.Json.JsonSerializer.Serialize(webhook));
+
+            if (!string.Equals(webhook?.Event, "MESSAGE", StringComparison.OrdinalIgnoreCase) || webhook?.Data?.Info == null)
+                return Ok();
+
+            var info = webhook.Data.Info;
+
+            // Ignorar mensagens enviadas pelo próprio bot
+            if (info.IsFromMe)
+                return Ok();
+
+            // Extrair número do remetente (remover sufixo @s.whatsapp.net ou @c.us)
+            var from = info.Chat.Split('@')[0];
+            var contactName = info.PushName ?? "Cliente";
+            var messageId = info.Id;
+            var instanceId = webhook.InstanceId;
+
+            // Resolver tenant pela instância no banco de dados
+            Guid? tenantId = null;
+            if (!string.IsNullOrEmpty(instanceId))
+            {
+                var evolutionInstance = await evolutionInstanceRepository.GetByInstanceIdAsync(instanceId);
+                if (evolutionInstance != null)
+                    tenantId = evolutionInstance.TenantId;
+            }
+
+            // Determinar tipo e conteúdo da mensagem
+            var (messageType, bodyText) = DetermineEvolutionMessageType(webhook.Data.Message, info.Type);
+
+            // Salvar mensagem inbound
+            if (tenantId.HasValue)
+            {
+                try
+                {
+                    await _whatsAppMessageService.SaveInboundAsync(
+                        tenantId: tenantId.Value,
+                        from: from,
+                        to: instanceId ?? string.Empty,
+                        body: bodyText,
+                        whatsAppMessageId: messageId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro ao salvar mensagem inbound Evolution Go.");
+                }
+            }
+
+            // Montar WhatsappMessageDto compatível com o HandleMessageAsync existente
+            var message = new WhatsappMessageDto
+            {
+                From = from,
+                Id = messageId,
+                Timestamp = info.Timestamp.ToUnixTimeSeconds().ToString(),
+                Type = messageType,
+                Text = messageType == "text" ? new WhatsappTextDto { Body = bodyText } : null,
+                Audio = messageType == "audio" && webhook.Data.Message?.AudioMessage != null
+                    ? new WhatsappAudioDto { Id = messageId, Url = webhook.Data.Message.AudioMessage.Url ?? string.Empty }
+                    : null,
+                Interactive = messageType == "interactive"
+                    ? BuildInteractiveFromEvolution(webhook.Data.Message)
+                    : null
+            };
+
+            await _whatsappChatService.HandleMessageAsync(message, contactName, instanceId, instanceId);
+
             return Ok();
         }
 
-        private static (string type, string body) DetermineEvolutionMessageType(EvolutionMessageContentDto? msg)
+        private static (string type, string body) DetermineEvolutionMessageType(EvolutionMessageContentDto? msg, string? infoType)
         {
             if (msg == null) return ("text", string.Empty);
             if (!string.IsNullOrEmpty(msg.Conversation)) return ("text", msg.Conversation);
@@ -89,7 +153,14 @@ namespace VoroSalonCrm.API.Controllers
                 return ("interactive", msg.ButtonsResponseMessage.SelectedDisplayText ?? "[Botão]");
             if (msg.ListResponseMessage != null)
                 return ("interactive", msg.ListResponseMessage.Title ?? "[Lista]");
-            return ("text", string.Empty);
+            // Fallback pelo Type do Info
+            return infoType?.ToLower() switch
+            {
+                "audio" => ("audio", "[Áudio]"),
+                "image" => ("image", "[Imagem]"),
+                "document" => ("document", "[Documento]"),
+                _ => ("text", string.Empty)
+            };
         }
 
         private static WhatsappInteractiveDto? BuildInteractiveFromEvolution(EvolutionMessageContentDto? msg)
