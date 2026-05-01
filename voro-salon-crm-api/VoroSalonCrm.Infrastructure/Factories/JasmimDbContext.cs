@@ -956,6 +956,19 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 e.HasIndex(x => new { x.TenantId, x.PhoneNumber });
                 e.HasIndex(x => x.CreatedAt);
             });
+
+            // ---------------------------
+            // EVOLUTION TEMPLATES (global)
+            // ---------------------------
+            builder.Entity<EvolutionTemplate>(b =>
+            {
+                b.HasKey(e => e.Id);
+                b.Property(e => e.Name).HasMaxLength(200).IsRequired();
+                b.Property(e => e.Label).HasMaxLength(200).IsRequired();
+                b.Property(e => e.Body).IsRequired();
+                b.Property(e => e.IsActive).HasDefaultValue(true);
+                b.Property(e => e.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+            });
         }
     }
 }
