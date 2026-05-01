@@ -75,7 +75,7 @@ namespace VoroSalonCrm.API.Controllers
             [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository)
         {
             Console.WriteLine("Received Evolution Webhook: " + System.Text.Json.JsonSerializer.Serialize(webhook));
-            if (!string.Equals(webhook?.Event, "MESSAGE", StringComparison.OrdinalIgnoreCase) || webhook.Data == null)
+            if (!string.Equals(webhook?.Event, "MESSAGE", StringComparison.OrdinalIgnoreCase) || webhook?.Data == null)
                 return Ok();
 
             var data = webhook.Data;
