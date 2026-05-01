@@ -78,6 +78,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<AIConversationMessage> AIConversationMessages { get; set; }
 
         public DbSet<TenantEvolutionInstance> TenantEvolutionInstances { get; set; }
+        public DbSet<EvolutionTemplate> EvolutionTemplates { get; set; }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
