@@ -72,6 +72,11 @@ interface EvolutionInstance {
   connectedAt: string | null
 }
 
+interface EvolutionStatus {
+  state: string
+  instanceId: string
+}
+
 interface OnboardingStatus {
   connected: boolean
   displayPhone: string | null
@@ -249,7 +254,7 @@ export default function ConfiguracoesPage() {
     if (!evolutionInstance) return
 
     const poll = async () => {
-      const res = await secureApiCall<{ state: string; instanceId: string }>(
+      const res = await secureApiCall<EvolutionStatus>(
         `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstanceRef.current!.id}/status`
       )
       if (!res.hasError && res.data?.state) {
