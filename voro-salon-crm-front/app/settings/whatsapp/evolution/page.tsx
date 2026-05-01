@@ -157,6 +157,18 @@ export default function EvolutionInstancesPage() {
 
   const [disconnecting, setDisconnecting] = useState(false)
 
+  // Status em tempo real vindo do endpoint /status da Evolution API
+  const [liveState, setLiveState] = useState<string | null>(null)
+
+  // effectiveStatus: usa liveState quando disponível, cai para o valor do banco
+  const effectiveStatus: 0 | 1 | 2 = (() => {
+    if (!instance) return 0
+    if (liveState === "open") return 2
+    if (liveState === "connecting") return 1
+    if (liveState === "close" || liveState === "timeout") return 0
+    return instance.status
+  })()
+
   const handleDisconnect = async () => {
     if (!instance) return
     setDisconnecting(true)
@@ -237,6 +249,7 @@ export default function EvolutionInstancesPage() {
     stopQrPoll()
     stopStatusPoll()
     setQrOpen(false)
+    setLiveState(null)
   }
 
   // ── Pairing code dialog ────────────────────────────────────────────────────
@@ -299,22 +312,27 @@ export default function EvolutionInstancesPage() {
     setPairCode(null)
   }
 
-  // ── Polling de status (status=Connecting) ──────────────────────────────────
+  // ── Polling de status em tempo real — roda sempre que a instância existe ──
 
   useEffect(() => {
-    if (!instance || instance.status !== 1) return
+    if (!instance) return
 
-    const id = setInterval(async () => {
+    const poll = async () => {
       const res = await secureApiCall<EvolutionStatus>(
         `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${instance.id}/status`
       )
-      if (!res.hasError && res.data?.state === "open") {
-        mutate()
+      if (!res.hasError && res.data?.state) {
+        setLiveState(res.data.state)
+        // Se voltou a ficar "open" sem estar conectado no banco, sincroniza
+        if (res.data.state === "open" && instance.status !== 2) mutate()
       }
-    }, POLLING_INTERVAL)
+    }
 
-    return () => clearInterval(id)
-  }, [instance?.id, instance?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+    poll() // verificação imediata ao montar
+    const intervalId = setInterval(poll, 20000) // polling a cada 20 s
+
+    return () => clearInterval(intervalId)
+  }, [instance?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cleanup on unmount ─────────────────────────────────────────────────────
 
@@ -399,10 +417,10 @@ export default function EvolutionInstancesPage() {
                   </CardDescription>
                 </div>
                 {(() => {
-                  const s = statusLabel(instance.status)
+                  const s = statusLabel(effectiveStatus)
                   return (
                     <Badge variant={s.variant} className={s.className}>
-                      {instance.status === 1 && (
+                      {effectiveStatus === 1 && (
                         <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                       )}
                       {s.label}
@@ -434,7 +452,7 @@ export default function EvolutionInstancesPage() {
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2 pt-2 border-t">
-                {instance.status !== 2 && (
+                {effectiveStatus !== 2 && (
                   <>
                     <Button size="sm" onClick={handleOpenQr}>
                       <QrCode className="mr-2 h-4 w-4" />
@@ -446,7 +464,7 @@ export default function EvolutionInstancesPage() {
                     </Button>
                   </>
                 )}
-                {instance.status === 2 && (
+                {effectiveStatus === 2 && (
                   <Button
                     size="sm"
                     variant="destructive"
