@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -174,6 +174,18 @@ export default function ConfiguracoesPage() {
   const [disconnecting, setDisconnecting] = useState(false)
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
 
+  const [evolutionLiveState, setEvolutionLiveState] = useState<string | null>(null)
+  const evolutionInstanceRef = useRef(evolutionInstance)
+  useEffect(() => { evolutionInstanceRef.current = evolutionInstance }, [evolutionInstance])
+
+  const evolutionEffectiveStatus: 0 | 1 | 2 = (() => {
+    if (!evolutionInstance) return 0
+    if (evolutionLiveState === "open") return 2
+    if (evolutionLiveState === "connecting") return 1
+    if (evolutionLiveState === "close" || evolutionLiveState === "timeout") return 0
+    return evolutionInstance.status
+  })()
+
   useEffect(() => {
     setTwoFactorEnabled(user?.twoFactorEnabled ?? false)
   }, [user?.twoFactorEnabled])
@@ -231,6 +243,26 @@ export default function ConfiguracoesPage() {
       setUseWhatsappBooking(tenant.useWhatsappBooking ?? false)
     }
   }, [tenant]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Polling de status em tempo real para a instância Evolution Go
+  useEffect(() => {
+    if (!evolutionInstance) return
+
+    const poll = async () => {
+      const res = await secureApiCall<{ state: string; instanceId: string }>(
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstanceRef.current!.id}/status`
+      )
+      if (!res.hasError && res.data?.state) {
+        setEvolutionLiveState(res.data.state)
+      } else if (res.hasError) {
+        setEvolutionLiveState(null)
+      }
+    }
+
+    poll()
+    const intervalId = setInterval(poll, 30000)
+    return () => clearInterval(intervalId)
+  }, [evolutionInstance?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleConnect = useCallback(async () => {
     setConnecting(true)
@@ -1265,13 +1297,13 @@ export default function ConfiguracoesPage() {
                     </div>
 
                     {/* ── Opção 2: Evolution Go ── */}
-                    <div className={`rounded-lg border p-4 flex flex-col gap-3 transition-colors ${evolutionInstance?.status === 2 ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10 dark:border-emerald-800" : "bg-muted/20"}`}>
+                    <div className={`rounded-lg border p-4 flex flex-col gap-3 transition-colors ${evolutionEffectiveStatus === 2 ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10 dark:border-emerald-800" : "bg-muted/20"}`}>
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${evolutionInstance?.status === 2 ? "bg-emerald-100 dark:bg-emerald-950/40" : evolutionInstance?.status === 1 ? "bg-amber-100 dark:bg-amber-950/30" : "bg-muted"}`}>
-                            {evolutionInstance?.status === 2
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${evolutionEffectiveStatus === 2 ? "bg-emerald-100 dark:bg-emerald-950/40" : evolutionEffectiveStatus === 1 ? "bg-amber-100 dark:bg-amber-950/30" : "bg-muted"}`}>
+                            {evolutionEffectiveStatus === 2
                               ? <CheckCircle className="h-4 w-4 text-emerald-600" />
-                              : evolutionInstance?.status === 1
+                              : evolutionEffectiveStatus === 1
                                 ? <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
                                 : <WifiOff className="h-4 w-4 text-muted-foreground" />}
                           </div>
@@ -1281,12 +1313,12 @@ export default function ConfiguracoesPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {evolutionInstance?.status === 2 && (
+                          {evolutionEffectiveStatus === 2 && (
                             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 gap-1 text-xs">
                               <CheckCircle className="h-3 w-3" /> Conectado
                             </Badge>
                           )}
-                          {evolutionInstance?.status === 1 && (
+                          {evolutionEffectiveStatus === 1 && (
                             <Badge className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400 gap-1 text-xs">
                               <Loader2 className="h-3 w-3 animate-spin" /> Conectando
                             </Badge>
@@ -1294,7 +1326,7 @@ export default function ConfiguracoesPage() {
                           {!evolutionInstance && (
                             <Badge variant="outline" className="text-muted-foreground text-xs">Sem instância</Badge>
                           )}
-                          {evolutionInstance && evolutionInstance.status === 0 && (
+                          {evolutionInstance && evolutionEffectiveStatus === 0 && (
                             <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>
                           )}
                           <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
@@ -1305,7 +1337,7 @@ export default function ConfiguracoesPage() {
                           </Button>
                         </div>
                       </div>
-                      {evolutionInstance?.status === 2 && evolutionInstance.phoneNumber && (
+                      {evolutionEffectiveStatus === 2 && evolutionInstance?.phoneNumber && (
                         <p className="text-sm font-mono text-muted-foreground pl-12">{evolutionInstance.phoneNumber}</p>
                       )}
                       {!evolutionInstance && (
