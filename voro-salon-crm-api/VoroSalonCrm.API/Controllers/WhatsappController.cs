@@ -71,73 +71,10 @@ namespace VoroSalonCrm.API.Controllers
 
         [HttpPost("evolution-webhook")]
         public async Task<IActionResult> ReceiveEvolutionWebhook(
-            [FromBody] EvolutionWebhookDto webhook,
+            [FromBody] System.Text.Json.JsonElement webhook,
             [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository)
         {
             Console.WriteLine("Received Evolution Webhook: " + System.Text.Json.JsonSerializer.Serialize(webhook));
-            if (!string.Equals(webhook?.Event, "MESSAGE", StringComparison.OrdinalIgnoreCase) || webhook?.Data == null)
-                return Ok();
-
-            var data = webhook.Data;
-
-            // Ignorar mensagens enviadas pelo próprio bot
-            if (data.Key.FromMe)
-                return Ok();
-
-            // Extrair número do remetente (remover sufixo @s.whatsapp.net ou @c.us)
-            var from = data.Key.RemoteJid.Split('@')[0];
-            var contactName = data.PushName ?? "Cliente";
-            var messageId = data.Key.Id;
-            var instanceId = webhook.InstanceId;
-
-            // Resolver tenant pela instância no banco de dados
-            Guid? tenantId = null;
-            if (!string.IsNullOrEmpty(instanceId))
-            {
-                var evolutionInstance = await evolutionInstanceRepository.GetByInstanceIdAsync(instanceId);
-                if (evolutionInstance != null)
-                    tenantId = evolutionInstance.TenantId;
-            }
-
-            // Determinar tipo e conteúdo da mensagem
-            var (messageType, bodyText) = DetermineEvolutionMessageType(data.Message);
-
-            // Salvar mensagem inbound
-            if (tenantId.HasValue)
-            {
-                try
-                {
-                    await _whatsAppMessageService.SaveInboundAsync(
-                        tenantId: tenantId.Value,
-                        from: from,
-                        to: instanceId ?? string.Empty,
-                        body: bodyText,
-                        whatsAppMessageId: messageId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Erro ao salvar mensagem inbound Evolution Go.");
-                }
-            }
-
-            // Montar WhatsappMessageDto compatível com o HandleMessageAsync existente
-            var message = new WhatsappMessageDto
-            {
-                From = from,
-                Id = messageId,
-                Timestamp = data.MessageTimestamp.ToString(),
-                Type = messageType,
-                Text = messageType == "text" ? new WhatsappTextDto { Body = bodyText } : null,
-                Audio = messageType == "audio" && data.Message?.AudioMessage != null
-                    ? new WhatsappAudioDto { Id = messageId, Url = data.Message.AudioMessage.Url ?? string.Empty }
-                    : null,
-                Interactive = messageType == "interactive"
-                    ? BuildInteractiveFromEvolution(data.Message)
-                    : null
-            };
-
-            await _whatsappChatService.HandleMessageAsync(message, contactName, instanceId, instanceId);
-
             return Ok();
         }
 
