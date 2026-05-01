@@ -77,6 +77,8 @@ interface EvolutionStatus {
   instanceId: string
 }
 
+const EVOLUTION_STATUS_INTERVAL = 30_000 // background live-status sync
+
 interface OnboardingStatus {
   connected: boolean
   displayPhone: string | null
@@ -265,7 +267,7 @@ export default function ConfiguracoesPage() {
     }
 
     poll()
-    const intervalId = setInterval(poll, 30000)
+    const intervalId = setInterval(poll, EVOLUTION_STATUS_INTERVAL)
     return () => clearInterval(intervalId)
   }, [evolutionInstance?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
