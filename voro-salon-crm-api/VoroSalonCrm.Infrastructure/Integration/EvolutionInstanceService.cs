@@ -143,7 +143,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         public async Task ConnectWebhookAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default)
         {
             var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
-            var webhookUrl = $"{_config.ApiPublicUrl.TrimEnd('/')}/api/whatsapp/evolution-webhook";
+            var webhookUrl = $"{_config.ApiPublicUrl.TrimEnd('/')}/api/v1/whatsapp/evolution-webhook";
 
             var payload = new
             {
