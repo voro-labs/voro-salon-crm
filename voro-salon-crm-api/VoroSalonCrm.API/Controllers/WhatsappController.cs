@@ -9,6 +9,7 @@ using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
+using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.Utils;
@@ -72,7 +73,8 @@ namespace VoroSalonCrm.API.Controllers
         [HttpPost("evolution-webhook")]
         public async Task<IActionResult> ReceiveEvolutionWebhook(
             [FromBody] EvolutionWebhookDto webhook,
-            [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository)
+            [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository,
+            [FromServices] IWhatsAppConversationRepository conversationRepository)
         {
             Console.WriteLine("Received Evolution Webhook: " + System.Text.Json.JsonSerializer.Serialize(webhook));
 
@@ -81,17 +83,16 @@ namespace VoroSalonCrm.API.Controllers
 
             var info = webhook.Data.Info;
 
-            // Ignorar mensagens enviadas pelo próprio bot
             if (info.IsFromMe)
                 return Ok();
 
-            // Extrair número do remetente (remover sufixo @s.whatsapp.net ou @c.us)
             var from = info.Chat.Split('@')[0];
             var contactName = info.PushName ?? "Cliente";
             var messageId = info.Id;
             var instanceId = webhook.InstanceId;
+            var bodyText = webhook.Data.Message?.Conversation ?? string.Empty;
 
-            // Resolver tenant pela instância no banco de dados
+            // Resolver tenant pela instância
             Guid? tenantId = null;
             if (!string.IsNullOrEmpty(instanceId))
             {
@@ -100,12 +101,9 @@ namespace VoroSalonCrm.API.Controllers
                     tenantId = evolutionInstance.TenantId;
             }
 
-            // Determinar tipo e conteúdo da mensagem
-            var (messageType, bodyText) = DetermineEvolutionMessageType(webhook.Data.Message, info.Type);
-
-            // Salvar mensagem inbound
             if (tenantId.HasValue)
             {
+                // Salvar mensagem inbound
                 try
                 {
                     await _whatsAppMessageService.SaveInboundAsync(
@@ -119,27 +117,154 @@ namespace VoroSalonCrm.API.Controllers
                 {
                     _logger.LogError(ex, "Erro ao salvar mensagem inbound Evolution Go.");
                 }
+
+                // Upsert WhatsAppConversation
+                try
+                {
+                    var existing = await conversationRepository
+                        .Query(c => c.TenantId == tenantId.Value && c.PhoneNumber == from)
+                        .FirstOrDefaultAsync();
+
+                    if (existing == null)
+                    {
+                        await conversationRepository.AddAsync(new WhatsAppConversation
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenantId.Value,
+                            PhoneNumber = from,
+                            ContactName = contactName,
+                            State = "ACTIVE",
+                            LastMessageBody = bodyText,
+                            LastMessageAt = DateTimeOffset.UtcNow,
+                            CreatedAt = DateTimeOffset.UtcNow
+                        });
+                    }
+                    else
+                    {
+                        existing.LastMessageBody = bodyText;
+                        existing.LastMessageAt = DateTimeOffset.UtcNow;
+                        existing.UpdatedAt = DateTimeOffset.UtcNow;
+                        if (!string.IsNullOrEmpty(contactName) && contactName != "Cliente")
+                            existing.ContactName = contactName;
+                        conversationRepository.Update(existing);
+                    }
+
+                    await conversationRepository.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro ao persistir conversa Evolution Go.");
+                }
             }
 
-            // Montar WhatsappMessageDto compatível com o HandleMessageAsync existente
-            var message = new WhatsappMessageDto
-            {
-                From = from,
-                Id = messageId,
-                Timestamp = info.Timestamp.ToUnixTimeSeconds().ToString(),
-                Type = messageType,
-                Text = messageType == "text" ? new WhatsappTextDto { Body = bodyText } : null,
-                Audio = messageType == "audio" && webhook.Data.Message?.AudioMessage != null
-                    ? new WhatsappAudioDto { Id = messageId, Url = webhook.Data.Message.AudioMessage.Url ?? string.Empty }
-                    : null,
-                Interactive = messageType == "interactive"
-                    ? BuildInteractiveFromEvolution(webhook.Data.Message)
-                    : null
-            };
-
-            await _whatsappChatService.HandleMessageAsync(message, contactName, instanceId, instanceId);
-
             return Ok();
+        }
+
+        [HttpPost("evolution-send")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SendEvolutionTemplate(
+            [FromBody] EvolutionSendDto dto,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService,
+            [FromServices] IEvolutionService evolutionService)
+        {
+            try
+            {
+                var renderedText = await evolutionTemplateService.RenderAsync(dto.TemplateId, dto.Params);
+                var success = await evolutionService.SendTextAsync(dto.InstanceId, dto.To, renderedText);
+
+                return success
+                    ? ResponseViewModel<object>.SuccessWithMessage("Mensagem enviada.", null).ToActionResult()
+                    : ResponseViewModel<object>.Fail("Falha ao enviar mensagem via Evolution Go.").ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("evolution-templates")]
+        [Authorize]
+        public async Task<IActionResult> GetEvolutionTemplates(
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var templates = await evolutionTemplateService.GetAllAsync();
+                return ResponseViewModel<IEnumerable<EvolutionTemplateDto>>.Success(templates).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("evolution-templates")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> CreateEvolutionTemplate(
+            [FromBody] CreateEvolutionTemplateDto dto,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var template = await evolutionTemplateService.CreateAsync(dto);
+                return ResponseViewModel<EvolutionTemplateDto>
+                    .SuccessWithMessage("Template criado.", template)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPut("evolution-templates/{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> UpdateEvolutionTemplate(
+            [FromRoute] Guid id,
+            [FromBody] UpdateEvolutionTemplateDto dto,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var template = await evolutionTemplateService.UpdateAsync(id, dto);
+                return ResponseViewModel<EvolutionTemplateDto>
+                    .SuccessWithMessage("Template atualizado.", template)
+                    .ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("evolution-templates/{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> DeleteEvolutionTemplate(
+            [FromRoute] Guid id,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var deleted = await evolutionTemplateService.DeleteAsync(id);
+                if (!deleted)
+                    return ResponseViewModel<object>.Fail("Template não encontrado.").ToActionResult();
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Template excluído.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
         }
 
         private static (string type, string body) DetermineEvolutionMessageType(EvolutionMessageContentDto? msg, string? infoType)
