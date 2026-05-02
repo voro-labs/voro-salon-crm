@@ -166,12 +166,16 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IEvolutionTemplateRepository, EvolutionTemplateRepository>();
             services.AddScoped<IEvolutionTemplateService, EvolutionTemplateService>();
             services.AddScoped<IEvolutionService, EvolutionService>();
+            services.AddScoped<IEvolutionRulesEngine, EvolutionRulesEngine>();
+            services.AddScoped<IEvolutionAIResponder, EvolutionAIResponder>();
+            services.AddScoped<IEvolutionResponseService, EvolutionResponseService>();
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();
             services.AddHostedService<MembershipExpirationNotificationJob>();
             services.AddHostedService<ExpiredCheckoutCleanupJob>();
             services.AddHostedService<ExpiredPendingPlanChangeCleanupJob>();
+            services.AddHostedService<EvolutionResponseWorker>();
 
             return services;
         }
