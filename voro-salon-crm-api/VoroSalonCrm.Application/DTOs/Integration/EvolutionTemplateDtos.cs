@@ -9,6 +9,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         string Body,
         int ParamsCount,
         string[]? ParamLabels,
+        string[]? Keywords,
         bool IsActive,
         DateTimeOffset CreatedAt
     );
@@ -19,6 +20,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         [Required] string Body,
         int ParamsCount,
         string[]? ParamLabels,
+        string[]? Keywords,
         bool IsActive = true
     );
 
@@ -28,6 +30,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         string? Body,
         int? ParamsCount,
         string[]? ParamLabels,
+        string[]? Keywords,
         bool? IsActive
     );
 

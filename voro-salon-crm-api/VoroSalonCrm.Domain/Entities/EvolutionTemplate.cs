@@ -19,6 +19,10 @@ namespace VoroSalonCrm.Domain.Entities
         /// <summary>JSON serializado dos labels dos parâmetros (ex: ["Nome", "Data"]).</summary>
         public string? ParamLabels { get; set; }
 
+        /// <summary>JSON serializado de palavras-chave que ativam este template (ex: ["oi","olá","bom dia"]).
+        /// Null = template não é ativado por regras automáticas.</summary>
+        public string? Keywords { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

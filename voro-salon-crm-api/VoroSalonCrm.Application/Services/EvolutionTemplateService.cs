@@ -14,6 +14,7 @@ namespace VoroSalonCrm.Application.Services
         private static EvolutionTemplateDto ToDto(EvolutionTemplate t) => new(
             t.Id, t.Name, t.Label, t.Body, t.ParamsCount,
             t.ParamLabels != null ? JsonSerializer.Deserialize<string[]>(t.ParamLabels) : null,
+            t.Keywords   != null ? JsonSerializer.Deserialize<string[]>(t.Keywords)   : null,
             t.IsActive, t.CreatedAt);
 
         public async Task<IEnumerable<EvolutionTemplateDto>> GetAllAsync()
@@ -38,6 +39,7 @@ namespace VoroSalonCrm.Application.Services
                 Body = dto.Body,
                 ParamsCount = dto.ParamsCount,
                 ParamLabels = dto.ParamLabels != null ? JsonSerializer.Serialize(dto.ParamLabels) : null,
+                Keywords = dto.Keywords != null ? JsonSerializer.Serialize(dto.Keywords) : null,
                 IsActive = dto.IsActive,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -56,6 +58,7 @@ namespace VoroSalonCrm.Application.Services
             if (dto.Body is not null) template.Body = dto.Body;
             if (dto.ParamsCount.HasValue) template.ParamsCount = dto.ParamsCount.Value;
             if (dto.ParamLabels is not null) template.ParamLabels = JsonSerializer.Serialize(dto.ParamLabels);
+            if (dto.Keywords is not null) template.Keywords = JsonSerializer.Serialize(dto.Keywords);
             if (dto.IsActive.HasValue) template.IsActive = dto.IsActive.Value;
             template.UpdatedAt = DateTimeOffset.UtcNow;
 

@@ -966,6 +966,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(e => e.Name).HasMaxLength(200).IsRequired();
                 b.Property(e => e.Label).HasMaxLength(200).IsRequired();
                 b.Property(e => e.Body).IsRequired();
+                b.Property(e => e.Keywords).HasMaxLength(2000);
                 b.Property(e => e.IsActive).HasDefaultValue(true);
                 b.Property(e => e.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
             });
