@@ -58,6 +58,38 @@ namespace VoroSalonCrm.Infrastructure.Integration
             return aiResponse;
         }
 
+        public async Task<string> RespondWithContextAsync(
+            Guid tenantId,
+            string phoneNumber,
+            string systemPrompt,
+            string userMessage)
+        {
+            var recentMessages = await _repository.GetRecentAsync(tenantId, phoneNumber, count: 10);
+
+            var history = recentMessages
+                .Select(m => (m.Role, m.Content))
+                .ToList();
+
+            var aiResponse = await _geminiService.GenerateResponseAsync(systemPrompt, history, userMessage);
+
+            try
+            {
+                var userMsg = AIConversationMessage.Create(tenantId, phoneNumber, "user", Truncate(userMessage, 4000));
+                await _repository.AddAsync(userMsg);
+
+                var assistantMsg = AIConversationMessage.Create(tenantId, phoneNumber, "assistant", Truncate(aiResponse, 4000));
+                await _repository.AddAsync(assistantMsg);
+
+                await _repository.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist AI conversation messages for {PhoneNumber}.", phoneNumber);
+            }
+
+            return aiResponse;
+        }
+
         public async Task<List<AIConversationMessage>> GetHistoryAsync(Guid tenantId, string phoneNumber)
         {
             return await _repository.GetRecentAsync(tenantId, phoneNumber, count: 50);
