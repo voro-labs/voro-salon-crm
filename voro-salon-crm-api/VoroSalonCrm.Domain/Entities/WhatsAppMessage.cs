@@ -22,5 +22,9 @@ namespace VoroSalonCrm.Domain.Entities
         public string Status { get; set; } = "received";
 
         public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
+
+        /// <summary>Preenchido após processamento pelo bot (mesmo em caso de erro).
+        /// Null = pendente de processamento automático.</summary>
+        public DateTimeOffset? ProcessedByBotAt { get; set; }
     }
 }
