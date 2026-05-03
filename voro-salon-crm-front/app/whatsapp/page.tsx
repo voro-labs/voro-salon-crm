@@ -588,10 +588,12 @@ export default function WhatsAppPage() {
               description="Gerencie as conversas com seus clientes."
               action={
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
-                    <Send className="mr-2 h-4 w-4" />
-                    Enviar Template
-                  </Button>
+                  {!evolutionConnected && (
+                    <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
+                      <Send className="mr-2 h-4 w-4" />
+                      Enviar Template
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => mutate()}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Atualizar

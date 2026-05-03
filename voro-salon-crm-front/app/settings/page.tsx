@@ -1274,6 +1274,10 @@ export default function ConfiguracoesPage() {
                               {disconnecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <WifiOff className="mr-1.5 h-3 w-3" />}
                               Desconectar
                             </Button>
+                          ) : evolutionEffectiveStatus === 2 ? (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Evolution ativo
+                            </Badge>
                           ) : (
                             <Button size="sm" className="h-8 text-xs" onClick={handleConnect} disabled={connecting || statusLoading}>
                               {connecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Wifi className="mr-1.5 h-3 w-3" />}
@@ -1336,12 +1340,18 @@ export default function ConfiguracoesPage() {
                           {evolutionInstance && evolutionEffectiveStatus === 0 && (
                             <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>
                           )}
-                          <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
-                            <Link href="/settings/whatsapp/evolution">
-                              <Wifi className="mr-1.5 h-3 w-3" />
-                              Gerenciar
-                            </Link>
-                          </Button>
+                          {onboardingStatus?.connected ? (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Meta API ativa
+                            </Badge>
+                          ) : (
+                            <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
+                              <Link href="/settings/whatsapp/evolution">
+                                <Wifi className="mr-1.5 h-3 w-3" />
+                                Gerenciar
+                              </Link>
+                            </Button>
+                          )}
                         </div>
                       </div>
                       {evolutionEffectiveStatus === 2 && evolutionInstance?.phoneNumber && (
@@ -1382,32 +1392,34 @@ export default function ConfiguracoesPage() {
                       </div>
                     </div>
 
-                    {/* IDs manuais (colapsados) */}
-                    <div className="flex flex-col gap-3">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">IDs Meta (avançado)</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-1.5">
-                          <Label htmlFor="wp-phone-number-id" className="text-xs">Phone Number ID</Label>
-                          <Input
-                            id="wp-phone-number-id"
-                            placeholder="123456789012345"
-                            value={wpPhoneNumberId}
-                            onChange={(e) => setWpPhoneNumberId(e.target.value)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <Label htmlFor="wp-business-account-id" className="text-xs">Business Account ID</Label>
-                          <Input
-                            id="wp-business-account-id"
-                            placeholder="987654321098765"
-                            value={wpBusinessAccountId}
-                            onChange={(e) => setWpBusinessAccountId(e.target.value)}
-                            className="h-8 text-sm"
-                          />
+                    {/* IDs manuais (apenas visível quando Evolution não está conectado) */}
+                    {evolutionEffectiveStatus !== 2 && (
+                      <div className="flex flex-col gap-3">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">IDs Meta (avançado)</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="flex flex-col gap-1.5">
+                            <Label htmlFor="wp-phone-number-id" className="text-xs">Phone Number ID</Label>
+                            <Input
+                              id="wp-phone-number-id"
+                              placeholder="123456789012345"
+                              value={wpPhoneNumberId}
+                              onChange={(e) => setWpPhoneNumberId(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <Label htmlFor="wp-business-account-id" className="text-xs">Business Account ID</Label>
+                            <Input
+                              id="wp-business-account-id"
+                              placeholder="987654321098765"
+                              value={wpBusinessAccountId}
+                              onChange={(e) => setWpBusinessAccountId(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-2 border-t">
                       <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5" asChild>
