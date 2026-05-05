@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
@@ -7,10 +8,12 @@ using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
 namespace VoroSalonCrm.Application.Services
 {
-    public class EvolutionTemplateService(
+    public partial class EvolutionTemplateService(
         IEvolutionTemplateRepository repository,
         IUnitOfWork unitOfWork) : IEvolutionTemplateService
     {
+        [GeneratedRegex(@"\{\{\d+\}\}")]
+        private static partial Regex UnreplacedPlaceholderRegex();
         private static EvolutionTemplateDto ToDto(EvolutionTemplate t) => new(
             t.Id, t.Name, t.Label, t.Body, t.ParamsCount,
             t.ParamLabels != null ? JsonSerializer.Deserialize<string[]>(t.ParamLabels) : null,
@@ -85,6 +88,9 @@ namespace VoroSalonCrm.Application.Services
             var body = template.Body;
             for (int i = 0; i < parameters.Length; i++)
                 body = body.Replace($"{{{{{i + 1}}}}}", parameters[i]);
+
+            // Remove placeholders não substituídos (ex: {{1}}, {{2}}) que sobram quando params = []
+            body = UnreplacedPlaceholderRegex().Replace(body, string.Empty);
 
             return body;
         }
