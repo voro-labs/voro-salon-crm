@@ -13,6 +13,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         IEvolutionAIResponder aiResponder,
         IEvolutionService evolutionService,
         IWhatsAppMessageService whatsAppMessageService,
+        IWhatsAppConversationRepository conversationRepository,
         ILogger<EvolutionResponseService> logger) : IEvolutionResponseService
     {
         public async Task ProcessAsync(WhatsAppMessage msg, CancellationToken ct = default)
@@ -31,7 +32,15 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (matchedTemplate != null)
                 {
-                    responseText = await templateService.RenderAsync(matchedTemplate.Id, []);
+                    string[] renderParams = [];
+                    if (matchedTemplate.ParamsCount > 0)
+                    {
+                        var conversation = await conversationRepository.GetByIdAsync(
+                            c => c.TenantId == msg.TenantId && c.PhoneNumber == msg.From);
+                        var contactName = conversation?.ContactName ?? "Cliente";
+                        renderParams = [contactName];
+                    }
+                    responseText = await templateService.RenderAsync(matchedTemplate.Id, renderParams);
                 }
                 else
                 {
