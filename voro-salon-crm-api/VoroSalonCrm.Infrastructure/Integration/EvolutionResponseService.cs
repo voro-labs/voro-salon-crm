@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
@@ -14,8 +15,43 @@ namespace VoroSalonCrm.Infrastructure.Integration
         IEvolutionService evolutionService,
         IWhatsAppMessageService whatsAppMessageService,
         IWhatsAppConversationRepository conversationRepository,
+        IAppointmentRepository appointmentRepository,
         ILogger<EvolutionResponseService> logger) : IEvolutionResponseService
     {
+        // Convenção de params para templates automáticos:
+        // {{1}} = nome do contato
+        // {{2}} = serviço do próximo agendamento
+        // {{3}} = data do próximo agendamento (dd/MM/yyyy)
+        // {{4}} = horário do próximo agendamento (HH:mm)
+        private async Task<string[]> BuildRenderParamsAsync(Guid tenantId, string phone, int paramsCount)
+        {
+            var conversation = await conversationRepository.GetByIdAsync(
+                c => c.TenantId == tenantId && c.PhoneNumber == phone);
+            var contactName = conversation?.ContactName ?? "Cliente";
+
+            if (paramsCount <= 1)
+                return [contactName];
+
+            var now = DateTimeOffset.UtcNow;
+            var appointments = await appointmentRepository.GetAllAsync(
+                a => a.TenantId == tenantId
+                     && !a.IsDeleted
+                     && a.Client.Phone == phone
+                     && a.ScheduledDateTime > now
+                     && (a.Status == AppointmentStatus.Pending || a.Status == AppointmentStatus.Confirmed),
+                asNoTracking: true,
+                q => q.Include(a => a.Client),
+                q => q.Include(a => a.Service));
+
+            var next = appointments.OrderBy(a => a.ScheduledDateTime).FirstOrDefault();
+            var serviceName = next?.Service?.Name ?? "";
+            var date        = next != null ? next.ScheduledDateTime.ToLocalTime().ToString("dd/MM/yyyy") : "";
+            var time        = next != null ? next.ScheduledDateTime.ToLocalTime().ToString("HH:mm")      : "";
+
+            var allParams = new[] { contactName, serviceName, date, time };
+            return allParams.Take(paramsCount).ToArray();
+        }
+
         public async Task ProcessAsync(WhatsAppMessage msg, CancellationToken ct = default)
         {
             try
@@ -32,14 +68,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
                 if (matchedTemplate != null)
                 {
-                    string[] renderParams = [];
-                    if (matchedTemplate.ParamsCount > 0)
-                    {
-                        var conversation = await conversationRepository.GetByIdAsync(
-                            c => c.TenantId == msg.TenantId && c.PhoneNumber == msg.From);
-                        var contactName = conversation?.ContactName ?? "Cliente";
-                        renderParams = [contactName];
-                    }
+                    var renderParams = matchedTemplate.ParamsCount > 0
+                        ? await BuildRenderParamsAsync(msg.TenantId, msg.From, matchedTemplate.ParamsCount)
+                        : [];
                     responseText = await templateService.RenderAsync(matchedTemplate.Id, renderParams);
                 }
                 else
