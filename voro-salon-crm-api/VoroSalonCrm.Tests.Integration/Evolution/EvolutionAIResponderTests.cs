@@ -17,6 +17,17 @@ public class EvolutionAIResponderTests
         Slug = "slug"
     };
 
+    private static Mock<IEvolutionTemplateRepository> EmptyTemplateRepo()
+    {
+        var repo = new Mock<IEvolutionTemplateRepository>();
+        repo.Setup(r => r.GetAllAsync(
+                It.IsAny<System.Linq.Expressions.Expression<Func<EvolutionTemplate, bool>>>(),
+                It.IsAny<bool>(),
+                It.IsAny<Func<IQueryable<EvolutionTemplate>, IQueryable<EvolutionTemplate>>[]>()))
+            .ReturnsAsync(new List<EvolutionTemplate>());
+        return repo;
+    }
+
     [Fact]
     public async Task RespondAsync_CallsRespondWithContextAsync_WithTenantNameInPrompt()
     {
@@ -51,7 +62,9 @@ public class EvolutionAIResponderTests
             .Callback<Guid, string, string, string>((_, _, prompt, _) => capturedPrompt = prompt)
             .ReturnsAsync("Olá! Posso ajudar.");
 
-        var responder = new EvolutionAIResponder(tenantService.Object, serviceRepo.Object, appointmentRepo.Object, aiService.Object);
+        var responder = new EvolutionAIResponder(
+            tenantService.Object, serviceRepo.Object, appointmentRepo.Object,
+            EmptyTemplateRepo().Object, aiService.Object);
 
         var result = await responder.RespondAsync(tenantId, from, body);
 
@@ -102,7 +115,9 @@ public class EvolutionAIResponderTests
             .Callback<Guid, string, string, string>((_, _, prompt, _) => capturedPrompt = prompt)
             .ReturnsAsync("Ok!");
 
-        var responder = new EvolutionAIResponder(tenantService.Object, serviceRepo.Object, appointmentRepo.Object, aiService.Object);
+        var responder = new EvolutionAIResponder(
+            tenantService.Object, serviceRepo.Object, appointmentRepo.Object,
+            EmptyTemplateRepo().Object, aiService.Object);
 
         await responder.RespondAsync(tenantId, from, "oi");
 
@@ -140,7 +155,9 @@ public class EvolutionAIResponderTests
             .Callback<Guid, string, string, string>((_, _, prompt, _) => capturedPrompt = prompt)
             .ReturnsAsync("Ok!");
 
-        var responder = new EvolutionAIResponder(tenantService.Object, serviceRepo.Object, appointmentRepo.Object, aiService.Object);
+        var responder = new EvolutionAIResponder(
+            tenantService.Object, serviceRepo.Object, appointmentRepo.Object,
+            EmptyTemplateRepo().Object, aiService.Object);
 
         await responder.RespondAsync(tenantId, from, "oi");
 

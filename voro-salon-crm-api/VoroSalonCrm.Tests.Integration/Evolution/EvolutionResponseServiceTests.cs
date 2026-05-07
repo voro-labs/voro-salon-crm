@@ -55,10 +55,13 @@ public class EvolutionResponseServiceTests
             .ReturnsAsync(true);
 
         var whatsAppMsgService = new Mock<IWhatsAppMessageService>();
+        var conversationRepo = new Mock<IWhatsAppConversationRepository>();
+        var appointmentRepo = new Mock<IAppointmentRepository>();
 
         var service = new EvolutionResponseService(
             instanceRepo.Object, rulesEngine.Object, templateService.Object,
             aiResponder.Object, evolutionService.Object, whatsAppMsgService.Object,
+            conversationRepo.Object, appointmentRepo.Object,
             NullLogger<EvolutionResponseService>.Instance);
 
         await service.ProcessAsync(msg);
@@ -92,10 +95,13 @@ public class EvolutionResponseServiceTests
             .ReturnsAsync(true);
 
         var whatsAppMsgService = new Mock<IWhatsAppMessageService>();
+        var conversationRepo = new Mock<IWhatsAppConversationRepository>();
+        var appointmentRepo = new Mock<IAppointmentRepository>();
 
         var service = new EvolutionResponseService(
             instanceRepo.Object, rulesEngine.Object, templateService.Object,
             aiResponder.Object, evolutionService.Object, whatsAppMsgService.Object,
+            conversationRepo.Object, appointmentRepo.Object,
             NullLogger<EvolutionResponseService>.Instance);
 
         await service.ProcessAsync(msg);
@@ -120,10 +126,13 @@ public class EvolutionResponseServiceTests
         var aiResponder = new Mock<IEvolutionAIResponder>();
         var evolutionService = new Mock<IEvolutionService>();
         var whatsAppMsgService = new Mock<IWhatsAppMessageService>();
+        var conversationRepo = new Mock<IWhatsAppConversationRepository>();
+        var appointmentRepo = new Mock<IAppointmentRepository>();
 
         var service = new EvolutionResponseService(
             instanceRepo.Object, rulesEngine.Object, templateService.Object,
             aiResponder.Object, evolutionService.Object, whatsAppMsgService.Object,
+            conversationRepo.Object, appointmentRepo.Object,
             NullLogger<EvolutionResponseService>.Instance);
 
         await service.ProcessAsync(msg);
@@ -154,10 +163,13 @@ public class EvolutionResponseServiceTests
         var aiResponder = new Mock<IEvolutionAIResponder>();
         var evolutionService = new Mock<IEvolutionService>();
         var whatsAppMsgService = new Mock<IWhatsAppMessageService>();
+        var conversationRepo = new Mock<IWhatsAppConversationRepository>();
+        var appointmentRepo = new Mock<IAppointmentRepository>();
 
         var service = new EvolutionResponseService(
             instanceRepo.Object, rulesEngine.Object, templateService.Object,
             aiResponder.Object, evolutionService.Object, whatsAppMsgService.Object,
+            conversationRepo.Object, appointmentRepo.Object,
             NullLogger<EvolutionResponseService>.Instance);
 
         await service.ProcessAsync(msg);
