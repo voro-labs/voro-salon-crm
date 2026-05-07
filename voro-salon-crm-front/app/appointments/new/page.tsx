@@ -531,7 +531,7 @@ export default function NovoAgendamentoPage() {
               </div>
 
               {selectedDate && (isHistoricDate ? (
-                // ── Histórico: input manual de horário ──────────────────────
+                // ── Histórico: slots de 30 em 30 min ──────────────────────
                 <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">Agendamento histórico</span>
@@ -539,19 +539,35 @@ export default function NovoAgendamentoPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-sm font-medium">Horário *</Label>
-                    <Input
-                      type="time"
-                      className="w-40"
-                      value={form.scheduledDateTime ? format(new Date(form.scheduledDateTime), "HH:mm") : ""}
-                      onChange={(e) => {
-                        if (!selectedDate || !e.target.value) return
-                        const [h, m] = e.target.value.split(":").map(Number)
+                    <div className="grid grid-cols-4 xs:grid-cols-6 sm:grid-cols-8 gap-1.5">
+                      {Array.from({ length: 48 }, (_, i) => {
+                        const h = Math.floor(i / 2)
+                        const m = (i % 2) * 30
                         const d = new Date(selectedDate)
                         d.setHours(h, m, 0, 0)
                         const tzOffset = d.getTimezoneOffset() * 60000
-                        setForm((p) => ({ ...p, scheduledDateTime: new Date(d.getTime() - tzOffset).toISOString().slice(0, 16) }))
-                      }}
-                    />
+                        const value = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+                        const label = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+                        const isSelected = form.scheduledDateTime === value
+                        return (
+                          <Button
+                            key={label}
+                            type="button"
+                            variant={isSelected ? "default" : "outline"}
+                            size="sm"
+                            className={cn(
+                              "h-9 px-1 text-[10px] sm:text-xs font-medium",
+                              isSelected
+                                ? "bg-amber-600 text-white border-amber-600"
+                                : "border-amber-300 text-amber-700 hover:bg-amber-100"
+                            )}
+                            onClick={() => setForm((p) => ({ ...p, scheduledDateTime: value }))}
+                          >
+                            {label}
+                          </Button>
+                        )
+                      })}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-sm font-medium">Status *</Label>

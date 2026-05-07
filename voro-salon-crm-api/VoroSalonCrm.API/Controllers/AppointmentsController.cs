@@ -29,7 +29,8 @@ namespace VoroSalonCrm.API.Controllers
         {
             try
             {
-                if (dto.ScheduledDateTime <= DateTimeOffset.UtcNow)
+                var isHistoric = dto.Status == AppointmentStatus.Completed || dto.Status == AppointmentStatus.Cancelled;
+                if (!isHistoric && dto.ScheduledDateTime <= DateTimeOffset.UtcNow)
                     return ResponseViewModel<object>.Fail("Não é possível criar um agendamento em um horário que já passou.").ToActionResult();
 
                 var result = await _appointmentService.CreateAsync(dto);

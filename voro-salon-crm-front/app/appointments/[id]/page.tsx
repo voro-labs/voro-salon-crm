@@ -264,8 +264,12 @@ export default function AppointmentDetailPage() {
 
   const selectedDateClosed = selectedDate ? isDateClosed(selectedDate) : false
 
+  const isHistoricDate = selectedDate
+    ? selectedDate < new Date(new Date().setHours(0, 0, 0, 0))
+    : false
+
   const { data: availability, isLoading: loadingAvailability } = useSWR(
-    selectedDate
+    selectedDate && !isHistoricDate
       ? `${API_CONFIG.ENDPOINTS.APPOINTMENTS_AVAILABILITY}?date=${format(selectedDate, "yyyy-MM-dd")}${form.employeeId !== "none" ? `&employeeId=${form.employeeId}` : ""}`
       : null,
     slotFetcher
@@ -584,6 +588,50 @@ export default function AppointmentDetailPage() {
                   </div>
 
                   {selectedDate && !isFormLocked && (() => {
+                    if (isHistoricDate) {
+                      // ── Histórico: slots de 30 em 30 min ──────────────────
+                      return (
+                        <div className="flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">Agendamento histórico</span>
+                            <span className="text-xs text-amber-700 dark:text-amber-300">· sem notificação</span>
+                          </div>
+                          <Label className="text-sm font-medium">Horário *</Label>
+                          <div className="grid grid-cols-4 xs:grid-cols-6 sm:grid-cols-8 gap-1.5">
+                            {Array.from({ length: 48 }, (_, i) => {
+                              const h = Math.floor(i / 2)
+                              const m = (i % 2) * 30
+                              const d = new Date(selectedDate)
+                              d.setHours(h, m, 0, 0)
+                              const tzOffset = d.getTimezoneOffset() * 60000
+                              const value = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+                              const label = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+                              const isSelected = form.scheduledDateTime
+                                ? new Date(form.scheduledDateTime).getTime() === new Date(value).getTime()
+                                : false
+                              return (
+                                <Button
+                                  key={label}
+                                  type="button"
+                                  variant={isSelected ? "default" : "outline"}
+                                  size="sm"
+                                  className={cn(
+                                    "h-9 px-1 text-[10px] sm:text-xs font-medium",
+                                    isSelected
+                                      ? "bg-amber-600 text-white border-amber-600"
+                                      : "border-amber-300 text-amber-700 hover:bg-amber-100"
+                                  )}
+                                  onClick={() => setForm((p) => ({ ...p, scheduledDateTime: value }))}
+                                >
+                                  {label}
+                                </Button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    }
+
                     const now = new Date()
                     const isToday = selectedDate.toDateString() === now.toDateString()
                     const visibleSlots = (availability ?? []).filter((slot: any) => {
