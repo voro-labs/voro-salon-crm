@@ -64,7 +64,7 @@ namespace VoroSalonCrm.Application.Services
                 ServiceId = dto.ServiceId,
                 ScheduledDateTime = dto.ScheduledDateTime,
                 DurationMinutes = dto.DurationMinutes,
-                Status = AppointmentStatus.Confirmed,
+                Status = dto.Status ?? AppointmentStatus.Confirmed,
                 Description = dto.Description,
                 Amount = dto.Amount,
                 Notes = dto.Notes,

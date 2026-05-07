@@ -13,7 +13,8 @@ namespace VoroSalonCrm.Application.DTOs.CRM
         string? Notes,
         bool IsEncaixe = false,
         AppointmentSource Source = AppointmentSource.Internal,
-        List<Guid>? ServiceIds = null
+        List<Guid>? ServiceIds = null,
+        AppointmentStatus? Status = null
     );
 
     public record UpdateAppointmentDto
