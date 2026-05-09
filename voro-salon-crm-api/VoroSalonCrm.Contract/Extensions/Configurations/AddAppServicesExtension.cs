@@ -163,6 +163,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IBookingFunnelSessionRepository, BookingFunnelSessionRepository>();
             services.AddScoped<IAIConversationRepository, AIConversationRepository>();
             services.AddScoped<ITenantEvolutionInstanceRepository, TenantEvolutionInstanceRepository>();
+            services.AddScoped<ITenantEvolutionInstanceLinkRepository, TenantEvolutionInstanceLinkRepository>();
             services.AddScoped<IEvolutionTemplateRepository, EvolutionTemplateRepository>();
             services.AddScoped<IEvolutionTemplateService, EvolutionTemplateService>();
             services.AddScoped<IEvolutionService, EvolutionService>();

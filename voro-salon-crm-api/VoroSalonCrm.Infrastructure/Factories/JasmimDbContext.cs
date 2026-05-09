@@ -79,6 +79,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
         public DbSet<TenantEvolutionInstance> TenantEvolutionInstances { get; set; }
         public DbSet<EvolutionTemplate> EvolutionTemplates { get; set; }
+        public DbSet<TenantEvolutionInstanceLink> TenantEvolutionInstanceLinks { get; set; }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -969,6 +970,28 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(e => e.Keywords).HasMaxLength(2000);
                 b.Property(e => e.IsActive).HasDefaultValue(true);
                 b.Property(e => e.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+            });
+
+            // ---------------------------
+            // TENANT EVOLUTION INSTANCE LINK
+            // ---------------------------
+            builder.Entity<TenantEvolutionInstanceLink>(b =>
+            {
+                b.HasKey(l => l.Id);
+                b.Property(l => l.LinkedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                b.HasIndex(l => l.TenantId).IsUnique();
+                b.HasIndex(l => l.InstanceId);
+
+                b.HasOne(l => l.Tenant)
+                 .WithMany()
+                 .HasForeignKey(l => l.TenantId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(l => l.Instance)
+                 .WithMany()
+                 .HasForeignKey(l => l.InstanceId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }
