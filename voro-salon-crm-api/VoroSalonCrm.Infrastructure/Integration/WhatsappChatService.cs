@@ -1277,6 +1277,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 existing.AppointmentId = session.AppointmentId ?? existing.AppointmentId;
                 existing.LastMessageAt = DateTimeOffset.UtcNow;
                 existing.UpdatedAt = DateTimeOffset.UtcNow;
+                existing.DeletedAt = null;
                 if (!string.IsNullOrEmpty(contactName) && contactName != "Cliente")
                     existing.ContactName = contactName;
                 _conversationRepository.Update(existing);

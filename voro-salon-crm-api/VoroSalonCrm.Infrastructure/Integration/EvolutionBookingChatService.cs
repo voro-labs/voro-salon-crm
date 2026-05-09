@@ -138,6 +138,14 @@ namespace VoroSalonCrm.Infrastructure.Integration
                         .Query(c => c.TenantId == msg.TenantId && c.PhoneNumber == from)
                         .FirstOrDefaultAsync(ct);
                     session.ContactName = conversation?.ContactName ?? "Cliente";
+
+                    if (conversation?.DeletedAt != null)
+                    {
+                        conversation.DeletedAt = null;
+                        conversation.UpdatedAt = DateTimeOffset.UtcNow;
+                        _conversationRepository.Update(conversation);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
                 }
 
                 try
