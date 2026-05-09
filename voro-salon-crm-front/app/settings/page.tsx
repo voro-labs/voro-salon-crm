@@ -37,6 +37,10 @@ import {
   Calendar,
   Users,
   DollarSign,
+  Plus,
+  Trash2,
+  QrCode,
+  Smartphone,
 } from "lucide-react"
 import useSWR from "swr"
 import { fetcher } from "@/lib/fetcher"
@@ -70,6 +74,15 @@ interface EvolutionInstance {
   status: 0 | 1 | 2 // 0=Disconnected, 1=Connecting, 2=Connected
   phoneNumber: string | null
   connectedAt: string | null
+  isOwned: boolean
+  ownerTenantName: string | null
+}
+
+interface AvailableInstance {
+  instanceId: string
+  tenantName: string
+  phoneNumber: string | null
+  status: 0 | 1 | 2
 }
 
 interface EvolutionStatus {
@@ -171,7 +184,7 @@ export default function ConfiguracoesPage() {
     fetchOnboardingStatus,
     { fallbackData: null }
   )
-  const { data: evolutionInstances } = useSWR<EvolutionInstance[]>(
+  const { data: evolutionInstances, isLoading: isLoadingEvolution, mutate: mutateEvolution } = useSWR<EvolutionInstance[]>(
     hasWhatsAppBot ? API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES : null,
     fetcher,
     { fallbackData: [] }
@@ -185,6 +198,35 @@ export default function ConfiguracoesPage() {
   const evolutionInstanceRef = useRef(evolutionInstance)
   useEffect(() => { evolutionInstanceRef.current = evolutionInstance }, [evolutionInstance])
 
+  // Sub-tabs WhatsApp
+  const [whatsappSubTab, setWhatsappSubTab] = useState<"evolution" | "official">("evolution")
+
+  // Modal criar/vincular instância
+  const [linkModalOpen, setLinkModalOpen] = useState(false)
+  const [availableInstances, setAvailableInstances] = useState<AvailableInstance[]>([])
+  const [loadingAvailable, setLoadingAvailable] = useState(false)
+  const [selectedLinkInstanceId, setSelectedLinkInstanceId] = useState<string | null>(null)
+  const [linkChoice, setLinkChoice] = useState<"new" | "link">("new")
+  const [linking, setLinking] = useState(false)
+  const [unlinking, setUnlinking] = useState(false)
+  const [creating, setCreating] = useState(false)
+
+  // Exclusão de instância Evolution
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  // QR code inline
+  const [qrExpanded, setQrExpanded] = useState(false)
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
+  const qrPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Código de pareamento inline
+  const [codeExpanded, setCodeExpanded] = useState(false)
+  const [pairPhone, setPairPhone] = useState("")
+  const [pairCode, setPairCode] = useState<string | null>(null)
+  const [pairLoading, setPairLoading] = useState(false)
+  const pairPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const evolutionEffectiveStatus: 0 | 1 | 2 = (() => {
     if (!evolutionInstance) return 0
     if (evolutionLiveState === "open") return 2
@@ -192,6 +234,9 @@ export default function ConfiguracoesPage() {
     if (evolutionLiveState === "close" || evolutionLiveState === "timeout") return 0
     return evolutionInstance.status
   })()
+
+  const evolutionIsActive = evolutionEffectiveStatus === 2 || (evolutionInstance != null && !evolutionInstance.isOwned)
+  const officialIsActive = onboardingStatus?.connected === true
 
   useEffect(() => {
     setTwoFactorEnabled(user?.twoFactorEnabled ?? false)
@@ -373,6 +418,168 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  // ── Evolution: criar instância ──
+  const handleCreateInstance = async () => {
+    setCreating(true)
+    try {
+      const res = await secureApiCall<EvolutionInstance>(API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES, { method: "POST" })
+      if (res.hasError) { toast.error(res.message ?? "Erro ao criar instância."); return }
+      toast.success("Instância criada.")
+      mutateEvolution()
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  // ── Evolution: desconectar ──
+  const handleDisconnect = async () => {
+    if (!evolutionInstance) return
+    setDisconnecting(true)
+    try {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstance.id}/disconnect`, { method: "POST" })
+      if (res.hasError) { toast.error(res.message ?? "Erro ao desconectar."); return }
+      toast.success("Instância desconectada.")
+      setEvolutionLiveState(null)
+      mutateEvolution()
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  // ── Evolution: excluir instância ──
+  const handleDeleteEvolution = async () => {
+    if (!evolutionInstance) return
+    setDeleteOpen(false)
+    try {
+      const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstance.id}`, { method: "DELETE" })
+      if (res.hasError) { toast.error(res.message ?? "Erro ao excluir instância."); return }
+      toast.success("Instância excluída.")
+      mutateEvolution()
+    } catch {
+      toast.error("Erro de conexão.")
+    }
+  }
+
+  // ── Evolution: abrir modal de criação/vinculação ──
+  const handleOpenLinkModal = async () => {
+    setLoadingAvailable(true)
+    setLinkModalOpen(true)
+    setLinkChoice("new")
+    setSelectedLinkInstanceId(null)
+    try {
+      const res = await secureApiCall<AvailableInstance[]>(API_CONFIG.ENDPOINTS.EVOLUTION_AVAILABLE_TO_LINK)
+      setAvailableInstances(res.hasError ? [] : res.data ?? [])
+    } finally {
+      setLoadingAvailable(false)
+    }
+  }
+
+  // ── Evolution: confirmar modal (criar ou vincular) ──
+  const handleConfirmLinkModal = async () => {
+    setLinking(true)
+    try {
+      if (linkChoice === "new") {
+        const res = await secureApiCall<EvolutionInstance>(API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES, { method: "POST" })
+        if (res.hasError) { toast.error(res.message ?? "Erro ao criar instância."); return }
+        toast.success("Instância criada.")
+      } else {
+        if (!selectedLinkInstanceId) return
+        const res = await secureApiCall(API_CONFIG.ENDPOINTS.EVOLUTION_LINK, {
+          method: "POST",
+          body: JSON.stringify({ instanceId: selectedLinkInstanceId }),
+        })
+        if (res.hasError) { toast.error(res.message ?? "Erro ao vincular."); return }
+        toast.success("Instância vinculada.")
+      }
+      mutateEvolution()
+      setLinkModalOpen(false)
+    } finally {
+      setLinking(false)
+    }
+  }
+
+  // ── Evolution: desvincular instância compartilhada ──
+  const handleUnlink = async () => {
+    setUnlinking(true)
+    try {
+      const res = await secureApiCall(API_CONFIG.ENDPOINTS.EVOLUTION_LINK, { method: "DELETE" })
+      if (res.hasError) { toast.error(res.message ?? "Erro ao desvincular."); return }
+      toast.success("Instância desvinculada.")
+      mutateEvolution()
+    } finally {
+      setUnlinking(false)
+    }
+  }
+
+  // ── QR Code inline ──
+  const handleToggleQr = async () => {
+    if (qrExpanded) {
+      if (qrPollRef.current) clearInterval(qrPollRef.current)
+      setQrExpanded(false)
+      setQrCode(null)
+      return
+    }
+    if (!evolutionInstance) return
+    setQrExpanded(true)
+    setQrLoading(true)
+    setCodeExpanded(false)
+    setPairCode(null)
+
+    const fetchQr = async () => {
+      const res = await secureApiCall<{ qrCode: string | null }>(
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstanceRef.current!.id}/qr`
+      )
+      if (!res.hasError && res.data?.qrCode) setQrCode(res.data.qrCode)
+    }
+
+    const checkStatus = async () => {
+      const res = await secureApiCall<EvolutionStatus>(
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstanceRef.current!.id}/status`
+      )
+      if (!res.hasError && res.data?.state === "open") {
+        if (qrPollRef.current) clearInterval(qrPollRef.current)
+        setQrExpanded(false)
+        setQrCode(null)
+        toast.success("WhatsApp conectado!")
+        mutateEvolution()
+      }
+    }
+
+    await fetchQr()
+    setQrLoading(false)
+    qrPollRef.current = setInterval(async () => { await fetchQr(); await checkStatus() }, 3000)
+  }
+
+  // ── Código de pareamento inline ──
+  const handleGeneratePairCodeInline = async () => {
+    if (!evolutionInstance || !pairPhone.trim()) return
+    setPairLoading(true)
+    setPairCode(null)
+    try {
+      const res = await secureApiCall<{ pairingCode: string }>(
+        `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstance.id}/pair`,
+        { method: "POST", body: JSON.stringify({ phone: pairPhone.trim() }) }
+      )
+      if (res.hasError) { toast.error(res.message ?? "Erro ao gerar código."); return }
+      setPairCode(res.data?.pairingCode ?? null)
+      pairPollRef.current = setInterval(async () => {
+        const statusRes = await secureApiCall<EvolutionStatus>(
+          `${API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES}/${evolutionInstanceRef.current!.id}/status`
+        )
+        if (!statusRes.hasError && statusRes.data?.state === "open") {
+          if (pairPollRef.current) clearInterval(pairPollRef.current)
+          setCodeExpanded(false)
+          setPairPhone("")
+          setPairCode(null)
+          toast.success("WhatsApp conectado!")
+          mutateEvolution()
+        }
+      }, 3000)
+    } finally {
+      setPairLoading(false)
+    }
+  }
+
   useEffect(() => {
     setMounted(true)
     const saved = typeof window !== "undefined" ? localStorage.getItem("voro:radius") : null
@@ -452,6 +659,209 @@ export default function ConfiguracoesPage() {
       setTfaLoading(false)
     }
   }
+
+  const EvolutionSubTab = () => {
+    if (isLoadingEvolution) return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+
+    // Estado: instância compartilhada (vinculada)
+    if (evolutionInstance && !evolutionInstance.isOwned) return (
+      <div className={`rounded-lg border p-4 flex flex-col gap-3 ${evolutionEffectiveStatus === 2 ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10" : ""}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className={`font-semibold text-sm ${evolutionEffectiveStatus === 2 ? "text-emerald-700" : "text-muted-foreground"}`}>
+              {evolutionEffectiveStatus === 2 ? "● Conectado" : "○ Desconectado"}
+            </p>
+            {evolutionInstance.phoneNumber && <p className="text-sm font-mono mt-1">{evolutionInstance.phoneNumber}</p>}
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className="bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-950/30 gap-1 text-xs">🔗 Compartilhada</Badge>
+            <span className="text-xs text-muted-foreground">de: {evolutionInstance.ownerTenantName}</span>
+          </div>
+        </div>
+        <div className="border-t pt-3 flex justify-end">
+          <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs" onClick={handleUnlink} disabled={unlinking}>
+            {unlinking ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
+            Desvincular
+          </Button>
+        </div>
+      </div>
+    )
+
+    // Estado: sem instância
+    if (!evolutionInstance) {
+      const hasAvailable = availableInstances.length > 0
+      return (
+        <div className="flex flex-col items-center gap-4 py-10 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <Wifi className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-semibold">Nenhuma instância configurada</p>
+            <p className="text-sm text-muted-foreground max-w-xs mt-1">
+              {hasAvailable
+                ? "Crie uma instância ou vincule uma existente de outro estabelecimento seu."
+                : "Crie uma instância Evolution Go para conectar um número WhatsApp ao bot."}
+            </p>
+          </div>
+          <Button onClick={hasAvailable ? handleOpenLinkModal : handleCreateInstance} disabled={creating}>
+            {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+            {hasAvailable ? "Criar / Vincular instância" : "Criar instância"}
+          </Button>
+        </div>
+      )
+    }
+
+    // Estado: instância própria (conectada, conectando ou desconectada)
+    return (
+      <div className={`rounded-lg border p-4 flex flex-col gap-4 ${evolutionEffectiveStatus === 2 ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10" : ""}`}>
+        {/* Status header */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              {evolutionEffectiveStatus === 2
+                ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 gap-1 text-xs"><CheckCircle className="h-3 w-3" /> Conectado</Badge>
+                : evolutionEffectiveStatus === 1
+                  ? <Badge className="bg-amber-50 text-amber-700 border-amber-300 gap-1 text-xs"><Loader2 className="h-3 w-3 animate-spin" /> Conectando</Badge>
+                  : <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>}
+            </div>
+            {evolutionInstance.phoneNumber && <p className="text-sm font-mono font-semibold mt-1">{evolutionInstance.phoneNumber}</p>}
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">{evolutionInstance.instanceId}</p>
+          </div>
+          {evolutionEffectiveStatus === 2 && (
+            <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs shrink-0" onClick={handleDisconnect} disabled={disconnecting}>
+              {disconnecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <WifiOff className="mr-1.5 h-3 w-3" />}
+              Desconectar
+            </Button>
+          )}
+        </div>
+
+        {/* Ações de conexão (apenas quando desconectado) */}
+        {evolutionEffectiveStatus !== 2 && (
+          <div className="flex flex-col gap-3 pt-2 border-t">
+            {/* QR Code inline */}
+            <div>
+              <Button size="sm" variant={qrExpanded ? "default" : "outline"} onClick={handleToggleQr} className="text-xs w-full justify-start">
+                <QrCode className="mr-2 h-3.5 w-3.5" />
+                {qrExpanded ? "Fechar QR Code" : "Conectar via QR Code"}
+              </Button>
+              {qrExpanded && (
+                <div className="mt-3 flex flex-col items-center gap-3 p-4 bg-muted rounded-lg">
+                  {qrLoading || !qrCode
+                    ? <div className="flex flex-col items-center gap-2 py-6"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /><span className="text-xs text-muted-foreground">Aguardando QR Code...</span></div>
+                    // eslint-disable-next-line @next/next/no-img-element
+                    : <img src={qrCode} alt="QR Code" className="w-48 h-48 rounded border" />}
+                  <p className="text-xs text-muted-foreground text-center">Abra o WhatsApp → Dispositivos Conectados → Escanear QR</p>
+                </div>
+              )}
+            </div>
+
+            {/* Código de pareamento inline */}
+            <div>
+              <Button size="sm" variant={codeExpanded ? "default" : "outline"} onClick={() => { setCodeExpanded(v => !v); setQrExpanded(false) }} className="text-xs w-full justify-start">
+                <Smartphone className="mr-2 h-3.5 w-3.5" />
+                {codeExpanded ? "Fechar Código" : "Conectar via Código"}
+              </Button>
+              {codeExpanded && (
+                <div className="mt-3 flex flex-col gap-3 p-4 bg-muted rounded-lg">
+                  <div className="flex gap-2">
+                    <Input placeholder="+5511999999999" value={pairPhone} onChange={e => setPairPhone(e.target.value)} disabled={pairLoading || !!pairCode} className="h-8 text-sm" />
+                    {!pairCode && (
+                      <Button size="sm" onClick={handleGeneratePairCodeInline} disabled={pairLoading || !pairPhone.trim()} className="h-8 text-xs shrink-0">
+                        {pairLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Gerar"}
+                      </Button>
+                    )}
+                  </div>
+                  {pairCode && (
+                    <div className="flex flex-col items-center gap-1 p-3 bg-background rounded border">
+                      <p className="text-xs text-muted-foreground">Código de pareamento</p>
+                      <p className="text-2xl font-mono font-bold tracking-widest select-all">{pairCode}</p>
+                      <p className="text-xs text-muted-foreground text-center">WhatsApp → Dispositivos → Vincular com número</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Excluir instância */}
+        <div className="flex justify-end pt-1 border-t">
+          <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />Excluir instância
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const OfficialApiSubTab = () => (
+    <div className={`rounded-lg border p-4 flex flex-col gap-3 transition-colors ${onboardingStatus?.connected ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10 dark:border-emerald-800" : "bg-muted/20"}`}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${onboardingStatus?.connected ? "bg-emerald-100 dark:bg-emerald-950/40" : "bg-muted"}`}>
+            {statusLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : onboardingStatus?.connected ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+          </div>
+          <div>
+            <p className="font-semibold text-sm leading-tight">API Oficial Meta</p>
+            <p className="text-xs text-muted-foreground">WhatsApp Business Platform</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {!statusLoading && (onboardingStatus?.connected
+            ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 gap-1 text-xs"><CheckCircle className="h-3 w-3" /> Conectado</Badge>
+            : <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>
+          )}
+          {onboardingStatus?.connected ? (
+            <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-8 text-xs" onClick={() => setDisconnectDialogOpen(true)} disabled={disconnecting || statusLoading}>
+              {disconnecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <WifiOff className="mr-1.5 h-3 w-3" />}
+              Desconectar
+            </Button>
+          ) : (
+            <Button size="sm" className="h-8 text-xs" onClick={handleConnect} disabled={connecting || statusLoading}>
+              {connecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Wifi className="mr-1.5 h-3 w-3" />}
+              {connecting ? "Aguardando..." : "Conectar"}
+            </Button>
+          )}
+        </div>
+      </div>
+      {onboardingStatus?.connected && (
+        <div className="flex flex-col gap-1 pl-12">
+          {onboardingStatus.displayPhone && <p className="text-sm font-mono text-muted-foreground">{onboardingStatus.displayPhone}</p>}
+          {onboardingStatus.tokenExpiresAt && (() => {
+            const d = new Date(onboardingStatus.tokenExpiresAt!)
+            const diffDays = Math.ceil((d.getTime() - Date.now()) / 86400000)
+            return (
+              <div className="flex items-center gap-1">
+                {diffDays <= 7 && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                <p className={`text-xs ${diffDays <= 7 ? "text-amber-600" : "text-muted-foreground"}`}>
+                  Token expira em {d.toLocaleDateString("pt-BR")} ({diffDays} dia{diffDays !== 1 ? "s" : ""})
+                </p>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+      {!onboardingStatus?.connected && (
+        <div className="flex flex-col gap-3 pt-2 border-t">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">IDs Meta (avançado)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="wp-phone-number-id" className="text-xs">Phone Number ID</Label>
+              <Input id="wp-phone-number-id" placeholder="123456789012345" value={wpPhoneNumberId} onChange={e => setWpPhoneNumberId(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="wp-business-account-id" className="text-xs">Business Account ID</Label>
+              <Input id="wp-business-account-id" placeholder="987654321098765" value={wpBusinessAccountId} onChange={e => setWpBusinessAccountId(e.target.value)} className="h-8 text-sm" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 
   if (isLoading) {
     return (
@@ -1229,142 +1639,7 @@ export default function ConfiguracoesPage() {
             <TabsContent value="whatsapp">
               <div className="flex flex-col gap-4">
 
-                {/* ── Escolha do método ── */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="h-5 w-5 text-primary" />
-                      <CardTitle>Conexão WhatsApp</CardTitle>
-                    </div>
-                    <CardDescription>
-                      Escolha como conectar seu número ao bot. Apenas um método fica ativo por vez.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-3">
-
-                    {/* ── Opção 1: API Oficial Meta ── */}
-                    <div className={`rounded-lg border p-4 flex flex-col gap-3 transition-colors ${onboardingStatus?.connected ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10 dark:border-emerald-800" : "bg-muted/20"}`}>
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${onboardingStatus?.connected ? "bg-emerald-100 dark:bg-emerald-950/40" : "bg-muted"}`}>
-                            {statusLoading
-                              ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              : onboardingStatus?.connected
-                                ? <CheckCircle className="h-4 w-4 text-emerald-600" />
-                                : <WifiOff className="h-4 w-4 text-muted-foreground" />}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm leading-tight">API Oficial Meta</p>
-                            <p className="text-xs text-muted-foreground">WhatsApp Business Platform</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!statusLoading && (
-                            onboardingStatus?.connected
-                              ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 gap-1 text-xs">
-                                  <CheckCircle className="h-3 w-3" /> Conectado
-                                </Badge>
-                              : <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>
-                          )}
-                          {onboardingStatus?.connected ? (
-                            <Button variant="outline" size="sm"
-                              className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive h-8 text-xs"
-                              onClick={() => setDisconnectDialogOpen(true)}
-                              disabled={disconnecting || statusLoading}>
-                              {disconnecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <WifiOff className="mr-1.5 h-3 w-3" />}
-                              Desconectar
-                            </Button>
-                          ) : evolutionEffectiveStatus === 2 ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs gap-1">
-                              <AlertTriangle className="h-3 w-3" /> Evolution ativo
-                            </Badge>
-                          ) : (
-                            <Button size="sm" className="h-8 text-xs" onClick={handleConnect} disabled={connecting || statusLoading}>
-                              {connecting ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Wifi className="mr-1.5 h-3 w-3" />}
-                              {connecting ? "Aguardando..." : "Conectar"}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {onboardingStatus?.connected && (
-                        <div className="flex flex-col gap-1 pl-12">
-                          {onboardingStatus.displayPhone && (
-                            <p className="text-sm font-mono text-muted-foreground">{onboardingStatus.displayPhone}</p>
-                          )}
-                          {onboardingStatus.tokenExpiresAt && (() => {
-                            const d = new Date(onboardingStatus.tokenExpiresAt!)
-                            const diffDays = Math.ceil((d.getTime() - Date.now()) / 86400000)
-                            return (
-                              <div className="flex items-center gap-1">
-                                {diffDays <= 7 && <AlertTriangle className="h-3 w-3 text-amber-500" />}
-                                <p className={`text-xs ${diffDays <= 7 ? "text-amber-600" : "text-muted-foreground"}`}>
-                                  Token expira em {d.toLocaleDateString("pt-BR")} ({diffDays} dia{diffDays !== 1 ? "s" : ""})
-                                </p>
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ── Opção 2: Evolution Go ── */}
-                    <div className={`rounded-lg border p-4 flex flex-col gap-3 transition-colors ${evolutionEffectiveStatus === 2 ? "border-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/10 dark:border-emerald-800" : "bg-muted/20"}`}>
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${evolutionEffectiveStatus === 2 ? "bg-emerald-100 dark:bg-emerald-950/40" : evolutionEffectiveStatus === 1 ? "bg-amber-100 dark:bg-amber-950/30" : "bg-muted"}`}>
-                            {evolutionEffectiveStatus === 2
-                              ? <CheckCircle className="h-4 w-4 text-emerald-600" />
-                              : evolutionEffectiveStatus === 1
-                                ? <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                                : <WifiOff className="h-4 w-4 text-muted-foreground" />}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm leading-tight">Evolution Go</p>
-                            <p className="text-xs text-muted-foreground">WhatsApp via servidor próprio</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {evolutionEffectiveStatus === 2 && (
-                            <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 gap-1 text-xs">
-                              <CheckCircle className="h-3 w-3" /> Conectado
-                            </Badge>
-                          )}
-                          {evolutionEffectiveStatus === 1 && (
-                            <Badge className="bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400 gap-1 text-xs">
-                              <Loader2 className="h-3 w-3 animate-spin" /> Conectando
-                            </Badge>
-                          )}
-                          {!evolutionInstance && (
-                            <Badge variant="outline" className="text-muted-foreground text-xs">Sem instância</Badge>
-                          )}
-                          {evolutionInstance && evolutionEffectiveStatus === 0 && (
-                            <Badge variant="outline" className="text-muted-foreground text-xs">Desconectado</Badge>
-                          )}
-                          {onboardingStatus?.connected ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs gap-1">
-                              <AlertTriangle className="h-3 w-3" /> Meta API ativa
-                            </Badge>
-                          ) : (
-                            <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
-                              <Link href="/settings/whatsapp/evolution">
-                                <Wifi className="mr-1.5 h-3 w-3" />
-                                Gerenciar
-                              </Link>
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {evolutionEffectiveStatus === 2 && evolutionInstance?.phoneNumber && (
-                        <p className="text-sm font-mono text-muted-foreground pl-12">{evolutionInstance.phoneNumber}</p>
-                      )}
-                      {!evolutionInstance && (
-                        <p className="text-xs text-muted-foreground pl-12">Crie uma instância para conectar um número WhatsApp.</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* ── Bot e configurações avançadas ── */}
+                {/* ── Seção compartilhada: Bot ── */}
                 <Card>
                   <CardHeader>
                     <div className="flex items-center gap-2">
@@ -1373,8 +1648,6 @@ export default function ConfiguracoesPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="flex flex-col gap-4">
-
-                    {/* Booking toggle */}
                     <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
                       <div className="flex flex-col gap-0.5">
                         <Label htmlFor="whatsapp-booking-toggle" className="font-semibold text-sm cursor-pointer">
@@ -1384,63 +1657,124 @@ export default function ConfiguracoesPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{useWhatsappBooking ? "Ativo" : "Inativo"}</span>
-                        <Switch
-                          id="whatsapp-booking-toggle"
-                          checked={useWhatsappBooking}
-                          onCheckedChange={setUseWhatsappBooking}
-                        />
+                        <Switch id="whatsapp-booking-toggle" checked={useWhatsappBooking} onCheckedChange={setUseWhatsappBooking} />
                       </div>
                     </div>
-
-                    {/* IDs manuais (apenas visível quando Evolution não está conectado) */}
-                    {evolutionEffectiveStatus !== 2 && (
-                      <div className="flex flex-col gap-3">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">IDs Meta (avançado)</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="wp-phone-number-id" className="text-xs">Phone Number ID</Label>
-                            <Input
-                              id="wp-phone-number-id"
-                              placeholder="123456789012345"
-                              value={wpPhoneNumberId}
-                              onChange={(e) => setWpPhoneNumberId(e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="wp-business-account-id" className="text-xs">Business Account ID</Label>
-                            <Input
-                              id="wp-business-account-id"
-                              placeholder="987654321098765"
-                              value={wpBusinessAccountId}
-                              onChange={(e) => setWpBusinessAccountId(e.target.value)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     <div className="flex items-center justify-between pt-2 border-t">
                       <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5" asChild>
-                        <Link href="/settings/whatsapp">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          Templates de mensagem
-                        </Link>
+                        <Link href="/settings/whatsapp"><MessageSquare className="h-3.5 w-3.5" />Templates de mensagem</Link>
                       </Button>
                       <Button onClick={handleSaveWhatsapp} disabled={savingWp} size="sm" className="gap-2">
                         {savingWp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                        <Save className="h-3.5 w-3.5" />
-                        Salvar
+                        <Save className="h-3.5 w-3.5" />Salvar
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* ── Sub-tabs de canal ── */}
+                <Card>
+                  <CardContent className="p-0">
+                    {/* Sub-tab header */}
+                    <div className="flex border-b">
+                      <button
+                        onClick={() => { if (!officialIsActive) setWhatsappSubTab("evolution") }}
+                        disabled={officialIsActive}
+                        title={officialIsActive ? "API Oficial ativa — desconecte para usar Evolution" : undefined}
+                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
+                          whatsappSubTab === "evolution"
+                            ? "border-primary text-primary"
+                            : officialIsActive
+                              ? "border-transparent text-muted-foreground opacity-40 cursor-not-allowed"
+                              : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        ⚡ Evolution Go
+                      </button>
+                      <button
+                        onClick={() => { if (!evolutionIsActive) setWhatsappSubTab("official") }}
+                        disabled={evolutionIsActive}
+                        title={evolutionIsActive ? "Evolution ativo — desconecte para usar a API Oficial" : undefined}
+                        className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
+                          whatsappSubTab === "official"
+                            ? "border-primary text-primary"
+                            : evolutionIsActive
+                              ? "border-transparent text-muted-foreground opacity-40 cursor-not-allowed"
+                              : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        📱 API Oficial Meta
+                      </button>
+                    </div>
+
+                    {/* Sub-tab content */}
+                    <div className="p-4">
+                      {whatsappSubTab === "evolution" && <EvolutionSubTab />}
+                      {whatsappSubTab === "official" && <OfficialApiSubTab />}
+                    </div>
+                  </CardContent>
+                </Card>
+
               </div>
             </TabsContent>
           )}
         </Tabs>
       </div>
+
+      {/* Modal: criar ou vincular instância Evolution */}
+      <Dialog open={linkModalOpen} onOpenChange={open => !open && setLinkModalOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configurar instância Evolution</DialogTitle>
+            <DialogDescription>Crie uma nova instância ou vincule uma existente de outro estabelecimento seu.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            {loadingAvailable ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              <>
+                <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${linkChoice === "new" ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <input type="radio" name="link-choice" value="new" checked={linkChoice === "new"} onChange={() => setLinkChoice("new")} className="mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm">Criar nova instância</p>
+                    <p className="text-xs text-muted-foreground">Uma instância exclusiva para este estabelecimento.</p>
+                  </div>
+                </label>
+                {availableInstances.map(inst => (
+                  <label key={inst.instanceId} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${linkChoice === "link" && selectedLinkInstanceId === inst.instanceId ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <input type="radio" name="link-choice" value={inst.instanceId} checked={linkChoice === "link" && selectedLinkInstanceId === inst.instanceId} onChange={() => { setLinkChoice("link"); setSelectedLinkInstanceId(inst.instanceId) }} className="mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Vincular: {inst.tenantName}</p>
+                      <p className="text-xs text-muted-foreground">{inst.phoneNumber ?? "Sem número"} · {inst.status === 2 ? "Conectado" : inst.status === 1 ? "Conectando" : "Desconectado"}</p>
+                    </div>
+                  </label>
+                ))}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkModalOpen(false)} disabled={linking}>Cancelar</Button>
+            <Button onClick={handleConfirmLinkModal} disabled={linking || (linkChoice === "link" && !selectedLinkInstanceId)}>
+              {linking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {linkChoice === "new" ? "Criar instância" : "Vincular"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: confirmar exclusão de instância Evolution */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir instância?</DialogTitle>
+            <DialogDescription>Esta ação não pode ser desfeita. A instância Evolution será removida permanentemente.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteEvolution}>Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* WhatsApp Disconnect Confirmation Dialog */}
       <Dialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
