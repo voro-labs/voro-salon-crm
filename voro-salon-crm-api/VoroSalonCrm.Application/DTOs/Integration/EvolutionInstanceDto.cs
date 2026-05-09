@@ -8,7 +8,9 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         EvolutionInstanceStatus Status,
         string? PhoneNumber,
         DateTimeOffset CreatedAt,
-        DateTimeOffset? ConnectedAt
+        DateTimeOffset? ConnectedAt,
+        bool IsOwned,
+        string? OwnerTenantName
     );
 
     public record EvolutionInstanceStatusDto(

@@ -12,5 +12,8 @@ namespace VoroSalonCrm.Application.Services.Interfaces.Integration
         Task ConnectWebhookAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default);
         Task DisconnectAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default);
         Task DeleteAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default);
+        Task<IEnumerable<EvolutionAvailableInstanceDto>> GetAvailableToLinkAsync(Guid currentTenantId, Guid userId, CancellationToken ct = default);
+        Task LinkAsync(Guid tenantId, Guid instanceId, Guid userId, CancellationToken ct = default);
+        Task UnlinkAsync(Guid tenantId, CancellationToken ct = default);
     }
 }

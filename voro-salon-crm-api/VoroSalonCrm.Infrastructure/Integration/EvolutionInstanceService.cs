@@ -19,6 +19,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly IntegrationUtil _config;
         private readonly HttpClient _http;
         private readonly ITenantEvolutionInstanceRepository _instanceRepository;
+        private readonly ITenantEvolutionInstanceLinkRepository _linkRepository;
+        private readonly IUserTenantRepository _userTenantRepository;
+        private readonly ITenantRepository _tenantRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<EvolutionInstanceService> _logger;
 
@@ -32,12 +35,18 @@ namespace VoroSalonCrm.Infrastructure.Integration
             IOptions<IntegrationUtil> integrationUtil,
             IHttpClientFactory httpClientFactory,
             ITenantEvolutionInstanceRepository instanceRepository,
+            ITenantEvolutionInstanceLinkRepository linkRepository,
+            IUserTenantRepository userTenantRepository,
+            ITenantRepository tenantRepository,
             IUnitOfWork unitOfWork,
             ILogger<EvolutionInstanceService> logger)
         {
             _config = integrationUtil.Value;
             _http = httpClientFactory.CreateClient("evolution-go");
             _instanceRepository = instanceRepository;
+            _linkRepository = linkRepository;
+            _userTenantRepository = userTenantRepository;
+            _tenantRepository = tenantRepository;
             _unitOfWork = unitOfWork;
             _logger = logger;
         }
@@ -67,20 +76,31 @@ namespace VoroSalonCrm.Infrastructure.Integration
             await _instanceRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
-            return ToDto(entity);
+            return ToDto(entity, isOwned: true, ownerTenantName: null);
         }
 
         public async Task<IEnumerable<EvolutionInstanceDto>> GetByTenantAsync(Guid tenantId, CancellationToken ct = default)
         {
-            var instance = await _instanceRepository.GetByTenantIdAsync(tenantId);
-            return instance == null
-                ? Enumerable.Empty<EvolutionInstanceDto>()
-                : new[] { ToDto(instance) };
+            // Instância própria
+            var own = await _instanceRepository.GetByTenantIdAsync(tenantId);
+            if (own != null)
+                return new[] { ToDto(own, isOwned: true, ownerTenantName: null) };
+
+            // Instância vinculada
+            var link = await _linkRepository.GetByTenantIdAsync(tenantId);
+            if (link != null)
+            {
+                // link.Instance já foi carregado via Include no repositório
+                var ownerTenant = await _tenantRepository.GetByIdAsync(true, link.Instance.TenantId);
+                return new[] { ToDto(link.Instance, isOwned: false, ownerTenantName: ownerTenant?.Name) };
+            }
+
+            return Enumerable.Empty<EvolutionInstanceDto>();
         }
 
         public async Task<EvolutionInstanceStatusDto> GetStatusAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default)
         {
-            var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
+            var (instance, _) = await ResolveOrThrowAsync(tenantId, instanceDbId);
             var json = await InstanceGetAsync(instance.InstanceToken, "/instance/status", ct);
 
             var dataEl = json.TryGetProperty("data", out var d) ? d : json;
@@ -106,7 +126,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         public async Task<EvolutionInstanceQrDto> GetQrAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default)
         {
-            var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
+            var (instance, isOwned) = await ResolveOrThrowAsync(tenantId, instanceDbId);
+            if (!isOwned) throw new UnauthorizedAccessException("Somente o tenant dono pode conectar via QR.");
+
             var json = await InstanceGetAsync(instance.InstanceToken, "/instance/qr", ct);
 
             string? qrCode = null;
@@ -122,7 +144,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         public async Task<EvolutionInstancePairResultDto> PairAsync(Guid tenantId, Guid instanceDbId, string phone, CancellationToken ct = default)
         {
-            var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
+            var (instance, isOwned) = await ResolveOrThrowAsync(tenantId, instanceDbId);
+            if (!isOwned) throw new UnauthorizedAccessException("Somente o tenant dono pode parear via código.");
+
             var payload = new { phone };
             var json = await InstancePostAsync(instance.InstanceToken, "/instance/pair", payload, ct);
 
@@ -142,7 +166,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         public async Task ConnectWebhookAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default)
         {
-            var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
+            var (instance, isOwned) = await ResolveOrThrowAsync(tenantId, instanceDbId);
+            if (!isOwned) throw new UnauthorizedAccessException("Somente o tenant dono pode configurar webhook.");
+
             var webhookUrl = $"{_config.ApiPublicUrl.TrimEnd('/')}/api/v1/whatsapp/evolution-webhook";
 
             var payload = new
@@ -156,7 +182,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         public async Task DisconnectAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default)
         {
-            var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
+            var (instance, isOwned) = await ResolveOrThrowAsync(tenantId, instanceDbId);
+            if (!isOwned) throw new UnauthorizedAccessException("Somente o tenant dono pode desconectar esta instância.");
+
             await InstancePostAsync(instance.InstanceToken, "/instance/disconnect", new { }, ct);
 
             instance.Status = EvolutionInstanceStatus.Disconnected;
@@ -168,7 +196,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         public async Task DeleteAsync(Guid tenantId, Guid instanceDbId, CancellationToken ct = default)
         {
-            var instance = await GetOwnedOrThrowAsync(tenantId, instanceDbId);
+            var (instance, isOwned) = await ResolveOrThrowAsync(tenantId, instanceDbId);
+            if (!isOwned) throw new UnauthorizedAccessException("Somente o tenant dono pode excluir esta instância.");
 
             // Tentar deletar no Evolution Go (não falhar se instância não existir mais)
             try
@@ -187,17 +216,93 @@ namespace VoroSalonCrm.Infrastructure.Integration
             await _unitOfWork.SaveChangesAsync();
         }
 
-        // ── Helpers ──────────────────────────────────────────────────────────
-
-        private async Task<TenantEvolutionInstance> GetOwnedOrThrowAsync(Guid tenantId, Guid instanceDbId)
+        public async Task<IEnumerable<EvolutionAvailableInstanceDto>> GetAvailableToLinkAsync(
+            Guid currentTenantId, Guid userId, CancellationToken ct = default)
         {
-            var instance = await _instanceRepository.GetByIdAsync(true, instanceDbId)
+            // Se já tem instância própria ou link, retorna vazio
+            var hasOwn = await _instanceRepository.CountByTenantIdAsync(currentTenantId) > 0;
+            if (hasOwn) return Enumerable.Empty<EvolutionAvailableInstanceDto>();
+
+            var existingLink = await _linkRepository.GetByTenantIdAsync(currentTenantId);
+            if (existingLink != null) return Enumerable.Empty<EvolutionAvailableInstanceDto>();
+
+            // Todos os tenants que o usuário acessa, exceto o atual
+            var userTenants = await _userTenantRepository.GetAllAsync(
+                ut => ut.UserId == userId, asNoTracking: true);
+            var otherTenantIds = userTenants
+                .Select(ut => ut.TenantId)
+                .Where(id => id != currentTenantId)
+                .ToList();
+
+            var result = new List<EvolutionAvailableInstanceDto>();
+            foreach (var tid in otherTenantIds)
+            {
+                var instance = await _instanceRepository.GetByTenantIdAsync(tid);
+                if (instance == null) continue;
+
+                var tenant = await _tenantRepository.GetByIdAsync(true, tid);
+                result.Add(new EvolutionAvailableInstanceDto(
+                    instance.Id,
+                    tenant?.Name ?? tid.ToString(),
+                    instance.PhoneNumber,
+                    instance.Status));
+            }
+            return result;
+        }
+
+        public async Task LinkAsync(Guid tenantId, Guid instanceId, Guid userId, CancellationToken ct = default)
+        {
+            if (await _instanceRepository.CountByTenantIdAsync(tenantId) > 0)
+                throw new InvalidOperationException("Este tenant já possui uma instância própria.");
+
+            if (await _linkRepository.GetByTenantIdAsync(tenantId) != null)
+                throw new InvalidOperationException("Este tenant já possui um vínculo ativo.");
+
+            // instanceId aqui é o Guid do banco (Id da entidade), não o instanceId string do Evolution
+            var instance = await _instanceRepository.GetByIdAsync(true, instanceId)
                 ?? throw new KeyNotFoundException("Instância não encontrada.");
 
-            if (instance.TenantId != tenantId)
-                throw new UnauthorizedAccessException("Instância não pertence a este tenant.");
+            if (instance.TenantId == tenantId)
+                throw new InvalidOperationException("Não é possível vincular a própria instância.");
 
-            return instance;
+            // Verificar que o usuário tem acesso ao tenant dono
+            var userTenants = await _userTenantRepository.GetAllAsync(
+                ut => ut.UserId == userId && ut.TenantId == instance.TenantId, asNoTracking: true);
+            if (!userTenants.Any())
+                throw new UnauthorizedAccessException("Sem acesso ao tenant dono desta instância.");
+
+            var link = new TenantEvolutionInstanceLink { TenantId = tenantId, InstanceId = instanceId };
+            await _linkRepository.AddAsync(link);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task UnlinkAsync(Guid tenantId, CancellationToken ct = default)
+        {
+            var link = await _linkRepository.GetByTenantIdAsync(tenantId)
+                ?? throw new KeyNotFoundException("Nenhum vínculo ativo para este tenant.");
+            _linkRepository.Delete(link);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────────
+
+        private async Task<(TenantEvolutionInstance instance, bool isOwned)> ResolveOrThrowAsync(Guid tenantId, Guid instanceDbId)
+        {
+            // Tenta instância própria
+            var own = await _instanceRepository.GetByIdAsync(true, instanceDbId);
+            if (own != null && own.TenantId == tenantId)
+                return (own, true);
+
+            // Tenta instância vinculada
+            var link = await _linkRepository.GetByTenantIdAsync(tenantId);
+            if (link != null && link.InstanceId == instanceDbId)
+            {
+                var linked = await _instanceRepository.GetByIdAsync(false, instanceDbId)
+                    ?? throw new KeyNotFoundException("Instância não encontrada.");
+                return (linked, false);
+            }
+
+            throw new KeyNotFoundException("Instância não encontrada ou não pertence a este tenant.");
         }
 
         private async Task AdminPostAsync(string path, object payload, CancellationToken ct)
@@ -250,7 +355,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             catch { return JsonDocument.Parse("{}").RootElement; }
         }
 
-        private static EvolutionInstanceDto ToDto(TenantEvolutionInstance e) =>
-            new(e.Id, e.InstanceId, e.Status, e.PhoneNumber, e.CreatedAt, e.ConnectedAt);
+        private static EvolutionInstanceDto ToDto(TenantEvolutionInstance e, bool isOwned, string? ownerTenantName) =>
+            new(e.Id, e.InstanceId, e.Status, e.PhoneNumber, e.CreatedAt, e.ConnectedAt, isOwned, ownerTenantName);
     }
 }
