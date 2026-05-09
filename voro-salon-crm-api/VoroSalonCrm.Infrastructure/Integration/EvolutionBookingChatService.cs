@@ -110,184 +110,187 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         public async Task HandleMessageAsync(WhatsAppMessage msg, CancellationToken ct = default)
         {
-            var from = msg.From;
-            var sessionKey = SessionKey(msg.TenantId, from);
-
-            if (!_cache.TryGetValue(sessionKey, out EvolutionBookingSession? session) || session == null)
-            {
-                session = new EvolutionBookingSession
-                {
-                    TenantId = msg.TenantId,
-                    InstanceId = msg.To
-                };
-
-                var tenant = await _tenantRepository.GetByIdAsync(true, msg.TenantId);
-                if (tenant == null || !tenant.UseWhatsappBooking)
-                {
-                    msg.ProcessedByBotAt = DateTimeOffset.UtcNow;
-                    return;
-                }
-
-                session.TenantSlug = tenant.Slug;
-                session.TenantName = tenant.Name;
-                session.UseWhatsappBooking = true;
-
-                var conversation = await _conversationRepository
-                    .Query(c => c.TenantId == msg.TenantId && c.PhoneNumber == from)
-                    .FirstOrDefaultAsync(ct);
-                session.ContactName = conversation?.ContactName ?? "Cliente";
-            }
-
             try
             {
-                var body = msg.Body?.Trim() ?? string.Empty;
-                var bodyLower = body.ToLower();
+                var from = msg.From;
+                var sessionKey = SessionKey(msg.TenantId, from);
 
-                if (body == "[Áudio]")
+                if (!_cache.TryGetValue(sessionKey, out EvolutionBookingSession? session) || session == null)
                 {
-                    const string audioReply = "Ainda estou aprendendo a ouvir áudios! 🎧 Por favor, pode digitar sua mensagem?";
-                    await SendAsync(session, from, audioReply, ct);
-                    _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
-                    return;
-                }
-
-                if (bodyLower.Length == 1 && bodyLower[0] >= '1' && bodyLower[0] <= '5')
-                {
-                    var isIdle = session.State == "COMPLETED" || session.State == "CANCELLED";
-                    if (isIdle)
+                    session = new EvolutionBookingSession
                     {
-                        var rated = await TryHandleRatingAsync(from, bodyLower[0] - '0', session, ct);
-                        if (rated) { _cache.Remove(sessionKey); return; }
+                        TenantId = msg.TenantId,
+                        InstanceId = msg.To
+                    };
+
+                    var tenant = await _tenantRepository.GetByIdAsync(true, msg.TenantId);
+                    if (tenant == null || !tenant.UseWhatsappBooking)
+                    {
+                        msg.ProcessedByBotAt = DateTimeOffset.UtcNow;
+                        return;
                     }
+
+                    session.TenantSlug = tenant.Slug;
+                    session.TenantName = tenant.Name;
+                    session.UseWhatsappBooking = true;
+
+                    var conversation = await _conversationRepository
+                        .Query(c => c.TenantId == msg.TenantId && c.PhoneNumber == from)
+                        .FirstOrDefaultAsync(ct);
+                    session.ContactName = conversation?.ContactName ?? "Cliente";
                 }
 
-                if (bodyLower.Contains("reagend") &&
-                    session.State != "AWAITING_APPOINTMENT_ACTION" &&
-                    session.State != "AWAITING_RESCHEDULE_CONFIRMATION" &&
-                    session.State != "AWAITING_CANCEL_CONFIRMATION")
+                try
                 {
-                    session.State = "START";
-                    await StartBookingFlowAsync(from, session, ct);
-                    _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
-                    return;
-                }
+                    var body = msg.Body?.Trim() ?? string.Empty;
+                    var bodyLower = body.ToLower();
 
-                switch (session.State)
-                {
-                    case "START":
-                        await StartBookingFlowAsync(from, session, ct);
-                        break;
-                    case "AWAITING_APPOINTMENT_ACTION":
-                        await HandleAppointmentActionAsync(from, body, session, ct);
-                        break;
-                    case "AWAITING_SERVICE":
-                        await HandleSelectionAsync(from, body, session, ct,
-                            onMore: async () => { session.ServicePage++; await AskForServiceAsync(from, session, ct); },
-                            onValid: async id =>
-                            {
-                                if (!Guid.TryParse(id, out var serviceId)) { await AskForServiceAsync(from, session, ct); return; }
-                                var services = (await _publicBookingService.GetServicesByTenantAsync(session.TenantSlug!)).ToList();
-                                var svc = services.FirstOrDefault(s => s.Id == serviceId);
-                                if (svc == null) { await AskForServiceAsync(from, session, ct); return; }
-                                session.ServiceId = serviceId;
-                                session.ServiceName = svc.Name;
-                                var employees = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, serviceId);
-                                if (!employees.Any())
-                                {
-                                    session.EmployeeId = null;
-                                    session.State = "AWAITING_DATE";
-                                    session.DatePage = 0;
-                                    await AskForDateAsync(from, session, ct);
-                                }
-                                else
-                                {
-                                    session.EmployeePage = 0;
-                                    await AskForEmployeeAsync(from, session, employees, ct);
-                                }
-                            },
-                            onInvalid: async () => await AskForServiceAsync(from, session, ct));
-                        break;
-                    case "AWAITING_EMPLOYEE":
-                        await HandleEmployeeSelectionAsync(from, body, session, ct);
-                        break;
-                    case "AWAITING_DATE":
-                        await HandleSelectionAsync(from, body, session, ct,
-                            onMore: async () => { session.DatePage++; await AskForDateAsync(from, session, ct); },
-                            onValid: async id =>
-                            {
-                                if (!DateTime.TryParseExact(id, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
-                                { await AskForDateAsync(from, session, ct); return; }
-                                session.SelectedDate = date;
-                                session.DatePage = 0;
-                                session.TimeSlotPage = 0;
-                                await AskForTimeAsync(from, session, ct);
-                            },
-                            onInvalid: async () => await AskForDateAsync(from, session, ct));
-                        break;
-                    case "AWAITING_TIME":
-                        await HandleSelectionAsync(from, body, session, ct,
-                            onMore: async () => { session.TimeSlotPage++; await AskForTimeAsync(from, session, ct); },
-                            onValid: async id =>
-                            {
-                                if (!id.Contains(':')) { await AskForTimeAsync(from, session, ct); return; }
-                                session.SelectedTime = id;
-                                await AskForDescriptionAsync(from, session, ct);
-                            },
-                            onInvalid: async () => await AskForTimeAsync(from, session, ct));
-                        break;
-                    case "AWAITING_DESCRIPTION":
-                        await HandleDescriptionAsync(from, body, session, ct);
-                        break;
-                    case "AWAITING_CONFIRMATION":
-                        await HandleConfirmationAsync(from, body, session, ct);
-                        break;
-                    case "AWAITING_REMINDER_TIME":
-                        await HandleReminderTimeAsync(from, body, session, ct);
-                        break;
-                    case "AWAITING_CANCEL_CONFIRMATION":
-                        await HandleCancelConfirmationAsync(from, body, session, ct);
-                        break;
-                    case "AWAITING_RESCHEDULE_CONFIRMATION":
-                        await HandleRescheduleConfirmationAsync(from, body, session, ct);
-                        break;
-                    default:
-                        if (!string.IsNullOrWhiteSpace(body) && session.TenantId != Guid.Empty)
+                    if (body == "[Áudio]")
+                    {
+                        const string audioReply = "Ainda estou aprendendo a ouvir áudios! 🎧 Por favor, pode digitar sua mensagem?";
+                        await SendAsync(session, from, audioReply, ct);
+                        _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
+                        return;
+                    }
+
+                    if (bodyLower.Length == 1 && bodyLower[0] >= '1' && bodyLower[0] <= '5')
+                    {
+                        var isIdle = session.State == "COMPLETED" || session.State == "CANCELLED";
+                        if (isIdle)
                         {
-                            try
+                            var rated = await TryHandleRatingAsync(from, bodyLower[0] - '0', session, ct);
+                            if (rated) { _cache.Remove(sessionKey); return; }
+                        }
+                    }
+
+                    if (bodyLower.Contains("reagend") &&
+                        session.State != "AWAITING_APPOINTMENT_ACTION" &&
+                        session.State != "AWAITING_RESCHEDULE_CONFIRMATION" &&
+                        session.State != "AWAITING_CANCEL_CONFIRMATION")
+                    {
+                        session.State = "START";
+                        await StartBookingFlowAsync(from, session, ct);
+                        _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
+                        return;
+                    }
+
+                    switch (session.State)
+                    {
+                        case "START":
+                            await StartBookingFlowAsync(from, session, ct);
+                            break;
+                        case "AWAITING_APPOINTMENT_ACTION":
+                            await HandleAppointmentActionAsync(from, body, session, ct);
+                            break;
+                        case "AWAITING_SERVICE":
+                            await HandleSelectionAsync(from, body, session, ct,
+                                onMore: async () => { session.ServicePage++; await AskForServiceAsync(from, session, ct); },
+                                onValid: async id =>
+                                {
+                                    if (!Guid.TryParse(id, out var serviceId)) { await AskForServiceAsync(from, session, ct); return; }
+                                    var services = (await _publicBookingService.GetServicesByTenantAsync(session.TenantSlug!)).ToList();
+                                    var svc = services.FirstOrDefault(s => s.Id == serviceId);
+                                    if (svc == null) { await AskForServiceAsync(from, session, ct); return; }
+                                    session.ServiceId = serviceId;
+                                    session.ServiceName = svc.Name;
+                                    var employees = await _publicBookingService.GetEmployeesByServiceAsync(session.TenantSlug!, serviceId);
+                                    if (!employees.Any())
+                                    {
+                                        session.EmployeeId = null;
+                                        session.State = "AWAITING_DATE";
+                                        session.DatePage = 0;
+                                        await AskForDateAsync(from, session, ct);
+                                    }
+                                    else
+                                    {
+                                        session.EmployeePage = 0;
+                                        await AskForEmployeeAsync(from, session, employees, ct);
+                                    }
+                                },
+                                onInvalid: async () => await AskForServiceAsync(from, session, ct));
+                            break;
+                        case "AWAITING_EMPLOYEE":
+                            await HandleEmployeeSelectionAsync(from, body, session, ct);
+                            break;
+                        case "AWAITING_DATE":
+                            await HandleSelectionAsync(from, body, session, ct,
+                                onMore: async () => { session.DatePage++; await AskForDateAsync(from, session, ct); },
+                                onValid: async id =>
+                                {
+                                    if (!DateTime.TryParseExact(id, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+                                    { await AskForDateAsync(from, session, ct); return; }
+                                    session.SelectedDate = date;
+                                    session.DatePage = 0;
+                                    session.TimeSlotPage = 0;
+                                    await AskForTimeAsync(from, session, ct);
+                                },
+                                onInvalid: async () => await AskForDateAsync(from, session, ct));
+                            break;
+                        case "AWAITING_TIME":
+                            await HandleSelectionAsync(from, body, session, ct,
+                                onMore: async () => { session.TimeSlotPage++; await AskForTimeAsync(from, session, ct); },
+                                onValid: async id =>
+                                {
+                                    if (!id.Contains(':')) { await AskForTimeAsync(from, session, ct); return; }
+                                    session.SelectedTime = id;
+                                    await AskForDescriptionAsync(from, session, ct);
+                                },
+                                onInvalid: async () => await AskForTimeAsync(from, session, ct));
+                            break;
+                        case "AWAITING_DESCRIPTION":
+                            await HandleDescriptionAsync(from, body, session, ct);
+                            break;
+                        case "AWAITING_CONFIRMATION":
+                            await HandleConfirmationAsync(from, body, session, ct);
+                            break;
+                        case "AWAITING_REMINDER_TIME":
+                            await HandleReminderTimeAsync(from, body, session, ct);
+                            break;
+                        case "AWAITING_CANCEL_CONFIRMATION":
+                            await HandleCancelConfirmationAsync(from, body, session, ct);
+                            break;
+                        case "AWAITING_RESCHEDULE_CONFIRMATION":
+                            await HandleRescheduleConfirmationAsync(from, body, session, ct);
+                            break;
+                        default:
+                            if (!string.IsNullOrWhiteSpace(body) && session.TenantId != Guid.Empty)
                             {
-                                var aiReply = await _aiConversationService.RespondAsync(
-                                    session.TenantId, session.TenantName ?? "Salão", from, body);
-                                await SendAsync(session, from, aiReply, ct);
+                                try
+                                {
+                                    var aiReply = await _aiConversationService.RespondAsync(
+                                        session.TenantId, session.TenantName ?? "Salão", from, body);
+                                    await SendAsync(session, from, aiReply, ct);
+                                }
+                                catch (Exception aiEx)
+                                {
+                                    _logger.LogWarning(aiEx, "AI fallback falhou para {From}.", from);
+                                    session.State = "START";
+                                    await StartBookingFlowAsync(from, session, ct);
+                                }
                             }
-                            catch (Exception aiEx)
+                            else
                             {
-                                _logger.LogWarning(aiEx, "AI fallback falhou para {From}.", from);
                                 session.State = "START";
                                 await StartBookingFlowAsync(from, session, ct);
                             }
-                        }
-                        else
-                        {
-                            session.State = "START";
-                            await StartBookingFlowAsync(from, session, ct);
-                        }
-                        break;
-                }
+                            break;
+                    }
 
-                if (session.State == "COMPLETED" || session.State == "CANCELLED")
-                    _cache.Remove(sessionKey);
-                else
-                    _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao processar mensagem Evolution para {From}.", from);
-                try
-                {
-                    const string errMsg = "Ops, ocorreu um erro. Por favor, tente novamente mais tarde.";
-                    await SendAsync(session, from, errMsg, ct);
+                    if (session.State == "COMPLETED" || session.State == "CANCELLED")
+                        _cache.Remove(sessionKey);
+                    else
+                        _cache.Set(sessionKey, session, TimeSpan.FromMinutes(15));
                 }
-                catch { /* absorve */ }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro ao processar mensagem Evolution para {From}.", from);
+                    try
+                    {
+                        const string errMsg = "Ops, ocorreu um erro. Por favor, tente novamente mais tarde.";
+                        await SendAsync(session, from, errMsg, ct);
+                    }
+                    catch { /* absorve */ }
+                }
             }
             finally
             {
