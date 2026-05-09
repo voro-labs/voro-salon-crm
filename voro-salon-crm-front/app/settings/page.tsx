@@ -316,6 +316,25 @@ export default function ConfiguracoesPage() {
     return () => clearInterval(intervalId)
   }, [evolutionInstance?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Cleanup: limpar polls de QR e código ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      if (qrPollRef.current) clearInterval(qrPollRef.current)
+      if (pairPollRef.current) clearInterval(pairPollRef.current)
+    }
+  }, [])
+
+  // Reset QR/pair state quando instância Evolution muda
+  useEffect(() => {
+    if (qrPollRef.current) clearInterval(qrPollRef.current)
+    if (pairPollRef.current) clearInterval(pairPollRef.current)
+    setQrExpanded(false)
+    setQrCode(null)
+    setCodeExpanded(false)
+    setPairPhone("")
+    setPairCode(null)
+  }, [evolutionInstance?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleConnect = useCallback(async () => {
     setConnecting(true)
     try {
