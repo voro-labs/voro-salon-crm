@@ -293,14 +293,10 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (own != null && own.TenantId == tenantId)
                 return (own, true);
 
-            // Tenta instância vinculada
+            // Tenta instância vinculada — link.Instance já carregado via Include
             var link = await _linkRepository.GetByTenantIdAsync(tenantId);
             if (link != null && link.InstanceId == instanceDbId)
-            {
-                var linked = await _instanceRepository.GetByIdAsync(false, instanceDbId)
-                    ?? throw new KeyNotFoundException("Instância não encontrada.");
-                return (linked, false);
-            }
+                return (link.Instance, false);
 
             throw new KeyNotFoundException("Instância não encontrada ou não pertence a este tenant.");
         }
