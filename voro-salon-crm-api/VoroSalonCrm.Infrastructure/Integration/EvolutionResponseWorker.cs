@@ -41,7 +41,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<JasmimDbContext>();
-            var responseService = scope.ServiceProvider.GetRequiredService<IEvolutionResponseService>();
+            var bookingService = scope.ServiceProvider.GetRequiredService<IEvolutionBookingChatService>();
 
             var connectedTenantIds = await GetConnectedTenantIdsAsync(db, ct);
             if (connectedTenantIds.Count == 0) return;
@@ -60,7 +60,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
             foreach (var msg in messages)
             {
-                await responseService.ProcessAsync(msg, ct);
+                await bookingService.HandleMessageAsync(msg, ct);
                 await db.SaveChangesAsync(ct);
             }
         }
