@@ -203,8 +203,16 @@ export default function ConfiguracoesPage() {
 
   // Modal criar/vincular instância
   const [linkModalOpen, setLinkModalOpen] = useState(false)
-  const [availableInstances, setAvailableInstances] = useState<AvailableInstance[]>([])
-  const [loadingAvailable, setLoadingAvailable] = useState(false)
+  // Busca proativa de instâncias disponíveis (quando não há instância própria)
+  const {
+    data: availableInstances = [],
+    isLoading: loadingAvailable,
+    mutate: mutateAvailable,
+  } = useSWR<AvailableInstance[]>(
+    hasWhatsAppBot && !evolutionInstance ? API_CONFIG.ENDPOINTS.EVOLUTION_AVAILABLE_TO_LINK : null,
+    fetcher,
+    { fallbackData: [] }
+  )
   const [selectedLinkInstanceId, setSelectedLinkInstanceId] = useState<string | null>(null)
   const [linkChoice, setLinkChoice] = useState<"new" | "link">("new")
   const [linking, setLinking] = useState(false)
@@ -481,16 +489,11 @@ export default function ConfiguracoesPage() {
 
   // ── Evolution: abrir modal de criação/vinculação ──
   const handleOpenLinkModal = async () => {
-    setLoadingAvailable(true)
     setLinkModalOpen(true)
     setLinkChoice("new")
     setSelectedLinkInstanceId(null)
-    try {
-      const res = await secureApiCall<AvailableInstance[]>(API_CONFIG.ENDPOINTS.EVOLUTION_AVAILABLE_TO_LINK)
-      setAvailableInstances(res.hasError ? [] : res.data ?? [])
-    } finally {
-      setLoadingAvailable(false)
-    }
+    // Revalida a lista para garantir dados frescos ao abrir o modal
+    mutateAvailable()
   }
 
   // ── Evolution: confirmar modal (criar ou vincular) ──
