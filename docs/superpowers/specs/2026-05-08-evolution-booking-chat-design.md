@@ -1,6 +1,7 @@
 # Evolution Booking Chat — Design Spec
 
 **Data:** 2026-05-08  
+**Revisado:** 2026-05-09  
 **Status:** Aprovado  
 **Contexto:** Adicionar fluxo de agendamento conversacional via Evolution API, substituindo o `EvolutionResponseService` atual por um serviço stateful análogo ao `WhatsappChatService` da API Meta.
 
@@ -34,10 +35,22 @@ Criar `EvolutionBookingChatService` com o mesmo fluxo de etapas do Meta, adaptad
 
 ## 2. Arquitetura Geral
 
+### Pré-requisito: mudança no webhook de entrada
+
+O controller `ReceiveEvolutionWebhook` atualmente salva apenas `webhook.Data.Message?.Conversation ?? string.Empty` como `Body`. Mensagens de áudio chegam com `Body = ""`, impossibilitando detecção posterior.
+
+**Mudança necessária no webhook** (antes de processar a sessão): substituir a linha de `bodyText` por:
+
+```csharp
+var (_, bodyText) = DetermineEvolutionMessageType(webhook.Data.Message, info.Type);
+```
+
+Com isso, áudio é salvo como `"[Áudio]"`, imagem como `"[Imagem]"` etc. — o service detecta pelo valor sentinela.
+
 ### Fluxo de entrada
 
 ```
-Webhook Evolution → WhatsAppMessages (DB)
+Webhook Evolution → WhatsAppMessages (DB)  [Body usa DetermineEvolutionMessageType]
         ↓  (polling a cada 5s)
 EvolutionResponseWorker
         ↓
@@ -78,22 +91,23 @@ EvolutionBookingSession (IMemoryCache) → switch por estado → envia resposta 
 [Mensagem chega]
         ↓
 Sessão existe no cache?
-  Não → resolve tenant pela instância
-        ├─ 1 tenant  → state = START
-        └─ N tenants → state = AWAITING_TENANT (lista numerada de tenants)
+  Não → msg.TenantId já está preenchido (worker filtra por TenantEvolutionInstance conectada)
+        → resolve TenantSlug/TenantName via repositório
+        → state = START
   Sim → continua no estado atual
         ↓
 [Verificações globais — antes do switch]
   • "reagend" digitado em qualquer estado fora de AWAITING_*_CONFIRMATION → reinicia em START
   • Número "1"–"5" em sessão COMPLETED/CANCELLED → tenta salvar rating
-  • Mensagem de áudio → responde que não suporta, mantém estado atual
+  • msg.Body == "[Áudio]" → responde que não suporta, mantém estado atual
         ↓
 [Switch por estado]
 ```
 
+> **Nota:** o estado `AWAITING_TENANT` não existe no fluxo Evolution. Cada `TenantEvolutionInstance` mapeia 1:1 para um tenant; o `msg.TenantId` está sempre preenchido pelo worker. A resolução de tenant multi-tenant é exclusiva do fluxo Meta.
+
 | Estado | Trigger de entrada | O que o bot envia | Próximo estado |
 |---|---|---|---|
-| `AWAITING_TENANT` | instância multi-tenant | lista numerada de estabelecimentos | `START` |
 | `START` | qualquer mensagem (sem sessão) | verifica agendamento ativo; se existir → resumo + opções 1/2/3; senão → lista de serviços | `AWAITING_APPOINTMENT_ACTION` ou `AWAITING_SERVICE` |
 | `AWAITING_APPOINTMENT_ACTION` | 1 / 2 / 3 | cancela / reagenda / mantém | `AWAITING_CANCEL_CONFIRMATION` / `AWAITING_RESCHEDULE_CONFIRMATION` / `COMPLETED` |
 | `AWAITING_SERVICE` | número digitado | lista numerada de serviços (paginada) | `AWAITING_EMPLOYEE` ou `AWAITING_DATE` |
@@ -121,12 +135,11 @@ Se o usuário digitar algo que não é um número válido para o estado atual, o
 ```csharp
 private class EvolutionBookingSession
 {
-    // Campos herdados do WhatsappChatService
     public string State { get; set; } = "START";
     public Guid TenantId { get; set; }
     public string? TenantSlug { get; set; }
     public string? TenantName { get; set; }
-    public bool UseWhatsappBooking { get; set; } // reutilizado: true = tenant aceita booking via Evolution
+    public bool UseWhatsappBooking { get; set; } // flag tenant-level; compartilhada com canal Meta por enquanto
     public Guid? ServiceId { get; set; }
     public string? ServiceName { get; set; }
     public Guid? EmployeeId { get; set; }
@@ -135,7 +148,7 @@ private class EvolutionBookingSession
     public string? SelectedTime { get; set; }
     public string? AppointmentDescription { get; set; }
     public Guid? AppointmentId { get; set; }
-    public string? ContactName { get; set; }
+    public string? ContactName { get; set; }  // populado de WhatsAppConversation.ContactName na criação da sessão
     public int TimeSlotPage { get; set; } = 0;
     public int DatePage { get; set; } = 0;
     public int ServicePage { get; set; } = 0;
@@ -143,22 +156,25 @@ private class EvolutionBookingSession
     public Guid? PendingAppointmentId { get; set; }
     public string? PendingAppointmentSummary { get; set; }
 
-    // Novos — necessários para resolução de número digitado
+    // Necessários para resolução de número digitado e envio de resposta
     public List<(string Id, string Label)> CurrentOptions { get; set; } = new();
-    public string InstanceId { get; set; } = string.Empty;
+    public string InstanceId { get; set; } = string.Empty; // = msg.To (salvo pelo webhook)
 }
 ```
 
 `CurrentOptions` é populado toda vez que o bot envia uma lista numerada. Quando o usuário responde com um número, o serviço faz `CurrentOptions[index - 1].Id` para obter o valor real (Guid do serviço, string da data, etc.). O item "ver mais" é incluído no final quando há paginação, mapeado para o ID especial `"__more__"`.
 
+**Preenchimento do `InstanceId`:** `msg.To` contém o `instanceId` da instância Evolution (gravado pelo webhook controller, linha `to: instanceId ?? string.Empty`). Na criação da sessão: `session.InstanceId = msg.To`.
+
+**Preenchimento do `ContactName`:** buscar em `WhatsAppConversation` pelo telefone do contato no momento da criação da sessão. Fallback: `"Cliente"`.
+
 ### Chave de cache
 
 | Situação | Chave |
 |---|---|
-| Tenant ainda não identificado | `evo_booking_pending_{instanceId}_{from}` |
-| Tenant identificado | `evo_booking_{tenantId}_{from}` |
+| Sempre (tenant resolvido via `msg.TenantId`) | `evo_booking_{tenantId}_{from}` |
 
-Após identificação do tenant, a sessão pendente é removida e recriada com a chave definitiva. TTL de 15 minutos (igual ao Meta).
+TTL de 15 minutos (igual ao Meta). Não há chave `pending` — tenant é sempre conhecido.
 
 ---
 
@@ -250,6 +266,15 @@ public interface IEvolutionBookingChatService
 
 Recebe `WhatsAppMessage` (entidade do DB) diretamente — sem novos DTOs de entrada. O serviço define `msg.ProcessedByBotAt = DateTimeOffset.UtcNow` antes de retornar, mesmo em caso de erro.
 
+**Campos relevantes da entidade usados pelo serviço:**
+
+| Campo | Uso |
+|---|---|
+| `msg.TenantId` | ID do tenant (sempre preenchido) |
+| `msg.From` | Número do usuário (chave da sessão e destinatário da resposta) |
+| `msg.Body` | Texto digitado; `"[Áudio]"` para voz; `"[Imagem]"` para imagem |
+| `msg.To` | `instanceId` da instância Evolution — usado em `EvolutionService.SendTextAsync` |
+
 ### Worker (mudança cirúrgica)
 
 ```csharp
@@ -278,7 +303,40 @@ services.AddScoped<IEvolutionBookingChatService, EvolutionBookingChatService>();
 
 ---
 
-## 7. Arquivos Deletados
+## 7. AppointmentSource e Enum
+
+Adicionar o valor `EvolutionBot = 4` ao enum `AppointmentSource` para distinguir agendamentos feitos via Evolution dos feitos via Meta (`WhatsAppBot = 1`):
+
+```csharp
+// Domain/Enums/AppointmentSource.cs
+public enum AppointmentSource
+{
+    Internal    = 0,
+    WhatsAppBot = 1,  // Meta
+    App         = 2,
+    Website     = 3,
+    EvolutionBot = 4, // novo
+}
+```
+
+No `EvolutionBookingChatService`, ao criar o agendamento:
+
+```csharp
+Source = AppointmentSource.EvolutionBot,
+```
+
+---
+
+## 8. Arquivos Deletados e Alterados
+
+### Alterações adicionais (não listadas na seção 2)
+
+| Arquivo | Ação | Motivo |
+|---|---|---|
+| `WhatsappController.cs` | **Atualizado** | Usar `DetermineEvolutionMessageType` no `ReceiveEvolutionWebhook` para salvar body correto |
+| `AppointmentSource.cs` | **Atualizado** | Adicionar `EvolutionBot = 4` |
+
+### Arquivos deletados
 
 | Arquivo | Caminho |
 |---|---|
@@ -294,12 +352,15 @@ services.AddScoped<IEvolutionBookingChatService, EvolutionBookingChatService>();
 
 ---
 
-## 8. Estratégia de Testes
+## 9. Estratégia de Testes
 
 O fluxo de booking via Evolution compartilha toda a lógica de negócio com o `WhatsappChatService`. Os testes devem focar nas diferenças do canal:
 
 - **Parsing de input numérico:** `"1"` → primeiro item de `CurrentOptions`, `"__more__"` → paginação, número fora do range → reenvia lista
-- **Resolução de tenant:** instância 1:1 vs. multi-tenant (`AWAITING_TENANT` → número → `START`)
-- **Chave de sessão:** migração de `evo_booking_pending_{instanceId}_{from}` para `evo_booking_{tenantId}_{from}`
+- **Detecção de áudio:** `msg.Body == "[Áudio]"` → bot responde que não suporta e mantém estado; estado não avança
+- **Chave de sessão:** sempre `evo_booking_{tenantId}_{from}` — tenant resolvido via `msg.TenantId`
+- **InstanceId para envio:** `session.InstanceId` populado de `msg.To` na criação da sessão
+- **ContactName:** busca em `WhatsAppConversation` pelo número; fallback `"Cliente"`
 - **Paginação:** incremento de página ao selecionar "Ver mais", reset ao selecionar item válido
 - **`msg.ProcessedByBotAt`:** sempre definido ao final de `HandleMessageAsync`, inclusive em erro
+- **`AppointmentSource`:** agendamentos criados com `EvolutionBot`, não `WhatsAppBot`
