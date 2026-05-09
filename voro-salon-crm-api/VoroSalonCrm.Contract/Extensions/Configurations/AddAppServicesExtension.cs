@@ -166,9 +166,6 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IEvolutionTemplateRepository, EvolutionTemplateRepository>();
             services.AddScoped<IEvolutionTemplateService, EvolutionTemplateService>();
             services.AddScoped<IEvolutionService, EvolutionService>();
-            services.AddScoped<IEvolutionRulesEngine, EvolutionRulesEngine>();
-            services.AddScoped<IEvolutionAIResponder, EvolutionAIResponder>();
-            services.AddScoped<IEvolutionResponseService, EvolutionResponseService>();
             services.AddScoped<IEvolutionBookingChatService, EvolutionBookingChatService>();
             #endregion
 
