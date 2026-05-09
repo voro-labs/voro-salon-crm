@@ -75,6 +75,8 @@ export const API_CONFIG = {
     CLIENT_MEMBERSHIP_PLANS: "/clientmemberships/plans",
     CLIENT_MEMBERSHIPS: "/clientmemberships",
     EVOLUTION_INSTANCES: "/EvolutionInstance",
+    EVOLUTION_AVAILABLE_TO_LINK: "/EvolutionInstance/available-to-link",
+    EVOLUTION_LINK: "/EvolutionInstance/link",
   },
   HEADERS: {
     "Content-Type": "application/json",
