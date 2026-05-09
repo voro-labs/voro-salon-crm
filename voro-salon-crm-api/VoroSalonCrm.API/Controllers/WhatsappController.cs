@@ -74,6 +74,7 @@ namespace VoroSalonCrm.API.Controllers
         public async Task<IActionResult> ReceiveEvolutionWebhook(
             [FromBody] EvolutionWebhookDto webhook,
             [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository,
+            [FromServices] ITenantEvolutionInstanceLinkRepository evolutionLinkRepository,
             [FromServices] IWhatsAppConversationRepository conversationRepository)
         {
             Console.WriteLine("Received Evolution Webhook: " + System.Text.Json.JsonSerializer.Serialize(webhook));
@@ -92,22 +93,35 @@ namespace VoroSalonCrm.API.Controllers
             var instanceId = webhook.InstanceId;
             var (_, bodyText) = DetermineEvolutionMessageType(webhook.Data.Message, info.Type);
 
-            // Resolver tenant pela instância
-            Guid? tenantId = null;
+            // Resolver tenants pela instância (pode ser compartilhada)
+            var tenantIds = new List<Guid>();
             if (!string.IsNullOrEmpty(instanceId))
             {
                 var evolutionInstance = await evolutionInstanceRepository.GetByInstanceIdAsync(instanceId);
                 if (evolutionInstance != null)
-                    tenantId = evolutionInstance.TenantId;
+                {
+                    tenantIds.Add(evolutionInstance.TenantId); // tenant dono sempre primeiro
+
+                    // Tenants vinculados
+                    var links = await evolutionLinkRepository.GetByInstanceIdAsync(evolutionInstance.Id);
+                    tenantIds.AddRange(links.Select(l => l.TenantId));
+                }
             }
 
-            if (tenantId.HasValue)
+            if (tenantIds.Count > 1)
+                _logger.LogInformation(
+                    "Instância Evolution {InstanceId} compartilhada entre {Count} tenants. Salvando mensagem para o tenant dono ({TenantId}).",
+                    instanceId, tenantIds.Count, tenantIds[0]);
+
+            if (tenantIds.Count > 0)
             {
+                var ownerTenantId = tenantIds[0];
+
                 // Salvar mensagem inbound
                 try
                 {
                     await _whatsAppMessageService.SaveInboundAsync(
-                        tenantId: tenantId.Value,
+                        tenantId: ownerTenantId,
                         from: from,
                         to: instanceId ?? string.Empty,
                         body: bodyText,
@@ -122,7 +136,7 @@ namespace VoroSalonCrm.API.Controllers
                 try
                 {
                     var existing = await conversationRepository
-                        .Query(c => c.TenantId == tenantId.Value && c.PhoneNumber == from)
+                        .Query(c => c.TenantId == ownerTenantId && c.PhoneNumber == from)
                         .FirstOrDefaultAsync();
 
                     if (existing == null)
@@ -130,7 +144,7 @@ namespace VoroSalonCrm.API.Controllers
                         await conversationRepository.AddAsync(new WhatsAppConversation
                         {
                             Id = Guid.NewGuid(),
-                            TenantId = tenantId.Value,
+                            TenantId = ownerTenantId,
                             PhoneNumber = from,
                             ContactName = contactName,
                             State = "ACTIVE",
