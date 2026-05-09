@@ -90,7 +90,7 @@ namespace VoroSalonCrm.API.Controllers
             var contactName = info.PushName ?? "Cliente";
             var messageId = info.Id;
             var instanceId = webhook.InstanceId;
-            var bodyText = webhook.Data.Message?.Conversation ?? string.Empty;
+            var (_, bodyText) = DetermineEvolutionMessageType(webhook.Data.Message, info.Type);
 
             // Resolver tenant pela instância
             Guid? tenantId = null;
