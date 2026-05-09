@@ -13,5 +13,8 @@ namespace VoroSalonCrm.Domain.Enums
 
         /// <summary>Criado pelo site/booking público.</summary>
         Website = 3,
+
+        /// <summary>Criado pelo Evolution Bot.</summary>
+        EvolutionBot = 4,
     }
 }
