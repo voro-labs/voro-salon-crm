@@ -156,5 +156,67 @@ namespace VoroSalonCrm.API.Controllers
                 return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
             }
         }
+
+        [HttpGet("available-to-link")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> GetAvailableToLink(CancellationToken ct)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var userId = currentUserService.UserId;
+                var available = await evolutionInstanceService.GetAvailableToLinkAsync(tenantId, userId, ct);
+                return ResponseViewModel<IEnumerable<EvolutionAvailableInstanceDto>>.Success(available).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("link")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> Link([FromBody] EvolutionLinkRequestDto dto, CancellationToken ct)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                var userId = currentUserService.UserId;
+                await evolutionInstanceService.LinkAsync(tenantId, dto.InstanceId, userId, ct);
+                return ResponseViewModel<object>.SuccessWithMessage("Instância vinculada com sucesso.", null).ToActionResult();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("link")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> Unlink(CancellationToken ct)
+        {
+            try
+            {
+                var tenantId = currentUserService.TenantId;
+                await evolutionInstanceService.UnlinkAsync(tenantId, ct);
+                return ResponseViewModel<object>.SuccessWithMessage("Vínculo removido.", null).ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
     }
 }
