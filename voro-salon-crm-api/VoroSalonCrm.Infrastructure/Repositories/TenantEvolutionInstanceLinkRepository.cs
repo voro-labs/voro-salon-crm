@@ -11,7 +11,10 @@ namespace VoroSalonCrm.Infrastructure.Repositories
         : RepositoryBase<TenantEvolutionInstanceLink>(context, unitOfWork), ITenantEvolutionInstanceLinkRepository
     {
         public Task<TenantEvolutionInstanceLink?> GetByTenantIdAsync(Guid tenantId)
-            => _dbSet.FirstOrDefaultAsync(l => l.TenantId == tenantId);
+            => _dbSet
+                .Include(l => l.Instance)
+                .Include(l => l.Tenant)
+                .FirstOrDefaultAsync(l => l.TenantId == tenantId);
 
         public async Task<IEnumerable<TenantEvolutionInstanceLink>> GetByInstanceIdAsync(Guid instanceId)
             => await _dbSet
