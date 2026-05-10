@@ -14,6 +14,7 @@ interface JwtPayload {
   email: string
   roles?: string
   twoFactorEnabled?: string
+  email_verified?: string
   exp: number
 }
 
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: decoded.email,
           roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
           twoFactorEnabled: decoded.twoFactorEnabled === "True",
+          emailConfirmed: decoded.email_verified === "true",
           token: jwt,
           refreshToken: refresh,
           tenants: parsedTenants,
@@ -185,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: decoded.email,
         roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
         twoFactorEnabled: decoded.twoFactorEnabled === "True",
+        emailConfirmed: decoded.email_verified === "true",
         token: token,
         refreshToken: refreshToken,
         tenants: tenants || []
@@ -233,6 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: decoded.email,
           roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
           twoFactorEnabled: decoded.twoFactorEnabled === "True",
+          emailConfirmed: decoded.email_verified === "true",
           token: newToken,
           refreshToken: newRefresh || refreshToken,
           tenants: parsedTenants,

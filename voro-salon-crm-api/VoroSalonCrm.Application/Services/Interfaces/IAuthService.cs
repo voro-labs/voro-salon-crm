@@ -18,6 +18,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         // Confirmação de e-mail
         Task ConfirmEmailAsync(string email);
         Task<bool> ConfirmEmailAsync(AuthDto authDto, string email);
+        Task ResendConfirmEmailAsync(Guid userId);
 
         // Recuperação de senha
         Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);

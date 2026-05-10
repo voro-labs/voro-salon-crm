@@ -172,6 +172,11 @@ export default function ConfiguracoesPage() {
   const [tfaLoading, setTfaLoading] = useState(false)
   const [tfaError, setTfaError] = useState("")
 
+  // Email confirmation state
+  const emailConfirmed = user?.emailConfirmed ?? false
+  const [resendingEmail, setResendingEmail] = useState(false)
+  const [emailResent, setEmailResent] = useState(false)
+
   // WhatsApp config state
   const [wpPhoneNumberId, setWpPhoneNumberId] = useState("")
   const [wpBusinessAccountId, setWpBusinessAccountId] = useState("")
@@ -679,6 +684,20 @@ export default function ConfiguracoesPage() {
       await refreshUser()
     } finally {
       setTfaLoading(false)
+    }
+  }
+
+  const handleResendConfirmEmail = async () => {
+    setResendingEmail(true)
+    try {
+      const res = await secureApiCall(API_CONFIG.ENDPOINTS.RESEND_CONFIRM_EMAIL, { method: "POST" })
+      if (res.hasError) { toast.error(res.message ?? "Erro ao reenviar e-mail."); return }
+      setEmailResent(true)
+      toast.success("E-mail de confirmação enviado! Verifique sua caixa de entrada.")
+    } catch {
+      toast.error("Erro de conexão.")
+    } finally {
+      setResendingEmail(false)
     }
   }
 
@@ -1539,41 +1558,82 @@ export default function ConfiguracoesPage() {
             </Card>
           </TabsContent>}
           <TabsContent value="seguranca">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-primary" />
-                  <CardTitle>Segurança</CardTitle>
-                </div>
-                <CardDescription>Gerencie a autenticação de dois fatores da sua conta</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20">
-                  <div className="flex items-center gap-3">
-                    {twoFactorEnabled
-                      ? <ShieldCheck className="h-5 w-5 text-green-500 shrink-0" />
-                      : <ShieldOff className="h-5 w-5 text-muted-foreground shrink-0" />
-                    }
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">Autenticação de dois fatores</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {twoFactorEnabled
-                          ? "Ativado — um código será enviado por e-mail a cada login."
-                          : "Desativado — ative para aumentar a segurança da sua conta."}
-                      </p>
-                    </div>
+            <div className="flex flex-col gap-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <CardTitle>Segurança</CardTitle>
                   </div>
-                  <Switch
-                    checked={twoFactorEnabled}
-                    onCheckedChange={(checked) => {
-                      setTfaError("")
-                      setTfaCode("")
-                      set2FADialog(checked ? "request" : "disable")
-                    }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                  <CardDescription>Gerencie a verificação de e-mail e a autenticação de dois fatores da sua conta</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  {/* Confirmação de e-mail */}
+                  <div className={`flex items-start justify-between gap-4 p-4 rounded-lg border ${emailConfirmed ? "border-border bg-muted/20" : "border-amber-400 bg-amber-50 dark:bg-amber-950/20"}`}>
+                    <div className="flex items-start gap-3">
+                      {emailConfirmed
+                        ? <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                        : <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                      }
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">
+                          {emailConfirmed ? "E-mail confirmado" : "E-mail não confirmado"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {emailConfirmed
+                            ? `${user?.email} — verificado e pronto para uso.`
+                            : `Confirme ${user?.email} para poder ativar a autenticação de dois fatores.`}
+                        </p>
+                      </div>
+                    </div>
+                    {!emailConfirmed && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/30 text-xs"
+                        onClick={handleResendConfirmEmail}
+                        disabled={resendingEmail || emailResent}
+                      >
+                        {resendingEmail
+                          ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          : <Mail className="mr-1.5 h-3.5 w-3.5" />
+                        }
+                        {emailResent ? "E-mail enviado" : "Reenviar confirmação"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* 2FA */}
+                  <div className={`flex items-center justify-between p-4 rounded-lg border border-border ${emailConfirmed ? "bg-muted/20" : "opacity-50"}`}>
+                    <div className="flex items-center gap-3">
+                      {twoFactorEnabled
+                        ? <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0" />
+                        : <ShieldOff className="h-5 w-5 text-muted-foreground shrink-0" />
+                      }
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">Autenticação de dois fatores</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {!emailConfirmed
+                            ? "É necessário confirmar o e-mail antes de ativar."
+                            : twoFactorEnabled
+                              ? "Ativado — um código será enviado por e-mail a cada login."
+                              : "Desativado — ative para aumentar a segurança da sua conta."}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={twoFactorEnabled}
+                      disabled={!emailConfirmed}
+                      onCheckedChange={(checked) => {
+                        setTfaError("")
+                        setTfaCode("")
+                        set2FADialog(checked ? "request" : "disable")
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Dialog: solicitar código */}
             <Dialog open={tfa2Dialog === "request"} onOpenChange={(o) => !o && set2FADialog("idle")}>
