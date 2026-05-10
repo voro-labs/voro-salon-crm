@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: decoded.email,
           roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
           twoFactorEnabled: decoded.twoFactorEnabled === "True",
-          emailConfirmed: decoded.email_verified === "true",
+          emailConfirmed: decoded.email_verified?.toLowerCase() === "true",
           token: jwt,
           refreshToken: refresh,
           tenants: parsedTenants,
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const data = await res.json()
             if (res.ok && !data.hasError && data.data?.token) {
               newToken = data.data.token
-              setAuthToken(newToken)
+              setAuthToken(newToken!)
               if (data.data.refreshToken) setRefreshToken(data.data.refreshToken)
             }
           } catch {} finally {
@@ -187,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: decoded.email,
         roles: decoded.roles?.split(",").map(role => ({ id: "", name: role })) || [],
         twoFactorEnabled: decoded.twoFactorEnabled === "True",
-        emailConfirmed: decoded.email_verified === "true",
+        emailConfirmed: decoded.email_verified?.toLowerCase() === "true",
         token: token,
         refreshToken: refreshToken,
         tenants: tenants || []
@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: decoded.email,
           roles: decoded.roles?.split(",").map((role) => ({ id: "", name: role })) || [],
           twoFactorEnabled: decoded.twoFactorEnabled === "True",
-          emailConfirmed: decoded.email_verified === "true",
+          emailConfirmed: decoded.email_verified?.toLowerCase() === "true",
           token: newToken,
           refreshToken: newRefresh || refreshToken,
           tenants: parsedTenants,
