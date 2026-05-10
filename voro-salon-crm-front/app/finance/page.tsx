@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useTransactions } from "@/hooks/use-transactions.hook"
 import { TransactionDto, TransactionType, TransactionStatus, PaymentMethod } from "@/types/DTOs/financial.interface"
 import { Button } from "@/components/ui/button"
-import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp, FileUp, Zap, Calendar, ChevronDown, ArrowRight } from "lucide-react"
+import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp, FileUp, Zap, Calendar, ChevronDown, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -32,6 +32,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,8 +111,53 @@ const getPaymentMethodName = (method: PaymentMethod) => {
   }
 }
 
+const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
 export default function FinancialPage() {
-  const { transactions, isLoading, createTransaction, updateTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions()
+  type PeriodFilter =
+    | { mode: "month"; year: number; month: number }
+    | { mode: "all" }
+
+  const now = new Date()
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>({
+    mode: "month",
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  })
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(now.getFullYear())
+
+  // Datas computadas do período selecionado
+  const periodDates = periodFilter.mode === "month"
+    ? {
+        startDate: format(new Date(periodFilter.year, periodFilter.month, 1), "yyyy-MM-dd"),
+        endDate: format(new Date(periodFilter.year, periodFilter.month + 1, 0), "yyyy-MM-dd"),
+      }
+    : {}
+
+  const { transactions, isLoading, createTransaction, updateTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions(periodDates)
+
+  const handlePrevMonth = () => {
+    if (periodFilter.mode !== "month") return
+    const d = new Date(periodFilter.year, periodFilter.month - 1, 1)
+    setPeriodFilter({ mode: "month", year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  const handleNextMonth = () => {
+    if (periodFilter.mode !== "month") return
+    const d = new Date(periodFilter.year, periodFilter.month + 1, 1)
+    setPeriodFilter({ mode: "month", year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  const handleSelectMonth = (year: number, month: number) => {
+    setPeriodFilter({ mode: "month", year, month })
+    setIsMonthPickerOpen(false)
+  }
+
+  const handleOpenMonthPicker = (open: boolean) => {
+    if (open && periodFilter.mode === "month") setPickerYear(periodFilter.year)
+    setIsMonthPickerOpen(open)
+  }
   const { serviceRecords } = useServiceRecords()
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
@@ -401,17 +447,10 @@ export default function FinancialPage() {
   const txSafePage = Math.min(txPage, txTotalPages)
   const paginatedTransactions = filteredTransactions.slice((txSafePage - 1) * txPageSize, txSafePage * txPageSize)
 
-  // Calculando totais rápidos
+  // Calculando totais rápidos (transactions já vem filtrado pela API)
   const totalReceitas = transactions?.filter(t => t.type === TransactionType.Income && t.status !== TransactionStatus.Cancelled).reduce((acc, t) => acc + t.amount, 0) || 0
   const totalDespesas = transactions?.filter(t => t.type === TransactionType.Expense && t.status !== TransactionStatus.Cancelled).reduce((acc, t) => acc + t.amount, 0) || 0
   const saldoPrevisto = totalReceitas - totalDespesas
-
-  const now = new Date()
-  const receitaMes = transactions?.filter(t => {
-    if (t.type !== TransactionType.Income || t.status === TransactionStatus.Cancelled) return false
-    const d = new Date(t.dueDate)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }).reduce((acc, t) => acc + t.amount, 0) || 0
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
@@ -629,7 +668,7 @@ export default function FinancialPage() {
             </CardHeader>
             <CardContent>
               <div className="text-lg sm:text-2xl font-bold text-blue-600 truncate">
-                {formatCurrency(receitaMes)}
+                {formatCurrency(totalReceitas)}
               </div>
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">
                 {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
