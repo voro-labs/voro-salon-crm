@@ -113,10 +113,11 @@ const getPaymentMethodName = (method: PaymentMethod) => {
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
+type PeriodFilter =
+  | { mode: "month"; year: number; month: number }
+  | { mode: "all" }
+
 export default function FinancialPage() {
-  type PeriodFilter =
-    | { mode: "month"; year: number; month: number }
-    | { mode: "all" }
 
   const now = new Date()
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>({
