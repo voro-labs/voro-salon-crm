@@ -154,7 +154,7 @@ namespace VoroSalonCrm.API.Controllers
                         for (var i = 0; i < tenantIds.Count; i++)
                         {
                             var t = await _tenantRepository.GetByIdAsync(true, tenantIds[i]);
-                            menuLines.Add($"{i + 1} - {t?.Name ?? tenantIds[i].ToString()}");
+                            menuLines.Add($"{i + 1} – {t?.Name ?? tenantIds[i].ToString()}");
                         }
                         var menuText = "Olá! Para qual estabelecimento deseja atendimento?\n\n" +
                                        string.Join("\n", menuLines) +
@@ -868,7 +868,7 @@ namespace VoroSalonCrm.API.Controllers
             var services = servicesDto.Select(s => new
             {
                 id = s.Id.ToString(),
-                title = $"{s.Name} - {s.Price:C}"
+                title = $"{s.Name} – {s.Price:C}"
             }).ToArray();
 
             return Ok(new FlowResponseDto
