@@ -14,6 +14,15 @@ namespace VoroSalonCrm.Application.Services
     {
         public async Task SaveInboundAsync(Guid tenantId, string from, string to, string body, string? whatsAppMessageId = null)
         {
+            // Deduplicar por WhatsAppMessageId para evitar processamento duplo de webhooks repetidos
+            if (!string.IsNullOrEmpty(whatsAppMessageId))
+            {
+                var exists = await repository
+                    .Query(m => m.WhatsAppMessageId == whatsAppMessageId)
+                    .AnyAsync();
+                if (exists) return;
+            }
+
             var message = new WhatsAppMessage
             {
                 Id = Guid.NewGuid(),
