@@ -606,6 +606,25 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 if (result.Success)
                 {
                     session.AppointmentId = result.AppointmentId;
+
+                    // Reagendamento: cancela o agendamento anterior após criar o novo
+                    if (session.PendingAppointmentId.HasValue)
+                    {
+                        var oldId = session.PendingAppointmentId.Value;
+                        var oldAppt = await _appointmentRepository
+                            .Query(a => a.Id == oldId, asNoTracking: false)
+                            .IgnoreQueryFilters()
+                            .FirstOrDefaultAsync(ct);
+                        if (oldAppt != null)
+                        {
+                            oldAppt.Status = AppointmentStatus.Cancelled;
+                            oldAppt.UpdatedAt = DateTimeOffset.UtcNow;
+                            _appointmentRepository.Update(oldAppt);
+                            await _unitOfWork.SaveChangesAsync();
+                        }
+                        session.PendingAppointmentId = null;
+                    }
+
                     var confirmed = $"✅ *Agendamento Confirmado!*\n\n{session.ContactName}, seu horário para {session.ServiceName} foi marcado para {session.SelectedDate:dd/MM} às {session.SelectedTime}. Esperamos por você!";
                     await SendAsync(session, from, confirmed, ct);
                     await AskForReminderTimeAsync(from, session, ct);
@@ -719,7 +738,11 @@ namespace VoroSalonCrm.Infrastructure.Integration
             {
                 if (session.PendingAppointmentId.HasValue)
                 {
-                    var appt = await _appointmentRepository.GetByIdAsync(false, session.PendingAppointmentId.Value);
+                    var pendingId = session.PendingAppointmentId.Value;
+                    var appt = await _appointmentRepository
+                        .Query(a => a.Id == pendingId, asNoTracking: false)
+                        .IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(ct);
                     if (appt != null)
                     {
                         appt.Status = AppointmentStatus.Cancelled;
@@ -744,7 +767,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         {
             if (body == "1")
             {
-                session.PendingAppointmentId = null;
+                // Mantém PendingAppointmentId para cancelar o agendamento antigo em HandleConfirmationAsync
                 session.PendingAppointmentSummary = null;
                 session.ServicePage = 0;
                 await AskForServiceAsync(from, session, ct);
