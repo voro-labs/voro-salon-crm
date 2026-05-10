@@ -766,7 +766,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     var rawPhone = new string(from.Where(char.IsDigit).ToArray());
                     var phoneSuffix = rawPhone.Length > 10 ? rawPhone[^10..] : rawPhone;
                     var clients = await _clientRepository
-                        .Query(c => c.TenantId == session.TenantId && c.Phone != null)
+                        .Query(c => c.TenantId == session.TenantId && c.Phone != null && !c.IsDeleted)
+                        .IgnoreQueryFilters()
                         .ToListAsync(ct);
                     var matchedClient = clients.FirstOrDefault(c =>
                     {
@@ -784,6 +785,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                                 a.ClientId == matchedClient.Id &&
                                 (a.Status == AppointmentStatus.Pending || a.Status == AppointmentStatus.Confirmed) &&
                                 a.ScheduledDateTime > DateTimeOffset.UtcNow)
+                            .IgnoreQueryFilters()
                             .Include(a => a.Service)
                             .OrderBy(a => a.ScheduledDateTime)
                             .FirstOrDefaultAsync(ct);
