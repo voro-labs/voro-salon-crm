@@ -140,12 +140,13 @@ namespace VoroSalonCrm.API.Controllers
                             "Cliente {From} selecionou tenant {TenantId} para instância {InstanceId}.",
                             from, selectedTenantId, instanceId);
 
-                        // Confirmar seleção sem salvar este número no DB — próxima mensagem inicia o bot
+                        // Confirmar seleção e salvar mensagem no BD para o bot iniciar o fluxo
+                        // (exibir agendamentos ativos ou lista de serviços automaticamente)
                         var selectedTenant = await _tenantRepository.GetByIdAsync(true, selectedTenantId);
-                        var confirmMsg = $"✅ *{selectedTenant?.Name ?? "Estabelecimento"}* selecionado! Pode digitar sua mensagem.";
+                        var confirmMsg = $"✅ *{selectedTenant?.Name ?? "Estabelecimento"}* selecionado!";
                         await evolutionService.SendTextAsync(instanceId!, from, confirmMsg);
 
-                        return Ok();
+                        // Não retorna — deixa cair no save/upsert abaixo para o worker disparar o bot
                     }
                     else
                     {
