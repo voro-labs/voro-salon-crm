@@ -811,6 +811,17 @@ namespace VoroSalonCrm.Infrastructure.Factories
             });
 
             // ---------------------------
+            // WHATSAPP MESSAGE
+            // ---------------------------
+            builder.Entity<WhatsAppMessage>(b =>
+            {
+                // Índice único por WhatsAppMessageId para evitar duplicação de webhooks
+                b.HasIndex(m => m.WhatsAppMessageId)
+                 .IsUnique()
+                 .HasFilter("\"WhatsAppMessageId\" IS NOT NULL");
+            });
+
+            // ---------------------------
             // WHATSAPP TEMPLATE
             // ---------------------------
             builder.Entity<WhatsAppTemplate>(b =>

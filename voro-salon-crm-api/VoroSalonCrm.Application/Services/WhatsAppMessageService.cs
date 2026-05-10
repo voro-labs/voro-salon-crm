@@ -14,7 +14,7 @@ namespace VoroSalonCrm.Application.Services
     {
         public async Task SaveInboundAsync(Guid tenantId, string from, string to, string body, string? whatsAppMessageId = null)
         {
-            // Deduplicar por WhatsAppMessageId para evitar processamento duplo de webhooks repetidos
+            // Verificação rápida antes de tentar inserir (reduz conflitos sob carga normal)
             if (!string.IsNullOrEmpty(whatsAppMessageId))
             {
                 var exists = await repository
@@ -36,8 +36,15 @@ namespace VoroSalonCrm.Application.Services
                 Timestamp = DateTimeOffset.UtcNow
             };
 
-            await repository.AddAsync(message);
-            await unitOfWork.SaveChangesAsync();
+            try
+            {
+                await repository.AddAsync(message);
+                await unitOfWork.SaveChangesAsync();
+            }
+            catch (DbUpdateException) when (!string.IsNullOrEmpty(whatsAppMessageId))
+            {
+                // Unique constraint violation: webhook duplicado chegou no mesmo instante — ignorar silenciosamente
+            }
         }
 
         public async Task SaveOutboundAsync(Guid tenantId, string from, string to, string body, string? whatsAppMessageId = null)
