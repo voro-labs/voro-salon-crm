@@ -164,10 +164,10 @@ export async function apiCall<T>(endpoint: string, options: ApiOptions = {}): Pr
     const method = options.method?.toUpperCase() || "GET"
     const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method)
 
-    const headers = {
+    const headers: Record<string, string> = {
       ...(isFormData ? API_CONFIG.HEADERS_FORM : API_CONFIG.HEADERS),
       ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
+      ...(options.headers as Record<string, string> | undefined),
     }
 
     // Adiciona o header Idempotency-Key nas requisições de mutação

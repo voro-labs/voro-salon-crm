@@ -534,7 +534,8 @@ export default function WhatsAppPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [chatHeight, setChatHeight] = useState(0)
 
-  // Calcula a altura disponível para o chat com base na posição real do container no DOM
+  // Calcula a altura disponível para o chat com base na posição real do container no DOM.
+  // Depende de tenant e evolutionInstances pois o banner condicional altera o layout após o mount.
   useEffect(() => {
     const updateHeight = () => {
       if (chatContainerRef.current) {
@@ -543,13 +544,16 @@ export default function WhatsAppPage() {
       }
     }
 
-    const id = requestAnimationFrame(updateHeight)
+    // Duplo RAF garante que o DOM terminou de fazer layout antes de medir
+    let id = requestAnimationFrame(() => {
+      id = requestAnimationFrame(updateHeight)
+    })
     window.addEventListener("resize", updateHeight)
     return () => {
       cancelAnimationFrame(id)
       window.removeEventListener("resize", updateHeight)
     }
-  }, [])
+  }, [tenant, evolutionInstances])
 
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,

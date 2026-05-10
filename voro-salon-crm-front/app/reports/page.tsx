@@ -94,21 +94,29 @@ export default function ReportsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-end gap-2 h-32">
-                  {revenueByMonth.slice(-6).map((m: any) => (
-                    <div key={m.month} className="flex flex-col items-center flex-1 gap-1">
+                {/* Barras separadas dos labels para que height em px resolva corretamente */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-end gap-2 h-28">
+                    {revenueByMonth.slice(-6).map((m: any) => (
                       <div
-                        className="bg-primary rounded-t w-full min-h-1 transition-all hover:bg-primary/80"
+                        key={m.month}
+                        className="bg-primary rounded-t flex-1 min-h-[4px] transition-all hover:bg-primary/80"
                         style={{
-                          height: maxRevenue > 0 ? `${(m.total / maxRevenue) * 100}%` : "4px",
+                          height: maxRevenue > 0
+                            ? `${Math.round((m.total / maxRevenue) * 112)}px`
+                            : "4px",
                         }}
                         title={formatCurrency(m.total)}
                       />
-                      <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    {revenueByMonth.slice(-6).map((m: any) => (
+                      <span key={m.month} className="flex-1 text-[10px] text-muted-foreground text-center leading-tight">
                         {m.monthLabel}
                       </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
