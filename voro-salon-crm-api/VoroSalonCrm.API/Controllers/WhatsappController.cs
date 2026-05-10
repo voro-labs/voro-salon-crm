@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
@@ -75,7 +76,9 @@ namespace VoroSalonCrm.API.Controllers
             [FromBody] EvolutionWebhookDto webhook,
             [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository,
             [FromServices] ITenantEvolutionInstanceLinkRepository evolutionLinkRepository,
-            [FromServices] IWhatsAppConversationRepository conversationRepository)
+            [FromServices] IWhatsAppConversationRepository conversationRepository,
+            [FromServices] IMemoryCache cache,
+            [FromServices] IEvolutionService evolutionService)
         {
             Console.WriteLine("Received Evolution Webhook: " + System.Text.Json.JsonSerializer.Serialize(webhook));
 
@@ -101,74 +104,116 @@ namespace VoroSalonCrm.API.Controllers
                 if (evolutionInstance != null)
                 {
                     tenantIds.Add(evolutionInstance.TenantId); // tenant dono sempre primeiro
-
-                    // Tenants vinculados
                     var links = await evolutionLinkRepository.GetByInstanceIdAsync(evolutionInstance.Id);
                     tenantIds.AddRange(links.Select(l => l.TenantId));
                 }
             }
 
-            if (tenantIds.Count > 1)
-                _logger.LogInformation(
-                    "Instância Evolution {InstanceId} compartilhada entre {Count} tenants. Salvando mensagem para o tenant dono ({TenantId}).",
-                    instanceId, tenantIds.Count, tenantIds[0]);
+            if (tenantIds.Count == 0)
+                return Ok();
 
-            if (tenantIds.Count > 0)
+            // Determinar tenant de destino — com seleção interativa quando há múltiplos
+            Guid selectedTenantId;
+
+            if (tenantIds.Count == 1)
             {
-                var ownerTenantId = tenantIds[0];
+                selectedTenantId = tenantIds[0];
+            }
+            else
+            {
+                var routingKey = $"evo_routing_{instanceId}_{from}";
 
-                // Salvar mensagem inbound
-                try
+                if (cache.TryGetValue(routingKey, out Guid cachedTenantId) && cachedTenantId != Guid.Empty)
                 {
-                    await _whatsAppMessageService.SaveInboundAsync(
-                        tenantId: ownerTenantId,
-                        from: from,
-                        to: instanceId ?? string.Empty,
-                        body: bodyText,
-                        whatsAppMessageId: messageId);
+                    // Usar seleção anterior do cliente
+                    selectedTenantId = cachedTenantId;
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError(ex, "Erro ao salvar mensagem inbound Evolution Go.");
-                }
-
-                // Upsert WhatsAppConversation
-                try
-                {
-                    var existing = await conversationRepository
-                        .Query(c => c.TenantId == ownerTenantId && c.PhoneNumber == from)
-                        .FirstOrDefaultAsync();
-
-                    if (existing == null)
+                    // Verificar se o cliente está respondendo ao menu de seleção
+                    var trimmed = bodyText.Trim();
+                    if (int.TryParse(trimmed, out var idx) && idx >= 1 && idx <= tenantIds.Count)
                     {
-                        await conversationRepository.AddAsync(new WhatsAppConversation
-                        {
-                            Id = Guid.NewGuid(),
-                            TenantId = ownerTenantId,
-                            PhoneNumber = from,
-                            ContactName = contactName,
-                            State = "ACTIVE",
-                            LastMessageBody = bodyText,
-                            LastMessageAt = DateTimeOffset.UtcNow,
-                            CreatedAt = DateTimeOffset.UtcNow
-                        });
+                        selectedTenantId = tenantIds[idx - 1];
+                        cache.Set(routingKey, selectedTenantId, TimeSpan.FromDays(30));
+                        _logger.LogInformation(
+                            "Cliente {From} selecionou tenant {TenantId} para instância {InstanceId}.",
+                            from, selectedTenantId, instanceId);
                     }
                     else
                     {
-                        existing.LastMessageBody = bodyText;
-                        existing.LastMessageAt = DateTimeOffset.UtcNow;
-                        existing.UpdatedAt = DateTimeOffset.UtcNow;
-                        if (!string.IsNullOrEmpty(contactName) && contactName != "Cliente")
-                            existing.ContactName = contactName;
-                        conversationRepository.Update(existing);
-                    }
+                        // Enviar menu de seleção de estabelecimento
+                        var menuLines = new List<string>();
+                        for (var i = 0; i < tenantIds.Count; i++)
+                        {
+                            var t = await _tenantRepository.GetByIdAsync(true, tenantIds[i]);
+                            menuLines.Add($"{i + 1} - {t?.Name ?? tenantIds[i].ToString()}");
+                        }
+                        var menuText = "Olá! Para qual estabelecimento deseja atendimento?\n\n" +
+                                       string.Join("\n", menuLines) +
+                                       "\n\nDigite o número da opção desejada.";
 
-                    await conversationRepository.SaveChangesAsync();
+                        await evolutionService.SendTextAsync(instanceId!, from, menuText);
+                        _logger.LogInformation(
+                            "Instância {InstanceId} compartilhada entre {Count} tenants. Menu enviado para {From}.",
+                            instanceId, tenantIds.Count, from);
+
+                        return Ok(); // Aguardar seleção do cliente
+                    }
                 }
-                catch (Exception ex)
+            }
+
+            // Salvar mensagem inbound para o tenant selecionado
+            try
+            {
+                await _whatsAppMessageService.SaveInboundAsync(
+                    tenantId: selectedTenantId,
+                    from: from,
+                    to: instanceId ?? string.Empty,
+                    body: bodyText,
+                    whatsAppMessageId: messageId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao salvar mensagem inbound Evolution Go.");
+            }
+
+            // Upsert WhatsAppConversation para o tenant selecionado
+            try
+            {
+                var existing = await conversationRepository
+                    .Query(c => c.TenantId == selectedTenantId && c.PhoneNumber == from)
+                    .FirstOrDefaultAsync();
+
+                if (existing == null)
                 {
-                    _logger.LogError(ex, "Erro ao persistir conversa Evolution Go.");
+                    await conversationRepository.AddAsync(new WhatsAppConversation
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = selectedTenantId,
+                        PhoneNumber = from,
+                        ContactName = contactName,
+                        State = "ACTIVE",
+                        LastMessageBody = bodyText,
+                        LastMessageAt = DateTimeOffset.UtcNow,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    });
                 }
+                else
+                {
+                    existing.LastMessageBody = bodyText;
+                    existing.LastMessageAt = DateTimeOffset.UtcNow;
+                    existing.UpdatedAt = DateTimeOffset.UtcNow;
+                    if (!string.IsNullOrEmpty(contactName) && contactName != "Cliente")
+                        existing.ContactName = contactName;
+                    conversationRepository.Update(existing);
+                }
+
+                await conversationRepository.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao persistir conversa Evolution Go.");
             }
 
             return Ok();

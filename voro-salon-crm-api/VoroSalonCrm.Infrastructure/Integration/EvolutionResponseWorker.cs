@@ -70,11 +70,24 @@ namespace VoroSalonCrm.Infrastructure.Integration
             if (cache.TryGetValue(ConnectedTenantsCacheKey, out List<Guid>? cached))
                 return cached!;
 
-            var ids = await db.TenantEvolutionInstances
+            // Tenants com instância própria conectada
+            var connectedInstances = await db.TenantEvolutionInstances
                 .Where(i => i.Status == EvolutionInstanceStatus.Connected)
-                .Select(i => i.TenantId)
+                .Select(i => new { i.TenantId, i.Id })
                 .ToListAsync(ct);
 
+            var ownerTenantIds = connectedInstances.Select(x => x.TenantId).ToList();
+            var connectedDbIds = connectedInstances.Select(x => x.Id).ToList();
+
+            // Tenants vinculados a instâncias conectadas (compartilhamento)
+            var linkedTenantIds = connectedDbIds.Count > 0
+                ? await db.TenantEvolutionInstanceLinks
+                    .Where(l => connectedDbIds.Contains(l.InstanceId))
+                    .Select(l => l.TenantId)
+                    .ToListAsync(ct)
+                : new List<Guid>();
+
+            var ids = ownerTenantIds.Concat(linkedTenantIds).Distinct().ToList();
             cache.Set(ConnectedTenantsCacheKey, ids, TenantCacheTtl);
             return ids;
         }
