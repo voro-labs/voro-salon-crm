@@ -22,6 +22,20 @@ namespace VoroSalonCrm.Application.Services
                     .AnyAsync();
                 if (exists) return;
             }
+            else
+            {
+                // Sem ID: deduplicar por remetente+corpo numa janela de 30s
+                // (protege contra webhooks duplicados do Evolution quando info.ID é null)
+                var recentCutoff = DateTimeOffset.UtcNow.AddSeconds(-30);
+                var exists = await repository
+                    .Query(m => m.TenantId == tenantId
+                             && m.From == from
+                             && m.Body == body
+                             && m.Direction == "inbound"
+                             && m.Timestamp >= recentCutoff)
+                    .AnyAsync();
+                if (exists) return;
+            }
 
             var message = new WhatsAppMessage
             {

@@ -87,7 +87,7 @@ namespace VoroSalonCrm.API.Controllers
 
             var info = webhook.Data.Info;
 
-            if (info.IsFromMe)
+            if (info.IsFromMe || webhook.Data.IsFromMe)
                 return Ok();
 
             var from = info.Chat.Split('@')[0];
