@@ -372,7 +372,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 var price = s.HasPromotion && s.PromotionalPrice.HasValue
                     ? $"R$ {s.PromotionalPrice.Value:N2} 🏷️"
                     : (s.Price > 0 ? $"R$ {s.Price:N2}" : "");
-                return $"{i + 1} - {s.Name}{(price.Length > 0 ? $" ({price})" : "")}";
+                return $"{i + 1} – {s.Name}{(price.Length > 0 ? $" ({price})" : "")}";
             }).ToList();
 
             if (hasMore)
@@ -406,7 +406,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             foreach (var e in pageEmployees)
             {
                 session.CurrentOptions.Add((e.Id.ToString(), e.Name));
-                lines.Add($"{idx++} - {e.Name}");
+                lines.Add($"{idx++} – {e.Name}");
             }
 
             if (hasMore)
@@ -479,7 +479,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     DayOfWeek.Sunday => " (Domingo)",
                     _ => ""
                 };
-                return $"{i + 1} - {d:dd/MM/yyyy}{suffix}";
+                return $"{i + 1} – {d:dd/MM/yyyy}{suffix}";
             }).ToList();
 
             if (hasMore)
@@ -522,7 +522,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 .Select(s => (s.ToString("HH:mm"), s.ToString("HH:mm")))
                 .ToList();
 
-            var lines = pageSlots.Select((s, i) => $"{i + 1} - {s:HH:mm}").ToList();
+            var lines = pageSlots.Select((s, i) => $"{i + 1} – {s:HH:mm}").ToList();
 
             if (hasMore)
             {
@@ -631,15 +631,15 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
         private static readonly (string Id, string Label, string Display)[] ReminderOptions =
         [
-            ("15",   "15 minutos", "1 - 15 minutos antes"),
-            ("30",   "30 minutos", "2 - 30 minutos antes"),
-            ("60",   "1 hora",     "3 - 1 hora antes"),
-            ("120",  "2 horas",    "4 - 2 horas antes"),
-            ("240",  "4 horas",    "5 - 4 horas antes"),
-            ("480",  "8 horas",    "6 - 8 horas antes"),
-            ("1440", "24 horas",   "7 - 24 horas antes"),
-            ("2880", "48 horas",   "8 - 48 horas antes"),
-            ("0",    "Não receber","9 - Não receber"),
+            ("15",   "15 minutos", "1 – 15 minutos antes"),
+            ("30",   "30 minutos", "2 – 30 minutos antes"),
+            ("60",   "1 hora",     "3 – 1 hora antes"),
+            ("120",  "2 horas",    "4 – 2 horas antes"),
+            ("240",  "4 horas",    "5 – 4 horas antes"),
+            ("480",  "8 horas",    "6 – 8 horas antes"),
+            ("1440", "24 horas",   "7 – 24 horas antes"),
+            ("2880", "48 horas",   "8 – 48 horas antes"),
+            ("0",    "Não receber","9 – Não receber"),
         ];
 
         private async Task AskForReminderTimeAsync(string from, EvolutionBookingSession session, CancellationToken ct)
@@ -698,13 +698,17 @@ namespace VoroSalonCrm.Infrastructure.Integration
             }
             else if (body == "3")
             {
-                const string continueMsg = "Tudo bem! Seu agendamento permanece confirmado. Até breve! 😊";
+                // Cliente quer agendar um novo serviço mantendo o agendamento existente
+                const string continueMsg = "Ótimo! Seu agendamento segue confirmado 😊 Vamos agendar outro serviço?";
                 await SendAsync(session, from, continueMsg, ct);
-                session.State = "COMPLETED";
+                session.PendingAppointmentId = null;
+                session.PendingAppointmentSummary = null;
+                session.ServicePage = 0;
+                await AskForServiceAsync(from, session, ct);
             }
             else
             {
-                var retryMsg = $"Por favor, escolha uma opção:\n\n{session.PendingAppointmentSummary}\n\n1 - Cancelar agendamento\n2 - Reagendar\n3 - Continuar sem alterar";
+                var retryMsg = $"Por favor, escolha uma opção:\n\n{session.PendingAppointmentSummary}\n\n1 - Cancelar agendamento\n2 - Reagendar\n3 - Agendar novo serviço";
                 await SendAsync(session, from, retryMsg, ct);
             }
         }
@@ -796,13 +800,13 @@ namespace VoroSalonCrm.Infrastructure.Integration
                                 $"Olá {session.ContactName}! Encontrei um agendamento ativo:\n\n" +
                                 session.PendingAppointmentSummary +
                                 "\n\nO que você gostaria de fazer?\n\n" +
-                                "1 - Cancelar agendamento\n2 - Reagendar\n3 - Continuar sem alterar";
+                                "1 - Cancelar agendamento\n2 - Reagendar\n3 - Agendar novo serviço";
 
                             session.CurrentOptions = new List<(string, string)>
                             {
                                 ("cancel", "Cancelar"),
                                 ("reschedule", "Reagendar"),
-                                ("keep", "Continuar")
+                                ("new", "Agendar novo")
                             };
 
                             await SendAsync(session, from, detectionMsg, ct);
