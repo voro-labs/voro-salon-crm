@@ -752,7 +752,7 @@ export default function FinancialPage() {
           <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium">
-                Receita do Mês
+                {periodFilter.mode === "all" ? "Receita Total" : "Receita do Mês"}
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-blue-500 shrink-0" />
             </CardHeader>
@@ -761,7 +761,9 @@ export default function FinancialPage() {
                 {formatCurrency(totalReceitas)}
               </div>
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">
-                {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
+                {periodFilter.mode === "all"
+                  ? "Todo o histórico"
+                  : format(new Date(periodFilter.year, periodFilter.month, 1), "MMMM 'de' yyyy", { locale: ptBR })}
               </p>
             </CardContent>
           </Card>
