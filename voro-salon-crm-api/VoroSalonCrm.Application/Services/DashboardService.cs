@@ -18,18 +18,22 @@ namespace VoroSalonCrm.Application.Services
         private readonly ICurrentUserService _currentUserService = currentUserService;
         private readonly ICacheService _cacheService = cacheService;
 
-        public async Task<DashboardMetricsDto> GetDashboardMetricsAsync()
+        public async Task<DashboardMetricsDto> GetDashboardMetricsAsync(int? month = null, int? year = null)
         {
             var tenantId = _currentUserService.TenantId;
-            var cacheKey = $"dashboard:tenant:{tenantId}";
+            var cacheKey = month.HasValue && year.HasValue
+                ? $"dashboard:tenant:{tenantId}:{year}:{month}"
+                : $"dashboard:tenant:{tenantId}";
 
             var cached = await _cacheService.GetAsync<DashboardMetricsDto>(cacheKey);
             if (cached is not null) return cached;
 
             var now = DateTimeOffset.UtcNow;
+            var targetYear = year ?? now.Year;
+            var targetMonth = month ?? now.Month;
 
-            // Current month limits
-            var startOfMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
+            // Selected or current month limits
+            var startOfMonth = new DateTimeOffset(targetYear, targetMonth, 1, 0, 0, 0, TimeSpan.Zero);
             var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
 
             // 1. Monthly Revenue & Count
@@ -43,8 +47,9 @@ namespace VoroSalonCrm.Application.Services
             // 2. Total Clients
             var totalClients = await _clientRepository.Query().CountAsync();
 
-            // 3. Revenue By Month (last 6 months)
-            var sixMonthsAgo = startOfMonth.AddMonths(-5); // start of 6 months ago up to today
+            // 3. Revenue By Month (always last 6 months relative to today, regardless of selection)
+            var nowStartOfMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
+            var sixMonthsAgo = nowStartOfMonth.AddMonths(-5);
             var lastSixMonthsServices = await _serviceRepository.Query()
                 .Where(s => s.ServiceDate >= sixMonthsAgo)
                 .ToListAsync();
@@ -68,7 +73,7 @@ namespace VoroSalonCrm.Application.Services
             var filledRevenueByMonth = new List<RevenueByMonthDto>();
             for (int i = 5; i >= 0; i--)
             {
-                var dt = startOfMonth.AddMonths(-i);
+                var dt = nowStartOfMonth.AddMonths(-i);
                 var monthStr = dt.ToString("yyyy-MM");
                 var existing = revenueByMonth.FirstOrDefault(r => r.Month == monthStr);
 
@@ -87,8 +92,12 @@ namespace VoroSalonCrm.Application.Services
                 }
             }
 
-            // 4. Top Clients (Top 5 by revenue)
-            var topClientsQuery = await _serviceRepository.Query()
+            // 4. Top Clients (Top 5 by revenue — filtered by selected month when provided)
+            var topClientsBaseQuery = _serviceRepository.Query();
+            if (month.HasValue && year.HasValue)
+                topClientsBaseQuery = topClientsBaseQuery.Where(s => s.ServiceDate >= startOfMonth && s.ServiceDate <= endOfMonth);
+
+            var topClientsQuery = await topClientsBaseQuery
                 .GroupBy(s => new { s.ClientId, s.Client.Name })
                 .Select(g => new
                 {

@@ -15,13 +15,13 @@ namespace VoroSalonCrm.API.Controllers
     public class DashboardController(IDashboardService dashboardService, ICurrentUserService currentUserService) : ControllerBase
     {
         [HttpGet("metrics")]
-        public async Task<IActionResult> GetMetrics()
+        public async Task<IActionResult> GetMetrics([FromQuery] int? month, [FromQuery] int? year)
         {
             try
             {
                 Console.WriteLine($"TenantId: {currentUserService.TenantId}");
 
-                var metrics = await dashboardService.GetDashboardMetricsAsync();
+                var metrics = await dashboardService.GetDashboardMetricsAsync(month, year);
 
                 return ResponseViewModel<DashboardMetricsDto>
                     .SuccessWithMessage("Metrics retrieved.", metrics)
