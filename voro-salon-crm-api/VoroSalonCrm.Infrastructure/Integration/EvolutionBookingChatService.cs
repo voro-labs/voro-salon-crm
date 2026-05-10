@@ -115,6 +115,20 @@ namespace VoroSalonCrm.Infrastructure.Integration
                 var from = msg.From;
                 var sessionKey = SessionKey(msg.TenantId, from);
 
+                // Deduplicar webhooks duplicados: Evolution pode entregar o mesmo evento mais de uma vez.
+                // Para IDs conhecidos, usa o WhatsAppMessageId; para IDs nulos, usa remetente+corpo+janela de 1 segundo.
+                var bodySnippet = msg.Body?.Length > 50 ? msg.Body[..50] : (msg.Body ?? string.Empty);
+                var dedupKey = !string.IsNullOrEmpty(msg.WhatsAppMessageId)
+                    ? $"evo_dedup_{msg.WhatsAppMessageId}"
+                    : $"evo_dedup_{msg.TenantId}_{from}_{msg.Timestamp:yyyyMMddHHmmss}_{bodySnippet}";
+
+                if (_cache.TryGetValue(dedupKey, out _))
+                {
+                    msg.ProcessedByBotAt ??= DateTimeOffset.UtcNow;
+                    return;
+                }
+                _cache.Set(dedupKey, true, TimeSpan.FromMinutes(5));
+
                 if (!_cache.TryGetValue(sessionKey, out EvolutionBookingSession? session) || session == null)
                 {
                     session = new EvolutionBookingSession
