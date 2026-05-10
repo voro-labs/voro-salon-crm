@@ -60,8 +60,24 @@ namespace VoroSalonCrm.Infrastructure.Integration
 
             foreach (var msg in messages)
             {
-                await bookingService.HandleMessageAsync(msg, ct);
-                await db.SaveChangesAsync(ct);
+                try
+                {
+                    await bookingService.HandleMessageAsync(msg, ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Erro não tratado ao processar mensagem {MessageId} pelo bot Evolution.", msg.Id);
+                    msg.ProcessedByBotAt ??= DateTimeOffset.UtcNow;
+                }
+
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Erro ao persistir ProcessedByBotAt para mensagem {MessageId}.", msg.Id);
+                }
             }
         }
 
