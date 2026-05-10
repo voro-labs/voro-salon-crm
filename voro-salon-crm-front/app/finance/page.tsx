@@ -639,49 +639,48 @@ export default function FinancialPage() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
 
-          <Popover open={isMonthPickerOpen} onOpenChange={handleOpenMonthPicker}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 min-w-38 font-medium capitalize"
-                disabled={periodFilter.mode === "all"}
-              >
-                {periodFilter.mode === "month"
-                  ? format(new Date(periodFilter.year, periodFilter.month, 1), "MMMM 'de' yyyy", { locale: ptBR })
-                  : "Todos os períodos"}
-                <ChevronDown className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 p-3" align="start">
-              {/* Seletor de ano */}
-              <div className="flex items-center justify-between mb-3">
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPickerYear(y => y - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
+          {periodFilter.mode === "month" && (
+            <Popover open={isMonthPickerOpen} onOpenChange={handleOpenMonthPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 min-w-38 font-medium capitalize"
+                >
+                  {format(new Date(periodFilter.year, periodFilter.month, 1), "MMMM 'de' yyyy", { locale: ptBR })}
+                  <ChevronDown className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
-                <span className="text-sm font-semibold">{pickerYear}</span>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPickerYear(y => y + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              {/* Grid de meses */}
-              <div className="grid grid-cols-3 gap-1">
-                {MONTHS.map((name, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSelectMonth(pickerYear, i)}
-                    className={`py-1.5 px-2 rounded text-sm transition-colors ${
-                      periodFilter.mode === "month" && periodFilter.year === pickerYear && periodFilter.month === i
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : "hover:bg-accent text-foreground"
-                    }`}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 p-3" align="start">
+                {/* Seletor de ano */}
+                <div className="flex items-center justify-between mb-3">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPickerYear(y => y - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-semibold">{pickerYear}</span>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPickerYear(y => y + 1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                {/* Grid de meses */}
+                <div className="grid grid-cols-3 gap-1">
+                  {MONTHS.map((name, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSelectMonth(pickerYear, i)}
+                      className={`py-1.5 px-2 rounded text-sm transition-colors ${
+                        periodFilter.mode === "month" && periodFilter.year === pickerYear && periodFilter.month === i
+                          ? "bg-primary text-primary-foreground font-medium"
+                          : "hover:bg-accent text-foreground"
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
 
           <Button
             variant="outline"
@@ -709,7 +708,10 @@ export default function FinancialPage() {
               variant="ghost"
               size="sm"
               className="h-8 text-muted-foreground"
-              onClick={() => setPeriodFilter({ mode: "month", year: now.getFullYear(), month: now.getMonth() })}
+              onClick={() => {
+                const today = new Date()
+                setPeriodFilter({ mode: "month", year: today.getFullYear(), month: today.getMonth() })
+              }}
             >
               Mês atual
             </Button>
