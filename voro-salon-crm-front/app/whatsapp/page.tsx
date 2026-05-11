@@ -248,8 +248,8 @@ function ChatView({
                 onClick={() => router.push(`/clients/${selected.clientId}`)}
               >
                 <User className="h-3 w-3" />
-                Ver cliente
-                <ChevronRight className="h-3 w-3" />
+                <span className="hidden sm:inline">Ver cliente</span>
+                <ChevronRight className="h-3 w-3 hidden sm:inline" />
               </Button>
             )}
           </div>

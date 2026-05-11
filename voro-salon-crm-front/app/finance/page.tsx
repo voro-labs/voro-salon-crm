@@ -465,8 +465,8 @@ export default function FinancialPage() {
               <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:items-center sm:w-auto sm:gap-2 order-2 sm:order-1">
                 <Button variant="outline" size="sm" asChild className="sm:flex-none h-9">
                   <Link href="/finance/categories">
-                    <Settings className="mr-1.5 h-3.5 w-3.5" />
-                    Categorias
+                    <Settings className="h-3.5 w-3.5 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Categorias</span>
                   </Link>
                 </Button>
                 <Button
@@ -475,8 +475,8 @@ export default function FinancialPage() {
                   className="sm:flex-none h-9"
                   onClick={() => setIsPdfImportOpen(true)}
                 >
-                  <FileUp className="mr-1.5 h-3.5 w-3.5" />
-                  Importar PDF
+                  <FileUp className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Importar PDF</span>
                 </Button>
                 <ExportMenu
                   size="sm"
