@@ -1349,7 +1349,7 @@ export default function AppointmentsPage() {
                 </Button>
               </div>
               {/* Linha 1: filtro de período + toggle de visualização */}
-              <div className="flex flex-wrap items-center w-full gap-2">
+              <div className="flex flex-wrap items-center w-full gap-2 justify-end">
                 {viewMode === "list" ? (
                   <div className="flex items-center gap-2 flex-wrap">
                     <Tabs value={periodFilter} onValueChange={setPeriodFilter}>

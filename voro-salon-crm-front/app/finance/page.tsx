@@ -460,7 +460,7 @@ export default function FinancialPage() {
           title="Financeiro"
           description="Fluxo de caixa, despesas e receitas."
           action={
-            <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:items-center sm:w-auto">
+            <div className="flex flex-col justify-end gap-2 w-full sm:flex-row sm:flex-wrap sm:items-center sm:w-auto">
               {/* Secundários */}
               <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:items-center sm:w-auto sm:gap-2 order-2 sm:order-1">
                 <Button variant="outline" size="sm" asChild className="sm:flex-none h-9">
