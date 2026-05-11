@@ -460,10 +460,10 @@ export default function FinancialPage() {
           title="Financeiro"
           description="Fluxo de caixa, despesas e receitas."
           action={
-            <div className="flex flex-wrap justify-end items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:items-center sm:w-auto">
               {/* Secundários */}
-              <div className="flex items-center gap-2 w-full sm:w-auto order-2 sm:order-1">
-                <Button variant="outline" size="sm" asChild className="flex-1 sm:flex-none h-9">
+              <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:items-center sm:w-auto sm:gap-2 order-2 sm:order-1">
+                <Button variant="outline" size="sm" asChild className="sm:flex-none h-9">
                   <Link href="/finance/categories">
                     <Settings className="mr-1.5 h-3.5 w-3.5" />
                     Categorias
@@ -472,7 +472,7 @@ export default function FinancialPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 sm:flex-none h-9"
+                  className="sm:flex-none h-9"
                   onClick={() => setIsPdfImportOpen(true)}
                 >
                   <FileUp className="mr-1.5 h-3.5 w-3.5" />
@@ -482,7 +482,7 @@ export default function FinancialPage() {
                   size="sm"
                   rows={filteredTransactions}
                   filename="financeiro"
-                  className="flex-1 sm:flex-none h-9"
+                  className="sm:flex-none h-9"
                   columns={[
                     { header: "Descrição", value: (t: any) => t.description },
                     { header: "Tipo", value: (t: any) => t.type === 1 ? "Receita" : "Despesa" },
