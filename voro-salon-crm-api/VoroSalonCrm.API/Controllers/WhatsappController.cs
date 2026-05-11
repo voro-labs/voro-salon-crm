@@ -112,61 +112,90 @@ namespace VoroSalonCrm.API.Controllers
             if (tenantIds.Count == 0)
                 return Ok();
 
-            // Determinar tenant de destino — com seleção interativa quando há múltiplos
+            // Determinar tenant de destino
             Guid selectedTenantId;
 
             if (tenantIds.Count == 1)
             {
+                // Instância não compartilhada — usar owner diretamente
                 selectedTenantId = tenantIds[0];
             }
             else
             {
-                var routingKey = $"evo_routing_{instanceId}_{from}";
-
-                if (cache.TryGetValue(routingKey, out Guid cachedTenantId) && cachedTenantId != Guid.Empty)
+                // Instância compartilhada — filtrar por tenants com agendamento pelo WhatsApp ativo.
+                // Carrega apenas os dados necessários para evitar N+1 quando houver muitos tenants.
+                var bookingTenants = new List<(Guid Id, string Name)>();
+                foreach (var tid in tenantIds)
                 {
-                    // Usar seleção anterior do cliente
-                    selectedTenantId = cachedTenantId;
+                    var t = await _tenantRepository.GetByIdAsync(true, tid);
+                    if (t?.UseWhatsappBooking == true)
+                        bookingTenants.Add((tid, t.Name ?? tid.ToString()));
+                }
+
+                if (bookingTenants.Count == 1)
+                {
+                    // Exatamente um tenant com booking ativo → selecionar automaticamente, sem menu
+                    selectedTenantId = bookingTenants[0].Id;
+                    _logger.LogInformation(
+                        "Instância {InstanceId} compartilhada: auto-selecionando tenant {TenantId} (único com booking ativo).",
+                        instanceId, selectedTenantId);
+                }
+                else if (bookingTenants.Count == 0)
+                {
+                    // Nenhum tenant com booking ativo — salvar mensagem no owner (sem resposta do bot)
+                    selectedTenantId = tenantIds[0];
                 }
                 else
                 {
-                    // Verificar se o cliente está respondendo ao menu de seleção
-                    var trimmed = bodyText.Trim();
-                    if (int.TryParse(trimmed, out var idx) && idx >= 1 && idx <= tenantIds.Count)
+                    // Múltiplos tenants com booking ativo → seleção interativa (apenas entre eles)
+                    var validBookingIds = bookingTenants.Select(b => b.Id).ToHashSet();
+                    var routingKey = $"evo_routing_{instanceId}_{from}";
+
+                    if (cache.TryGetValue(routingKey, out Guid cachedTenantId)
+                        && cachedTenantId != Guid.Empty
+                        && validBookingIds.Contains(cachedTenantId))
                     {
-                        selectedTenantId = tenantIds[idx - 1];
-                        cache.Set(routingKey, selectedTenantId, TimeSpan.FromDays(30));
-                        _logger.LogInformation(
-                            "Cliente {From} selecionou tenant {TenantId} para instância {InstanceId}.",
-                            from, selectedTenantId, instanceId);
-
-                        // Confirmar seleção e salvar mensagem no BD para o bot iniciar o fluxo
-                        // (exibir agendamentos ativos ou lista de serviços automaticamente)
-                        var selectedTenant = await _tenantRepository.GetByIdAsync(true, selectedTenantId);
-                        var confirmMsg = $"✅ *{selectedTenant?.Name ?? "Estabelecimento"}* selecionado!";
-                        await evolutionService.SendTextAsync(instanceId!, from, confirmMsg);
-
-                        // Não retorna — deixa cair no save/upsert abaixo para o worker disparar o bot
+                        // Seleção anterior válida (tenant ainda tem booking ativo)
+                        selectedTenantId = cachedTenantId;
                     }
                     else
                     {
-                        // Enviar menu de seleção de estabelecimento
-                        var menuLines = new List<string>();
-                        for (var i = 0; i < tenantIds.Count; i++)
+                        // Cache inválido ou ausente — verificar se é resposta ao menu
+                        if (cache.TryGetValue(routingKey, out Guid staleId) && staleId != Guid.Empty)
+                            cache.Remove(routingKey); // limpa rota obsoleta
+
+                        var trimmed = bodyText.Trim();
+                        if (int.TryParse(trimmed, out var idx) && idx >= 1 && idx <= bookingTenants.Count)
                         {
-                            var t = await _tenantRepository.GetByIdAsync(true, tenantIds[i]);
-                            menuLines.Add($"{i + 1} – {t?.Name ?? tenantIds[i].ToString()}");
+                            selectedTenantId = bookingTenants[idx - 1].Id;
+                            cache.Set(routingKey, selectedTenantId, TimeSpan.FromDays(30));
+                            _logger.LogInformation(
+                                "Cliente {From} selecionou tenant {TenantId} para instância {InstanceId}.",
+                                from, selectedTenantId, instanceId);
+
+                            var selectedTenant = await _tenantRepository.GetByIdAsync(true, selectedTenantId);
+                            var confirmMsg = $"✅ *{selectedTenant?.Name ?? "Estabelecimento"}* selecionado!";
+                            await evolutionService.SendTextAsync(instanceId!, from, confirmMsg);
+
+                            // Não retorna — cai no save abaixo para o worker disparar o bot
                         }
-                        var menuText = "Olá! Para qual estabelecimento deseja atendimento?\n\n" +
-                                       string.Join("\n", menuLines) +
-                                       "\n\nDigite o número da opção desejada.";
+                        else
+                        {
+                            // Enviar menu apenas com tenants que têm booking ativo
+                            var menuLines = bookingTenants
+                                .Select((b, i) => $"{i + 1} – {b.Name}")
+                                .ToList();
+                            var menuText = "Olá! Para qual estabelecimento deseja atendimento?\n\n" +
+                                           string.Join("\n", menuLines) +
+                                           "\n\nDigite o número da opção desejada.";
 
-                        await evolutionService.SendTextAsync(instanceId!, from, menuText);
-                        _logger.LogInformation(
-                            "Instância {InstanceId} compartilhada entre {Count} tenants. Menu enviado para {From}.",
-                            instanceId, tenantIds.Count, from);
+                            await evolutionService.SendTextAsync(instanceId!, from, menuText);
+                            _logger.LogInformation(
+                                "Instância {InstanceId} compartilhada entre {Count} tenants com booking. Menu enviado para {From}.",
+                                instanceId, bookingTenants.Count, from);
 
-                        return Ok(); // Aguardar seleção do cliente
+                            return Ok(); // Aguardar seleção do cliente
+                        }
                     }
                 }
             }
