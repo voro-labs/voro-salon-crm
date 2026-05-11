@@ -1743,8 +1743,11 @@ export default function ConfiguracoesPage() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t">
-                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5" asChild>
-                        <Link href="/settings/whatsapp"><MessageSquare className="h-3.5 w-3.5" />Templates de mensagem</Link>
+                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5" asChild title="Templates de mensagem">
+                        <Link href="/settings/whatsapp">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Templates de mensagem</span>
+                        </Link>
                       </Button>
                       <Button onClick={handleSaveWhatsapp} disabled={savingWp} size="sm" className="gap-2">
                         {savingWp && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

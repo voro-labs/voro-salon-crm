@@ -383,7 +383,7 @@ export default function DashboardPage() {
                                     <Clock className="h-3 w-3" />
                                     {format(date, "HH:mm")}
                                   </span>
-                                  <StatusBadge status={apt.status} />
+                                  <StatusBadge status={apt.status} hideText />
                                 </div>
                                 <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
                                 <p className="text-[11px] text-muted-foreground truncate">

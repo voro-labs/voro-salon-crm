@@ -15,18 +15,19 @@ interface StatusBadgeProps {
   status: number | string
   className?: string
   hideIcon?: boolean
+  hideText?: boolean
   showChevron?: boolean
 }
 
-export function StatusBadge({ status, className = "", hideIcon = false, showChevron = false }: StatusBadgeProps) {
+export function StatusBadge({ status, className = "", hideIcon = false, hideText = false, showChevron = false }: StatusBadgeProps) {
   const statusNum = Number(status) as AppointmentStatusId
   const config = appointmentStatusConfig[statusNum] || appointmentStatusConfig[0]
   const Icon = config.icon
 
   return (
-    <Badge variant="outline" className={`text-xs px-2.5 h-6 w-fit border-none shrink-0 ${config.color} ${showChevron ? "hover:brightness-95 cursor-pointer ring-1 ring-inset ring-black/10" : ""} ${className}`}>
-      {!hideIcon && <Icon className="mr-1 h-3.5 w-3.5" />}
-      {config.label}
+    <Badge variant="outline" className={`text-xs h-6 w-fit border-none shrink-0 ${hideText ? "px-1.5" : "px-2.5"} ${config.color} ${showChevron ? "hover:brightness-95 cursor-pointer ring-1 ring-inset ring-black/10" : ""} ${className}`}>
+      {!hideIcon && <Icon className={`h-3.5 w-3.5 ${!hideText ? "mr-1" : ""}`} />}
+      {!hideText && config.label}
       {showChevron && <ChevronDown className="ml-0.5 h-3 w-3 opacity-50" />}
     </Badge>
   )
