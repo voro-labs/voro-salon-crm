@@ -455,7 +455,7 @@ export default function FinancialPage() {
 
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
-      <div className="flex flex-col gap-6 p-3 sm:p-6">
+      <div className="flex flex-col gap-6 p-3 sm:p-6 md:px-10">
         <PageHeader
           title="Financeiro"
           description="Fluxo de caixa, despesas e receitas."

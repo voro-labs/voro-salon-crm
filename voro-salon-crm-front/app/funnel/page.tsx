@@ -190,7 +190,7 @@ export default function FunnelPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <ModuleGuard moduleId={[8, 9]}>
-        <div className="flex flex-col gap-6 p-4 sm:p-6">
+        <div className="flex flex-col gap-6 p-4 sm:p-6 md:px-10">
           <PageHeader
             title="Funil de Agendamentos"
             description="Acompanhe os agendamentos por canal de origem."
