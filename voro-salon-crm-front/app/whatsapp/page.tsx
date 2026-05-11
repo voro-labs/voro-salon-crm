@@ -6,7 +6,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import {
   MessageCircle, RefreshCw, Loader2, User, Send, X,
-  CheckCircle, AlertCircle, ExternalLink, ChevronRight, Settings2,
+  CheckCircle, AlertCircle, ExternalLink, ChevronLeft, ChevronRight, Settings2,
   MessageSquare, Trash2,
 } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
@@ -152,7 +152,11 @@ function ChatView({
   return (
     <div className="flex h-full overflow-hidden rounded-xl border border-border bg-card">
       {/* Sidebar – lista de conversas */}
-      <div className="w-72 shrink-0 flex flex-col border-r border-border">
+      <div className={cn(
+        "flex flex-col border-r border-border",
+        "w-full md:w-72 md:shrink-0",
+        selected ? "hidden md:flex" : "flex"
+      )}>
         <div className="p-3 border-b border-border">
           <Input
             placeholder="Buscar conversa..."
@@ -216,10 +220,18 @@ function ChatView({
 
       {/* Painel de mensagens */}
       {selected ? (
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex flex-col flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/30">
             <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setSelected(null)}
+                className="md:hidden flex items-center gap-0.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 -ml-1"
+                aria-label="Voltar para conversas"
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span className="text-xs font-medium">Voltar</span>
+              </button>
               <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
                 {displayName(selected).charAt(0).toUpperCase()}
               </div>
@@ -291,7 +303,7 @@ function ChatView({
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+        <div className="hidden md:flex flex-1 flex-col items-center justify-center text-muted-foreground gap-3">
           <MessageSquare className="h-10 w-10 opacity-30" />
           <p className="text-sm">Selecione uma conversa para ver as mensagens</p>
         </div>
