@@ -161,6 +161,18 @@ namespace VoroSalonCrm.Infrastructure.Integration
                         await _unitOfWork.SaveChangesAsync();
                     }
                 }
+                else
+                {
+                    // Re-valida o flag a cada mensagem de sessões já em cache para garantir que
+                    // desativar o agendamento pelo WhatsApp tenha efeito imediato.
+                    var tenant = await _tenantRepository.GetByIdAsync(true, msg.TenantId);
+                    if (tenant == null || !tenant.UseWhatsappBooking)
+                    {
+                        _cache.Remove(sessionKey);
+                        msg.ProcessedByBotAt = DateTimeOffset.UtcNow;
+                        return;
+                    }
+                }
 
                 try
                 {
