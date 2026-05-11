@@ -195,7 +195,7 @@ export default function FunnelPage() {
             title="Funil de Agendamentos"
             description="Acompanhe os agendamentos por canal de origem."
             action={
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 justify-end">
                 {/* Toggle: colunas com itens vs todas */}
                 <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
                   <button
