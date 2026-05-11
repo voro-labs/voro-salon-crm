@@ -628,11 +628,11 @@ export default function FinancialPage() {
         />
 
         {/* Barra de período */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 shrink-0"
             disabled={periodFilter.mode === "all"}
             onClick={handlePrevMonth}
           >
@@ -645,7 +645,7 @@ export default function FinancialPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 min-w-38 font-medium capitalize"
+                  className="h-8 min-w-0 flex-1 sm:flex-none sm:min-w-38 font-medium capitalize"
                 >
                   {format(new Date(periodFilter.year, periodFilter.month, 1), "MMMM 'de' yyyy", { locale: ptBR })}
                   <ChevronDown className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
@@ -685,7 +685,7 @@ export default function FinancialPage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 shrink-0"
             disabled={periodFilter.mode === "all"}
             onClick={handleNextMonth}
           >
