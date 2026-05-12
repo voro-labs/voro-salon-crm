@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useTransactions } from "@/hooks/use-transactions.hook"
 import { TransactionDto, TransactionType, TransactionStatus, PaymentMethod } from "@/types/DTOs/financial.interface"
 import { Button } from "@/components/ui/button"
-import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp, FileUp, Zap, Calendar, ChevronDown, ArrowRight } from "lucide-react"
+import { FileEdit, Plus, Search, Tag, Settings, CreditCard, Banknote, Landmark, QrCode, TrendingUp, FileUp, Zap, Calendar, ChevronDown, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -32,6 +32,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,8 +111,54 @@ const getPaymentMethodName = (method: PaymentMethod) => {
   }
 }
 
+const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
+type PeriodFilter =
+  | { mode: "month"; year: number; month: number }
+  | { mode: "all" }
+
 export default function FinancialPage() {
-  const { transactions, isLoading, createTransaction, updateTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions()
+
+  const now = new Date()
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>({
+    mode: "month",
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  })
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(now.getFullYear())
+
+  // Datas computadas do período selecionado
+  const periodDates = periodFilter.mode === "month"
+    ? {
+        startDate: format(new Date(periodFilter.year, periodFilter.month, 1), "yyyy-MM-dd"),
+        endDate: format(new Date(periodFilter.year, periodFilter.month + 1, 0), "yyyy-MM-dd"),
+      }
+    : {}
+
+  const { transactions, isLoading, createTransaction, updateTransaction, payTransaction, cancelTransaction, deleteTransaction, batchImport } = useTransactions(periodDates)
+
+  const handlePrevMonth = () => {
+    if (periodFilter.mode !== "month") return
+    const d = new Date(periodFilter.year, periodFilter.month - 1, 1)
+    setPeriodFilter({ mode: "month", year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  const handleNextMonth = () => {
+    if (periodFilter.mode !== "month") return
+    const d = new Date(periodFilter.year, periodFilter.month + 1, 1)
+    setPeriodFilter({ mode: "month", year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  const handleSelectMonth = (year: number, month: number) => {
+    setPeriodFilter({ mode: "month", year, month })
+    setIsMonthPickerOpen(false)
+  }
+
+  const handleOpenMonthPicker = (open: boolean) => {
+    if (open && periodFilter.mode === "month") setPickerYear(periodFilter.year)
+    setIsMonthPickerOpen(open)
+  }
   const { serviceRecords } = useServiceRecords()
   const { categories } = useTransactionCategories()
   const [searchTerm, setSearchTerm] = useState("")
@@ -401,48 +448,41 @@ export default function FinancialPage() {
   const txSafePage = Math.min(txPage, txTotalPages)
   const paginatedTransactions = filteredTransactions.slice((txSafePage - 1) * txPageSize, txSafePage * txPageSize)
 
-  // Calculando totais rápidos
+  // Calculando totais rápidos (transactions já vem filtrado pela API)
   const totalReceitas = transactions?.filter(t => t.type === TransactionType.Income && t.status !== TransactionStatus.Cancelled).reduce((acc, t) => acc + t.amount, 0) || 0
   const totalDespesas = transactions?.filter(t => t.type === TransactionType.Expense && t.status !== TransactionStatus.Cancelled).reduce((acc, t) => acc + t.amount, 0) || 0
   const saldoPrevisto = totalReceitas - totalDespesas
 
-  const now = new Date()
-  const receitaMes = transactions?.filter(t => {
-    if (t.type !== TransactionType.Income || t.status === TransactionStatus.Cancelled) return false
-    const d = new Date(t.dueDate)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }).reduce((acc, t) => acc + t.amount, 0) || 0
-
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
-      <div className="flex flex-col gap-6 p-3 sm:p-6">
+      <div className="flex flex-col gap-6 p-3 sm:p-6 md:px-10">
         <PageHeader
           title="Financeiro"
           description="Fluxo de caixa, despesas e receitas."
           action={
-            <div className="flex flex-wrap justify-end items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-col justify-end gap-2 w-full sm:flex-row sm:flex-wrap sm:items-center sm:w-auto">
               {/* Secundários */}
-              <div className="flex items-center gap-2 w-full sm:w-auto order-2 sm:order-1">
-                <Button variant="outline" size="sm" asChild className="flex-1 sm:flex-none h-9">
+              <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:items-center sm:w-auto sm:gap-2 order-2 sm:order-1">
+                <Button variant="outline" size="sm" asChild className="sm:flex-none h-9">
                   <Link href="/finance/categories">
-                    <Settings className="mr-1.5 h-3.5 w-3.5" />
-                    Categorias
+                    <Settings className="h-3.5 w-3.5 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Categorias</span>
                   </Link>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 sm:flex-none h-9"
+                  className="sm:flex-none h-9"
                   onClick={() => setIsPdfImportOpen(true)}
                 >
-                  <FileUp className="mr-1.5 h-3.5 w-3.5" />
-                  Importar PDF
+                  <FileUp className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Importar PDF</span>
                 </Button>
                 <ExportMenu
                   size="sm"
                   rows={filteredTransactions}
                   filename="financeiro"
-                  className="flex-1 sm:flex-none h-9"
+                  className="sm:flex-none h-9"
                   columns={[
                     { header: "Descrição", value: (t: any) => t.description },
                     { header: "Tipo", value: (t: any) => t.type === 1 ? "Receita" : "Despesa" },
@@ -587,6 +627,97 @@ export default function FinancialPage() {
           }
         />
 
+        {/* Barra de período */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 shrink-0"
+            disabled={periodFilter.mode === "all"}
+            onClick={handlePrevMonth}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          {periodFilter.mode === "month" && (
+            <Popover open={isMonthPickerOpen} onOpenChange={handleOpenMonthPicker}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 min-w-0 flex-1 sm:flex-none sm:min-w-38 font-medium capitalize"
+                >
+                  {format(new Date(periodFilter.year, periodFilter.month, 1), "MMMM 'de' yyyy", { locale: ptBR })}
+                  <ChevronDown className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 p-3" align="start">
+                {/* Seletor de ano */}
+                <div className="flex items-center justify-between mb-3">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPickerYear(y => y - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-semibold">{pickerYear}</span>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPickerYear(y => y + 1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                {/* Grid de meses */}
+                <div className="grid grid-cols-3 gap-1">
+                  {MONTHS.map((name, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSelectMonth(pickerYear, i)}
+                      className={`py-1.5 px-2 rounded text-sm transition-colors ${
+                        periodFilter.mode === "month" && periodFilter.year === pickerYear && periodFilter.month === i
+                          ? "bg-primary text-primary-foreground font-medium"
+                          : "hover:bg-accent text-foreground"
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 shrink-0"
+            disabled={periodFilter.mode === "all"}
+            onClick={handleNextMonth}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          <Button
+            variant={periodFilter.mode === "all" ? "default" : "outline"}
+            size="sm"
+            className="h-8"
+            onClick={() => setPeriodFilter({ mode: "all" })}
+          >
+            Todos
+          </Button>
+
+          {periodFilter.mode === "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-muted-foreground"
+              onClick={() => {
+                const today = new Date()
+                setPeriodFilter({ mode: "month", year: today.getFullYear(), month: today.getMonth() })
+              }}
+            >
+              Mês atual
+            </Button>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -623,16 +754,18 @@ export default function FinancialPage() {
           <Card className="min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium">
-                Receita do Mês
+                {periodFilter.mode === "all" ? "Receita Total" : "Receita do Mês"}
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-blue-500 shrink-0" />
             </CardHeader>
             <CardContent>
               <div className="text-lg sm:text-2xl font-bold text-blue-600 truncate">
-                {formatCurrency(receitaMes)}
+                {formatCurrency(totalReceitas)}
               </div>
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 truncate">
-                {format(now, "MMMM 'de' yyyy", { locale: ptBR })}
+                {periodFilter.mode === "all"
+                  ? "Todo o histórico"
+                  : format(new Date(periodFilter.year, periodFilter.month, 1), "MMMM 'de' yyyy", { locale: ptBR })}
               </p>
             </CardContent>
           </Card>

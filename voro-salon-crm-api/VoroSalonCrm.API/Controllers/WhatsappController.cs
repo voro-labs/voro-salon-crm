@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
@@ -9,6 +10,7 @@ using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
+using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Shared.Extensions;
 using VoroSalonCrm.Shared.Utils;
@@ -20,7 +22,6 @@ namespace VoroSalonCrm.API.Controllers
     [Route("api/[controller]")]
     [Tags("WhatsApp Integration")]
     [ApiController]
-    [AllowAnonymous]
     public class WhatsappController(
         IOptions<IntegrationUtil> integrationUtil,
         ILogger<WhatsappController> logger,
@@ -39,6 +40,7 @@ namespace VoroSalonCrm.API.Controllers
         private readonly IWhatsappChatService _whatsappChatService = whatsappChatService;
 
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult VerifyWebhook(
             [FromQuery(Name = "hub.mode")] string? mode,
             [FromQuery(Name = "hub.challenge")] string? challenge,
@@ -69,7 +71,348 @@ namespace VoroSalonCrm.API.Controllers
             return StatusCode(403);
         }
 
+        [HttpPost("evolution-webhook")]
+        public async Task<IActionResult> ReceiveEvolutionWebhook(
+            [FromBody] EvolutionWebhookDto webhook,
+            [FromServices] ITenantEvolutionInstanceRepository evolutionInstanceRepository,
+            [FromServices] ITenantEvolutionInstanceLinkRepository evolutionLinkRepository,
+            [FromServices] IWhatsAppConversationRepository conversationRepository,
+            [FromServices] IMemoryCache cache,
+            [FromServices] IEvolutionService evolutionService)
+        {
+            Console.WriteLine("Received Evolution Webhook: " + System.Text.Json.JsonSerializer.Serialize(webhook));
+
+            if (!string.Equals(webhook?.Event, "MESSAGE", StringComparison.OrdinalIgnoreCase) || webhook?.Data?.Info == null)
+                return Ok();
+
+            var info = webhook.Data.Info;
+
+            if (info.IsFromMe || webhook.Data.IsFromMe)
+                return Ok();
+
+            var from = info.Chat.Split('@')[0];
+            var contactName = info.PushName ?? "Cliente";
+            var messageId = info.Id;
+            var instanceId = webhook.InstanceId;
+            var (_, bodyText) = DetermineEvolutionMessageType(webhook.Data.Message, info.Type);
+
+            // Resolver tenants pela instância (pode ser compartilhada)
+            var tenantIds = new List<Guid>();
+            if (!string.IsNullOrEmpty(instanceId))
+            {
+                var evolutionInstance = await evolutionInstanceRepository.GetByInstanceIdAsync(instanceId);
+                if (evolutionInstance != null)
+                {
+                    tenantIds.Add(evolutionInstance.TenantId); // tenant dono sempre primeiro
+                    var links = await evolutionLinkRepository.GetByInstanceIdAsync(evolutionInstance.Id);
+                    tenantIds.AddRange(links.Select(l => l.TenantId));
+                }
+            }
+
+            if (tenantIds.Count == 0)
+                return Ok();
+
+            // Determinar tenant de destino
+            Guid selectedTenantId;
+
+            if (tenantIds.Count == 1)
+            {
+                // Instância não compartilhada — usar owner diretamente
+                selectedTenantId = tenantIds[0];
+            }
+            else
+            {
+                // Instância compartilhada — filtrar por tenants com agendamento pelo WhatsApp ativo.
+                // Carrega apenas os dados necessários para evitar N+1 quando houver muitos tenants.
+                var bookingTenants = new List<(Guid Id, string Name)>();
+                foreach (var tid in tenantIds)
+                {
+                    var t = await _tenantRepository.GetByIdAsync(true, tid);
+                    if (t?.UseWhatsappBooking == true)
+                        bookingTenants.Add((tid, t.Name ?? tid.ToString()));
+                }
+
+                if (bookingTenants.Count == 1)
+                {
+                    // Exatamente um tenant com booking ativo → selecionar automaticamente, sem menu
+                    selectedTenantId = bookingTenants[0].Id;
+                    _logger.LogInformation(
+                        "Instância {InstanceId} compartilhada: auto-selecionando tenant {TenantId} (único com booking ativo).",
+                        instanceId, selectedTenantId);
+                }
+                else if (bookingTenants.Count == 0)
+                {
+                    // Nenhum tenant com booking ativo — salvar mensagem no owner (sem resposta do bot)
+                    selectedTenantId = tenantIds[0];
+                }
+                else
+                {
+                    // Múltiplos tenants com booking ativo → seleção interativa (apenas entre eles)
+                    var validBookingIds = bookingTenants.Select(b => b.Id).ToHashSet();
+                    var routingKey = $"evo_routing_{instanceId}_{from}";
+
+                    if (cache.TryGetValue(routingKey, out Guid cachedTenantId)
+                        && cachedTenantId != Guid.Empty
+                        && validBookingIds.Contains(cachedTenantId))
+                    {
+                        // Seleção anterior válida (tenant ainda tem booking ativo)
+                        selectedTenantId = cachedTenantId;
+                    }
+                    else
+                    {
+                        // Cache inválido ou ausente — verificar se é resposta ao menu
+                        if (cache.TryGetValue(routingKey, out Guid staleId) && staleId != Guid.Empty)
+                            cache.Remove(routingKey); // limpa rota obsoleta
+
+                        var trimmed = bodyText.Trim();
+                        if (int.TryParse(trimmed, out var idx) && idx >= 1 && idx <= bookingTenants.Count)
+                        {
+                            selectedTenantId = bookingTenants[idx - 1].Id;
+                            cache.Set(routingKey, selectedTenantId, TimeSpan.FromDays(30));
+                            _logger.LogInformation(
+                                "Cliente {From} selecionou tenant {TenantId} para instância {InstanceId}.",
+                                from, selectedTenantId, instanceId);
+
+                            var selectedTenant = await _tenantRepository.GetByIdAsync(true, selectedTenantId);
+                            var confirmMsg = $"✅ *{selectedTenant?.Name ?? "Estabelecimento"}* selecionado!";
+                            await evolutionService.SendTextAsync(instanceId!, from, confirmMsg);
+
+                            // Não retorna — cai no save abaixo para o worker disparar o bot
+                        }
+                        else
+                        {
+                            // Enviar menu apenas com tenants que têm booking ativo
+                            var menuLines = bookingTenants
+                                .Select((b, i) => $"{i + 1} – {b.Name}")
+                                .ToList();
+                            var menuText = "Olá! Para qual estabelecimento deseja atendimento?\n\n" +
+                                           string.Join("\n", menuLines) +
+                                           "\n\nDigite o número da opção desejada.";
+
+                            await evolutionService.SendTextAsync(instanceId!, from, menuText);
+                            _logger.LogInformation(
+                                "Instância {InstanceId} compartilhada entre {Count} tenants com booking. Menu enviado para {From}.",
+                                instanceId, bookingTenants.Count, from);
+
+                            return Ok(); // Aguardar seleção do cliente
+                        }
+                    }
+                }
+            }
+
+            // Salvar mensagem inbound para o tenant selecionado
+            try
+            {
+                await _whatsAppMessageService.SaveInboundAsync(
+                    tenantId: selectedTenantId,
+                    from: from,
+                    to: instanceId ?? string.Empty,
+                    body: bodyText,
+                    whatsAppMessageId: messageId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao salvar mensagem inbound Evolution Go.");
+            }
+
+            // Upsert WhatsAppConversation para o tenant selecionado
+            try
+            {
+                var existing = await conversationRepository
+                    .Query(c => c.TenantId == selectedTenantId && c.PhoneNumber == from)
+                    .FirstOrDefaultAsync();
+
+                if (existing == null)
+                {
+                    await conversationRepository.AddAsync(new WhatsAppConversation
+                    {
+                        Id = Guid.NewGuid(),
+                        TenantId = selectedTenantId,
+                        PhoneNumber = from,
+                        ContactName = contactName,
+                        State = "ACTIVE",
+                        LastMessageBody = bodyText,
+                        LastMessageAt = DateTimeOffset.UtcNow,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    });
+                }
+                else
+                {
+                    existing.LastMessageBody = bodyText;
+                    existing.LastMessageAt = DateTimeOffset.UtcNow;
+                    existing.UpdatedAt = DateTimeOffset.UtcNow;
+                    if (!string.IsNullOrEmpty(contactName) && contactName != "Cliente")
+                        existing.ContactName = contactName;
+                    conversationRepository.Update(existing);
+                }
+
+                await conversationRepository.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao persistir conversa Evolution Go.");
+            }
+
+            return Ok();
+        }
+
+        [HttpPost("evolution-send")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SendEvolutionTemplate(
+            [FromBody] EvolutionSendDto dto,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService,
+            [FromServices] IEvolutionService evolutionService)
+        {
+            try
+            {
+                var renderedText = await evolutionTemplateService.RenderAsync(dto.TemplateId, dto.Params);
+                var success = await evolutionService.SendTextAsync(dto.InstanceId, dto.To, renderedText);
+
+                return success
+                    ? ResponseViewModel<object>.SuccessWithMessage("Mensagem enviada.", null).ToActionResult()
+                    : ResponseViewModel<object>.Fail("Falha ao enviar mensagem via Evolution Go.").ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpGet("evolution-templates")]
+        [Authorize]
+        public async Task<IActionResult> GetEvolutionTemplates(
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var templates = await evolutionTemplateService.GetAllAsync();
+                return ResponseViewModel<IEnumerable<EvolutionTemplateDto>>.Success(templates).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPost("evolution-templates")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> CreateEvolutionTemplate(
+            [FromBody] CreateEvolutionTemplateDto dto,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var template = await evolutionTemplateService.CreateAsync(dto);
+                return ResponseViewModel<EvolutionTemplateDto>
+                    .SuccessWithMessage("Template criado.", template)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpPut("evolution-templates/{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> UpdateEvolutionTemplate(
+            [FromRoute] Guid id,
+            [FromBody] UpdateEvolutionTemplateDto dto,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var template = await evolutionTemplateService.UpdateAsync(id, dto);
+                return ResponseViewModel<EvolutionTemplateDto>
+                    .SuccessWithMessage("Template atualizado.", template)
+                    .ToActionResult();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        [HttpDelete("evolution-templates/{id:guid}")]
+        [Authorize(Roles = "Owner,SalonOwner")]
+        public async Task<IActionResult> DeleteEvolutionTemplate(
+            [FromRoute] Guid id,
+            [FromServices] IEvolutionTemplateService evolutionTemplateService)
+        {
+            try
+            {
+                var deleted = await evolutionTemplateService.DeleteAsync(id);
+                if (!deleted)
+                    return ResponseViewModel<object>.Fail("Template não encontrado.").ToActionResult();
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("Template excluído.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>.Fail(ex.Message).ToActionResult();
+            }
+        }
+
+        private static (string type, string body) DetermineEvolutionMessageType(EvolutionMessageContentDto? msg, string? infoType)
+        {
+            if (msg == null) return ("text", string.Empty);
+            if (!string.IsNullOrEmpty(msg.Conversation)) return ("text", msg.Conversation);
+            if (msg.AudioMessage != null) return ("audio", "[Áudio]");
+            if (msg.ImageMessage != null) return ("image", "[Imagem]");
+            if (msg.DocumentMessage != null) return ("document", "[Documento]");
+            if (msg.ButtonsResponseMessage != null)
+                return ("interactive", msg.ButtonsResponseMessage.SelectedDisplayText ?? "[Botão]");
+            if (msg.ListResponseMessage != null)
+                return ("interactive", msg.ListResponseMessage.Title ?? "[Lista]");
+            // Fallback pelo Type do Info
+            return infoType?.ToLower() switch
+            {
+                "audio" => ("audio", "[Áudio]"),
+                "image" => ("image", "[Imagem]"),
+                "document" => ("document", "[Documento]"),
+                _ => ("text", string.Empty)
+            };
+        }
+
+        private static WhatsappInteractiveDto? BuildInteractiveFromEvolution(EvolutionMessageContentDto? msg)
+        {
+            if (msg?.ButtonsResponseMessage != null)
+                return new WhatsappInteractiveDto
+                {
+                    Type = "button_reply",
+                    ButtonReply = new WhatsappButtonReplyDto
+                    {
+                        Id = msg.ButtonsResponseMessage.SelectedButtonId ?? string.Empty,
+                        Title = msg.ButtonsResponseMessage.SelectedDisplayText ?? string.Empty
+                    }
+                };
+
+            if (msg?.ListResponseMessage != null)
+                return new WhatsappInteractiveDto
+                {
+                    Type = "list_reply",
+                    ListReply = new WhatsappListReplyDto
+                    {
+                        Id = msg.ListResponseMessage.SingleSelectReply?.SelectedRowId ?? string.Empty,
+                        Title = msg.ListResponseMessage.Title ?? string.Empty
+                    }
+                };
+
+            return null;
+        }
+
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> ReceiveWebhook([FromBody] WhatsappWebhookDto webhook)
         {
             if (webhook?.Object != "whatsapp_business_account")
@@ -556,7 +899,7 @@ namespace VoroSalonCrm.API.Controllers
             var services = servicesDto.Select(s => new
             {
                 id = s.Id.ToString(),
-                title = $"{s.Name} - {s.Price:C}"
+                title = $"{s.Name} – {s.Price:C}"
             }).ToArray();
 
             return Ok(new FlowResponseDto

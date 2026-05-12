@@ -843,6 +843,54 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.ToTable("EntityAuditLogs");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.EvolutionTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Keywords")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ParamLabels")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ParamsCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EvolutionTemplates");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Identity.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1669,6 +1717,78 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.ToTable("TenantBusinessHoursRanges");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantEvolutionInstance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ConnectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.Property<string>("InstanceId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("InstanceToken")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstanceId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("TenantEvolutionInstances");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantEvolutionInstanceLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("InstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("LinkedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstanceId");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("TenantEvolutionInstanceLinks");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantModule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2161,6 +2281,9 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset?>("ProcessedByBotAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -2181,6 +2304,10 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("WhatsAppMessageId")
+                        .IsUnique()
+                        .HasFilter("\"WhatsAppMessageId\" IS NOT NULL");
 
                     b.ToTable("WhatsAppMessages");
                 });
@@ -2668,6 +2795,36 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("BusinessHours");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantEvolutionInstance", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantEvolutionInstanceLink", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.TenantEvolutionInstance", "Instance")
+                        .WithMany()
+                        .HasForeignKey("InstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instance");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantModule", b =>

@@ -160,6 +160,14 @@ namespace VoroSalonCrm.Application.Services
             return confirmed;
         }
 
+        public async Task ResendConfirmEmailAsync(Guid userId)
+        {
+            var user = await _userService.GetByIdAsync(userId);
+            if (user == null) throw new Exception("Usuário não encontrado.");
+            if (user.EmailConfirmed) throw new Exception("E-mail já está confirmado.");
+            await ConfirmEmailAsync(user.Email!);
+        }
+
         public async Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
         {
             var (user, token) = await _userService.GenerateForgotPasswordAsync(forgotPasswordDto);

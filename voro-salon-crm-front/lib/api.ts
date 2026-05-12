@@ -15,6 +15,7 @@ export const API_CONFIG = {
     CHANGE_PASSWORD: "/auth/change-password",
     ACCEPT_TERMS: "/auth/accept-terms",
     COMPLETE_PROFILE: "/auth/complete-profile",
+    RESEND_CONFIRM_EMAIL: "/auth/resend-confirm-email",
     ENABLE_2FA_REQUEST: "/auth/2fa/enable/request",
     ENABLE_2FA_CONFIRM: "/auth/2fa/enable/confirm",
     DISABLE_2FA: "/auth/2fa/disable",
@@ -61,7 +62,6 @@ export const API_CONFIG = {
     NOTIFICATIONS_UNREAD_COUNT: "/notifications/unread-count",
     PUSH_TOKENS: "/push-tokens",
     TIME_SLOT_BLOCKS: "/timeslotblocks",
-    BUSINESS_HOURS: "/tenant/me/business-hours",
     WHATSAPP_MESSAGES: "/whatsapp/messages",
     WHATSAPP_CONVERSATIONS: "/whatsapp/conversations",
     WHATSAPP_TEMPLATES: "/whatsapp/templates",
@@ -75,6 +75,9 @@ export const API_CONFIG = {
     PUBLIC_BOOKING_TRACK: "/public/PublicBooking/track",
     CLIENT_MEMBERSHIP_PLANS: "/clientmemberships/plans",
     CLIENT_MEMBERSHIPS: "/clientmemberships",
+    EVOLUTION_INSTANCES: "/EvolutionInstance",
+    EVOLUTION_AVAILABLE_TO_LINK: "/EvolutionInstance/available-to-link",
+    EVOLUTION_LINK: "/EvolutionInstance/link",
   },
   HEADERS: {
     "Content-Type": "application/json",
@@ -162,10 +165,10 @@ export async function apiCall<T>(endpoint: string, options: ApiOptions = {}): Pr
     const method = options.method?.toUpperCase() || "GET"
     const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method)
 
-    const headers = {
+    const headers: Record<string, string> = {
       ...(isFormData ? API_CONFIG.HEADERS_FORM : API_CONFIG.HEADERS),
       ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
+      ...(options.headers as Record<string, string> | undefined),
     }
 
     // Adiciona o header Idempotency-Key nas requisições de mutação

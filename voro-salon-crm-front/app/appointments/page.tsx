@@ -27,8 +27,7 @@ import { useSubscription } from "@/hooks/use-subscription.hook"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { EmptyState } from "@/components/ui/custom/empty-state"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
-import { StatusBadge, appointmentStatusConfig } from "@/components/ui/custom/status-badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { StatusBadge, StatusDropdown, appointmentStatusConfig } from "@/components/ui/custom/status-badge"
 import { QuickCreateClient } from "@/components/custom/quick-create-client"
 import { QuickCreateService } from "@/components/custom/quick-create-service"
 import { toast } from "sonner"
@@ -52,45 +51,6 @@ const STATUS_COLORS: Record<number, string> = {
   2: "bg-emerald-100 border-emerald-300 text-emerald-900",
   3: "bg-red-100 border-red-300 text-red-900",
   4: "bg-gray-100 border-gray-300 text-gray-700",
-}
-
-// ─── Status dropdown ─────────────────────────────────────────────────────────
-
-function StatusDropdown({
-  appointmentId,
-  currentStatus,
-  onStatusChange,
-}: {
-  appointmentId: string
-  currentStatus: number
-  onStatusChange: (id: string, newStatus: number) => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild onClick={(e) => { e.stopPropagation(); e.preventDefault() }}>
-        <button className="cursor-pointer">
-          <StatusBadge status={currentStatus} showChevron />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[160px]">
-        {(Object.entries(appointmentStatusConfig) as [string, typeof appointmentStatusConfig[0]][]).map(([key, config]) => {
-          const Icon = config.icon
-          const isActive = currentStatus === Number(key)
-          return (
-            <DropdownMenuItem
-              key={key}
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onStatusChange(appointmentId, Number(key)) }}
-              className={isActive ? "font-semibold" : ""}
-            >
-              <Icon className="h-4 w-4 mr-2 shrink-0" />
-              {config.label}
-              {isActive && <Check className="ml-auto h-3 w-3" />}
-            </DropdownMenuItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
 }
 
 // ─── Calendar week view ───────────────────────────────────────────────────────
@@ -1311,7 +1271,7 @@ export default function AppointmentsPage() {
     </Dialog>
 
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-4 sm:p-6 md:px-10">
         <PageHeader
           title="Agendamentos"
           action={
@@ -1349,7 +1309,7 @@ export default function AppointmentsPage() {
                 </Button>
               </div>
               {/* Linha 1: filtro de período + toggle de visualização */}
-              <div className="flex flex-wrap items-center justify-between w-full gap-2">
+              <div className="flex flex-wrap items-center w-full gap-2 justify-end">
                 {viewMode === "list" ? (
                   <div className="flex items-center gap-2 flex-wrap">
                     <Tabs value={periodFilter} onValueChange={setPeriodFilter}>
@@ -1413,7 +1373,7 @@ export default function AppointmentsPage() {
                     </Button>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0 ml-auto">
                   {/* Mic button + timer */}
                   <div className="flex items-center gap-1">
                     <button

@@ -4,6 +4,6 @@ namespace VoroSalonCrm.Application.Services.Interfaces
 {
     public interface IDashboardService
     {
-        Task<DashboardMetricsDto> GetDashboardMetricsAsync();
+        Task<DashboardMetricsDto> GetDashboardMetricsAsync(int? month = null, int? year = null);
     }
 }

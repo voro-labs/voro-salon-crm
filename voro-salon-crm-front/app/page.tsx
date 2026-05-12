@@ -28,13 +28,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import {
@@ -54,7 +47,7 @@ import { AuthGuard } from "@/components/auth/auth.guard"
 import { useWhatsApp } from "@/hooks/use-whatsapp.hook"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PageHeader } from "@/components/ui/custom/page-header"
-import { StatusBadge, appointmentStatusConfig } from "@/components/ui/custom/status-badge"
+import { StatusDropdown } from "@/components/ui/custom/status-badge"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 
 const fetcher = async (url: string) => {
@@ -208,13 +201,13 @@ export default function DashboardPage() {
   }).sort((a: any, b: any) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime())
   .slice(0, 10)
 
-  async function handleStatusUpdate(id: string, newStatus: string) {
+  async function handleStatusUpdate(id: string, newStatus: number) {
     const apt = (aptData ?? []).find((a: any) => a.id === id)
     setUpdatingId(id)
     try {
       const res = await secureApiCall(`${API_CONFIG.ENDPOINTS.APPOINTMENTS}/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify(Number(newStatus))
+        body: JSON.stringify(newStatus)
       })
       if (res.hasError) {
         toast.error(res.message || "Erro ao atualizar status")
@@ -363,7 +356,6 @@ export default function DashboardPage() {
                   {filteredApts.length > 0 ? (
                     filteredApts.map((apt: any) => {
                       const date = new Date(apt.scheduledDateTime)
-                      const isAptUpdating = updatingId === apt.id
 
                       return (
                         <div key={apt.id} className="p-4 hover:bg-accent/5 transition-colors group">
@@ -378,13 +370,10 @@ export default function DashboardPage() {
                                 </span>
                               </div>
                               <div className="flex flex-col gap-1 min-w-0 flex-1">
-                                <div className="flex flex-col xs:flex-row xs:items-center gap-1.5">
-                                  <span className="text-xs font-bold text-primary flex items-center gap-1 shrink-0">
-                                    <Clock className="h-3 w-3" />
-                                    {format(date, "HH:mm")}
-                                  </span>
-                                  <StatusBadge status={apt.status} />
-                                </div>
+                                <span className="text-xs font-bold text-primary flex items-center gap-1 shrink-0">
+                                  <Clock className="h-3 w-3" />
+                                  {format(date, "HH:mm")}
+                                </span>
                                 <h4 className="text-sm font-semibold text-foreground truncate">{apt.clientName}</h4>
                                 <p className="text-[11px] text-muted-foreground truncate">
                                   {apt.serviceName || apt.description || "Sem serviço definido"}
@@ -392,23 +381,11 @@ export default function DashboardPage() {
                               </div>
                             </div>
                             <div className="flex flex-col items-end gap-2 shrink-0">
-                              <Select
-                                key={apt.id}
-                                value={String(apt.status)}
-                                onValueChange={(v) => handleStatusUpdate(apt.id, v)}
-                                disabled={isAptUpdating}
-                              >
-                                <SelectTrigger className="h-7 w-27.5 text-[10px] bg-transparent border-border/40 shrink-0">
-                                  {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : <SelectValue />}
-                                </SelectTrigger>
-                                <SelectContent className="min-w-30">
-                                  {Object.entries(appointmentStatusConfig).map(([key, cfg]) => (
-                                    <SelectItem key={key} value={key} className="text-[10px]">
-                                      {cfg.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <StatusDropdown
+                                appointmentId={apt.id}
+                                currentStatus={apt.status}
+                                onStatusChange={handleStatusUpdate}
+                              />
                               <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" asChild>
                                 <Link href={`/appointments/${apt.id}`}>
                                   <ChevronRight className="h-4 w-4" />
@@ -578,7 +555,7 @@ export default function DashboardPage() {
                         size="sm"
                         className="h-7 text-xs flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                         disabled={isAptUpdating}
-                        onClick={() => handleStatusUpdate(apt.id, "2")}
+                        onClick={() => handleStatusUpdate(apt.id, 2)}
                       >
                         {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Concluído"}
                       </Button>
@@ -587,7 +564,7 @@ export default function DashboardPage() {
                         variant="outline"
                         className="h-7 text-xs flex-1 border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                         disabled={isAptUpdating}
-                        onClick={() => handleStatusUpdate(apt.id, "3")}
+                        onClick={() => handleStatusUpdate(apt.id, 3)}
                       >
                         {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Cancelado"}
                       </Button>
@@ -596,7 +573,7 @@ export default function DashboardPage() {
                         variant="outline"
                         className="h-7 text-xs flex-1 border-orange-200 dark:border-orange-900/60 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                         disabled={isAptUpdating}
-                        onClick={() => handleStatusUpdate(apt.id, "4")}
+                        onClick={() => handleStatusUpdate(apt.id, 4)}
                       >
                         {isAptUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Faltou"}
                       </Button>

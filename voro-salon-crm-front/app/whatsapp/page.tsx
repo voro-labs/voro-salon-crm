@@ -6,7 +6,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import {
   MessageCircle, RefreshCw, Loader2, User, Send, X,
-  CheckCircle, AlertCircle, ExternalLink, ChevronRight, Settings2,
+  CheckCircle, AlertCircle, ExternalLink, ChevronLeft, ChevronRight, Settings2,
   MessageSquare, Trash2,
 } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
@@ -152,7 +152,11 @@ function ChatView({
   return (
     <div className="flex h-full overflow-hidden rounded-xl border border-border bg-card">
       {/* Sidebar – lista de conversas */}
-      <div className="w-72 shrink-0 flex flex-col border-r border-border">
+      <div className={cn(
+        "flex flex-col border-r border-border",
+        "w-full md:w-72 md:shrink-0",
+        selected ? "hidden md:flex" : "flex"
+      )}>
         <div className="p-3 border-b border-border">
           <Input
             placeholder="Buscar conversa..."
@@ -216,10 +220,18 @@ function ChatView({
 
       {/* Painel de mensagens */}
       {selected ? (
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex flex-col flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/30">
             <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setSelected(null)}
+                className="md:hidden flex items-center gap-0.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 -ml-1"
+                aria-label="Voltar para conversas"
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span className="text-xs font-medium">Voltar</span>
+              </button>
               <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
                 {displayName(selected).charAt(0).toUpperCase()}
               </div>
@@ -236,8 +248,8 @@ function ChatView({
                 onClick={() => router.push(`/clients/${selected.clientId}`)}
               >
                 <User className="h-3 w-3" />
-                Ver cliente
-                <ChevronRight className="h-3 w-3" />
+                <span className="hidden sm:inline">Ver cliente</span>
+                <ChevronRight className="h-3 w-3 hidden sm:inline" />
               </Button>
             )}
           </div>
@@ -291,7 +303,7 @@ function ChatView({
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+        <div className="hidden md:flex flex-1 flex-col items-center justify-center text-muted-foreground gap-3">
           <MessageSquare className="h-10 w-10 opacity-30" />
           <p className="text-sm">Selecione uma conversa para ver as mensagens</p>
         </div>
@@ -526,10 +538,16 @@ function SendTemplateModal({ onClose }: { onClose: () => void }) {
 export default function WhatsAppPage() {
   const [showSendModal, setShowSendModal] = useState(false)
   const { data: tenant } = useSWR<any>(API_CONFIG.ENDPOINTS.TENANT_ME, fetcher)
+  const { data: evolutionInstances } = useSWR<{ id: string; status: 0 | 1 | 2 }[]>(
+    API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES,
+    fetcher
+  )
+  const evolutionConnected = (evolutionInstances ?? []).some((i) => i.status === 2)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [chatHeight, setChatHeight] = useState(0)
 
-  // Calcula a altura disponível para o chat com base na posição real do container no DOM
+  // Calcula a altura disponível para o chat com base na posição real do container no DOM.
+  // Depende de tenant e evolutionInstances pois o banner condicional altera o layout após o mount.
   useEffect(() => {
     const updateHeight = () => {
       if (chatContainerRef.current) {
@@ -538,13 +556,16 @@ export default function WhatsAppPage() {
       }
     }
 
-    const id = requestAnimationFrame(updateHeight)
+    // Duplo RAF garante que o DOM terminou de fazer layout antes de medir
+    let id = requestAnimationFrame(() => {
+      id = requestAnimationFrame(updateHeight)
+    })
     window.addEventListener("resize", updateHeight)
     return () => {
       cancelAnimationFrame(id)
       window.removeEventListener("resize", updateHeight)
     }
-  }, [])
+  }, [tenant, evolutionInstances])
 
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
@@ -583,10 +604,12 @@ export default function WhatsAppPage() {
               description="Gerencie as conversas com seus clientes."
               action={
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
-                    <Send className="mr-2 h-4 w-4" />
-                    Enviar Template
-                  </Button>
+                  {!evolutionConnected && (
+                    <Button variant="outline" size="sm" onClick={() => setShowSendModal(true)}>
+                      <Send className="mr-2 h-4 w-4" />
+                      Enviar Template
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => mutate()}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Atualizar
@@ -596,7 +619,7 @@ export default function WhatsAppPage() {
             />
 
             {/* Banner: configuração incompleta do WhatsApp */}
-            {tenant !== undefined && (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappBusinessAccountId) && (
+            {tenant !== undefined && evolutionInstances !== undefined && !evolutionConnected && (!tenant?.whatsappPhoneNumberId || !tenant?.whatsappBusinessAccountId) && (
               <div className="border border-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />

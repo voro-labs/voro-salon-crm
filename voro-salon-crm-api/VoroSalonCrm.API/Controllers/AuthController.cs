@@ -340,6 +340,27 @@ namespace VoroSalonCrm.API.Controllers
             }
         }
 
+        [HttpPost("resend-confirm-email")]
+        [Authorize]
+        public async Task<IActionResult> ResendConfirmEmail(
+            [FromServices] ICurrentUserService currentUserService)
+        {
+            try
+            {
+                await authService.ResendConfirmEmailAsync(currentUserService.UserId);
+
+                return ResponseViewModel<object>
+                    .SuccessWithMessage("E-mail de confirmação reenviado com sucesso.", null)
+                    .ToActionResult();
+            }
+            catch (Exception ex)
+            {
+                return ResponseViewModel<object>
+                    .Fail(ex.Message)
+                    .ToActionResult();
+            }
+        }
+
         [HttpPost("2fa/enable/request")]
         [Authorize]
         public async Task<IActionResult> RequestEnable2FA(

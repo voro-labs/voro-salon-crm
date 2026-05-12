@@ -190,12 +190,12 @@ export default function FunnelPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "Owner"]}>
       <ModuleGuard moduleId={[8, 9]}>
-        <div className="flex flex-col gap-6 p-4 sm:p-6">
+        <div className="flex flex-col gap-6 p-4 sm:p-6 md:px-10">
           <PageHeader
             title="Funil de Agendamentos"
             description="Acompanhe os agendamentos por canal de origem."
             action={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 justify-end">
                 {/* Toggle: colunas com itens vs todas */}
                 <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40">
                   <button
@@ -232,14 +232,14 @@ export default function FunnelPage() {
                   Abandonados
                 </button>
 
-                <Button variant="outline" size="sm" onClick={() => setShowLegend(true)}>
-                  <Info className="mr-1.5 h-4 w-4" />
-                  Legenda
+                <Button variant="outline" size="sm" onClick={() => setShowLegend(true)} title="Abrir legenda">
+                  <Info className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Legenda</span>
                 </Button>
 
-                <Button variant="outline" size="sm" onClick={() => mutate()}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Atualizar
+                <Button variant="outline" size="sm" onClick={() => mutate()} title="Atualizar dados">
+                  <RefreshCw className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Atualizar</span>
                 </Button>
               </div>
             }

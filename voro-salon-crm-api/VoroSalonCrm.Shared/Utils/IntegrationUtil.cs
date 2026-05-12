@@ -16,5 +16,10 @@
         public string AppSecret { get; set; } = string.Empty;
         public string MasterAccessToken { get; set; } = string.Empty;
         public string ConfigId { get; set; } = string.Empty;
+        // Evolution Go — apenas configuração global (tokens por tenant ficam no banco)
+        public string Provider { get; set; } = "meta";
+        public string ApiPublicUrl { get; set; } = string.Empty;
+        public string EvolutionUrl { get; set; } = string.Empty;
+        public string EvolutionAdminToken { get; set; } = string.Empty;
     }
 }
