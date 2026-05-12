@@ -565,6 +565,7 @@ export default function ConfiguracoesPage() {
       )
       if (!res.hasError && res.data?.state === "open") {
         if (qrPollRef.current) clearInterval(qrPollRef.current)
+        setEvolutionLiveState("open")
         setQrExpanded(false)
         setQrCode(null)
         toast.success("WhatsApp conectado!")
@@ -595,6 +596,7 @@ export default function ConfiguracoesPage() {
         )
         if (!statusRes.hasError && statusRes.data?.state === "open") {
           if (pairPollRef.current) clearInterval(pairPollRef.current)
+          setEvolutionLiveState("open")
           setCodeExpanded(false)
           setPairPhone("")
           setPairCode(null)

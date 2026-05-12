@@ -22,7 +22,6 @@ namespace VoroSalonCrm.API.Controllers
     [Route("api/[controller]")]
     [Tags("WhatsApp Integration")]
     [ApiController]
-    [AllowAnonymous]
     public class WhatsappController(
         IOptions<IntegrationUtil> integrationUtil,
         ILogger<WhatsappController> logger,
@@ -41,6 +40,7 @@ namespace VoroSalonCrm.API.Controllers
         private readonly IWhatsappChatService _whatsappChatService = whatsappChatService;
 
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult VerifyWebhook(
             [FromQuery(Name = "hub.mode")] string? mode,
             [FromQuery(Name = "hub.challenge")] string? challenge,
@@ -412,6 +412,7 @@ namespace VoroSalonCrm.API.Controllers
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> ReceiveWebhook([FromBody] WhatsappWebhookDto webhook)
         {
             if (webhook?.Object != "whatsapp_business_account")
