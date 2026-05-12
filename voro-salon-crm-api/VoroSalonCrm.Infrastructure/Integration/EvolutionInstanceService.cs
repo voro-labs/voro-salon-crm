@@ -112,6 +112,15 @@ namespace VoroSalonCrm.Infrastructure.Integration
                           : connected ? EvolutionInstanceStatus.Connecting
                           : EvolutionInstanceStatus.Disconnected;
 
+            // Se a instância foi desconectada manualmente, não permitir que o Evolution Go
+            // auto-reconecte e sobrescreva o status. O status só sai de Disconnected via
+            // ação explícita do usuário (PairAsync / QR scan).
+            if (instance.Status == EvolutionInstanceStatus.Disconnected &&
+                newStatus != EvolutionInstanceStatus.Disconnected)
+            {
+                return new EvolutionInstanceStatusDto("close", instance.InstanceId);
+            }
+
             if (instance.Status != newStatus)
             {
                 instance.Status = newStatus;
@@ -128,6 +137,15 @@ namespace VoroSalonCrm.Infrastructure.Integration
         {
             var (instance, isOwned) = await ResolveOrThrowAsync(tenantId, instanceDbId);
             if (!isOwned) throw new UnauthorizedAccessException("Somente o tenant dono pode conectar via QR.");
+
+            // Sinaliza que o usuário está tentando conectar, permitindo que o polling de status
+            // detecte o sucesso da conexão mesmo que o DB esteja em Disconnected.
+            if (instance.Status == EvolutionInstanceStatus.Disconnected)
+            {
+                instance.Status = EvolutionInstanceStatus.Connecting;
+                _instanceRepository.Update(instance);
+                await _unitOfWork.SaveChangesAsync();
+            }
 
             var json = await InstanceGetAsync(instance.InstanceToken, "/instance/qr", ct);
 

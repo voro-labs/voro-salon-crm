@@ -140,6 +140,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     var tenant = await _tenantRepository.GetByIdAsync(true, msg.TenantId);
                     if (tenant == null || !tenant.UseWhatsappBooking)
                     {
+                        _logger.LogInformation(
+                            "Mensagem de {From} ignorada pelo bot: UseWhatsappBooking={Flag} para tenant {TenantId}.",
+                            from, tenant?.UseWhatsappBooking, msg.TenantId);
                         msg.ProcessedByBotAt = DateTimeOffset.UtcNow;
                         return;
                     }
@@ -168,6 +171,9 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     var tenant = await _tenantRepository.GetByIdAsync(true, msg.TenantId);
                     if (tenant == null || !tenant.UseWhatsappBooking)
                     {
+                        _logger.LogInformation(
+                            "Sessão de {From} encerrada pelo bot: UseWhatsappBooking={Flag} para tenant {TenantId}.",
+                            from, tenant?.UseWhatsappBooking, msg.TenantId);
                         _cache.Remove(sessionKey);
                         msg.ProcessedByBotAt = DateTimeOffset.UtcNow;
                         return;
