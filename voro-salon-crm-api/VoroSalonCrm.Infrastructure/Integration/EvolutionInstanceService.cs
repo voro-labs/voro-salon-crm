@@ -187,7 +187,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             var (instance, isOwned) = await ResolveOrThrowAsync(tenantId, instanceDbId);
             if (!isOwned) throw new UnauthorizedAccessException("Somente o tenant dono pode configurar webhook.");
 
-            var webhookUrl = $"{_config.ApiPublicUrl.TrimEnd('/')}/api/v1/whatsapp/evolution-webhook";
+            var webhookUrl = $"{_config.Whatsapp.ApiPublicUrl.TrimEnd('/')}/api/v1/whatsapp/evolution-webhook";
 
             var payload = new
             {
