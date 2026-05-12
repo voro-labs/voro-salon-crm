@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge"
-import { Circle, CalendarDays, CheckCircle2, XCircle, AlertCircle, ChevronDown, LucideIcon } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Circle, CalendarDays, CheckCircle2, XCircle, AlertCircle, ChevronDown, Check, LucideIcon } from "lucide-react"
 
 export type AppointmentStatusId = 0 | 1 | 2 | 3 | 4
 
@@ -17,6 +18,43 @@ interface StatusBadgeProps {
   hideIcon?: boolean
   hideText?: boolean
   showChevron?: boolean
+}
+
+export function StatusDropdown({
+  appointmentId,
+  currentStatus,
+  onStatusChange,
+}: {
+  appointmentId: string
+  currentStatus: number
+  onStatusChange: (id: string, newStatus: number) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => { e.stopPropagation(); e.preventDefault() }}>
+        <button className="cursor-pointer">
+          <StatusBadge status={currentStatus} showChevron />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[160px]">
+        {(Object.entries(appointmentStatusConfig) as [string, typeof appointmentStatusConfig[0]][]).map(([key, config]) => {
+          const Icon = config.icon
+          const isActive = currentStatus === Number(key)
+          return (
+            <DropdownMenuItem
+              key={key}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onStatusChange(appointmentId, Number(key)) }}
+              className={isActive ? "font-semibold" : ""}
+            >
+              <Icon className="h-4 w-4 mr-2 shrink-0" />
+              {config.label}
+              {isActive && <Check className="ml-auto h-3 w-3" />}
+            </DropdownMenuItem>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export function StatusBadge({ status, className = "", hideIcon = false, hideText = false, showChevron = false }: StatusBadgeProps) {
