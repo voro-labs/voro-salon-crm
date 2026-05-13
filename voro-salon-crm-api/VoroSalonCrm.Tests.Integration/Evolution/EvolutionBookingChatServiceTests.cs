@@ -439,7 +439,7 @@ public class EvolutionBookingChatServiceTests
         sessionType.GetProperty("ServiceName")!.SetValue(session, "Corte");
         sessionType.GetProperty("EmployeeId")!.SetValue(session, (Guid?)employeeId);
         sessionType.GetProperty("EmployeeName")!.SetValue(session, "Carlos");
-        sessionType.GetProperty("SelectedDate")!.SetValue(session, (DateTime?)DateTime.Today.AddDays(1));
+        sessionType.GetProperty("SelectedDate")!.SetValue(session, (DateTime?)DateTime.SpecifyKind(DateTime.Today.AddDays(1), DateTimeKind.Unspecified));
         sessionType.GetProperty("SelectedTime")!.SetValue(session, "10:00");
 
         // CurrentOptions must have (confirm, cancel)

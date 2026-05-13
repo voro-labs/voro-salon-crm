@@ -11,6 +11,11 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
     {
         public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration, IHostEnvironment env)
         {
+            // Em ambiente de testes o WebAppFactory substitui o DbContext por InMemory.
+            // Não registrar o Npgsql aqui para evitar conflito entre dois providers EF Core.
+            if (env.IsEnvironment("Testing"))
+                return services;
+
             var config = configuration.Get<ConfigUtil>();
 
             var connectionString = "";
