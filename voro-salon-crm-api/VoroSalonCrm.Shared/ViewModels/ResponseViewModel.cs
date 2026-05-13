@@ -8,7 +8,7 @@ namespace VoroSalonCrm.Shared.ViewModels
         public string? Message { get; set; }
         public T? Data { get; set; }
 
-        public bool HasError => Status < 200 && Status > 299;
+        public bool HasError => Status < 200 || Status > 299;
 
         public static ResponseViewModel<T> Success(T? data, int status = StatusCodes.Status200OK)
             => new() { Status = status, Message = string.Empty, Data = data };

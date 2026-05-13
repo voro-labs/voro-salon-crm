@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VoroSalonCrm.Application.Services;
@@ -175,6 +176,10 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddHostedService<ExpiredCheckoutCleanupJob>();
             services.AddHostedService<ExpiredPendingPlanChangeCleanupJob>();
             services.AddHostedService<EvolutionResponseWorker>();
+
+            services.AddMediatR(cfg =>
+                cfg.RegisterServicesFromAssembly(
+                    typeof(VoroSalonCrm.Application.Services.AppointmentService).Assembly));
 
             return services;
         }
