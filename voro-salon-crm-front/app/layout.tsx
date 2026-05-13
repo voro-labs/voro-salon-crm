@@ -110,6 +110,24 @@ const SEO_BY_HOSTNAME: Record<string, {
       "programa para spa e bem-estar",
     ],
   },
+  "petshop-crm.vorolabs.app": {
+    title: "Sistema para Pet Shop com Agendamento Online | Voro Pet",
+    titleTemplate: "%s | Voro Pet",
+    keywords: [
+      "sistema para pet shop",
+      "software para pet shop",
+      "sistema de agendamento para pet shop",
+      "CRM para pet shop",
+      "agendamento online pet shop",
+      "gestão de pet shop",
+      "controle financeiro pet shop",
+      "agenda online pet shop",
+      "whatsapp agendamento pet shop",
+      "aplicativo para pet shop",
+      "sistema para banho e tosa",
+      "programa para pet shop",
+    ],
+  },
 }
 
 const FEATURE_LIST_BY_HOSTNAME: Record<string, string[]> = {
@@ -163,15 +181,48 @@ const FEATURE_LIST_BY_HOSTNAME: Record<string, string[]> = {
     "App mobile para iOS e Android",
     "Pacotes e programas de bem-estar",
   ],
+  "petshop-crm.vorolabs.app": [
+    "Agendamento online para pet shop",
+    "WhatsApp Bot com confirmação automática",
+    "Controle financeiro e fluxo de caixa",
+    "Gestão de clientes com histórico de pets",
+    "Relatórios de serviços mais realizados",
+    "Gestão de comissões da equipe",
+    "App mobile para iOS e Android",
+    "Ficha de saúde e vacinação do pet",
+  ],
 }
 
 const OG_IMAGE_BY_HOSTNAME: Record<string, string> = {
   "salon-crm.vorolabs.app": "/og-image-salon.jpg",
+  "dev-salon-crm.vorolabs.app": "/og-image-salon.jpg",
+  "petshop-crm.vorolabs.app": "/og-image-salon.jpg",
+  "dev-petshop-crm.vorolabs.app": "/og-image-salon.jpg",
   "barber-crm.vorolabs.app": "/og-image-barber.jpg",
+  "dev-barber-crm.vorolabs.app": "/og-image-barber.jpg",
   "nails-crm.vorolabs.app": "/og-image-nails.jpg",
+  "dev-nails-crm.vorolabs.app": "/og-image-nails.jpg",
   "esthetic-crm.vorolabs.app": "/og-image-esthetic.jpg",
+  "dev-esthetic-crm.vorolabs.app": "/og-image-esthetic.jpg",
   "spa-crm.vorolabs.app": "/og-image-spa.jpg",
+  "dev-spa-crm.vorolabs.app": "/og-image-spa.jpg",
 }
+
+// dev hostnames inherit prod SEO config
+SEO_BY_HOSTNAME["dev-salon-crm.vorolabs.app"] = SEO_BY_HOSTNAME["salon-crm.vorolabs.app"]
+SEO_BY_HOSTNAME["dev-barber-crm.vorolabs.app"] = SEO_BY_HOSTNAME["barber-crm.vorolabs.app"]
+SEO_BY_HOSTNAME["dev-nails-crm.vorolabs.app"] = SEO_BY_HOSTNAME["nails-crm.vorolabs.app"]
+SEO_BY_HOSTNAME["dev-esthetic-crm.vorolabs.app"] = SEO_BY_HOSTNAME["esthetic-crm.vorolabs.app"]
+SEO_BY_HOSTNAME["dev-spa-crm.vorolabs.app"] = SEO_BY_HOSTNAME["spa-crm.vorolabs.app"]
+SEO_BY_HOSTNAME["dev-petshop-crm.vorolabs.app"] = SEO_BY_HOSTNAME["petshop-crm.vorolabs.app"]
+
+// dev hostnames inherit prod feature list
+FEATURE_LIST_BY_HOSTNAME["dev-salon-crm.vorolabs.app"] = FEATURE_LIST_BY_HOSTNAME["salon-crm.vorolabs.app"]
+FEATURE_LIST_BY_HOSTNAME["dev-barber-crm.vorolabs.app"] = FEATURE_LIST_BY_HOSTNAME["barber-crm.vorolabs.app"]
+FEATURE_LIST_BY_HOSTNAME["dev-nails-crm.vorolabs.app"] = FEATURE_LIST_BY_HOSTNAME["nails-crm.vorolabs.app"]
+FEATURE_LIST_BY_HOSTNAME["dev-esthetic-crm.vorolabs.app"] = FEATURE_LIST_BY_HOSTNAME["esthetic-crm.vorolabs.app"]
+FEATURE_LIST_BY_HOSTNAME["dev-spa-crm.vorolabs.app"] = FEATURE_LIST_BY_HOSTNAME["spa-crm.vorolabs.app"]
+FEATURE_LIST_BY_HOSTNAME["dev-petshop-crm.vorolabs.app"] = FEATURE_LIST_BY_HOSTNAME["petshop-crm.vorolabs.app"]
 
 const DEFAULT_SEO = SEO_BY_HOSTNAME["salon-crm.vorolabs.app"]
 
