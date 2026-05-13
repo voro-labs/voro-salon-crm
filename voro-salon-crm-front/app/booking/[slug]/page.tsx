@@ -763,7 +763,7 @@ export default function PublicBookingPage() {
                   </div>
                 )}
 
-                <div className="overflow-y-auto max-h-[228px] pr-0.5">
+                <div className="overflow-y-auto max-h-57 pr-0.5">
                   <div className="grid grid-cols-2 gap-2">
                     {visibleServices.map(renderServiceButton)}
                   </div>

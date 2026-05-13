@@ -119,6 +119,7 @@ export default function VerifyTwoFactorPage() {
         establishmentType: number
         primaryColor: string | null
         secondaryColor: string | null
+        defaultPage: string | null
       }>(API_CONFIG.ENDPOINTS.TENANT_ME, { method: "GET" })
 
       if (!tenantRes.hasError && tenantRes.data) {
