@@ -1,19 +1,15 @@
 "use client"
 
-import { useState, useEffect, use, useRef, useCallback } from "react"
+import { useState, useEffect, use } from "react"
 import {
   CheckCircle2,
   FileText,
-  Pen,
-  Trash2,
   Loader2,
   AlertCircle,
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { apiCall } from "@/lib/api"
@@ -21,20 +17,15 @@ import { format } from "date-fns"
 import { ptBR } from "date-fns/locale/pt-BR"
 import { toast } from "sonner"
 import { ThemeToggle } from "@/components/ui/custom/theme-toggle"
+import { SignaturePad } from "@/components/ui/custom/signature-pad"
+import { QuestionField } from "@/components/features/anamnesis/question-field"
+import type { PublicQuestion } from "@/components/features/anamnesis/question-field"
 
-// ── Field types (must match AnamnesisFieldType enum) ──────────────────────────
 const FieldType = {
-  ShortText: 1,
-  LongText: 2,
-  Number: 3,
-  SingleSelection: 4,
-  MultipleSelection: 5,
-  Boolean: 6,
   Signature: 7,
   ImageUpload: 8,
 } as const
 
-// ── Section labels (must match AnamnesisSection enum) ─────────────────────────
 const SECTION_LABELS: Record<number, string> = {
   1: "Dados do Cliente",
   2: "Queixa Principal",
@@ -49,130 +40,12 @@ const SECTION_LABELS: Record<number, string> = {
   11: "Protocolo de Tratamento",
 }
 
-interface Question {
-  id: string
-  label: string
-  placeholder?: string
-  fieldType: number
-  options?: string
-  isRequired: boolean
-  section: number
-  order: number
-}
-
 interface SheetData {
   clientName: string
   tenantName: string
   expiresAt?: string
-  questions: Question[]
+  questions: PublicQuestion[]
   alreadyFilled: boolean
-}
-
-function parseOptions(raw?: string): string[] {
-  if (!raw) return []
-  try { return JSON.parse(raw) } catch { return raw.split(",").map(s => s.trim()).filter(Boolean) }
-}
-
-// ── Question renderer ─────────────────────────────────────────────────────────
-function QuestionField({
-  question,
-  value,
-  onChange,
-}: {
-  question: Question
-  value: string
-  onChange: (v: string) => void
-}) {
-  const opts = parseOptions(question.options)
-
-  switch (question.fieldType) {
-    case FieldType.LongText:
-      return (
-        <Textarea
-          placeholder={question.placeholder ?? ""}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          rows={3}
-          className="resize-none"
-        />
-      )
-    case FieldType.Number:
-      return (
-        <Input
-          type="number"
-          placeholder={question.placeholder ?? ""}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-        />
-      )
-    case FieldType.Boolean:
-      return (
-        <div className="flex gap-3">
-          {["Sim", "Não"].map(opt => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => onChange(opt === "Sim" ? "true" : "false")}
-              className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
-                (opt === "Sim" ? "true" : "false") === value
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background hover:bg-muted"
-              }`}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      )
-    case FieldType.SingleSelection:
-      return (
-        <div className="flex flex-col gap-2">
-          {opts.map(opt => (
-            <label key={opt} className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="radio"
-                name={question.id}
-                value={opt}
-                checked={value === opt}
-                onChange={() => onChange(opt)}
-                className="accent-primary h-4 w-4"
-              />
-              <span className="text-sm">{opt}</span>
-            </label>
-          ))}
-        </div>
-      )
-    case FieldType.MultipleSelection: {
-      const selected: string[] = value ? ((): string[] => { try { return JSON.parse(value) } catch { return [] } })() : []
-      const toggle = (opt: string) => {
-        const next = selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt]
-        onChange(JSON.stringify(next))
-      }
-      return (
-        <div className="flex flex-col gap-2">
-          {opts.map(opt => (
-            <label key={opt} className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selected.includes(opt)}
-                onChange={() => toggle(opt)}
-                className="accent-primary h-4 w-4"
-              />
-              <span className="text-sm">{opt}</span>
-            </label>
-          ))}
-        </div>
-      )
-    }
-    default:
-      return (
-        <Input
-          placeholder={question.placeholder ?? ""}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-        />
-      )
-  }
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -185,10 +58,7 @@ export default function AnamnesisFilPage({ params }: { params: Promise<{ token: 
   const [submitted, setSubmitted] = useState(false)
   const [responses, setResponses] = useState<Record<string, string>>({})
   const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({})
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [hasSignature, setHasSignature] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const lastPos = useRef<{ x: number; y: number } | null>(null)
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null)
 
   useEffect(() => {
     apiCall<SheetData>(`/public/anamnesis/fill/${token}`)
@@ -207,44 +77,15 @@ export default function AnamnesisFilPage({ params }: { params: Promise<{ token: 
   const setResponse = (id: string, value: string) =>
     setResponses(prev => ({ ...prev, [id]: value }))
 
-  // ── Canvas helpers ────────────────────────────────────────────────────────
-  const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
-    const rect = canvas.getBoundingClientRect()
-    const sx = canvas.width / rect.width
-    const sy = canvas.height / rect.height
-    if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * sx, y: (e.touches[0].clientY - rect.top) * sy }
-    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy }
-  }
-  const startDrawing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    const c = canvasRef.current; if (!c) return
-    e.preventDefault(); setIsDrawing(true); lastPos.current = getPos(e, c)
-  }, [])
-  const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing) return
-    const c = canvasRef.current; if (!c) return
-    e.preventDefault()
-    const ctx = c.getContext("2d"); if (!ctx || !lastPos.current) return
-    const pos = getPos(e, c)
-    ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y)
-    ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke()
-    lastPos.current = pos; setHasSignature(true)
-  }, [isDrawing])
-  const stopDrawing = useCallback(() => { setIsDrawing(false); lastPos.current = null }, [])
-  const clearCanvas = () => {
-    const c = canvasRef.current; if (!c) return
-    c.getContext("2d")?.clearRect(0, 0, c.width, c.height); setHasSignature(false)
-  }
-
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!sheet) return
     const required = sheet.questions.filter(q => q.isRequired && q.fieldType !== FieldType.Signature && q.fieldType !== FieldType.ImageUpload)
     const missing = required.filter(q => !responses[q.id]?.trim())
     if (missing.length > 0) { toast.error(`Preencha os campos obrigatórios: ${missing.map(q => q.label).join(", ")}`); return }
-    if (!hasSignature) { toast.error("Por favor, assine o documento antes de confirmar."); return }
+    if (!signatureDataUrl) { toast.error("Por favor, assine o documento antes de confirmar."); return }
 
-    const canvas = canvasRef.current!
-    const signatureData = canvas.toDataURL("image/png")
+    const signatureData = signatureDataUrl
     const responseList = sheet.questions
       .filter(q => q.fieldType !== FieldType.Signature && q.fieldType !== FieldType.ImageUpload)
       .map(q => ({ questionId: q.id, value: responses[q.id] ?? "" }))
@@ -378,39 +219,16 @@ export default function AnamnesisFilPage({ params }: { params: Promise<{ token: 
         {/* Signature */}
         <Card className="border-none shadow-md">
           <CardHeader className="p-4 py-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Pen className="h-4 w-4 text-primary" /> Assinatura
-              </CardTitle>
-              <Button variant="ghost" size="sm" onClick={clearCanvas} className="h-7 text-xs gap-1">
-                <Trash2 className="h-3.5 w-3.5" /> Limpar
-              </Button>
-            </div>
+            <CardTitle className="text-sm font-semibold">Assinatura</CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <p className="text-xs text-muted-foreground mb-3">
               Assine dentro do campo abaixo confirmando que as informações são verdadeiras.
             </p>
-            <div className="relative rounded-xl border-2 border-dashed border-primary/30 bg-white overflow-hidden touch-none">
-              <canvas
-                ref={canvasRef}
-                width={600}
-                height={200}
-                className="w-full h-40 cursor-crosshair touch-none"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-              />
-              {!hasSignature && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <p className="text-muted-foreground/40 text-sm select-none">Assine aqui</p>
-                </div>
-              )}
-            </div>
+            <SignaturePad
+              onSign={setSignatureDataUrl}
+              onClear={() => setSignatureDataUrl(null)}
+            />
           </CardContent>
         </Card>
 
@@ -421,7 +239,7 @@ export default function AnamnesisFilPage({ params }: { params: Promise<{ token: 
         </p>
 
         {/* Submit */}
-        <Button size="lg" className="w-full" disabled={!hasSignature || submitting} onClick={handleSubmit}>
+        <Button size="lg" className="w-full" disabled={!signatureDataUrl || submitting} onClick={handleSubmit}>
           {submitting
             ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
             : <><CheckCircle2 className="mr-2 h-4 w-4" /> Confirmar e Enviar Ficha</>}
