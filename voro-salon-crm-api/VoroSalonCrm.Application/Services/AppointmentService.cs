@@ -1,9 +1,11 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Integration;
+using VoroSalonCrm.Application.Features.Appointments.Commands;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
@@ -30,7 +32,8 @@ namespace VoroSalonCrm.Application.Services
         ITransactionRepository transactionRepository,
         ITransactionCategoryRepository transactionCategoryRepository,
         IMemoryCache memoryCache,
-        ICacheService cacheService) : IAppointmentService
+        ICacheService cacheService,
+        IMediator mediator) : IAppointmentService
     {
         private readonly IAppointmentRepository _appointmentRepository = appointmentRepository;
         private readonly IServiceRecordService _serviceRecordService = serviceRecordService;
@@ -49,85 +52,10 @@ namespace VoroSalonCrm.Application.Services
         private readonly ITransactionCategoryRepository _transactionCategoryRepository = transactionCategoryRepository;
         private readonly IMemoryCache _memoryCache = memoryCache;
         private readonly ICacheService _cacheService = cacheService;
+        private readonly IMediator _mediator = mediator;
 
         public async Task<AppointmentDto> CreateAsync(CreateAppointmentDto dto)
-        {
-            var tenantId = _currentUserService.TenantId;
-            if (tenantId == Guid.Empty)
-                throw new UnauthorizedAccessException("Tenant invalid or not found in context.");
-
-            var appointment = new Appointment
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                ClientId = dto.ClientId,
-                ServiceId = dto.ServiceId,
-                ScheduledDateTime = dto.ScheduledDateTime,
-                DurationMinutes = dto.DurationMinutes,
-                Status = dto.Status ?? AppointmentStatus.Confirmed,
-                Description = dto.Description,
-                Amount = dto.Amount,
-                Notes = dto.Notes,
-                IsEncaixe = dto.IsEncaixe,
-                Source = dto.Source,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            if (dto.ServiceIds != null && dto.ServiceIds.Count > 0)
-            {
-                foreach (var serviceId in dto.ServiceIds)
-                {
-                    appointment.Services.Add(new Domain.Entities.AppointmentService
-                    {
-                        AppointmentId = appointment.Id,
-                        ServiceId = serviceId,
-                    });
-                }
-                if (dto.ServiceIds.Count == 1 && !dto.ServiceId.HasValue)
-                    appointment.ServiceId = dto.ServiceIds[0];
-            }
-
-            await _appointmentRepository.AddAsync(appointment);
-            await _unitOfWork.SaveChangesAsync();
-
-            await _cacheService.RemoveAsync($"dashboard:tenant:{tenantId}");
-
-            // Notifica os donos do tenant sobre o novo agendamento
-            try
-            {
-                var ownerTenants = await _userTenantRepository.GetAllAsync(
-                    ut => ut.TenantId == tenantId);
-
-                var ownerIds = ownerTenants.Select(ut => ut.UserId).ToList();
-
-                if (ownerIds.Count > 0)
-                {
-                    var fullAppointment = await _appointmentRepository.Include(a => a.Client, a => a.Service!)
-                        .FirstOrDefaultAsync(a => a.Id == appointment.Id);
-
-                    var clientName = fullAppointment?.Client?.Name ?? "Cliente";
-                    var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
-                    var dateStr = localTime.ToString("dd/MM/yyyy");
-                    var timeStr = localTime.ToString("HH:mm");
-
-                    await _expoPushNotificationService.SendToUsersAsync(
-                        ownerIds,
-                        "Novo Agendamento",
-                        $"{clientName} agendou para {dateStr} às {timeStr}",
-                        new { appointmentId = appointment.Id, status = AppointmentStatus.Confirmed.ToString() },
-                        tenantId,
-                        "appointment_created",
-                        appointment.Id);
-                }
-            }
-            catch (Exception)
-            {
-                // Não falha o fluxo principal se a notificação falhar
-            }
-
-            return await GetByIdAsync(appointment.Id)
-                ?? throw new Exception("Error retrieving created appointment.");
-        }
+            => await _mediator.Send(new CreateAppointmentCommand(dto));
 
         public async Task<AppointmentDto?> GetByIdAsync(Guid id)
         {
@@ -291,216 +219,7 @@ namespace VoroSalonCrm.Application.Services
         }
 
         public async Task<bool> UpdateStatusAsync(Guid id, AppointmentStatus status)
-        {
-            var appointment = await _appointmentRepository.Include(a => a.Client, a => a.Service!)
-                .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
-
-            if (appointment == null) return false;
-
-            var oldStatus = appointment.Status;
-            appointment.Status = status;
-            appointment.UpdatedAt = DateTimeOffset.UtcNow;
-
-            _appointmentRepository.Update(appointment);
-
-            if (oldStatus != AppointmentStatus.Completed && appointment.Status == AppointmentStatus.Completed)
-            {
-                await CreateHistoryFromAppointmentAsync(appointment);
-                await DecrementMembershipSessionAsync(appointment);
-            }
-            else if (oldStatus == AppointmentStatus.Completed &&
-                (appointment.Status == AppointmentStatus.Pending || appointment.Status == AppointmentStatus.Cancelled))
-            {
-                await _serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
-                await ReverseCompletionAsync(appointment);
-            }
-
-            await _unitOfWork.SaveChangesAsync();
-
-            await _cacheService.RemoveAsync($"dashboard:tenant:{appointment.TenantId}");
-
-            // Send push notifications to tenant owners
-            if (oldStatus != status && (status == AppointmentStatus.Confirmed || status == AppointmentStatus.Cancelled || status == AppointmentStatus.Completed))
-            {
-                try
-                {
-                    var ownerTenants = await _userTenantRepository.GetAllAsync(
-                        ut => ut.TenantId == appointment.TenantId);
-
-                    var ownerIds = ownerTenants.Select(ut => ut.UserId).ToList();
-
-                    if (ownerIds.Count > 0)
-                    {
-                        var clientName = appointment.Client?.Name ?? "Cliente";
-                        var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
-                        var dateStr = localTime.ToString("dd/MM/yyyy");
-                        var timeStr = localTime.ToString("HH:mm");
-
-                        string pushTitle;
-                        string pushBody;
-                        string notificationType;
-
-                        if (status == AppointmentStatus.Confirmed)
-                        {
-                            pushTitle = "Agendamento Confirmado";
-                            pushBody = $"O agendamento de {clientName} foi confirmado para {dateStr} às {timeStr}";
-                            notificationType = "status_changed_confirmed";
-                        }
-                        else if (status == AppointmentStatus.Cancelled)
-                        {
-                            pushTitle = "Agendamento Cancelado";
-                            pushBody = $"O agendamento de {clientName} para {dateStr} às {timeStr} foi cancelado";
-                            notificationType = "status_changed_cancelled";
-                        }
-                        else // Completed
-                        {
-                            pushTitle = "Atendimento Concluído";
-                            pushBody = $"{clientName} foi atendido(a)";
-                            notificationType = "status_changed_completed";
-                        }
-
-                        await _expoPushNotificationService.SendToUsersAsync(
-                            ownerIds,
-                            pushTitle,
-                            pushBody,
-                            new { appointmentId = appointment.Id, status = status.ToString() },
-                            appointment.TenantId,
-                            notificationType,
-                            appointment.Id);
-                    }
-                }
-                catch (Exception)
-                {
-                    // Do not fail the main flow if push notifications fail
-                }
-            }
-
-            // Send WhatsApp notifications
-            if (oldStatus != status && appointment.Client != null && !string.IsNullOrWhiteSpace(appointment.Client.Phone))
-            {
-                var tenant = await _tenantRepository.GetByIdAsync(false, appointment.TenantId);
-                if (tenant == null || !tenant.UseWhatsappBooking) return true;
-
-                // Anti-spam: skip if the same status notification was already sent within 5 minutes
-                var cacheKey = $"wa_status_{appointment.Id}_{status}";
-                if (_memoryCache.TryGetValue(cacheKey, out _)) return true;
-
-                var tenantName = tenant.Name;
-                var phone = appointment.Client.Phone;
-
-                var localTime = appointment.ScheduledDateTime.ToOffset(TimeSpan.FromHours(-3));
-
-                if (status == AppointmentStatus.Confirmed)
-                {
-                    var templateMsg = new WhatsappTemplateMessageDto
-                    {
-                        To = phone,
-                        Template = new() {
-                            Name = "appointment_confirmation_1",
-                            Components =
-                            [
-                                new() {
-                                    Type = "body",
-                                    Parameters =
-                                    [
-                                        new() { Type = "text", Text = appointment.Client.Name },
-                                        new() { Type = "text", Text = tenantName },
-                                        new() { Type = "text", Text = appointment.Service?.Name ?? "Serviço" },
-                                        new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") },
-                                        new() { Type = "text", Text = localTime.ToString("HH:mm") }
-                                    ]
-                                },
-                                new() {
-                                    Type = "button",
-                                    SubType = "url",
-                                    Index = "0",
-                                    Parameters = [
-                                        new() { Type = "text", Text = appointment.Id.ToString() }
-                                    ]
-                                }
-                            ]
-                        }
-                    };
-
-                    await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
-                    _memoryCache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
-                }
-                else if (status == AppointmentStatus.Cancelled)
-                {
-                    var templateMsg = new WhatsappTemplateMessageDto
-                    {
-                        To = phone,
-                        Template = new() {
-                            Name = "appointment_cancellation_1",
-                            Components =
-                            [
-                                new() {
-                                    Type = "body",
-                                    Parameters =
-                                    [
-                                        new() { Type = "text", Text = appointment.Client.Name },
-                                        new() { Type = "text", Text = tenantName },
-                                        new() { Type = "text", Text = localTime.ToString("dd/MM/yyyy") },
-                                        new() { Type = "text", Text = localTime.ToString("HH:mm") }
-                                    ]
-                                },
-                                new() {
-                                    Type = "button",
-                                    SubType = "url",
-                                    Index = "0",
-                                    Parameters = [
-                                        new() { Type = "text", Text = appointment.Id.ToString() }
-                                    ]
-                                }
-                            ]
-                        }
-                    };
-
-                    await _whatsappService.SendTemplateMessageAsync(templateMsg, tenant?.WhatsappPhoneNumberId);
-                    _memoryCache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
-                }
-                else if (status == AppointmentStatus.Completed && appointment.Client != null &&
-                    !string.IsNullOrWhiteSpace(appointment.Client.Phone))
-                {
-                    // Send rating request template after completion
-                    var ratingMsg = new WhatsappTemplateMessageDto
-                    {
-                        To = appointment.Client.Phone,
-                        Template = new()
-                        {
-                            Name = "service_rating_request_1",
-                            Components =
-                            [
-                                new() {
-                                    Type = "body",
-                                    Parameters =
-                                    [
-                                        new() { Type = "text", Text = appointment.Client.Name },
-                                        new() { Type = "text", Text = appointment.Service?.Name ?? "Serviço" }
-                                    ]
-                                },
-                                new() {
-                                    Type = "button",
-                                    SubType = "url",
-                                    Index = "0",
-                                    Parameters = [
-                                        new() { Type = "text", Text = appointment.Id.ToString() }
-                                    ]
-                                }
-                            ]
-                        }
-                    };
-
-                    try
-                    {
-                        await _whatsappService.SendTemplateMessageAsync(ratingMsg, tenant?.WhatsappPhoneNumberId);
-                    }
-                    catch (Exception) { /* Não falha o fluxo se o envio falhar */ }
-                }
-            }
-
-            return true;
-        }
+            => await _mediator.Send(new UpdateAppointmentStatusCommand(id, status));
 
         public async Task<bool> NotifyReschedulingAsync(Appointment appointment)
         {
@@ -719,34 +438,6 @@ namespace VoroSalonCrm.Application.Services
 
                 _transactionRepository.DeleteRange(commissions);
             }
-        }
-
-        private async Task DecrementMembershipSessionAsync(Appointment appointment)
-        {
-            var activeMemberships = await _clientMembershipRepository
-                .Query(m => m.ClientId == appointment.ClientId && m.TenantId == appointment.TenantId
-                    && m.Status == ClientMembershipStatus.Active
-                    && m.EndDate >= DateTimeOffset.UtcNow)
-                .Include(m => m.Plan)
-                .OrderBy(m => m.EndDate)
-                .ToListAsync();
-
-            var membership = activeMemberships.FirstOrDefault();
-            if (membership == null) return;
-
-            // Vincula a assinatura ao agendamento
-            appointment.ClientMembershipId = membership.Id;
-            _appointmentRepository.Update(appointment);
-
-            if (membership.RemainingSessions == null) return; // sessões ilimitadas
-
-            membership.RemainingSessions = Math.Max(0, membership.RemainingSessions.Value - 1);
-            membership.UpdatedAt = DateTimeOffset.UtcNow;
-
-            if (membership.RemainingSessions == 0)
-                membership.Status = ClientMembershipStatus.Expired;
-
-            _clientMembershipRepository.Update(membership);
         }
 
         private async Task CreateHistoryFromAppointmentAsync(Appointment appointment)
