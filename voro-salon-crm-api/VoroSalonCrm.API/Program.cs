@@ -111,3 +111,5 @@ app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

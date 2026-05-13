@@ -6,4 +6,5 @@
   <Project Path="VoroSalonCrm.Infrastructure/VoroSalonCrm.Infrastructure.csproj" />
   <Project Path="VoroSalonCrm.Shared/VoroSalonCrm.Shared.csproj" Id="5c2730a9-2d3a-4329-8b91-4910993e8ce8" />
   <Project Path="VoroSalonCrm.Tests.Integration/VoroSalonCrm.Tests.Integration.csproj" />
+  <Project Path="VoroSalonCrm.Tests.Http/VoroSalonCrm.Tests.Http.csproj" />
 </Solution>
