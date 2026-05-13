@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using MediatR;
 using Moq;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services;
@@ -17,6 +18,7 @@ namespace VoroSalonCrm.Tests.Integration.PublicBooking;
 /// </summary>
 internal sealed class PublicBookingServiceContext
 {
+    public Mock<IMediator>                      Mediator            { get; } = new();
     public Mock<ITenantRepository>              TenantRepo          { get; } = new();
     public Mock<IClientRepository>             ClientRepo          { get; } = new();
     public Mock<IServiceRepository>            ServiceRepo         { get; } = new();
@@ -160,6 +162,7 @@ internal sealed class PublicBookingServiceContext
     // ── factory ───────────────────────────────────────────────────────────────
 
     public PublicBookingService Build() => new(
+        Mediator.Object,
         TenantRepo.Object,
         ClientRepo.Object,
         ServiceRepo.Object,
