@@ -88,7 +88,7 @@ export default function ReportsPage() {
                           key={m.month}
                           onClick={() => handleBarClick(m.month)}
                           className={cn(
-                            "flex-1 rounded-t min-h-[4px] transition-all cursor-pointer focus:outline-none",
+                            "flex-1 rounded-t min-h-1 transition-all cursor-pointer focus:outline-none",
                             isSelected
                               ? "bg-primary ring-2 ring-primary ring-offset-1"
                               : hasSelection

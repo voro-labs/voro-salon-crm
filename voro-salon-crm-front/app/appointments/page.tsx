@@ -1133,7 +1133,7 @@ export default function AppointmentsPage() {
             </p>
           </DialogHeader>
 
-          <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto py-1 pr-1">
+          <div className="flex flex-col gap-2 max-h-100 overflow-y-auto py-1 pr-1">
             {overdueItems.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
