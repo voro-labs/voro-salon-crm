@@ -37,5 +37,6 @@ public class ExceptionHandlingMiddlewareTests
         response.Should().NotBeNull();
         response!.Message.Should().Be("Ocorreu um erro inesperado.");
         response.Status.Should().Be(500);
+        response!.HasError.Should().BeTrue();
     }
 }
