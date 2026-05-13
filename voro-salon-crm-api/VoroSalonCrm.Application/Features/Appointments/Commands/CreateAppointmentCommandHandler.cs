@@ -13,8 +13,7 @@ public class CreateAppointmentCommandHandler(
     IAppointmentRepository appointmentRepository,
     IUnitOfWork            unitOfWork,
     ICurrentUserService    currentUserService,
-    ICacheService          cacheService,
-    IMediator              mediator)
+    ICacheService          cacheService)
     : IRequestHandler<CreateAppointmentCommand, AppointmentDto>
 {
     public async Task<AppointmentDto> Handle(CreateAppointmentCommand request, CancellationToken cancellationToken)

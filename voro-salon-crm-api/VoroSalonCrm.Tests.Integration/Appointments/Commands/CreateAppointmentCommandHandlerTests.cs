@@ -1,5 +1,4 @@
 using FluentAssertions;
-using MediatR;
 using Moq;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Features.Appointments.Commands;
@@ -17,7 +16,6 @@ public class CreateAppointmentCommandHandlerTests
     private readonly Mock<IUnitOfWork>            _unitOfWork      = new();
     private readonly Mock<ICurrentUserService>    _currentUser     = new();
     private readonly Mock<ICacheService>          _cacheService    = new();
-    private readonly Mock<IMediator>              _mediator        = new();
     private readonly Guid                         _tenantId        = Guid.NewGuid();
 
     public CreateAppointmentCommandHandlerTests()
@@ -25,7 +23,6 @@ public class CreateAppointmentCommandHandlerTests
         _currentUser.Setup(u => u.TenantId).Returns(_tenantId);
         _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(0);
         _cacheService.Setup(c => c.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        _mediator.Setup(m => m.Publish(It.IsAny<INotification>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         // GetByIdAsync returns null — handler will throw Exception("Error retrieving created appointment.")
         _appointmentRepo
@@ -40,8 +37,7 @@ public class CreateAppointmentCommandHandlerTests
         _appointmentRepo.Object,
         _unitOfWork.Object,
         _currentUser.Object,
-        _cacheService.Object,
-        _mediator.Object);
+        _cacheService.Object);
 
     [Fact]
     public async Task Handle_WhenTenantIdIsEmpty_ThrowsUnauthorized()

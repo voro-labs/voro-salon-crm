@@ -18,6 +18,17 @@ public class AppointmentTransactionHandler(
         if (notification.Amount <= 0)
             return;
 
+        // Idempotência: evita duplicata se a notificação for publicada mais de uma vez
+        var appointmentIdStr = notification.AppointmentId.ToString();
+        var incomeExists = await transactionRepository
+            .Query(t => t.TenantId == notification.TenantId
+                && t.Notes != null && t.Notes.Contains(appointmentIdStr)
+                && t.Type == TransactionType.Income)
+            .AnyAsync(cancellationToken);
+
+        if (incomeExists)
+            return;
+
         var servicosCategory = await transactionCategoryRepository
             .Query(c => c.TenantId == notification.TenantId
                 && c.Name == "Serviços"

@@ -11,4 +11,5 @@ public record AppointmentCompletedNotification(
     decimal        Amount,
     DateTimeOffset ScheduledAt,
     string?        ServiceName,
-    string?        ClientName = null) : INotification;
+    string?        ClientName = null,
+    string?        Description = null) : INotification;

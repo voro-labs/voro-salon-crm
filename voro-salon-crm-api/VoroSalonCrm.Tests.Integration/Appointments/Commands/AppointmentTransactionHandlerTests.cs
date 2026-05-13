@@ -24,6 +24,11 @@ public class AppointmentTransactionHandlerTests
             .Setup(r => r.Query(It.IsAny<System.Linq.Expressions.Expression<Func<TransactionCategory, bool>>>(), It.IsAny<bool>()))
             .Returns(new TestAsyncEnumerable<TransactionCategory>(Enumerable.Empty<TransactionCategory>()));
 
+        // Default: empty transaction queryable (no existing income — idempotency check passes)
+        _transactionRepo
+            .Setup(r => r.Query(It.IsAny<System.Linq.Expressions.Expression<Func<Transaction, bool>>>(), It.IsAny<bool>()))
+            .Returns(new TestAsyncEnumerable<Transaction>(Enumerable.Empty<Transaction>()));
+
         _transactionCategoryRepo.Setup(r => r.AddAsync(It.IsAny<TransactionCategory>())).Returns(Task.CompletedTask);
         _transactionRepo.Setup(r => r.AddAsync(It.IsAny<Transaction>())).Returns(Task.CompletedTask);
     }
@@ -96,5 +101,27 @@ public class AppointmentTransactionHandlerTests
         await Build().Handle(MakeNotification(), CancellationToken.None);
 
         _transactionCategoryRepo.Verify(r => r.AddAsync(It.IsAny<TransactionCategory>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTransactionAlreadyExists_SkipsDuplicate()
+    {
+        var appointmentId = Guid.NewGuid();
+
+        _transactionRepo
+            .Setup(r => r.Query(It.IsAny<System.Linq.Expressions.Expression<Func<Transaction, bool>>>(), It.IsAny<bool>()))
+            .Returns(new TestAsyncEnumerable<Transaction>(new List<Transaction>
+            {
+                new() { Notes = appointmentId.ToString(), Type = TransactionType.Income }
+            }));
+
+        var n = new AppointmentCompletedNotification(
+            AppointmentId: appointmentId, TenantId: Guid.NewGuid(), ClientId: Guid.NewGuid(),
+            ServiceId: null, EmployeeId: null, Amount: 150m, ScheduledAt: DateTimeOffset.UtcNow,
+            ServiceName: "Corte", ClientName: "Ana");
+
+        await Build().Handle(n, CancellationToken.None);
+
+        _transactionRepo.Verify(r => r.AddAsync(It.IsAny<Transaction>()), Times.Never);
     }
 }
