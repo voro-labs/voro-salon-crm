@@ -11,9 +11,9 @@ namespace VoroSalonCrm.Tests.Http.Helpers;
 /// </summary>
 public static class AuthHelper
 {
-    private const string TestKey    = "test-secret-key-32-chars-minimum!!";
-    private const string TestIssuer = "test-issuer";
-    private const string TestAud    = "test-audience";
+    internal const string TestKey    = "test-secret-key-32-chars-minimum!!";
+    internal const string TestIssuer = "test-issuer";
+    internal const string TestAud    = "test-audience";
 
     public static string GenerateToken(
         Guid userId,
