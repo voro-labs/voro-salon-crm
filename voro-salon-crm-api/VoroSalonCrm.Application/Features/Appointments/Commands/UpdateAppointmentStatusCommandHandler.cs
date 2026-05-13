@@ -30,6 +30,9 @@ public class UpdateAppointmentStatusCommandHandler(
 
         appointmentRepository.Update(appointment);
 
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await cacheService.RemoveAsync($"dashboard:tenant:{appointment.TenantId}", cancellationToken);
+
         if (oldStatus != AppointmentStatus.Completed && request.Status == AppointmentStatus.Completed)
         {
             await mediator.Publish(new AppointmentCompletedNotification(
@@ -49,9 +52,6 @@ public class UpdateAppointmentStatusCommandHandler(
         {
             await serviceRecordService.DeleteByAppointmentIdAsync(appointment.Id);
         }
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await cacheService.RemoveAsync($"dashboard:tenant:{appointment.TenantId}", cancellationToken);
 
         return true;
     }

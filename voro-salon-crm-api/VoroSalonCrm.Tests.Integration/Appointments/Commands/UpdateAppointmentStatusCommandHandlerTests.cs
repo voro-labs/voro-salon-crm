@@ -96,7 +96,7 @@ public class UpdateAppointmentStatusCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenRevertedFromCompleted_DeletesServiceRecord()
+    public async Task Handle_WhenRevertedFromCompleted_DeletesServiceRecordAndSaves()
     {
         var appointment = new Appointment
         {
@@ -109,6 +109,10 @@ public class UpdateAppointmentStatusCommandHandlerTests
             new UpdateAppointmentStatusCommand(appointment.Id, AppointmentStatus.Cancelled),
             CancellationToken.None);
 
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _cacheService.Verify(c => c.RemoveAsync(
+            $"dashboard:tenant:{appointment.TenantId}",
+            It.IsAny<CancellationToken>()), Times.Once);
         _serviceRecord.Verify(s => s.DeleteByAppointmentIdAsync(appointment.Id), Times.Once);
     }
 }
