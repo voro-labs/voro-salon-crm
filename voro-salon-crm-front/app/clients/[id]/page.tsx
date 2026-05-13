@@ -70,7 +70,7 @@ import { formatCurrency, formatDateShort as formatDate } from "@/lib/format-util
 import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { toast } from "sonner"
 import { AuthGuard } from "@/components/auth/auth.guard"
-import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
+import { AnamnesisForm } from "@/components/features/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ClipboardList, History, Send } from "lucide-react"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"

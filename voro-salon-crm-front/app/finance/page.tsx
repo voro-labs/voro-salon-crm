@@ -23,7 +23,7 @@ import { ptBR } from "date-fns/locale"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
-import { PdfStatementImport } from "@/components/finance/pdf-statement-import"
+import { PdfStatementImport } from "@/components/features/finance/pdf-statement-import"
 import {
   Dialog,
   DialogContent,
