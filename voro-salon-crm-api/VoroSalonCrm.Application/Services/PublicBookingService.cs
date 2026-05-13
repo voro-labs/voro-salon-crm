@@ -122,7 +122,9 @@ namespace VoroSalonCrm.Application.Services
                     s.Category, promo?.PromotionalPrice, promo != null);
             }).ToList();
 
-            await _cacheService.SetAsync(cacheKey, serviceResult, TimeSpan.FromMinutes(5));
+            if (serviceResult.Count > 0)
+                await _cacheService.SetAsync(cacheKey, serviceResult, TimeSpan.FromMinutes(5));
+
             return serviceResult;
         }
 
