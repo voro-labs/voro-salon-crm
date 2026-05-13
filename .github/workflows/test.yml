@@ -46,18 +46,31 @@ jobs:
         id: run-tests
         continue-on-error: true
         run: |
+          mkdir -p /tmp/test_results
           cd ${{ secrets.FOLDER__API }}
-          dotnet test --no-build --configuration Release --verbosity normal 2>&1 | tee /tmp/test_output.txt
+          dotnet test --no-build --configuration Release --verbosity normal \
+            --logger "trx" \
+            --results-directory /tmp/test_results \
+            2>&1 | tee /tmp/test_output.txt
           echo "test_exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
       - name: Parse test results
         id: results
         run: |
-          OUTPUT="/tmp/test_output.txt"
+          PASSED=0
+          FAILED=0
+          TOTAL=0
 
-          PASSED=$(grep -oP 'Passed:\s*\K[0-9]+' "$OUTPUT" | awk '{s+=$1} END {print s+0}')
-          FAILED=$(grep -oP 'Failed:\s*\K[0-9]+' "$OUTPUT" | awk '{s+=$1} END {print s+0}')
-          TOTAL=$(grep -oP 'Total:\s*\K[0-9]+' "$OUTPUT" | awk '{s+=$1} END {print s+0}')
+          for f in /tmp/test_results/*.trx; do
+            [ -f "$f" ] || continue
+            LINE=$(grep '<Counters' "$f")
+            P=$(echo "$LINE" | grep -oP 'passed="\K[0-9]+')
+            F=$(echo "$LINE" | grep -oP 'failed="\K[0-9]+')
+            T=$(echo "$LINE" | grep -oP 'total="\K[0-9]+')
+            PASSED=$((PASSED + ${P:-0}))
+            FAILED=$((FAILED + ${F:-0}))
+            TOTAL=$((TOTAL + ${T:-0}))
+          done
 
           echo "passed=$PASSED" >> $GITHUB_OUTPUT
           echo "failed=$FAILED" >> $GITHUB_OUTPUT
@@ -65,8 +78,10 @@ jobs:
 
           if [ "$FAILED" = "0" ] && [ "$TOTAL" != "0" ]; then
             echo "status=🟢 Passed" >> $GITHUB_OUTPUT
-          else
+          elif [ "$FAILED" != "0" ]; then
             echo "status=🔴 Failed" >> $GITHUB_OUTPUT
+          else
+            echo "status=⚪ No tests found" >> $GITHUB_OUTPUT
           fi
 
       # ================================================
