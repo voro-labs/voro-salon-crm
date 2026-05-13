@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.Public;
 using VoroSalonCrm.Application.Services.Interfaces;
-using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Cache;
@@ -19,10 +18,6 @@ namespace VoroSalonCrm.Application.Services
         IEmployeeRepository employeeRepository,
         IAppointmentRepository appointmentRepository,
         IUnitOfWork unitOfWork,
-        IUserTenantRepository userTenantRepository,
-        IExpoPushNotificationService expoPushNotificationService,
-        ITimeSlotBlockRepository timeSlotBlockRepository,
-        ITenantModuleRepository tenantModuleRepository,
         ITenantSubscriptionRepository tenantSubscriptionRepository,
         ITenantBusinessHoursRepository businessHoursRepository,
         IServicePromotionRepository servicePromotionRepository,
@@ -31,10 +26,6 @@ namespace VoroSalonCrm.Application.Services
         ICacheService cacheService) : IPublicBookingService
     {
         private readonly IMediator _mediator = mediator;
-        private readonly IUserTenantRepository _userTenantRepository = userTenantRepository;
-        private readonly IExpoPushNotificationService _expoPushNotificationService = expoPushNotificationService;
-        private readonly ITimeSlotBlockRepository _timeSlotBlockRepository = timeSlotBlockRepository;
-        private readonly ITenantModuleRepository _tenantModuleRepository = tenantModuleRepository;
         private readonly ITenantSubscriptionRepository _tenantSubscriptionRepository = tenantSubscriptionRepository;
         private readonly IServicePromotionRepository _servicePromotionRepository = servicePromotionRepository;
         private readonly IClientRatingRepository _clientRatingRepository = clientRatingRepository;
