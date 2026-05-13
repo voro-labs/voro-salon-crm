@@ -5,4 +5,7 @@ Disallow: /api/
 
 Sitemap: https://salon-crm.vorolabs.app/sitemap.xml
 Sitemap: https://barber-crm.vorolabs.app/sitemap.xml
+Sitemap: https://nails-crm.vorolabs.app/sitemap.xml
+Sitemap: https://esthetic-crm.vorolabs.app/sitemap.xml
+Sitemap: https://spa-crm.vorolabs.app/sitemap.xml
 Sitemap: https://petshop-crm.vorolabs.app/sitemap.xml

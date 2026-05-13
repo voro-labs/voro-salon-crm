@@ -14,12 +14,35 @@ const PRICES_SEO: Record<string, { title: string; description: string }> = {
     description:
       "Planos acessíveis para barbearias. Comece grátis por 14 dias. Agendamento online, WhatsApp Bot e controle financeiro. Sem fidelidade.",
   },
+  "nails-crm.vorolabs.app": {
+    title: "Planos e Preços | Sistema para Studio de Unhas e Cílios",
+    description:
+      "Planos acessíveis para studios de unhas e cílios. Comece grátis por 14 dias. Agendamento online, WhatsApp Bot e controle financeiro. Sem fidelidade.",
+  },
+  "esthetic-crm.vorolabs.app": {
+    title: "Planos e Preços | Sistema para Clínica de Estética",
+    description:
+      "Planos acessíveis para clínicas de estética. Comece grátis por 14 dias. Agendamento online, WhatsApp Bot e controle financeiro. Sem fidelidade.",
+  },
+  "spa-crm.vorolabs.app": {
+    title: "Planos e Preços | Sistema para SPA e Massagem",
+    description:
+      "Planos acessíveis para SPAs e clínicas de massagem. Comece grátis por 14 dias. Agendamento online, WhatsApp Bot e controle financeiro. Sem fidelidade.",
+  },
   "petshop-crm.vorolabs.app": {
     title: "Planos e Preços | Sistema para Pet Shop",
     description:
       "Planos acessíveis para pet shops. Comece grátis por 14 dias. Agendamento online, WhatsApp Bot e controle financeiro. Sem fidelidade.",
   },
 }
+
+// dev hostnames inherit prod SEO config
+PRICES_SEO["dev-salon-crm.vorolabs.app"] = PRICES_SEO["salon-crm.vorolabs.app"]
+PRICES_SEO["dev-barber-crm.vorolabs.app"] = PRICES_SEO["barber-crm.vorolabs.app"]
+PRICES_SEO["dev-nails-crm.vorolabs.app"] = PRICES_SEO["nails-crm.vorolabs.app"]
+PRICES_SEO["dev-esthetic-crm.vorolabs.app"] = PRICES_SEO["esthetic-crm.vorolabs.app"]
+PRICES_SEO["dev-spa-crm.vorolabs.app"] = PRICES_SEO["spa-crm.vorolabs.app"]
+PRICES_SEO["dev-petshop-crm.vorolabs.app"] = PRICES_SEO["petshop-crm.vorolabs.app"]
 
 const DEFAULT_PRICES_SEO = PRICES_SEO["salon-crm.vorolabs.app"]
 

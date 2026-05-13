@@ -54,10 +54,17 @@ const BRANDING_MAP: Record<EstablishmentType, BrandingConfig> = {
 
 const HOSTNAME_MAP: Record<string, EstablishmentType> = {
   "salon-crm.vorolabs.app": EstablishmentType.Salon,
+  "dev-salon-crm.vorolabs.app": EstablishmentType.Salon,
+  "petshop-crm.vorolabs.app": EstablishmentType.Salon,
+  "dev-petshop-crm.vorolabs.app": EstablishmentType.Salon,
   "barber-crm.vorolabs.app": EstablishmentType.Barber,
+  "dev-barber-crm.vorolabs.app": EstablishmentType.Barber,
   "nails-crm.vorolabs.app": EstablishmentType.NailsLashes,
+  "dev-nails-crm.vorolabs.app": EstablishmentType.NailsLashes,
   "esthetic-crm.vorolabs.app": EstablishmentType.EstheticsClinic,
+  "dev-esthetic-crm.vorolabs.app": EstablishmentType.EstheticsClinic,
   "spa-crm.vorolabs.app": EstablishmentType.SpaMassage,
+  "dev-spa-crm.vorolabs.app": EstablishmentType.SpaMassage,
 }
 
 export function getBrandingByType(type: EstablishmentType): BrandingConfig {
