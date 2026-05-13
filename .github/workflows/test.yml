@@ -9,6 +9,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -18,6 +20,17 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: "9.0.x"
+
+      # ================================================
+      # TOKEN DO GITHUB APP
+      # ================================================
+      - name: Generate GitHub App token
+        id: app-token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.BOT_APP_ID }}
+          installation_id: ${{ secrets.BOT_INSTALLATION_ID }}
+          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - name: Restore dependencies
         run: |
@@ -30,6 +43,47 @@ jobs:
           dotnet build --no-restore --configuration Release
 
       - name: Run tests
+        id: run-tests
+        continue-on-error: true
         run: |
           cd ${{ secrets.FOLDER__API }}
-          dotnet test --no-build --configuration Release --verbosity normal
+          dotnet test --no-build --configuration Release --verbosity normal 2>&1 | tee /tmp/test_output.txt
+          echo "test_exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Parse test results
+        id: results
+        run: |
+          OUTPUT="/tmp/test_output.txt"
+
+          PASSED=$(grep -oP 'Passed:\s*\K[0-9]+' "$OUTPUT" | awk '{s+=$1} END {print s+0}')
+          FAILED=$(grep -oP 'Failed:\s*\K[0-9]+' "$OUTPUT" | awk '{s+=$1} END {print s+0}')
+          TOTAL=$(grep -oP 'Total:\s*\K[0-9]+' "$OUTPUT" | awk '{s+=$1} END {print s+0}')
+
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+          if [ "$FAILED" = "0" ] && [ "$TOTAL" != "0" ]; then
+            echo "status=🟢 Passed" >> $GITHUB_OUTPUT
+          else
+            echo "status=🔴 Failed" >> $GITHUB_OUTPUT
+          fi
+
+      # ================================================
+      # COMENTÁRIO USANDO O BOT
+      # ================================================
+      - name: Comment test results on PR
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **🧪 Test results for this PR**
+
+            | Project | Status | Results | Updated (UTC) |
+            |---------|--------|---------|---------------|
+            | `${{ github.event.repository.name }}` | ${{ steps.results.outputs.status }} | ${{ steps.results.outputs.passed }}/${{ steps.results.outputs.total }} passed, ${{ steps.results.outputs.failed }} failed | ${{ github.event.pull_request.updated_at }} |
+
+      - name: Fail workflow if tests failed
+        if: steps.run-tests.outcome == 'failure'
+        run: exit 1
