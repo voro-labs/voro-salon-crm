@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useEmployeeDetail } from "@/hooks/use-employee-detail.hook"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { formatCurrency, formatDate } from "@/lib/format-utils"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,16 +58,6 @@ function AuthenticatedImage({ src, alt, className }: { src: string; alt: string;
   }
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt={alt} className={className} />
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "-"
-  const d = new Date(dateStr)
-  return d.toLocaleDateString("pt-BR")
 }
 
 // ---------------------------------------------------------------------------

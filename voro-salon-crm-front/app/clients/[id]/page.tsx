@@ -66,10 +66,9 @@ import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags, getCountryFromPhone } from "@/lib/flag-utils"
 import { formatPhone } from "@/lib/mask-utils"
 import { localDateString } from "@/lib/date-utils"
+import { formatCurrency, formatDateShort as formatDate } from "@/lib/format-utils"
 import { CurrencyInput } from "@/components/currency-input"
 import { toast } from "sonner"
-
-
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -79,22 +78,6 @@ import { useSettings } from "@/hooks/use-settings.hook"
 import { getServicePlaceholders } from "@/lib/branding"
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
-
-
-function formatCurrency(val: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(val)
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })
-}
 
 function isRecent(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime()

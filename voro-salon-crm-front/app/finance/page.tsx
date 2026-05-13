@@ -65,12 +65,7 @@ import { useServiceRecords } from "@/hooks/use-service-records.hook"
 import { ServiceRecordDto } from "@/types/DTOs/service-record.interface"
 import { Loader2, MoreHorizontal, CheckCircle, Ban, Trash2 } from "lucide-react"
 import { CurrencyInput } from "@/components/currency-input"
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value)
-}
+import { formatCurrency } from "@/lib/format-utils"
 
 const getStatusBadge = (status: TransactionStatus) => {
   switch (status) {

@@ -55,6 +55,7 @@ import { CurrencyInput } from "@/components/currency-input"
 import { cn } from "@/lib/utils"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
+import { formatCurrency, formatDateOnly as formatDate } from "@/lib/format-utils"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,21 +104,10 @@ const SERVICES_ENDPOINT = API_CONFIG.ENDPOINTS.SERVICES + "?pageSize=500"
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatCurrency(val: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val)
-}
-
 function formatDiscount(original: number, promotional: number): string {
   if (original <= 0) return ""
   const pct = ((original - promotional) / original) * 100
   return `-${Math.round(pct)}%`
-}
-
-function formatDate(iso?: string): string {
-  if (!iso) return ""
-  // DateOnly comes as YYYY-MM-DD; parse in local time
-  const [y, m, d] = iso.split("-").map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString("pt-BR")
 }
 
 // Turns a JS Date into a YYYY-MM-DD string for the API

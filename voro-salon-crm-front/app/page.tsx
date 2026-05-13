@@ -43,6 +43,7 @@ import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay } from
 import { ptBR } from "date-fns/locale"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { formatCurrency } from "@/lib/format-utils"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useWhatsApp } from "@/hooks/use-whatsapp.hook"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
@@ -69,13 +70,6 @@ const MONTH_NAMES: Record<string, string> = {
   Oct: "Out",
   Nov: "Nov",
   Dec: "Dez",
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value)
 }
 
 export default function DashboardPage() {
