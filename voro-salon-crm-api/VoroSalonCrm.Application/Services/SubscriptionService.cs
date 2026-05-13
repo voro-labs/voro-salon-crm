@@ -1,7 +1,9 @@
+using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using System.Text.Json;
 using VoroSalonCrm.Application.DTOs.Subscription;
+using VoroSalonCrm.Application.Features.Subscription.Commands;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
@@ -22,8 +24,10 @@ namespace VoroSalonCrm.Application.Services
         IConfiguration configuration, IHostEnvironment env,
         IAuthService authService,
         IUnitOfWork unitOfWork,
-        ILogger<SubscriptionService> logger) : ISubscriptionService
+        ILogger<SubscriptionService> logger,
+        IMediator mediator) : ISubscriptionService
     {
+        private readonly IMediator _mediator = mediator;
         private string UrlBase => env.IsDevelopment() ?
             $"{configuration
                 .GetSection("CorsSettings")
@@ -241,39 +245,10 @@ namespace VoroSalonCrm.Application.Services
         }
 
         public async Task GrantManualAsync(GrantManualSubscriptionDto dto, Guid grantedByUserId)
-        {
-            _ = await planRepository.GetByIdAsync(false, dto.PlanId)
-                ?? throw new InvalidOperationException("Plano não encontrado.");
-
-            var subscription = new TenantSubscription
-            {
-                Id = Guid.NewGuid(),
-                TenantId = dto.TenantId,
-                PlanId = dto.PlanId,
-                Status = SubscriptionStatus.Active,
-                PaymentSource = PaymentSource.Manual,
-                StartDate = dto.StartDate,
-                EndDate = dto.EndDate,
-                GrantedByUserId = grantedByUserId,
-                Notes = dto.Notes,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            await subscriptionRepository.AddAsync(subscription);
-            await subscriptionRepository.SaveChangesAsync();
-        }
+            => await _mediator.Send(new GrantManualSubscriptionCommand(dto, grantedByUserId));
 
         public async Task CancelAsync(Guid subscriptionId)
-        {
-            var sub = await subscriptionRepository.GetByIdAsync(false, subscriptionId)
-                ?? throw new InvalidOperationException("Assinatura não encontrada.");
-
-            sub.Status = SubscriptionStatus.Cancelled;
-            sub.UpdatedAt = DateTimeOffset.UtcNow;
-
-            subscriptionRepository.Update(sub);
-            await subscriptionRepository.SaveChangesAsync();
-        }
+            => await _mediator.Send(new CancelSubscriptionCommand(subscriptionId));
 
         public async Task<IEnumerable<TenantSubscriptionDto>> GetAllAsync(int page, int pageSize)
         {
