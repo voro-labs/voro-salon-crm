@@ -5,9 +5,7 @@ on:
     branches:
       - main
       - dev
-    paths:
-      - "voro-salon-crm-api/**"
-
+      
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
