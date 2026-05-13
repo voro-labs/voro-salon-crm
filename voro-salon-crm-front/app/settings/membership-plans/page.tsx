@@ -39,7 +39,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { AuthGuard } from "@/components/auth/auth.guard"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { toast } from "sonner"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
 

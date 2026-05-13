@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import useSWR from "swr"

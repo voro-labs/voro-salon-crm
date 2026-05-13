@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { MetricCard } from "@/components/metric-card"
+import { MetricCard } from "@/components/ui/custom/metric-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"

@@ -20,7 +20,7 @@ import { apiCall } from "@/lib/api"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale/pt-BR"
 import { toast } from "sonner"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ThemeToggle } from "@/components/ui/custom/theme-toggle"
 
 // ── Field types (must match AnamnesisFieldType enum) ──────────────────────────
 const FieldType = {

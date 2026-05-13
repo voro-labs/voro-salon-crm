@@ -51,7 +51,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { cn } from "@/lib/utils"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"

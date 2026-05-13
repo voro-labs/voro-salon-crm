@@ -52,7 +52,7 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Badge } from "@/components/ui/badge"
 import { SearchableSelect } from "@/components/ui/custom/searchable-select"

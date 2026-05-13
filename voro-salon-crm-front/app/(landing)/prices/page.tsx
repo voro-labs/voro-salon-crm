@@ -33,8 +33,8 @@ import { getClientBranding, getEstablishmentTypeByHostname } from "@/lib/brandin
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import type { SubscriptionPlanDto, CheckoutResultDto, CouponValidationResultDto, ResolvedPlanPriceDto } from "@/types/subscription.interface"
 import { ModuleInfoDialog } from "@/components/ui/custom/module-info-dialog"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { ColorSchemePicker } from "@/components/color-scheme-picker"
+import { ThemeToggle } from "@/components/ui/custom/theme-toggle"
+import { ColorSchemePicker } from "@/components/ui/custom/color-scheme-picker"
 
 // ── Animation variants ────────────────────────────────────────────────────────
 

@@ -4,12 +4,12 @@ import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
 import './globals.css'
 import { AuthProvider } from '@/contexts/auth.context'
-import { ThemeProvider } from '@/components/theme-provider'
+import { ThemeProvider } from '@/components/providers/theme-provider'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Main } from "@/components/layout/admin/main"
 import { TenantThemeProvider } from "@/contexts/tenant-theme.context"
 import { BrowserNotificationsProvider } from "@/contexts/browser-notifications.context"
-import { WebPushManager } from "@/components/web-push-manager"
+import { WebPushManager } from "@/components/providers/web-push-manager"
 import { Toaster } from "sonner"
 import { getBrandingByHostname } from '@/lib/branding'
 

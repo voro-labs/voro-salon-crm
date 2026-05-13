@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Scissors } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ThemeToggle } from "@/components/ui/custom/theme-toggle"
 
 export function LegalHeader() {
   return (

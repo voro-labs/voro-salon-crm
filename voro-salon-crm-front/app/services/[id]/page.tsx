@@ -53,7 +53,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useServiceDetail } from "@/hooks/use-service-detail.hook"
 import { useSettings } from "@/hooks/use-settings.hook"
