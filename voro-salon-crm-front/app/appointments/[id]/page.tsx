@@ -52,20 +52,11 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Badge } from "@/components/ui/badge"
 import { SearchableSelect } from "@/components/ui/custom/searchable-select"
 import { cn } from "@/lib/utils"
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const remaining = minutes % 60
-  if (remaining === 0) return `${hours}h`
-  return `${hours}h ${remaining}min`
-}
-
 import { format, isPast } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import useSWR from "swr"
@@ -73,6 +64,7 @@ import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { useAppointmentDetail } from "@/hooks/use-appointment-detail.hook"
 import { useSettings } from "@/hooks/use-settings.hook"
+import { formatDuration } from "@/lib/format-utils"
 import { useWhatsApp } from "@/hooks/use-whatsapp.hook"
 import { getServicePlaceholders } from "@/lib/branding"
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"

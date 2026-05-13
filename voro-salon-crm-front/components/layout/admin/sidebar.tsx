@@ -24,7 +24,7 @@ import {
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
 import { toTitleCase } from "@/lib/utils"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ThemeToggle } from "@/components/ui/custom/theme-toggle"
 import {
   Select,
   SelectContent,

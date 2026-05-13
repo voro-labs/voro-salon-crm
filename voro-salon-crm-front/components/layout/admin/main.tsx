@@ -11,10 +11,10 @@ import { Sidebar } from "./sidebar"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 
-import { ThemeToggle } from "../../theme-toggle"
+import { ThemeToggle } from "@/components/ui/custom/theme-toggle"
 import { useBrowserNotifications } from "@/contexts/browser-notifications.context"
 import { useSubscription } from "@/hooks/use-subscription.hook"
-import { SubscriptionPaywall } from "@/components/subscription/subscription-paywall"
+import { SubscriptionPaywall } from "@/components/features/subscription/subscription-paywall"
 
 // Páginas de onboarding obrigatório — o guard não redireciona quando já está nelas
 const ONBOARDING_PATHS = [

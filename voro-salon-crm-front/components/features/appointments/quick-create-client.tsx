@@ -19,7 +19,7 @@ import { flags } from "@/lib/flag-utils"
 import { toast } from "sonner"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { Switch } from "@/components/ui/switch"
-import { AnamnesisForm } from "@/components/anamnesis/anamnesis-form"
+import { AnamnesisForm } from "@/components/features/anamnesis/anamnesis-form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import useSWR from "swr"
 

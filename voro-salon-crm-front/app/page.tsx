@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { MetricCard } from "@/components/metric-card"
+import { MetricCard } from "@/components/ui/custom/metric-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,7 @@ import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay } from
 import { ptBR } from "date-fns/locale"
 
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { formatCurrency } from "@/lib/format-utils"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useWhatsApp } from "@/hooks/use-whatsapp.hook"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
@@ -69,13 +70,6 @@ const MONTH_NAMES: Record<string, string> = {
   Oct: "Out",
   Nov: "Nov",
   Dec: "Dez",
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value)
 }
 
 export default function DashboardPage() {

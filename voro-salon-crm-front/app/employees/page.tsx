@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import Link from "next/link"
-import { Plus, Search, UserCircle, Phone, Calendar, Star, Loader2 } from "lucide-react"
+import { Plus, Search, UserCircle, Phone, Calendar, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,70 +17,7 @@ import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PlanLimitModal } from "@/components/ui/custom/plan-limit-modal"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { useDataList } from "@/hooks/use-data-list.hook"
-
-function AuthenticatedImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!src) {
-      setBlobUrl(null)
-      setLoading(false)
-      return
-    }
-
-    if (!src.includes("blob.vercel-storage.com")) {
-      setBlobUrl(src)
-      setLoading(false)
-      return
-    }
-
-    if (src.startsWith("data:") || src.startsWith("blob:")) {
-      setBlobUrl(src)
-      setLoading(false)
-      return
-    }
-
-    let isMounted = true
-    const fetchSignedUrl = async () => {
-      setLoading(true)
-      try {
-        const proxyUrl = `/api/blob/proxy?url=${encodeURIComponent(src)}`
-        const response = await fetch(proxyUrl)
-        if (!response.ok) throw new Error("Failed to fetch signed URL via proxy")
-        const data = await response.blob()
-        const fileUrl = URL.createObjectURL(data);
-        if (isMounted) setBlobUrl(fileUrl)
-      } catch (err) {
-        console.error("Error fetching signed URL:", err)
-        if (isMounted) setBlobUrl(null)
-      } finally {
-        if (isMounted) setLoading(false)
-      }
-    }
-
-    fetchSignedUrl()
-    return () => { isMounted = false }
-  }, [src])
-
-  if (loading) {
-    return (
-      <div className={`${className} flex items-center justify-center bg-muted/30`}>
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  if (!blobUrl) {
-    return (
-      <div className={`${className} flex items-center justify-center bg-muted/30`}>
-        <UserCircle className="h-6 w-6 text-muted-foreground/50" />
-      </div>
-    )
-  }
-
-  return <img src={blobUrl} alt={alt} className={className} />
-}
+import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 
 export default function EmployeesPage() {
   const router = useRouter()

@@ -16,25 +16,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const remaining = minutes % 60
-  if (remaining === 0) return `${hours}h`
-  return `${hours}h ${remaining}min`
-}
-
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { QuickCreateClient } from "@/components/custom/quick-create-client"
-import { QuickCreateService } from "@/components/custom/quick-create-service"
-import { QuickCreateEmployee } from "@/components/custom/quick-create-employee"
+import { formatDuration } from "@/lib/format-utils"
+import { QuickCreateClient } from "@/components/features/appointments/quick-create-client"
+import { QuickCreateService } from "@/components/features/appointments/quick-create-service"
+import { QuickCreateEmployee } from "@/components/features/appointments/quick-create-employee"
 import { SearchableSelect } from "@/components/ui/custom/searchable-select"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"

@@ -1,13 +1,17 @@
 name: Fly Preview
 
 on:
+  push:
+    branches:
+      - dev
+    paths:
+      - "voro-salon-crm-api/**"
   pull_request:
     branches:
       - main
       - dev
-    paths:
-      - "voro-salon-crm-api/**"
-
+  workflow_dispatch:
+    
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest

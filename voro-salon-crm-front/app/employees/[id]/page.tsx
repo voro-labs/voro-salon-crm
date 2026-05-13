@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useEmployeeDetail } from "@/hooks/use-employee-detail.hook"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { formatCurrency, formatDate } from "@/lib/format-utils"
+import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,28 +47,6 @@ const STATUS_VARIANT: Record<number, string> = {
   3: "bg-green-100 text-green-800",
   4: "bg-red-100 text-red-800",
   5: "bg-gray-100 text-gray-500",
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function AuthenticatedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  if (!src) {
-    return <div className={`${className} flex items-center justify-center bg-muted/30`} />
-  }
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} className={className} />
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "-"
-  const d = new Date(dateStr)
-  return d.toLocaleDateString("pt-BR")
 }
 
 // ---------------------------------------------------------------------------

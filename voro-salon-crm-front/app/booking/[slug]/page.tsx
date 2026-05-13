@@ -18,6 +18,9 @@ import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags } from "@/lib/flag-utils"
 import { cn } from "@/lib/utils"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
+import { formatDuration } from "@/lib/format-utils"
+import { WelcomeCard } from "@/components/features/booking/welcome-card"
+import type { PublicTenant, BusinessHour } from "@/components/features/booking/booking-utils"
 
 type Step = 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'NAME' | 'PHONE' | 'CONFIRM' | 'SUCCESS'
 
@@ -31,87 +34,12 @@ interface SelectedService {
   hasPromotion?: boolean
 }
 
-// ─── Types for public tenant data ────────────────────────────────────────────
-
-interface BusinessHourRange {
-  openTime: string
-  closeTime: string
-}
-
-interface BusinessHour {
-  dayOfWeek: number   // 0 = Sunday … 6 = Saturday
-  isOpen: boolean
-  ranges: BusinessHourRange[]
-}
-
 function isDateClosed(dateStr: string, businessHours?: BusinessHour[]): boolean {
   if (!businessHours || businessHours.length === 0) return false
   const dow = new Date(`${dateStr}T00:00:00`).getDay()
   const dayHours = businessHours.find(h => h.dayOfWeek === dow)
-  if (!dayHours) return true          // dia não configurado = fechado
+  if (!dayHours) return true
   return !dayHours.isOpen
-}
-
-interface PublicTenant {
-  id: string
-  name: string
-  slug: string
-  logoUrl?: string | null
-  coverImageUrl?: string | null
-  primaryColor?: string | null
-  secondaryColor?: string | null
-  contactPhone?: string | null
-  contactEmail?: string | null
-  isBookingEnabled?: boolean
-  establishmentType?: number
-  businessHours?: BusinessHour[]
-  // address fields — any combination may be present
-  street?: string | null
-  neighborhood?: string | null
-  city?: string | null
-  state?: string | null
-  zipCode?: string | null
-  address?: string | null
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const DAY_NAMES_PT: Record<number, string> = {
-  0: "Domingo",
-  1: "Segunda",
-  2: "Terça",
-  3: "Quarta",
-  4: "Quinta",
-  5: "Sexta",
-  6: "Sábado",
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function buildGoogleMapsUrl(tenant: PublicTenant): string | null {
-  // Prefer a pre-composed address field, then assemble from parts
-  const parts: string[] = []
-
-  if (tenant.address) {
-    parts.push(tenant.address)
-  } else {
-    if (tenant.street) parts.push(tenant.street)
-    if (tenant.neighborhood) parts.push(tenant.neighborhood)
-  }
-
-  if (tenant.city) parts.push(tenant.city)
-  if (tenant.state) parts.push(tenant.state)
-  if (tenant.zipCode) parts.push(tenant.zipCode)
-
-  if (parts.length === 0) return null
-
-  const query = encodeURIComponent(`${tenant.name} ${parts.join(", ")}`)
-  return `https://www.google.com/maps/search/?api=1&query=${query}`
-}
-
-function formatTime(t: string): string {
-  // Slice to "HH:mm" whether the string is "HH:mm" or "HH:mm:ss"
-  return t ? t.slice(0, 5) : ""
 }
 
 function getInitials(name: string): string {
@@ -121,81 +49,6 @@ function getInitials(name: string): string {
     .map((w) => w[0])
     .join("")
     .toUpperCase()
-}
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const remaining = minutes % 60
-  if (remaining === 0) return `${hours}h`
-  return `${hours}h ${remaining}min`
-}
-
-// ─── WelcomeCard component ────────────────────────────────────────────────────
-
-function WelcomeCard({ tenant }: { tenant: PublicTenant }) {
-  const mapsUrl = buildGoogleMapsUrl(tenant)
-
-  const sortedHours = tenant.businessHours
-    ? [...tenant.businessHours].sort((a, b) => {
-        // Reorder so Monday (1) comes first, Sunday (0) last
-        const order = [1, 2, 3, 4, 5, 6, 0]
-        return order.indexOf(a.dayOfWeek) - order.indexOf(b.dayOfWeek)
-      })
-    : []
-
-  const hasBusinessHours = sortedHours.length > 0
-
-  return (
-    <div className="rounded-2xl rounded-tl-none border bg-background shadow-sm overflow-hidden w-full">
-      
-
-      <div className="p-4 flex flex-col gap-4">
-        
-        {/* Business hours */}
-        {hasBusinessHours && (
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <Clock className="h-3 w-3" />
-              Horários
-            </div>
-            <div className="grid grid-cols-1 gap-0.5">
-              {sortedHours.map((bh) => (
-                <div key={bh.dayOfWeek} className="flex items-start justify-between text-xs gap-2">
-                  <span className="text-muted-foreground w-16 shrink-0">
-                    {DAY_NAMES_PT[bh.dayOfWeek] ?? `Dia ${bh.dayOfWeek}`}
-                  </span>
-                  {!bh.isOpen || !bh.ranges || bh.ranges.length === 0 ? (
-                    <span className="text-destructive/70 font-medium">Fechado</span>
-                  ) : (
-                    <span className="text-foreground font-medium text-right">
-                      {[...bh.ranges]
-                        .sort((a, b) => a.openTime.localeCompare(b.openTime))
-                        .map((r) => `${formatTime(r.openTime)} – ${formatTime(r.closeTime)}`)
-                        .join(" | ")}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Maps button */}
-        {mapsUrl && (
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
-          >
-            <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-            Ver no Google Maps
-          </a>
-        )}
-      </div>
-    </div>
-  )
 }
 
 interface ChatMessage {
