@@ -2,113 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, BellOff, Calendar, Wallet, Users, Info, Trash2, CheckSquare, Square } from "lucide-react"
+import { BellOff, Trash2 } from "lucide-react"
 import { useUserNotifications, type UserNotification } from "@/hooks/use-user-notifications.hook"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth.context"
-
-function getNotificationIcon(type: string) {
-  switch (type?.toLowerCase()) {
-    case "appointment":
-    case "appointment_created":
-    case "new_appointment":
-    case "status_changed_confirmed":
-    case "status_changed_cancelled":
-    case "status_changed_completed":
-      return Calendar
-    case "payment":
-    case "finance":
-      return Wallet
-    case "client":
-      return Users
-    case "system":
-      return Info
-    default:
-      return Bell
-  }
-}
-
-function getRelativeTime(dateStr: string): string {
-  const now = Date.now()
-  const date = new Date(dateStr).getTime()
-  const diffMs = now - date
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  const diffHour = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHour / 24)
-
-  if (diffSec < 60) return "agora"
-  if (diffMin < 60) return `há ${diffMin} min`
-  if (diffHour < 24) return `há ${diffHour}h`
-  if (diffDay === 1) return "ontem"
-  if (diffDay < 7) return `há ${diffDay} dias`
-  return new Date(dateStr).toLocaleDateString("pt-BR")
-}
-
-function NotificationItem({
-  item,
-  selectionMode,
-  selected,
-  onPress,
-  onLongPress,
-}: {
-  item: UserNotification
-  selectionMode: boolean
-  selected: boolean
-  onPress: (item: UserNotification) => void
-  onLongPress: (item: UserNotification) => void
-}) {
-  const Icon = getNotificationIcon(item.type)
-
-  return (
-    <button
-      onClick={() => onPress(item)}
-      onContextMenu={(e) => { e.preventDefault(); onLongPress(item) }}
-      className={cn(
-        "w-full flex items-start gap-3 px-4 py-4 border-b border-zinc-100 dark:border-zinc-800 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50",
-        !item.isRead && !selectionMode && "bg-blue-50/60 dark:bg-blue-950/20",
-        selected && "bg-primary/10 dark:bg-primary/10",
-      )}
-    >
-      {selectionMode && (
-        <div className="shrink-0 mt-1">
-          {selected
-            ? <CheckSquare size={18} className="text-primary" />
-            : <Square size={18} className="text-zinc-400" />}
-        </div>
-      )}
-
-      <div
-        className={cn(
-          "h-10 w-10 rounded-2xl flex items-center justify-center shrink-0",
-          item.isRead ? "bg-zinc-100 dark:bg-zinc-800" : "bg-primary/10",
-        )}
-      >
-        <Icon size={20} className={item.isRead ? "text-zinc-400" : "text-primary"} />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <p
-          className={cn(
-            "text-sm mb-0.5 truncate",
-            item.isRead
-              ? "font-medium text-zinc-700 dark:text-zinc-300"
-              : "font-bold text-zinc-900 dark:text-zinc-100",
-          )}
-        >
-          {item.title}
-        </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-2">
-          {item.body}
-        </p>
-        <p className="text-[10px] text-zinc-400 mt-1 font-medium">{getRelativeTime(item.createdAt)}</p>
-      </div>
-
-      {!item.isRead && !selectionMode && <div className="h-2 w-2 rounded-full bg-blue-500 mt-2 shrink-0" />}
-    </button>
-  )
-}
+import { NotificationItem } from "@/components/features/notifications/notification-item"
 
 export default function NotificationsPage() {
   const router = useRouter()
