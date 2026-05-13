@@ -18,6 +18,7 @@ import { CountrySelector } from "@/components/ui/custom/country-selector"
 import { flags } from "@/lib/flag-utils"
 import { cn } from "@/lib/utils"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
+import { formatDuration } from "@/lib/format-utils"
 
 type Step = 'SERVICE' | 'PROFESSIONAL' | 'DATETIME' | 'NAME' | 'PHONE' | 'CONFIRM' | 'SUCCESS'
 
@@ -121,14 +122,6 @@ function getInitials(name: string): string {
     .map((w) => w[0])
     .join("")
     .toUpperCase()
-}
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`
-  const hours = Math.floor(minutes / 60)
-  const remaining = minutes % 60
-  if (remaining === 0) return `${hours}h`
-  return `${hours}h ${remaining}min`
 }
 
 // ─── WelcomeCard component ────────────────────────────────────────────────────

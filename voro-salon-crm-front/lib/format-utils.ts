@@ -42,6 +42,21 @@ export function formatDateShort(dateStr?: string): string {
 }
 
 /**
+ * Formata uma string de data ISO com dia, mês por extenso, ano, hora e minuto em pt-BR.
+ * Ex: "17 de maio de 2024 às 14:30".
+ */
+export function formatDateTime(dateStr?: string): string {
+  if (!dateStr) return "-"
+  return new Date(dateStr).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+/**
  * Formata uma string DateOnly (YYYY-MM-DD) em pt-BR sem risco de deslocamento UTC.
  * Use quando a string vem do backend sem componente de hora.
  */
