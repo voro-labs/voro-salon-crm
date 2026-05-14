@@ -1,4 +1,4 @@
-name: Fly Preview
+name: Fly Preview (Dev)
 
 on:
   push:
@@ -6,32 +6,16 @@ on:
       - dev
     paths:
       - "voro-salon-crm-api/**"
-  pull_request:
-    branches:
-      - main
-      - dev
   workflow_dispatch:
-    
+
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
+    concurrency: preview-dev-group
 
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      # ================================================
-      # TOKEN DO GITHUB APP
-      # ================================================
-      - name: Generate GitHub App token
-        id: app-token
-        uses: tibdex/github-app-token@v2
-        with:
-          app_id: ${{ secrets.BOT_APP_ID }}
-          installation_id: ${{ secrets.BOT_INSTALLATION_ID }}
-          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - name: Define preview app name
         id: vars
@@ -106,18 +90,3 @@ jobs:
           flyctl deploy --remote-only -a ${{ steps.vars.outputs.APP_NAME }}
         env:
           FLY_API_TOKEN: ${{ secrets.GLOBAL_FLY_API_TOKEN }}
-
-      # ================================================
-      # COMENTÁRIO USANDO O BOT
-      # ================================================
-      - name: Comment preview URL on PR (Vercel-style)
-        uses: peter-evans/create-or-update-comment@v3
-        with:
-          token: ${{ steps.app-token.outputs.token }} # 👈 USA O BOT
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            **🚀 Preview environment for this PR**
-
-            | Project | Deployment | Preview | Updated (UTC) |
-            |--------|------------|---------|---------------|
-            | `${{ github.event.repository.name }}` | 🟢 Deployed | [Preview](${{ secrets.CORSSETTINGS__ALLOWEDORIGINS__DEVELOPMENT__0 }}) | ${{ github.event.pull_request.updated_at }} |
