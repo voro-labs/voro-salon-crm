@@ -451,7 +451,7 @@ namespace VoroSalonCrm.Application.Services
                 appointment.ServiceId,
                 appointment.Id,
                 appointment.ScheduledDateTime,
-                appointment.Description ?? "Serviço via agendamento",
+                appointment.Service?.Name ?? appointment.Description ?? "Serviço",
                 appointment.Amount,
                 $"Agendamento ID: {appointment.Id}\nNotas: {appointment.Notes}"
             );
