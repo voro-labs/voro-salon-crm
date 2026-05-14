@@ -14,13 +14,18 @@ export function generateIdempotencyKey(): string {
 const idempotencyKeyCache = new Map<string, string>()
 
 /**
- * Gera um hash simples do corpo da requisição.
- * Usado para detectar se a mesma ação está sendo retentada.
+ * Gera um hash do corpo da requisição usando DJB2 XOR.
+ * Cobre o body completo e suporta caracteres não-ASCII (acentos, etc).
  */
 function hashRequestBody(body: unknown): string {
   if (!body) return "empty"
   const bodyStr = typeof body === "string" ? body : JSON.stringify(body)
-  return btoa(bodyStr).slice(0, 16) // Primeiros 16 chars de base64
+  let hash = 5381
+  for (let i = 0; i < bodyStr.length; i++) {
+    hash = ((hash << 5) + hash) ^ bodyStr.charCodeAt(i)
+    hash = hash >>> 0 // unsigned 32-bit
+  }
+  return hash.toString(36)
 }
 
 /**
