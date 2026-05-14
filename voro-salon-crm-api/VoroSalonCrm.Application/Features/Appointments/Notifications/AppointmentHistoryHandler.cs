@@ -18,7 +18,7 @@ public class AppointmentHistoryHandler(IServiceRecordService serviceRecordServic
             ServiceId:     notification.ServiceId,
             AppointmentId: notification.AppointmentId,
             ServiceDate:   notification.ScheduledAt,
-            Description:   notification.Description ?? "Serviço via agendamento",
+            Description:   notification.ServiceName ?? notification.Description ?? "Serviço",
             Amount:        notification.Amount,
             Notes:         $"Agendamento ID: {notification.AppointmentId}"));
     }
