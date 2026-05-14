@@ -18,6 +18,11 @@ public class AppointmentTransactionHandler(
         if (notification.Amount <= 0)
             return;
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+        var appointmentDate = DateOnly.FromDateTime(notification.ScheduledAt.UtcDateTime.AddHours(-3));
+        if (appointmentDate < today)
+            return;
+
         // Idempotência: evita duplicata se a notificação for publicada mais de uma vez
         var appointmentIdStr = notification.AppointmentId.ToString();
         var incomeExists = await transactionRepository

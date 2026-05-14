@@ -18,6 +18,11 @@ public class AppointmentCommissionHandler(
         if (!notification.EmployeeId.HasValue || notification.Amount <= 0)
             return;
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+        var appointmentDate = DateOnly.FromDateTime(notification.ScheduledAt.UtcDateTime.AddHours(-3));
+        if (appointmentDate < today)
+            return;
+
         var employee = await employeeRepository.GetByIdAsync(true, notification.EmployeeId.Value);
         if (employee?.CommissionPercentage is not > 0)
             return;
