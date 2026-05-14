@@ -35,17 +35,26 @@ public class UpdateAppointmentStatusCommandHandler(
 
         if (oldStatus != AppointmentStatus.Completed && request.Status == AppointmentStatus.Completed)
         {
-            await mediator.Publish(new AppointmentCompletedNotification(
-                AppointmentId : appointment.Id,
-                TenantId      : appointment.TenantId,
-                ClientId      : appointment.ClientId,
-                ServiceId     : appointment.ServiceId,
-                EmployeeId    : appointment.EmployeeId,
-                Amount        : appointment.Amount,
-                ScheduledAt   : appointment.ScheduledDateTime,
-                ServiceName   : appointment.Service?.Name,
-                ClientName    : appointment.Client?.Name,
-                Description   : appointment.Description), cancellationToken);
+            // Só gera lançamento financeiro automático para agendamentos de hoje em diante.
+            // Agendamentos com data passada marcados como concluídos são entradas retroativas
+            // e não devem gerar lançamento automático para evitar duplicidade.
+            var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+            var appointmentDate = DateOnly.FromDateTime(appointment.ScheduledDateTime.UtcDateTime.AddHours(-3));
+
+            if (appointmentDate >= today)
+            {
+                await mediator.Publish(new AppointmentCompletedNotification(
+                    AppointmentId : appointment.Id,
+                    TenantId      : appointment.TenantId,
+                    ClientId      : appointment.ClientId,
+                    ServiceId     : appointment.ServiceId,
+                    EmployeeId    : appointment.EmployeeId,
+                    Amount        : appointment.Amount,
+                    ScheduledAt   : appointment.ScheduledDateTime,
+                    ServiceName   : appointment.Service?.Name,
+                    ClientName    : appointment.Client?.Name,
+                    Description   : appointment.Description), cancellationToken);
+            }
         }
         else if (oldStatus == AppointmentStatus.Completed &&
             (request.Status == AppointmentStatus.Pending || request.Status == AppointmentStatus.Cancelled))

@@ -62,7 +62,8 @@ public class UpdateAppointmentStatusCommandHandlerTests
         {
             Id = Guid.NewGuid(), TenantId = Guid.NewGuid(),
             ClientId = Guid.NewGuid(),
-            Status = AppointmentStatus.Confirmed, Amount = 100m
+            Status = AppointmentStatus.Confirmed, Amount = 100m,
+            ScheduledDateTime = DateTimeOffset.UtcNow
         };
         SetupAppointmentRepo(appointment);
 
