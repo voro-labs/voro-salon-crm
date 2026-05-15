@@ -16,7 +16,7 @@ export class ClientsPage {
   }
 
   async clickNewClient() {
-    await this.page.getByRole('link', { name: /novo|criar|adicionar/i }).first().click()
+    await this.page.getByRole('button', { name: /novo cliente|adicionar cliente/i }).first().click()
   }
 
   async expectNewClientPage() {
