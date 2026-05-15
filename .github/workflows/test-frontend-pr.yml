@@ -36,6 +36,9 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
+      - name: Prepare auth directory
+        run: mkdir -p e2e/fixtures/.auth
+
       - name: Run Playwright tests
         run: npx playwright test
         env:

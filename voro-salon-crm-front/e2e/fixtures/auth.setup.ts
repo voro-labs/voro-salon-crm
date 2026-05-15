@@ -1,9 +1,11 @@
 import { test as setup } from '@playwright/test'
+import fs from 'fs'
 import path from 'path'
 
 const authFile = path.join(__dirname, '.auth/user.json')
 
 setup('autenticar usuário de teste', async ({ page }) => {
+  fs.mkdirSync(path.dirname(authFile), { recursive: true })
   const email = process.env.TEST_EMAIL
   const password = process.env.TEST_PASSWORD
 
