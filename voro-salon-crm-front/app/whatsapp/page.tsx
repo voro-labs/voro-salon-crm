@@ -7,7 +7,7 @@ import useSWR from "swr"
 import {
   MessageCircle, RefreshCw, Loader2, User, Send, X,
   CheckCircle, AlertCircle, ExternalLink, ChevronLeft, ChevronRight, Settings2,
-  MessageSquare, Trash2,
+  MessageSquare, Trash2, WifiOff,
 } from "lucide-react"
 import { formatDistanceToNow, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -542,7 +542,17 @@ export default function WhatsAppPage() {
     API_CONFIG.ENDPOINTS.EVOLUTION_INSTANCES,
     fetcher
   )
+  const { data: onboardingStatus, error: onboardingError } = useSWR<{ connected: boolean }>(
+    API_CONFIG.ENDPOINTS.WHATSAPP_ONBOARDING_STATUS,
+    fetcher
+  )
   const evolutionConnected = (evolutionInstances ?? []).some((i) => i.status === 2)
+  const metaConnected = onboardingStatus?.connected === true
+  const hasActiveConnection = evolutionConnected || metaConnected
+  const connectionChecked =
+    tenant !== undefined &&
+    evolutionInstances !== undefined &&
+    (onboardingStatus !== undefined || onboardingError !== undefined)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [chatHeight, setChatHeight] = useState(0)
 
@@ -565,7 +575,7 @@ export default function WhatsAppPage() {
       cancelAnimationFrame(id)
       window.removeEventListener("resize", updateHeight)
     }
-  }, [tenant, evolutionInstances])
+  }, [tenant, evolutionInstances, onboardingStatus])
 
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
