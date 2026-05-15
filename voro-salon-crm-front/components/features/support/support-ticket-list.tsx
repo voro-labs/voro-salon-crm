@@ -75,7 +75,7 @@ export function SupportTicketList({
                 key={ticket.id}
                 type="button"
                 onClick={() => onSelect(ticket)}
-                aria-selected={isSelected}
+                aria-pressed={isSelected}
                 className={cn(
                   "w-full text-left p-3 border-b transition-colors flex flex-col gap-1.5 border-l-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                   isSelected
