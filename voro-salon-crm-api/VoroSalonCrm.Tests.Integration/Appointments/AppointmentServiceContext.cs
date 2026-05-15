@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using MediatR;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using VoroSalonCrm.Application.DTOs.CRM;
@@ -38,6 +39,7 @@ internal sealed class AppointmentServiceContext
     public Mock<ITransactionCategoryRepository>    TransactionCategoryRepo { get; } = new();
     public IMemoryCache                            MemoryCache             { get; } = new MemoryCache(new MemoryCacheOptions());
     public Mock<ICacheService>                     CacheService            { get; } = new();
+    public Mock<IMediator>                         Mediator                { get; } = new();
 
     public AppointmentServiceContext()
     {
@@ -177,5 +179,6 @@ internal sealed class AppointmentServiceContext
         TransactionRepo.Object,
         TransactionCategoryRepo.Object,
         MemoryCache,
-        CacheService.Object);
+        CacheService.Object,
+        Mediator.Object);
 }

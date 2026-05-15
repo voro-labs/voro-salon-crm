@@ -38,6 +38,7 @@ import {
 } from "@/types/anamnesis.types"
 import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { formatPhone } from "@/lib/mask-utils"
+import { formatDateTime } from "@/lib/format-utils"
 
 export default function AnamnesisDetailPage() {
   const params = useParams()
@@ -127,16 +128,6 @@ export default function AnamnesisDetailPage() {
 
   const sectionsInForm = Array.from(new Set(questions?.map(q => q.section) || [])) as AnamnesisSection[]
   sectionsInForm.sort((a, b) => a - b)
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    })
-  }
 
   const handlePrint = () => {
     window.print()
@@ -228,7 +219,7 @@ export default function AnamnesisDetailPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data da Avaliação</p>
-                <p className="text-lg font-bold">{formatDate(anamnesis.date)}</p>
+                <p className="text-lg font-bold">{formatDateTime(anamnesis.date)}</p>
               </div>
             </CardContent>
           </Card>
@@ -389,7 +380,7 @@ export default function AnamnesisDetailPage() {
                 </div>
                 <div className="text-center">
                   <p className="font-bold text-sm uppercase">{sig.type === 1 ? "Assinatura do Cliente" : "Assinatura do Profissional"}</p>
-                  <p className="text-[10px] text-muted-foreground italic">Assinado digitalmente em {formatDate(anamnesis.date)}</p>
+                  <p className="text-[10px] text-muted-foreground italic">Assinado digitalmente em {formatDateTime(anamnesis.date)}</p>
                 </div>
               </div>
             ))}
@@ -400,7 +391,7 @@ export default function AnamnesisDetailPage() {
         <div className="hidden print:flex flex-col items-center justify-center mt-20 text-center gap-2">
           <Separator className="w-64" />
           <p className="text-[10px] text-muted-foreground">
-            Documento gerado pelo sistema Voro Salon CRM em {formatDate(new Date().toISOString())}
+            Documento gerado pelo sistema Voro Salon CRM em {formatDateTime(new Date().toISOString())}
           </p>
         </div>
       </div>

@@ -1,4 +1,5 @@
 using VoroSalonCrm.Application.Services.Interfaces.Email;
+using VoroSalonCrm.Shared.ViewModels;
 
 namespace VoroSalonCrm.API.Middlewares
 {
@@ -62,7 +63,9 @@ namespace VoroSalonCrm.API.Middlewares
                 });
 
                 context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { message = "An unexpected error occurred." });
+                context.Response.ContentType = "application/json";
+                var errorResponse = ResponseViewModel<object>.Fail("Ocorreu um erro inesperado.", status: 500);
+                await context.Response.WriteAsJsonAsync(errorResponse);
             }
         }
     }

@@ -1,6 +1,8 @@
 using FluentAssertions;
+using MediatR;
 using Moq;
 using VoroSalonCrm.Application.DTOs.Subscription;
+using VoroSalonCrm.Application.Features.Subscription.Commands;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 
@@ -131,9 +133,13 @@ public class SubscriptionServiceTests
     {
         var ctx = new SubscriptionServiceContext();
         var id  = Guid.NewGuid();
-        ctx.SubscriptionRepo
-            .Setup(r => r.GetByIdAsync(It.IsAny<bool>(), id))
-            .ReturnsAsync((TenantSubscription?)null);
+
+        // CancelAsync now delegates to IMediator — the handler throws when subscription
+        // is not found. Set up the mediator mock to propagate that behaviour.
+        ctx.Mediator
+            .Setup(m => m.Send(It.IsAny<CancelSubscriptionCommand>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Assinatura não encontrada."));
+
         var svc = ctx.Build();
 
         var act = () => svc.CancelAsync(id);

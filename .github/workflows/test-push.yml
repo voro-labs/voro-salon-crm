@@ -1,0 +1,85 @@
+name: Run Tests (Push)
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "voro-salon-crm-api/**"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore dependencies
+        run: |
+          cd ${{ secrets.FOLDER__API }}
+          dotnet restore
+
+      - name: Build solution
+        run: |
+          cd ${{ secrets.FOLDER__API }}
+          dotnet build --no-restore --configuration Release
+
+      - name: Run tests
+        id: run-tests
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/test_results
+          cd ${{ secrets.FOLDER__API }}
+          dotnet test --no-build --configuration Release --verbosity normal \
+            --logger "trx" \
+            --results-directory /tmp/test_results \
+            2>&1 | tee /tmp/test_output.txt
+          echo "test_exit=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+
+      - name: Parse test results
+        id: results
+        run: |
+          PASSED=0
+          FAILED=0
+          TOTAL=0
+
+          for f in /tmp/test_results/*.trx; do
+            [ -f "$f" ] || continue
+            LINE=$(grep '<Counters' "$f")
+            P=$(echo "$LINE" | grep -oP 'passed="\K[0-9]+')
+            F=$(echo "$LINE" | grep -oP 'failed="\K[0-9]+')
+            T=$(echo "$LINE" | grep -oP 'total="\K[0-9]+')
+            PASSED=$((PASSED + ${P:-0}))
+            FAILED=$((FAILED + ${F:-0}))
+            TOTAL=$((TOTAL + ${T:-0}))
+          done
+
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Results — \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | Status | Results | Commit |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.run-tests.outcome }}" = "success" ]; then
+            echo "| \`${{ github.ref_name }}\` | 🟢 Passed | ${{ steps.results.outputs.passed }}/${{ steps.results.outputs.total }} | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| \`${{ github.ref_name }}\` | 🔴 Failed | ${{ steps.results.outputs.passed }}/${{ steps.results.outputs.total }} passed, ${{ steps.results.outputs.failed }} failed | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail workflow if tests failed
+        if: steps.run-tests.outcome == 'failure'
+        run: |
+          echo "❌ Tests failed on branch '${{ github.ref_name }}' at commit ${{ github.sha }}"
+          exit 1

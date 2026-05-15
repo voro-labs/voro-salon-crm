@@ -53,7 +53,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { useServiceDetail } from "@/hooks/use-service-detail.hook"
 import { useSettings } from "@/hooks/use-settings.hook"
@@ -62,6 +62,7 @@ import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { cn } from "@/lib/utils"
 import { authenticatedApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
+import { formatCurrency, formatDateOnly } from "@/lib/format-utils"
 
 // ---------------------------------------------------------------------------
 // Types & constants
@@ -102,19 +103,9 @@ const DAY_LABELS: Record<number, string> = {
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
 const PROMOTIONS_ENDPOINT = "/ServicePromotion"
 
-function formatCurrency(val: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val)
-}
-
 function formatDiscount(original: number, promotional: number): string {
   if (original <= 0) return ""
   return `-${Math.round(((original - promotional) / original) * 100)}%`
-}
-
-function formatDateOnly(iso?: string): string {
-  if (!iso) return ""
-  const [y, m, d] = iso.split("-").map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString("pt-BR")
 }
 
 function toDateOnly(date: Date): string {

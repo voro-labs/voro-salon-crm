@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using AutoMapper;
+using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.Auth;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.DTOs.Identity;
+using VoroSalonCrm.Application.Features.Auth.Commands;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Domain.Entities;
@@ -31,8 +33,9 @@ namespace VoroSalonCrm.Application.Services
         Domain.Interfaces.UnitOfWork.IUnitOfWork unitOfWork,
         ITenantRepository tenantRepository, IUserTenantRepository userTenantRepository,
         UserManager<User> userManager, IDemoResetService demoResetService,
-        ITenantBusinessHoursRepository tenantBusinessHoursRepository) : IAuthService
+        ITenantBusinessHoursRepository tenantBusinessHoursRepository, IMediator mediator) : IAuthService
     {
+        private readonly IMediator _mediator = mediator;
         private readonly INotificationService _notificationService = notificationService;
         private readonly CookieUtil _cookieUtil = cookieUtil.Value;
         private readonly IUserService _userService = userService;
@@ -47,52 +50,12 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
+            var result = await _mediator.Send(new SignInCommand(signInDto));
+            if (result is not null)
+                return result;
+
+            // 2FA disabled: direct JWT generation (kept here — handler returned null)
             var (user, rolesNames) = await _userService.GetByEmailAndPassword(signInDto.Email, signInDto.Password);
-
-            if (user.TwoFactorEnabled)
-            {
-                // Gerar código 2FA
-                var (code, pendingToken) = await _userService.GenerateTwoFactorCodeAsync(user.Id);
-
-                var userName = !string.IsNullOrEmpty(user.FirstName)
-                    ? $"{user.FirstName} {user.LastName}".Trim()
-                    : user.UserName ?? string.Empty;
-
-                var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
-                                 ?? user.UserTenants?.FirstOrDefault()?.Tenant;
-
-                // Validar tipo de estabelecimento antes de enviar o 2FA
-                if (signInDto.EstablishmentType.HasValue && primaryTenant != null &&
-                    (int)primaryTenant.EstablishmentType != signInDto.EstablishmentType.Value)
-                {
-                    throw new UnauthorizedAccessException(
-                        "Credenciais inválidas para este endereço de acesso.");
-                }
-
-                // Enviar apenas para método de comunicação confirmado
-                if (user.EmailConfirmed)
-                {
-                    var isReviewer = ReviewerConstants.IsReviewer(user.Email);
-                    
-                    if (!isReviewer)
-                        await _notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
-                }
-                // Futuramente: else if (user.PhoneNumberConfirmed) → enviar via SMS
-                else
-                {
-                    throw new UnauthorizedAccessException(
-                        "É necessário confirmar seu e-mail para fazer login. Verifique sua caixa de entrada.");
-                }
-
-                return new AuthDto
-                {
-                    TwoFactorEnabled = true,
-                    RequiresTwoFactor = true,
-                    TwoFactorPendingToken = pendingToken
-                };
-            }
-
-            // 2FA desabilitado: login direto
             return await GenerateAuthDtoAsync(user, rolesNames);
         }
 
@@ -169,23 +132,10 @@ namespace VoroSalonCrm.Application.Services
         }
 
         public async Task ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
-        {
-            var (user, token) = await _userService.GenerateForgotPasswordAsync(forgotPasswordDto);
-
-            var userName = !string.IsNullOrEmpty(user.FirstName) ? $"{user.FirstName} {user.LastName}" : $"{user.UserName}";
-
-            var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
-                             ?? user.UserTenants?.FirstOrDefault()?.Tenant;
-
-            await _notificationService.SendResetLinkAsync($"{user.Email}", userName, WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token)), primaryTenant, forgotPasswordDto.RedirectUri);
-        }
+            => await _mediator.Send(new ForgotPasswordCommand(forgotPasswordDto));
 
         public async Task<bool> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
-        {
-            var reseted = await _userService.ResetPasswordAsync(resetPasswordDto);
-
-            return reseted;
-        }
+            => await _mediator.Send(new ResetPasswordCommand(resetPasswordDto));
 
         public async Task ChangePasswordAsync(Guid userId, string newPassword)
             => await _userService.ChangePasswordAsync(userId, newPassword);

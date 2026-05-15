@@ -30,7 +30,7 @@ import { ptBR } from "date-fns/locale"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
-import { BlockTimeSlotDialog } from "@/components/custom/block-time-slot-dialog"
+import { BlockTimeSlotDialog } from "@/components/features/appointments/block-time-slot-dialog"
 
 interface TimeSlotBlock {
   id: string

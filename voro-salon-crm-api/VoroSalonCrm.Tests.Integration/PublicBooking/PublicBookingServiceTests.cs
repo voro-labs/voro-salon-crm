@@ -1,6 +1,9 @@
 using FluentAssertions;
+using MediatR;
 using Moq;
 using VoroSalonCrm.Application.DTOs.Public;
+using VoroSalonCrm.Application.Features.PublicBooking.Commands;
+using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
 
 namespace VoroSalonCrm.Tests.Integration.PublicBooking;
@@ -66,20 +69,13 @@ public class PublicBookingServiceTests
         ctx.TenantRepo.Verify(r => r.GetBySlugAsync(It.IsAny<string>()), Times.Never);
     }
 
-    // ── CreateBookingAsync ─────────────────────────────────────────────────────
+    // ── CreateBookingAsync — façade delegates to MediatR ──────────────────────
 
     [Fact]
     public async Task CreateBooking_ReturnsFailure_WhenTenantNotFound()
     {
         // Arrange
         var ctx = new PublicBookingServiceContext();
-
-        ctx.TenantRepo
-            .Setup(r => r.GetBySlugAsync(It.IsAny<string>()))
-            .ReturnsAsync((Tenant?)null);
-
-        var svc = ctx.Build();
-
         var dto = new PublicBookingCreateDto
         {
             TenantSlug        = "nonexistent",
@@ -88,12 +84,19 @@ public class PublicBookingServiceTests
             ScheduledDateTime = DateTimeOffset.UtcNow.AddDays(1),
         };
 
+        ctx.Mediator
+            .Setup(m => m.Send(It.IsAny<CreateBookingCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PublicBookingResponseDto(false, "Estabelecimento não encontrado.", null));
+
+        var svc = ctx.Build();
+
         // Act
         var result = await svc.CreateBookingAsync(dto);
 
         // Assert
         result.Success.Should().BeFalse();
         result.Message.Should().Contain("não encontrado");
+        ctx.Mediator.Verify(m => m.Send(It.IsAny<CreateBookingCommand>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -101,24 +104,7 @@ public class PublicBookingServiceTests
     {
         // Arrange
         var ctx = new PublicBookingServiceContext();
-        var tenantId  = Guid.NewGuid();
         var serviceId = Guid.NewGuid();
-
-        ctx.TenantRepo
-            .Setup(r => r.GetBySlugAsync("meu-salao"))
-            .ReturnsAsync(new Tenant
-            {
-                Id        = tenantId,
-                Name      = "Meu Salão",
-                Slug      = "meu-salao",
-                IsActive  = true,
-            });
-
-        ctx.ServiceRepo
-            .Setup(r => r.GetPublicByIdAsync(tenantId, serviceId))
-            .ReturnsAsync((Service?)null);
-
-        var svc = ctx.Build();
 
         var dto = new PublicBookingCreateDto
         {
@@ -129,11 +115,18 @@ public class PublicBookingServiceTests
             ScheduledDateTime = DateTimeOffset.UtcNow.AddDays(1),
         };
 
+        ctx.Mediator
+            .Setup(m => m.Send(It.IsAny<CreateBookingCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PublicBookingResponseDto(false, $"Serviço não encontrado: {serviceId}.", null));
+
+        var svc = ctx.Build();
+
         // Act
         var result = await svc.CreateBookingAsync(dto);
 
         // Assert
         result.Success.Should().BeFalse();
         result.Message.Should().Contain("Serviço não encontrado");
+        ctx.Mediator.Verify(m => m.Send(It.IsAny<CreateBookingCommand>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
