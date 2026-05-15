@@ -122,7 +122,7 @@ const navItems = [
     title: "Suporte",
     href: "/support",
     icon: LifeBuoy,
-    roles: ["SalonOwner", "Owner", "SalonEmployee"]
+    roles: ["SalonOwner", "SalonEmployee", "Owner"]
   },
   {
     title: "Configurações",

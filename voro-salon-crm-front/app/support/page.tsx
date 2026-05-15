@@ -37,7 +37,7 @@ export default function SupportPage() {
   }
 
   return (
-    <AuthGuard requiredRoles={["SalonOwner", "Owner", "SalonEmployee"]}>
+    <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {!activeTicket ? (
           <SupportPrechat onStart={handleStart} />
