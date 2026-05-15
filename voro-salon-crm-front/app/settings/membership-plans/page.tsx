@@ -39,9 +39,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { AuthGuard } from "@/components/auth/auth.guard"
-import { CurrencyInput } from "@/components/currency-input"
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
 import { toast } from "sonner"
 import { API_CONFIG, authenticatedApiCall } from "@/lib/api"
+import { formatCurrency } from "@/lib/format-utils"
 
 interface MembershipPlan {
   id: string
@@ -62,10 +63,6 @@ const defaultForm = {
   durationDays: 30,
   isActive: true,
   unlimitedSessions: false,
-}
-
-function formatCurrency(val: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val)
 }
 
 function fetcher(url: string) {

@@ -18,6 +18,9 @@ namespace VoroSalonCrm.Domain.Entities
         /// <summary>JSON serializado dos labels dos parâmetros.</summary>
         public string? ParamLabelsJson { get; set; }
 
+        /// <summary>Corpo da mensagem com placeholders {{1}}, {{2}}... para renderização pelo Evolution Go.</summary>
+        public string? Body { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

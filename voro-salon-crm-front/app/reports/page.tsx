@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { formatCurrency } from "@/lib/format-utils"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
 import { cn } from "@/lib/utils"
 
@@ -49,9 +50,6 @@ export default function ReportsPage() {
     return format(date, "MMMM 'de' yyyy", { locale: ptBR })
   }, [selectedMonth])
 
-  const formatCurrency = (value: number) =>
-    Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-
   const handleBarClick = (monthKey: string) => {
     setSelectedMonth((prev) => (prev === monthKey ? null : monthKey))
   }
@@ -90,7 +88,7 @@ export default function ReportsPage() {
                           key={m.month}
                           onClick={() => handleBarClick(m.month)}
                           className={cn(
-                            "flex-1 rounded-t min-h-[4px] transition-all cursor-pointer focus:outline-none",
+                            "flex-1 rounded-t min-h-1 transition-all cursor-pointer focus:outline-none",
                             isSelected
                               ? "bg-primary ring-2 ring-primary ring-offset-1"
                               : hasSelection

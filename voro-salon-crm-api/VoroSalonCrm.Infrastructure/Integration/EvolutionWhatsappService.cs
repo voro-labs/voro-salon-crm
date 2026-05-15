@@ -23,6 +23,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
         private readonly ICurrentUserService _currentUser;
         private readonly IWhatsAppMessageService _messageService;
         private readonly ITenantEvolutionInstanceRepository _instanceRepository;
+        private readonly IWhatsAppTemplateRepository _templateRepository;
 
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
@@ -35,7 +36,8 @@ namespace VoroSalonCrm.Infrastructure.Integration
             ILogger<EvolutionWhatsappService> logger,
             ICurrentUserService currentUser,
             IWhatsAppMessageService messageService,
-            ITenantEvolutionInstanceRepository instanceRepository)
+            ITenantEvolutionInstanceRepository instanceRepository,
+            IWhatsAppTemplateRepository templateRepository)
         {
             _config = integrationUtil.Value.Whatsapp;
             _http = httpClientFactory.CreateClient("evolution-go");
@@ -43,6 +45,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
             _currentUser = currentUser;
             _messageService = messageService;
             _instanceRepository = instanceRepository;
+            _templateRepository = templateRepository;
         }
 
         public async Task<bool> SendTextMessageAsync(
@@ -75,16 +78,45 @@ namespace VoroSalonCrm.Infrastructure.Integration
             string? phoneIdOverride = null,
             CancellationToken ct = default)
         {
-            // Evolution Go não suporta templates Meta — converte para texto plano.
-            var textParams = message.Template.Components?
+            var bodyParams = message.Template.Components?
                 .Where(c => c.Type == "body")
                 .SelectMany(c => c.Parameters)
                 .Where(p => !string.IsNullOrWhiteSpace(p.Text))
                 .Select(p => p.Text!)
                 .ToList() ?? new List<string>();
 
-            var text = textParams.Count > 0
-                ? $"[{message.Template.Name}] " + string.Join(" · ", textParams)
+            string text;
+
+            // Tenta buscar o corpo do template cadastrado para renderização correta
+            var tenantId = _currentUser.TenantId;
+            if (tenantId != Guid.Empty)
+            {
+                try
+                {
+                    var templates = await _templateRepository.GetAllAsync(t =>
+                        (t.TenantId == tenantId || t.TenantId == Guid.Empty) &&
+                        t.Name == message.Template.Name &&
+                        t.Body != null);
+
+                    var template = templates.FirstOrDefault();
+                    if (template?.Body != null)
+                    {
+                        text = template.Body;
+                        for (int i = 0; i < bodyParams.Count; i++)
+                            text = text.Replace($"{{{{{i + 1}}}}}", bodyParams[i]);
+
+                        return await SendTextMessageAsync(message.To, text, phoneIdOverride, ct);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Falha ao buscar corpo do template '{Name}'. Usando fallback.", message.Template.Name);
+                }
+            }
+
+            // Fallback: lista de parâmetros separada por nova linha
+            text = bodyParams.Count > 0
+                ? string.Join("\n", bodyParams)
                 : $"[{message.Template.Name}]";
 
             return await SendTextMessageAsync(message.To, text, phoneIdOverride, ct);

@@ -1553,6 +1553,75 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.ToTable("SubscriptionPlans");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.SupportMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AttachmentUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.Property<bool>("IsFromSupport")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("SupportMessages");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.SupportTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("TIMEZONE('utc', NOW())");
+
+                    b.Property<bool>("IsUrgent")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SupportTickets");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2318,6 +2387,10 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Body")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2775,6 +2848,17 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.SupportMessage", b =>
+                {
+                    b.HasOne("VoroSalonCrm.Domain.Entities.SupportTicket", "Ticket")
+                        .WithMany("Messages")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Ticket");
+                });
+
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.TenantBusinessHours", b =>
                 {
                     b.HasOne("VoroSalonCrm.Domain.Entities.Tenant", "Tenant")
@@ -3023,6 +3107,11 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                     b.Navigation("UserRoles");
 
                     b.Navigation("UserTenants");
+                });
+
+            modelBuilder.Entity("VoroSalonCrm.Domain.Entities.SupportTicket", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("VoroSalonCrm.Domain.Entities.Tenant", b =>

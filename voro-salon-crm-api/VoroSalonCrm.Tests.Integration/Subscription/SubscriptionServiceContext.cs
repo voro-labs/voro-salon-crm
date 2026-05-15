@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ internal sealed class SubscriptionServiceContext
     public Mock<IAuthService>                    AuthService         { get; } = new();
     public Mock<IUnitOfWork>                     UnitOfWork          { get; } = new();
     public Mock<ILogger<SubscriptionService>>    Logger              { get; } = new();
+    public Mock<IMediator>                       Mediator            { get; } = new();
 
     public SubscriptionServiceContext()
     {
@@ -55,5 +57,6 @@ internal sealed class SubscriptionServiceContext
         HostEnv.Object,
         AuthService.Object,
         UnitOfWork.Object,
-        Logger.Object);
+        Logger.Object,
+        Mediator.Object);
 }

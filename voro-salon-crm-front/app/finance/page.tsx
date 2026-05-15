@@ -23,7 +23,7 @@ import { ptBR } from "date-fns/locale"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { ExportMenu } from "@/components/ui/custom/export-menu"
-import { PdfStatementImport } from "@/components/finance/pdf-statement-import"
+import { PdfStatementImport } from "@/components/features/finance/pdf-statement-import"
 import {
   Dialog,
   DialogContent,
@@ -64,13 +64,8 @@ import { useTransactionCategories } from "@/hooks/use-transaction-categories.hoo
 import { useServiceRecords } from "@/hooks/use-service-records.hook"
 import { ServiceRecordDto } from "@/types/DTOs/service-record.interface"
 import { Loader2, MoreHorizontal, CheckCircle, Ban, Trash2 } from "lucide-react"
-import { CurrencyInput } from "@/components/currency-input"
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value)
-}
+import { CurrencyInput } from "@/components/ui/custom/currency-input"
+import { formatCurrency } from "@/lib/format-utils"
 
 const getStatusBadge = (status: TransactionStatus) => {
   switch (status) {

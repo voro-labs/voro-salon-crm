@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 
 import { API_CONFIG } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
+import { formatCurrency, formatDuration } from "@/lib/format-utils"
 import { AuthGuard } from "@/components/auth/auth.guard"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { useDataList } from "@/hooks/use-data-list.hook"
@@ -32,20 +33,6 @@ interface ServicePromotion {
   isActive: boolean
 }
 
-function formatCurrency(val: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(val)
-}
-
-function formatDuration(minutes: number): string {
-  if (!minutes) return ""
-  if (minutes < 60) return `${minutes} min`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m > 0 ? `${h}h ${m}min` : `${h}h`
-}
 
 function getActivePromotion(serviceId: string, promotions: ServicePromotion[]): ServicePromotion | null {
   const now = new Date()

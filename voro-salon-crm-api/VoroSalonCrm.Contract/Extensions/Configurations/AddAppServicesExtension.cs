@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VoroSalonCrm.Application.Services;
@@ -168,6 +169,9 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<IEvolutionTemplateService, EvolutionTemplateService>();
             services.AddScoped<IEvolutionService, EvolutionService>();
             services.AddScoped<IEvolutionBookingChatService, EvolutionBookingChatService>();
+            services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+            services.AddScoped<ISupportMessageRepository, SupportMessageRepository>();
+            services.AddScoped<ISupportService, SupportService>();
             #endregion
 
             services.AddHostedService<AppointmentReminderBackgroundService>();
@@ -175,6 +179,10 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddHostedService<ExpiredCheckoutCleanupJob>();
             services.AddHostedService<ExpiredPendingPlanChangeCleanupJob>();
             services.AddHostedService<EvolutionResponseWorker>();
+
+            services.AddMediatR(cfg =>
+                cfg.RegisterServicesFromAssembly(
+                    typeof(VoroSalonCrm.Application.Services.AppointmentService).Assembly));
 
             return services;
         }
