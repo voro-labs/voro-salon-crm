@@ -9,6 +9,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         string Label,
         int ParamsCount,
         string[]? ParamLabels,
+        string? Body,
         bool IsActive,
         DateTimeOffset CreatedAt
     );
@@ -18,6 +19,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         [Required][StringLength(200)] string Label,
         int ParamsCount,
         string[]? ParamLabels,
+        string? Body,
         bool IsActive = true
     );
 
@@ -26,6 +28,7 @@ namespace VoroSalonCrm.Application.DTOs.Integration
         [StringLength(200)] string? Label,
         int? ParamsCount,
         string[]? ParamLabels,
+        string? Body,
         bool? IsActive
     );
 }

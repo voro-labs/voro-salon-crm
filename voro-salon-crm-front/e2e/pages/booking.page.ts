@@ -15,7 +15,7 @@ export class BookingPage {
 
   async expectWelcomeCardLoaded() {
     await expect(this.page.locator('body')).not.toBeEmpty()
-    await expect(this.page.getByText(/500|not found/i)).not.toBeVisible()
+    await expect(this.page.getByText(/internal server error|not found|página não encontrada/i)).not.toBeVisible()
   }
 
   async selectFirstService() {

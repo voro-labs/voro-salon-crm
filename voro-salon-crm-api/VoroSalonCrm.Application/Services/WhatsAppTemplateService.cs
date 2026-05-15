@@ -14,8 +14,9 @@ namespace VoroSalonCrm.Application.Services
         IUnitOfWork unitOfWork) : IWhatsAppTemplateService
     {
         private static WhatsAppTemplateDto ToDto(WhatsAppTemplate t) => new(
-            t.Id,  t.TenantId, t.Name, t.Label, t.ParamsCount,
+            t.Id, t.TenantId, t.Name, t.Label, t.ParamsCount,
             t.ParamLabelsJson != null ? JsonSerializer.Deserialize<string[]>(t.ParamLabelsJson) : null,
+            t.Body,
             t.IsActive, t.CreatedAt);
 
         public async Task<IEnumerable<WhatsAppTemplateDto>> GetMyTemplatesAsync()
@@ -36,6 +37,7 @@ namespace VoroSalonCrm.Application.Services
                 Label = dto.Label,
                 ParamsCount = dto.ParamsCount,
                 ParamLabelsJson = dto.ParamLabels != null ? JsonSerializer.Serialize(dto.ParamLabels) : null,
+                Body = dto.Body,
                 IsActive = dto.IsActive,
                 CreatedAt = DateTimeOffset.UtcNow,
             };
@@ -57,6 +59,7 @@ namespace VoroSalonCrm.Application.Services
             if (dto.Label is not null) template.Label = dto.Label;
             if (dto.ParamsCount.HasValue) template.ParamsCount = dto.ParamsCount.Value;
             if (dto.ParamLabels is not null) template.ParamLabelsJson = JsonSerializer.Serialize(dto.ParamLabels);
+            if (dto.Body is not null) template.Body = dto.Body;
             if (dto.IsActive.HasValue) template.IsActive = dto.IsActive.Value;
             template.UpdatedAt = DateTimeOffset.UtcNow;
 

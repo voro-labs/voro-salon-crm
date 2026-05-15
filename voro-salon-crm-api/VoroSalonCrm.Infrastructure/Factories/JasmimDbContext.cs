@@ -830,6 +830,7 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(wt => wt.Id).ValueGeneratedOnAdd();
                 b.Property(wt => wt.Name).IsRequired();
                 b.Property(wt => wt.Label).IsRequired();
+                b.Property(wt => wt.Body).HasMaxLength(4096);
             });
 
             // ---------------------------

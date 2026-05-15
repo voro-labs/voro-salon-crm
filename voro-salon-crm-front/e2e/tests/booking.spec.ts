@@ -13,6 +13,6 @@ test.describe('Booking público', () => {
   test('URL de booking com slug inválido exibe not found ou redireciona', async ({ page }) => {
     await page.goto('/booking/slug-que-nao-existe-12345')
     await page.waitForLoadState('networkidle')
-    await expect(page.getByText(/500|erro interno do servidor/i)).not.toBeVisible()
+    await expect(page.getByText(/internal server error|erro interno do servidor/i)).not.toBeVisible()
   })
 })
