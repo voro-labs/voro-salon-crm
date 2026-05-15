@@ -11,9 +11,7 @@ export class AppointmentsPage {
 
   async expectPageLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /agendamento/i }).or(
-        this.page.getByText(/agendamento/i).first()
-      )
+      this.page.locator('h1').filter({ hasText: /agendamento/i })
     ).toBeVisible({ timeout: 10000 })
   }
 

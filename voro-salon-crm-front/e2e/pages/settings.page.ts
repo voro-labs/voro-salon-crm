@@ -11,9 +11,7 @@ export class SettingsPage {
 
   async expectPageLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /configura/i }).or(
-        this.page.getByText(/configura/i).first()
-      )
+      this.page.locator('h1').filter({ hasText: /configura/i })
     ).toBeVisible({ timeout: 10000 })
   }
 
@@ -24,9 +22,7 @@ export class SettingsPage {
 
   async expectBusinessHoursLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /horário|funcionamento/i }).or(
-        this.page.getByText(/horário|funcionamento/i).first()
-      )
+      this.page.locator('h1, h2').filter({ hasText: /horário|funcionamento/i }).first()
     ).toBeVisible({ timeout: 10000 })
   }
 }

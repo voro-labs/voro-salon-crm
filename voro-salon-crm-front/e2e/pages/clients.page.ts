@@ -11,9 +11,7 @@ export class ClientsPage {
 
   async expectPageLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /cliente/i }).or(
-        this.page.getByText(/cliente/i).first()
-      )
+      this.page.locator('h1').filter({ hasText: /cliente/i })
     ).toBeVisible({ timeout: 10000 })
   }
 

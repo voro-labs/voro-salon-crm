@@ -11,9 +11,7 @@ export class FinancePage {
 
   async expectPageLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /financ/i }).or(
-        this.page.getByText(/financ/i).first()
-      )
+      this.page.locator('h1').filter({ hasText: /financ/i })
     ).toBeVisible({ timeout: 10000 })
   }
 
@@ -24,9 +22,7 @@ export class FinancePage {
 
   async expectCategoriesPageLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /categor/i }).or(
-        this.page.getByText(/categor/i).first()
-      )
+      this.page.locator('h1').filter({ hasText: /categor/i })
     ).toBeVisible({ timeout: 10000 })
   }
 }

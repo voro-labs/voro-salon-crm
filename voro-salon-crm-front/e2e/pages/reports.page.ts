@@ -11,9 +11,7 @@ export class ReportsPage {
 
   async expectPageLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /relatório/i }).or(
-        this.page.getByText(/relatório/i).first()
-      )
+      this.page.locator('h1').filter({ hasText: /relatório/i })
     ).toBeVisible({ timeout: 10000 })
   }
 

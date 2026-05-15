@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { LoginPage } from '../pages/login.page'
 
-test.use({ storageState: undefined })
+test.use({ storageState: { cookies: [], origins: [] } })
 
 const email = process.env.TEST_EMAIL ?? ''
 const password = process.env.TEST_PASSWORD ?? ''

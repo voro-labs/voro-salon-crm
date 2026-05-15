@@ -11,9 +11,7 @@ export class EmployeesPage {
 
   async expectPageLoaded() {
     await expect(
-      this.page.getByRole('heading', { name: /funcionário|colaborador/i }).or(
-        this.page.getByText(/funcionário|colaborador/i).first()
-      )
+      this.page.locator('h1').filter({ hasText: /funcionário|colaborador/i })
     ).toBeVisible({ timeout: 10000 })
   }
 
