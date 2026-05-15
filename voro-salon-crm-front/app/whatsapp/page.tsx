@@ -575,7 +575,7 @@ export default function WhatsAppPage() {
       cancelAnimationFrame(id)
       window.removeEventListener("resize", updateHeight)
     }
-  }, [tenant, evolutionInstances, onboardingStatus])
+  }, [tenant, evolutionInstances, onboardingStatus, onboardingError])
 
   const { data: conversations, isLoading, mutate } = useSWR<WhatsAppConversation[]>(
     API_CONFIG.ENDPOINTS.WHATSAPP_CONVERSATIONS,
@@ -662,7 +662,7 @@ export default function WhatsAppPage() {
           </div>
         )}
 
-        {showSendModal && <SendTemplateModal onClose={() => setShowSendModal(false)} />}
+        {showSendModal && hasActiveConnection && <SendTemplateModal onClose={() => setShowSendModal(false)} />}
       </ModuleGuard>
     </AuthGuard>
   )
