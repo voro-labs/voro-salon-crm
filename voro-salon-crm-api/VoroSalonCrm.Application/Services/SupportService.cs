@@ -39,7 +39,7 @@ namespace VoroSalonCrm.Application.Services
             return new SupportTicketDto(
                 ticket.Id, ticket.TenantId, ticket.Title,
                 ticket.Category, ticket.IsUrgent, ticket.Status,
-                ticket.CreatedAt, 0);
+                ticket.CreatedAt, 0, null);
         }
 
         public async Task<IEnumerable<SupportTicketDto>> GetTicketsAsync()
@@ -48,7 +48,8 @@ namespace VoroSalonCrm.Application.Services
             var tickets = await ticketRepository.GetByTenantIdAsync(tenantId);
             return tickets.Select(t => new SupportTicketDto(
                 t.Id, t.TenantId, t.Title, t.Category, t.IsUrgent, t.Status,
-                t.CreatedAt, t.Messages.Count));
+                t.CreatedAt, t.Messages.Count,
+                t.Messages.OrderByDescending(m => m.CreatedAt).FirstOrDefault()?.Body));
         }
 
         public async Task<IEnumerable<SupportMessageDto>> GetMessagesAsync(Guid ticketId)
