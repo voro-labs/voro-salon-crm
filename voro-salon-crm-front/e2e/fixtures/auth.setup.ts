@@ -15,8 +15,8 @@ setup('autenticar usuário de teste', async ({ page }) => {
 
   await page.goto('/admin/sign-in')
 
-  await page.getByLabel(/e-mail/i).fill(email)
-  await page.getByLabel(/senha/i).fill(password)
+  await page.getByLabel(/^email$/i).fill(email)
+  await page.getByLabel(/^senha$/i).fill(password)
   await page.getByRole('button', { name: /entrar/i }).click()
 
   // Aguarda redirect para fora do sign-in (login bem-sucedido)

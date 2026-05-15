@@ -9,11 +9,11 @@ export class LoginPage {
   }
 
   async fillEmail(email: string) {
-    await this.page.getByLabel(/e-mail/i).fill(email)
+    await this.page.getByLabel(/^email$/i).fill(email)
   }
 
   async fillPassword(password: string) {
-    await this.page.getByLabel(/senha/i).fill(password)
+    await this.page.getByLabel(/^senha$/i).fill(password)
   }
 
   async submit() {
