@@ -24,6 +24,7 @@ interface WhatsAppTemplate {
   label: string
   paramsCount: number
   paramLabels: string[] | null
+  body?: string | null
   isActive: boolean
   tenantId: string
   createdAt: string
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
   label: "",
   paramsCount: 0,
   paramLabels: [] as string[],
+  body: "",
   isActive: true,
 }
 
@@ -76,6 +78,7 @@ export default function WhatsAppTemplatesPage() {
       label: t.label,
       paramsCount: t.paramsCount,
       paramLabels: t.paramLabels ?? [],
+      body: t.body ?? "",
       isActive: t.isActive,
     })
     setParamLabelsText((t.paramLabels ?? []).join("\n"))
@@ -98,6 +101,7 @@ export default function WhatsAppTemplatesPage() {
       label: form.label.trim(),
       paramsCount: form.paramsCount,
       paramLabels: paramLabels.length > 0 ? paramLabels : null,
+      body: form.body.trim() || null,
       isActive: form.isActive,
     }
 
@@ -280,6 +284,19 @@ export default function WhatsAppTemplatesPage() {
                   value={paramLabelsText}
                   onChange={(e) => setParamLabelsText(e.target.value)}
                 />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="tpl-body">Corpo da mensagem</Label>
+                <textarea
+                  id="tpl-body"
+                  rows={4}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  placeholder={"Olá {{1}}! Seu agendamento de {{2}} foi confirmado para {{3}}."}
+                  value={form.body}
+                  onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">Usado pelo Evolution Go para renderizar a mensagem. Use {"{{1}}"}, {"{{2}}"} para os parâmetros.</p>
               </div>
 
               <div className="flex items-center gap-3">
