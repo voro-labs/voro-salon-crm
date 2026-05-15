@@ -20,6 +20,7 @@ import {
   User,
   GitBranch,
   BarChart3,
+  LifeBuoy,
 } from "lucide-react"
 import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 import { useSubscription } from "@/hooks/use-subscription.hook"
@@ -116,6 +117,12 @@ const navItems = [
     href: "/my-profile",
     icon: User,
     roles: ["SalonEmployee"],
+  },
+  {
+    title: "Suporte",
+    href: "/support",
+    icon: LifeBuoy,
+    roles: ["SalonOwner", "Owner", "SalonEmployee"]
   },
   {
     title: "Configurações",

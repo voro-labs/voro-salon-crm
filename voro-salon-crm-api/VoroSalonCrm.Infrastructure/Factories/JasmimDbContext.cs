@@ -81,6 +81,9 @@ namespace VoroSalonCrm.Infrastructure.Factories
         public DbSet<EvolutionTemplate> EvolutionTemplates { get; set; }
         public DbSet<TenantEvolutionInstanceLink> TenantEvolutionInstanceLinks { get; set; }
 
+        public DbSet<SupportTicket> SupportTickets { get; set; }
+        public DbSet<SupportMessage> SupportMessages { get; set; }
+
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var entries = ChangeTracker.Entries()
@@ -1004,6 +1007,30 @@ namespace VoroSalonCrm.Infrastructure.Factories
                  .WithMany()
                  .HasForeignKey(l => l.InstanceId)
                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ---------------------------
+            // SUPPORT
+            // ---------------------------
+            builder.Entity<SupportTicket>(b =>
+            {
+                b.HasKey(s => s.Id);
+                b.Property(s => s.Title).IsRequired().HasMaxLength(200);
+                b.Property(s => s.Category).IsRequired();
+                b.Property(s => s.Status).IsRequired();
+                b.Property(s => s.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+                b.HasMany(s => s.Messages)
+                    .WithOne(m => m.Ticket)
+                    .HasForeignKey(m => m.TicketId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<SupportMessage>(b =>
+            {
+                b.HasKey(m => m.Id);
+                b.Property(m => m.Body).IsRequired().HasMaxLength(4000);
+                b.Property(m => m.AttachmentUrl).HasMaxLength(2000);
+                b.Property(m => m.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
             });
         }
     }
