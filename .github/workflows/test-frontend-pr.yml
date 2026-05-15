@@ -45,6 +45,7 @@ jobs:
           PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || 'http://localhost:3000' }}
           TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          TEST_2FA_CODE: ${{ secrets.TEST_2FA_CODE }}
           BOOKING_SLUG: ${{ secrets.BOOKING_SLUG }}
           CI: true
 
