@@ -11,7 +11,8 @@ namespace VoroSalonCrm.Application.DTOs.Support
         bool IsUrgent,
         SupportTicketStatus Status,
         DateTimeOffset CreatedAt,
-        int MessageCount
+        int MessageCount,
+        string? LastMessageBody
     );
 
     public record SupportMessageDto(
