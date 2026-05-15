@@ -11,13 +11,14 @@ import { SupportChatWindow } from "./support-chat-window"
 
 export function SupportInbox() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
-  const [selectedTicketTitle, setSelectedTicketTitle] = useState<string>("")
 
   const { data: tickets, isLoading, mutate } = useSWR<SupportTicketDto[]>(
     API_CONFIG.ENDPOINTS.SUPPORT_TICKETS,
     fetcher,
     { refreshInterval: 30000 }
   )
+
+  const selectedTicketTitle = tickets?.find(t => t.id === selectedTicketId)?.title ?? ""
 
   const handleStart = async (category: string, isUrgent: boolean, title: string) => {
     try {
@@ -34,9 +35,8 @@ export function SupportInbox() {
         return
       }
 
-      await mutate()
+      mutate([...(tickets ?? []), res.data!], { revalidate: true })
       setSelectedTicketId(res.data!.id)
-      setSelectedTicketTitle(res.data!.title)
     } catch {
       toast.error("Erro de conexão.")
     }
@@ -44,12 +44,10 @@ export function SupportInbox() {
 
   const handleSelectTicket = (ticket: SupportTicketDto) => {
     setSelectedTicketId(ticket.id)
-    setSelectedTicketTitle(ticket.title)
   }
 
   const handleNewTicket = () => {
     setSelectedTicketId(null)
-    setSelectedTicketTitle("")
   }
 
   return (
