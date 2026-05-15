@@ -221,12 +221,32 @@ export default function FinancialPage() {
     })
   }
 
-  // Filtered service records for the selected period
+  // IDs de service records já importados: extraídos do Notes "ref:{id}" ou do appointmentId
+  const importedServiceRecordIds = new Set(
+    (transactions || []).flatMap((t) => {
+      const ids: string[] = []
+      const refMatch = t.notes?.match(/ref:([0-9a-f-]{36})/i)
+      if (refMatch) ids.push(refMatch[1])
+      return ids
+    })
+  )
+  const importedAppointmentIds = new Set(
+    (transactions || []).flatMap((t) => {
+      const match = t.notes?.match(/Agendamento\s+([0-9a-f-]{36})/i)
+      return match ? [match[1]] : []
+    })
+  )
+
+  // Filtered service records for the selected period, excluding already imported
   const filteredServiceRecords = (serviceRecords || []).filter((r) => {
     const d = new Date(r.serviceDate)
     const start = new Date(autoRevenueStartDate + "T00:00:00")
     const end = new Date(autoRevenueEndDate + "T23:59:59")
-    return d >= start && d <= end
+    const inRange = d >= start && d <= end
+    const alreadyImported =
+      importedServiceRecordIds.has(r.id) ||
+      (!!r.appointmentId && importedAppointmentIds.has(r.appointmentId))
+    return inRange && !alreadyImported
   })
 
   const autoRevenueTotalAmount = filteredServiceRecords.reduce((acc, r) => acc + r.amount, 0)
