@@ -221,52 +221,66 @@ namespace VoroSalonCrm.Application.Services
             var tenantId = _currentUser.TenantId;
             var result = new BatchImportResultDto();
 
-            // Load recent transactions for dedup window (last 90 days + future)
             var since = DateTimeOffset.UtcNow.AddDays(-90);
             var existing = await _repository.GetAllAsync(
                 t => t.TenantId == tenantId && !t.IsDeleted && t.DueDate >= since,
                 asNoTracking: true);
 
-            // Build dedup signatures from existing: "date|description|amount"
             var existingSigs = existing
                 .Select(t => BuildSig(t.DueDate, t.Description, t.Amount))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+            // Also track dedupKeys already stored in Notes (format "ref:{guid}")
+            var existingDedupKeys = existing
+                .Select(t => ExtractDedupKey(t.Notes))
+                .Where(k => k != null)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)!;
+
+            TransactionCategory? servicosCategory = null;
             var toInsert = new List<Transaction>();
 
             foreach (var item in items)
             {
-                // Prefer client-provided dedupKey, fallback to auto-sig
-                var sig = !string.IsNullOrEmpty(item.DedupKey)
-                    ? item.DedupKey
+                var hasDedupKey = !string.IsNullOrEmpty(item.DedupKey);
+                var sig = hasDedupKey
+                    ? item.DedupKey!
                     : BuildSig(item.DueDate, item.Description, item.Amount);
 
-                if (existingSigs.Contains(sig))
+                var isDuplicate = existingSigs.Contains(sig)
+                    || (hasDedupKey && existingDedupKeys.Contains(item.DedupKey!));
+
+                if (isDuplicate)
                 {
                     result.Skipped++;
                     continue;
                 }
 
-                existingSigs.Add(sig); // prevent intra-batch dupes
+                existingSigs.Add(sig);
+                if (hasDedupKey) existingDedupKeys.Add(item.DedupKey!);
 
-                var tx = new Transaction
+                Guid? categoryId = item.CategoryId;
+                if (!categoryId.HasValue && item.Type == TransactionType.Income)
                 {
-                    Id = Guid.NewGuid(),
-                    TenantId = tenantId,
-                    CategoryId = item.CategoryId,
-                    Description = item.Description,
-                    Amount = item.Amount,
-                    PaidAmount = item.Amount, // extrato = já liquidado
-                    DueDate = item.DueDate,
-                    PaymentDate = item.DueDate,
-                    Type = item.Type,
-                    PaymentMethod = item.PaymentMethod,
-                    Status = TransactionStatus.Paid,
-                    Notes = item.Notes ?? "Importado via extrato bancário",
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
+                    servicosCategory ??= await GetOrCreateServicosCategory(tenantId, ct);
+                    categoryId = servicosCategory?.Id;
+                }
 
-                toInsert.Add(tx);
+                toInsert.Add(new Transaction
+                {
+                    Id            = Guid.NewGuid(),
+                    TenantId      = tenantId,
+                    CategoryId    = categoryId,
+                    Description   = item.Description,
+                    Amount        = item.Amount,
+                    PaidAmount    = item.Amount,
+                    DueDate       = item.DueDate,
+                    PaymentDate   = item.DueDate,
+                    Type          = item.Type,
+                    PaymentMethod = item.PaymentMethod,
+                    Status        = TransactionStatus.Paid,
+                    Notes         = BuildImportNotes(item.Notes, item.DedupKey),
+                    CreatedAt     = DateTimeOffset.UtcNow
+                });
             }
 
             if (toInsert.Count > 0)
@@ -278,6 +292,52 @@ namespace VoroSalonCrm.Application.Services
             }
 
             return result;
+        }
+
+        private async Task<TransactionCategory?> GetOrCreateServicosCategory(Guid tenantId, CancellationToken ct)
+        {
+            var category = await _categoryRepository
+                .Query(c => c.TenantId == tenantId
+                    && c.Name == "Serviços"
+                    && c.Type == TransactionType.Income
+                    && !c.IsDeleted, asNoTracking: false)
+                .FirstOrDefaultAsync(ct);
+
+            if (category != null) return category;
+
+            category = new TransactionCategory
+            {
+                Id        = Guid.NewGuid(),
+                TenantId  = tenantId,
+                Name      = "Serviços",
+                Type      = TransactionType.Income,
+                IsActive  = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            await _categoryRepository.AddAsync(category);
+            return category;
+        }
+
+        private static string? ExtractDedupKey(string? notes)
+        {
+            if (string.IsNullOrEmpty(notes)) return null;
+            var idx = notes.IndexOf("ref:", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return null;
+            var start = idx + 4;
+            var end = notes.IndexOf(' ', start);
+            return end < 0 ? notes[start..] : notes[start..end];
+        }
+
+        private static string BuildImportNotes(string? itemNotes, string? dedupKey)
+        {
+            var refPart = string.IsNullOrEmpty(dedupKey) ? null : $"ref:{dedupKey}";
+            return (itemNotes, refPart) switch
+            {
+                (null, null) => "Importado via extrato bancário",
+                (null, _)    => refPart!,
+                (_, null)    => itemNotes,
+                _            => $"{itemNotes} | {refPart}"
+            };
         }
 
         private static string BuildSig(DateTimeOffset date, string description, decimal amount)
