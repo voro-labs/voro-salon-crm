@@ -104,7 +104,7 @@ export default function PublicBookingPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (getAuthToken()) router.replace("/dashboard")
+    if (getAuthToken()) router.replace("/")
   }, [router])
 
   // App banner
