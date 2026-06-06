@@ -78,12 +78,15 @@ namespace VoroSalonCrm.Application.Services
                 {
                     await _demoResetService.ResetAsync();
 
-                    if (ext != null)
+                    if (ext == null)
                     {
-                        ext.LastDemoResetAt = DateTime.UtcNow;
-                        _userExtensionRepository.Update(ext);
-                        await _unitOfWork.SaveChangesAsync();
+                        ext = new UserExtension { UserId = user.Id };
+                        await _userExtensionRepository.AddAsync(ext);
                     }
+
+                    ext.LastDemoResetAt = DateTime.UtcNow;
+                    _userExtensionRepository.Update(ext);
+                    await _unitOfWork.SaveChangesAsync();
                 }
             }
 
