@@ -93,6 +93,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             if (employeeIds.Count > 0)
             {
                 await context.EmployeeServices
+                    .IgnoreQueryFilters()
                     .Where(es => employeeIds.Contains(es.EmployeeId))
                     .ExecuteDeleteAsync();
 
@@ -127,6 +128,7 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             if (hoursIds.Count > 0)
             {
                 await context.TenantBusinessHoursRanges
+                    .IgnoreQueryFilters()
                     .Where(r => hoursIds.Contains(r.BusinessHoursId))
                     .ExecuteDeleteAsync();
 
@@ -296,54 +298,44 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     CreatedAt = scheduled.AddDays(-2)
                 };
 
-                #warning "A lógica de geração de histórico e comissão pode ser validada pelo claude code. Se estiver ok, pode ser movida para um método separado e reutilizada na finalização de agendamento real."
                 if (appt.Status == AppointmentStatus.Completed)
                 {
-                    var historyDto = new ServiceRecord
+                    serviceRecords.Add(new ServiceRecord
                     {
                         ClientId = appt.ClientId,
                         TenantId = appt.TenantId,
                         ServiceId = appt.ServiceId,
                         AppointmentId = appt.Id,
-                        ServiceDate = DateTimeOffset.UtcNow,
+                        ServiceDate = appt.ScheduledDateTime,
                         Description = appt.Description ?? "Serviço via agendamento",
                         Amount = appt.Amount,
                         Notes = $"Agendamento ID: {appt.Id}\nNotas: {appt.Notes}",
-                        
-                    };
+                    });
 
-                    serviceRecords.Add(historyDto);
-
-                    // Gera comissão automaticamente se o funcionário tiver percentual configurado
-                    if (appt.EmployeeId.HasValue && appt.Amount > 0)
+                    if (appt.EmployeeId.HasValue && appt.Amount > 0 && emp?.CommissionPercentage is > 0)
                     {
-                        if (emp?.CommissionPercentage is > 0)
+                        var commissionAmount = Math.Round(appt.Amount * (emp.CommissionPercentage.Value / 100m), 2);
+                        var commissionDueDate = new DateTimeOffset(
+                            appt.ScheduledDateTime.Year,
+                            appt.ScheduledDateTime.Month,
+                            DateTime.DaysInMonth(appt.ScheduledDateTime.Year, appt.ScheduledDateTime.Month),
+                            23, 59, 59, TimeSpan.Zero);
+
+                        transactions.Add(new Transaction
                         {
-                            var commissionAmount = Math.Round(appt.Amount * (emp.CommissionPercentage.Value / 100m), 2);
-                            var dueDate = new DateTimeOffset(
-                                appt.ScheduledDateTime.Year,
-                                appt.ScheduledDateTime.Month,
-                                DateTime.DaysInMonth(appt.ScheduledDateTime.Year, appt.ScheduledDateTime.Month),
-                                23, 59, 59, TimeSpan.Zero);
-
-                            var commissionTx = new Transaction
-                            {
-                                Id = Guid.NewGuid(),
-                                TenantId = appt.TenantId,
-                                Description = $"Comissão – {emp.Name} – {appt.Service?.Name ?? "Serviço"}",
-                                Amount = commissionAmount,
-                                PaidAmount = 0,
-                                DueDate = dueDate,
-                                Type = TransactionType.Expense,
-                                PaymentMethod = PaymentMethod.Other,
-                                Status = TransactionStatus.Pending,
-                                EmployeeId = emp.Id,
-                                Notes = $"Comissão de {emp.CommissionPercentage}% sobre agendamento {appt.Id}",
-                                CreatedAt = DateTimeOffset.UtcNow
-                            };
-
-                            transactions.Add(commissionTx);
-                        }
+                            Id = Guid.NewGuid(),
+                            TenantId = appt.TenantId,
+                            Description = $"Comissão – {emp.Name} – {svc.Name}",
+                            Amount = commissionAmount,
+                            PaidAmount = 0,
+                            DueDate = commissionDueDate,
+                            Type = TransactionType.Expense,
+                            PaymentMethod = PaymentMethod.Other,
+                            Status = TransactionStatus.Pending,
+                            EmployeeId = emp.Id,
+                            Notes = $"Comissão de {emp.CommissionPercentage}% sobre agendamento {appt.Id}",
+                            CreatedAt = DateTimeOffset.UtcNow
+                        });
                     }
                 }
 
@@ -397,56 +389,6 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                     CreatedAt = now.AddDays(-1)
                 };
 
-                if (appt.Status == AppointmentStatus.Completed)
-                {
-                    var historyDto = new ServiceRecord
-                    {
-                        ClientId = appt.ClientId,
-                        TenantId = appt.TenantId,
-                        ServiceId = appt.ServiceId,
-                        AppointmentId = appt.Id,
-                        ServiceDate = DateTimeOffset.UtcNow,
-                        Description = appt.Description ?? "Serviço via agendamento",
-                        Amount = appt.Amount,
-                        Notes = $"Agendamento ID: {appt.Id}\nNotas: {appt.Notes}",
-                        
-                    };
-
-                    serviceRecords.Add(historyDto);
-
-                    // Gera comissão automaticamente se o funcionário tiver percentual configurado
-                    if (appt.EmployeeId.HasValue && appt.Amount > 0)
-                    {
-                        if (emp?.CommissionPercentage is > 0)
-                        {
-                            var commissionAmount = Math.Round(appt.Amount * (emp.CommissionPercentage.Value / 100m), 2);
-                            var dueDate = new DateTimeOffset(
-                                appt.ScheduledDateTime.Year,
-                                appt.ScheduledDateTime.Month,
-                                DateTime.DaysInMonth(appt.ScheduledDateTime.Year, appt.ScheduledDateTime.Month),
-                                23, 59, 59, TimeSpan.Zero);
-
-                            var commissionTx = new Transaction
-                            {
-                                Id = Guid.NewGuid(),
-                                TenantId = appt.TenantId,
-                                Description = $"Comissão – {emp.Name} – {appt.Service?.Name ?? "Serviço"}",
-                                Amount = commissionAmount,
-                                PaidAmount = 0,
-                                DueDate = dueDate,
-                                Type = TransactionType.Expense,
-                                PaymentMethod = PaymentMethod.Other,
-                                Status = TransactionStatus.Pending,
-                                EmployeeId = emp.Id,
-                                Notes = $"Comissão de {emp.CommissionPercentage}% sobre agendamento {appt.Id}",
-                                CreatedAt = DateTimeOffset.UtcNow
-                            };
-
-                            transactions.Add(commissionTx);
-                        }
-                    }
-                }
-            
                 appointments.Add(appt);
             }
 
