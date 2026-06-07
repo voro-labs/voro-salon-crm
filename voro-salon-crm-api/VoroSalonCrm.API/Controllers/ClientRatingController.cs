@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -90,7 +91,7 @@ namespace VoroSalonCrm.API.Controllers
             {
                 var result = await ratingService.GetByAppointmentAsync(appointmentId);
                 if (result is null)
-                    return ResponseViewModel<object>.Fail("Avaliação não encontrada.").ToActionResult();
+                    return ResponseViewModel<object>.Fail("Avaliação não encontrada.", status: StatusCodes.Status404NotFound).ToActionResult();
                 return ResponseViewModel<ClientRatingDto>.SuccessWithMessage("Avaliação recuperada.", result).ToActionResult();
             }
             catch (Exception ex)
