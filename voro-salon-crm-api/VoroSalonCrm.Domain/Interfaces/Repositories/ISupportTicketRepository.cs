@@ -7,5 +7,6 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories
     {
         Task<IEnumerable<SupportTicket>> GetByTenantIdAsync(Guid tenantId);
         Task<SupportTicket?> GetWithMessagesAsync(Guid id);
+        Task<IEnumerable<(SupportTicket Ticket, string TenantName)>> GetAllWithTenantNameAsync();
     }
 }

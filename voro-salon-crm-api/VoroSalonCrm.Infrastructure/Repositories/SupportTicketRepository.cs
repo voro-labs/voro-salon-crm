@@ -26,5 +26,21 @@ namespace VoroSalonCrm.Infrastructure.Repositories
                 .Include(t => t.Messages)
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
+
+        public async Task<IEnumerable<(SupportTicket Ticket, string TenantName)>> GetAllWithTenantNameAsync()
+        {
+            var rows = await _dbSet
+                .AsNoTracking()
+                .Include(t => t.Messages)
+                .Join(
+                    _context.Set<Tenant>().AsNoTracking(),
+                    ticket => ticket.TenantId,
+                    tenant => tenant.Id,
+                    (ticket, tenant) => new { ticket, tenant.Name })
+                .OrderByDescending(x => x.ticket.CreatedAt)
+                .ToListAsync();
+
+            return rows.Select(x => (x.ticket, x.Name));
+        }
     }
 }
