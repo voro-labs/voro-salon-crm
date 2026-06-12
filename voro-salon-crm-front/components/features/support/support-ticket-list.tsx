@@ -14,6 +14,7 @@ export interface SupportTicketDto {
   createdAt: string
   messageCount: number
   lastMessageBody?: string | null
+  tenantName?: string | null
 }
 
 interface SupportTicketListProps {
@@ -22,6 +23,8 @@ interface SupportTicketListProps {
   onSelect: (ticket: SupportTicketDto) => void
   onNewTicket: () => void
   isLoading: boolean
+  showTenantName?: boolean
+  hideNewTicketButton?: boolean
 }
 
 function getStatusConfig(status: string | number) {
@@ -46,15 +49,19 @@ export function SupportTicketList({
   onSelect,
   onNewTicket,
   isLoading,
+  showTenantName = false,
+  hideNewTicketButton = false,
 }: SupportTicketListProps) {
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b shrink-0">
-        <Button size="sm" className="w-full" onClick={onNewTicket}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo ticket
-        </Button>
-      </div>
+      {!hideNewTicketButton && (
+        <div className="p-3 border-b shrink-0">
+          <Button size="sm" className="w-full" onClick={onNewTicket}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo ticket
+          </Button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -84,6 +91,9 @@ export function SupportTicketList({
                 )}
               >
                 <p className="text-sm font-medium truncate">{ticket.title}</p>
+                {showTenantName && ticket.tenantName && (
+                  <p className="text-xs text-muted-foreground truncate">{ticket.tenantName}</p>
+                )}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span
                     className={cn(
