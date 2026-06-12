@@ -12,7 +12,8 @@ namespace VoroSalonCrm.Application.DTOs.Support
         SupportTicketStatus Status,
         DateTimeOffset CreatedAt,
         int MessageCount,
-        string? LastMessageBody
+        string? LastMessageBody,
+        string? TenantName = null
     );
 
     public record SupportMessageDto(
@@ -34,5 +35,9 @@ namespace VoroSalonCrm.Application.DTOs.Support
         [Required] Guid TicketId,
         [Required][StringLength(4000)] string Body,
         string? AttachmentUrl
+    );
+
+    public record UpdateSupportTicketStatusDto(
+        [Required] string Status
     );
 }
