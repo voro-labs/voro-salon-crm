@@ -21,6 +21,18 @@ interface SupportMessage {
 
 type Perspective = "salon" | "support"
 
+// Only allow http(s) attachment links; reject javascript:/data: and other schemes
+// to prevent XSS when a support agent opens an attacker-supplied URL.
+function safeHttpUrl(raw?: string | null): string | null {
+  if (!raw) return null
+  try {
+    const url = new URL(raw)
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null
+  } catch {
+    return null
+  }
+}
+
 interface SupportChatWindowProps {
   ticketId: string
   ticketTitle: string
@@ -184,6 +196,7 @@ export function SupportChatWindow({
         ) : (
           messages.map((msg) => {
             const own = isOwn(msg)
+            const attachmentHref = safeHttpUrl(msg.attachmentUrl)
             return (
               <div
                 key={msg.id}
@@ -199,9 +212,9 @@ export function SupportChatWindow({
                     : "bg-muted rounded-tl-sm"
                 )}>
                   <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                  {msg.attachmentUrl && (
+                  {attachmentHref && (
                     <a
-                      href={msg.attachmentUrl}
+                      href={attachmentHref}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn(
