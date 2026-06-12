@@ -14,7 +14,7 @@ function SupportView() {
 export default function SupportPage() {
   return (
     <AuthGuard requiredRoles={["SalonOwner", "SalonEmployee", "Owner"]}>
-      <div className="h-[calc(100vh-4rem)]">
+      <div className="h-[calc(100dvh-4rem)] lg:h-dvh">
         <SupportView />
       </div>
     </AuthGuard>
