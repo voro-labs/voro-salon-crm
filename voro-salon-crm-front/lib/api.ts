@@ -79,6 +79,7 @@ export const API_CONFIG = {
     EVOLUTION_AVAILABLE_TO_LINK: "/EvolutionInstance/available-to-link",
     EVOLUTION_LINK: "/EvolutionInstance/link",
     SUPPORT_TICKETS: "/support/tickets",
+    ADMIN_SUPPORT_TICKETS: "/admin-support/tickets",
   },
   HEADERS: {
     "Content-Type": "application/json",
