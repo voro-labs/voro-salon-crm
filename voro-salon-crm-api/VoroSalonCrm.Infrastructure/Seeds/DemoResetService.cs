@@ -199,6 +199,14 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             var idx = Math.Clamp(tenantIndex, 0, 2);
             var now = DateTimeOffset.UtcNow;
             var today = now.Date;
+            var startOfMonth = new DateTime(today.Year, today.Month, 1);
+            var startOfPrevMonth = startOfMonth.AddMonths(-1);
+            int daysInPrevMonth = DateTime.DaysInMonth(startOfPrevMonth.Year, startOfPrevMonth.Month);
+
+            // Quantos dias atrás é o dia D do mês atual (nunca resulta em futuro)
+            int CurrMonth(int day) => today.Day - Math.Min(day, today.Day - 1);
+            // Quantos dias atrás é o dia D do mês anterior
+            int PrevMonth(int day) => today.Day + daysInPrevMonth - Math.Min(day, daysInPrevMonth);
 
             // ── Serviços ──────────────────────────────────────────────────────────
             var services = ServiceCatalog.Select(s => new Service
@@ -265,13 +273,21 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             var transactions = new List<Transaction>();
             var serviceRecords = new List<ServiceRecord>();
 
-            // Agendamentos passados (Completed) – últimos 45 dias
-            var pastSlots = new (int DaysAgo, int Hour)[]
+            // Agendamentos passados (Completed) – mês anterior (4 slots) + mês atual (até 10 slots)
+            var currDays  = new[] { 1, 3, 5, 7, 9, 11, 13, 15, 17, 19 }.Where(d => d < today.Day).ToArray();
+            var currHours = new[] { 9, 14, 10, 15, 11, 16, 9, 13, 10, 14 };
+
+            var pastSlotsList = new List<(int DaysAgo, int Hour)>
             {
-                (45, 9), (42, 10), (38, 14), (35, 11), (30, 15),
-                (28, 9), (25, 16), (22, 10), (18, 13), (15, 11),
-                (12, 14), (9, 10), (6, 15), (3, 9)
+                (PrevMonth(5),  10),
+                (PrevMonth(12), 14),
+                (PrevMonth(20), 11),
+                (PrevMonth(26), 15),
             };
+            for (int i = 0; i < currDays.Length; i++)
+                pastSlotsList.Add((CurrMonth(currDays[i]), currHours[i]));
+            pastSlotsList.Sort((a, b) => b.DaysAgo.CompareTo(a.DaysAgo));
+            var pastSlots = pastSlotsList.ToArray();
 
             var payMethods = new[] { PaymentMethod.Pix, PaymentMethod.CreditCard, PaymentMethod.DebitCard, PaymentMethod.Cash };
 
@@ -400,20 +416,22 @@ namespace VoroSalonCrm.Infrastructure.Seeds
 
             var expenses = new List<(TransactionCategory Cat, string Desc, decimal Amount, int DaysAgo, PaymentMethod Method, TransactionStatus Status)>
             {
-                (catAluguel,   "Aluguel – mês atual",          1_800m * rentMult,   5,  PaymentMethod.Boleto,     TransactionStatus.Paid),
-                (catAluguel,   "Aluguel – mês anterior",       1_800m * rentMult,  35,  PaymentMethod.Boleto,     TransactionStatus.Paid),
-                (catSalarios,  "Folha de pagamento",           4_500m * salaryMult,  3,  PaymentMethod.Other,      TransactionStatus.Paid),
-                (catSalarios,  "Folha de pagamento anterior",  4_500m * salaryMult, 33,  PaymentMethod.Other,      TransactionStatus.Paid),
-                (catMarketing,  "Anúncios redes sociais",        350m * rentMult,   8,  PaymentMethod.CreditCard, TransactionStatus.Paid),
-                (catMateriais, "Tintas e produtos químicos",    620m * rentMult,   14,  PaymentMethod.Pix,        TransactionStatus.Paid),
-                (catMateriais, "Esmaltes e acessórios",         280m * rentMult,   20,  PaymentMethod.Pix,        TransactionStatus.Paid),
-                (catContas,    "Energia elétrica",              310m,              12,  PaymentMethod.Boleto,     TransactionStatus.Paid),
-                (catContas,    "Internet e telefone",           150m,              10,  PaymentMethod.Boleto,     TransactionStatus.Paid),
-                (catMarketing, "Criação de conteúdo",           500m * rentMult,   25,  PaymentMethod.Pix,        TransactionStatus.Paid),
+                // mês atual
+                (catAluguel,   "Aluguel – mês atual",          1_800m * rentMult,   CurrMonth(5),  PaymentMethod.Boleto,     TransactionStatus.Paid),
+                (catSalarios,  "Folha de pagamento",           4_500m * salaryMult, CurrMonth(3),  PaymentMethod.Other,      TransactionStatus.Paid),
+                (catMarketing, "Anúncios redes sociais",        350m * rentMult,    CurrMonth(8),  PaymentMethod.CreditCard, TransactionStatus.Paid),
+                (catMateriais, "Tintas e produtos químicos",    620m * rentMult,    CurrMonth(14), PaymentMethod.Pix,        TransactionStatus.Paid),
+                (catContas,    "Energia elétrica",              310m,               CurrMonth(12), PaymentMethod.Boleto,     TransactionStatus.Paid),
+                (catContas,    "Internet e telefone",           150m,               CurrMonth(10), PaymentMethod.Boleto,     TransactionStatus.Paid),
+                // mês anterior
+                (catAluguel,   "Aluguel – mês anterior",       1_800m * rentMult,   PrevMonth(5),  PaymentMethod.Boleto,     TransactionStatus.Paid),
+                (catSalarios,  "Folha de pagamento anterior",  4_500m * salaryMult, PrevMonth(3),  PaymentMethod.Other,      TransactionStatus.Paid),
+                (catMateriais, "Esmaltes e acessórios",         280m * rentMult,    PrevMonth(20), PaymentMethod.Pix,        TransactionStatus.Paid),
+                (catMarketing, "Criação de conteúdo",           500m * rentMult,    PrevMonth(15), PaymentMethod.Pix,        TransactionStatus.Paid),
                 // despesas futuras / pendentes
                 (catAluguel,   "Aluguel – próximo mês",        1_800m * rentMult,  -25, PaymentMethod.Boleto,     TransactionStatus.Pending),
                 (catSalarios,  "Adiantamento salarial",        1_500m * salaryMult, -5, PaymentMethod.Pix,        TransactionStatus.Pending),
-                (catMateriais, "Pedido de materiais",           450m * rentMult,   -3,  PaymentMethod.Pix,        TransactionStatus.Pending),
+                (catMateriais, "Pedido de materiais",           450m * rentMult,    -3, PaymentMethod.Pix,        TransactionStatus.Pending),
             };
 
             foreach (var (cat, desc, amount, daysAgo, method, status) in expenses)
@@ -439,10 +457,10 @@ namespace VoroSalonCrm.Infrastructure.Seeds
             // Venda de produtos (receita extra)
             var productSales = new (string Desc, decimal Value, int DaysAgo)[]
             {
-                ("Shampoo + condicionador",   85m, 7),
-                ("Kit tratamento capilar",   140m, 15),
-                ("Máscara hidratante",        65m, 22),
-                ("Óleo finalizador",          55m, 30),
+                ("Shampoo + condicionador",   85m, CurrMonth(7)),
+                ("Kit tratamento capilar",   140m, CurrMonth(13)),
+                ("Máscara hidratante",        65m, CurrMonth(10)),
+                ("Óleo finalizador",          55m, PrevMonth(22)),
             };
 
             foreach (var (desc, value, daysAgo) in productSales)
