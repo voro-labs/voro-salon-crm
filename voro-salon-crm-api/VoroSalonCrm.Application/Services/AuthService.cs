@@ -67,7 +67,7 @@ namespace VoroSalonCrm.Application.Services
             if (isReviewer)
             {
                 var ext = await _userExtensionRepository
-                    .Query(e => e.UserId == user.Id)
+                    .Query(e => e.UserId == user.Id, asNoTracking: false)
                     .FirstOrDefaultAsync();
 
                 var resetCooldownHours = 2;
@@ -85,7 +85,6 @@ namespace VoroSalonCrm.Application.Services
                     }
 
                     ext.LastDemoResetAt = DateTime.UtcNow;
-                    _userExtensionRepository.Update(ext);
                     await _unitOfWork.SaveChangesAsync();
                 }
             }
