@@ -69,6 +69,11 @@ namespace VoroSalonCrm.Infrastructure.Seeds
                 .Where(r => r.TenantId == tenantId)
                 .ExecuteDeleteAsync();
 
+            await context.BookingFunnelSessions
+                .IgnoreQueryFilters()
+                .Where(s => s.TenantId == tenantId)
+                .ExecuteDeleteAsync();
+
             await context.Appointments
                 .IgnoreQueryFilters()
                 .Where(a => a.TenantId == tenantId)
