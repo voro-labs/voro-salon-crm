@@ -84,8 +84,17 @@ namespace VoroSalonCrm.Infrastructure.Repositories.Base
 
 
         public IQueryable<T> Include(params Expression<Func<T, object>>[] includes)
+            => Include(asNoTracking: false, includes);
+
+        public IQueryable<T> Include(bool asNoTracking, params Expression<Func<T, object>>[] includes)
         {
             IQueryable<T> query = _dbSet;
+
+            // O padrão continua rastreando: a sobrecarga sem flag é usada por caminho de escrita
+            // (carrega a entidade, muta e salva). Trocar o padrão para AsNoTracking faria updates
+            // pararem de persistir sem erro nenhum (issue #116).
+            if (asNoTracking)
+                query = query.AsNoTracking();
 
             foreach (var include in includes)
                 query = query.Include(include);

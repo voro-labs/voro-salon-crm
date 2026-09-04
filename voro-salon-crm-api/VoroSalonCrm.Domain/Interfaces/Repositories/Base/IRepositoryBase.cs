@@ -11,6 +11,17 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories.Base
         IQueryable<T> Query(Expression<Func<T, bool>>? predicate = null, bool asNoTracking = true);
         IQueryable<T> Include(params Expression<Func<T, object>>[] includes);
 
+        /// <summary>
+        /// Igual ao <see cref="Include(Expression{Func{T, object}}[])"/>, com controle de rastreamento.
+        /// <para>
+        /// A sobrecarga sem o flag continua rastreando de propósito: ela alimenta caminho de
+        /// escrita (carregar, mutar e salvar). Consulta de leitura deve passar
+        /// <paramref name="asNoTracking"/> <c>true</c> para não encher o ChangeTracker com a
+        /// página inteira e seus relacionamentos (issue #116).
+        /// </para>
+        /// </summary>
+        IQueryable<T> Include(bool asNoTracking, params Expression<Func<T, object>>[] includes);
+
         Task AddAsync(T entity);
         Task AddRangeAsync(IEnumerable<T> entities);
         void Update(T entity);
