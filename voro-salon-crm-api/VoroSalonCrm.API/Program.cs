@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
 using System.Text.Json;
@@ -39,6 +40,21 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 builder.Services.AddOpenApi();
+
+// A API roda atrás do proxy do Fly, que termina o TLS e encaminha via rede interna.
+// Sem isso, Connection.RemoteIpAddress é sempre o IP do edge do Fly — o mesmo para todos
+// os clientes — o que colapsava o rate limit de login numa única partição global de
+// 5 req/min para o produto inteiro, e gravava o IP errado no audit log (issue #118).
+//
+// KnownNetworks/KnownProxies são limpos porque o IP interno do proxy do Fly é dinâmico.
+// Isso é seguro aqui porque a aplicação só é alcançável através do proxy: o container
+// escuta na porta 8080 da rede privada, sem exposição pública direta.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddHttpContextAccessor();
 
@@ -93,6 +109,10 @@ if (app.Environment.IsDevelopment())
             .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
     });
 }
+
+// Primeiro middleware do pipeline: tudo abaixo (auditoria, rate limiter, redirect de HTTPS)
+// precisa enxergar o IP e o protocolo reais do cliente, não os do proxy do Fly (issue #118).
+app.UseForwardedHeaders();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
