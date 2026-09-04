@@ -13,7 +13,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidateModelFilter>();
-    options.Filters.Add<DemoTenantFilter>();
+
+    // DemoTenantFilter foi desregistrado: hoje ele é um pass-through puro, então mantê-lo
+    // custava uma alocação e um hop de pipeline por requisição sem fazer nada. A classe
+    // continua no repositório documentando a intenção original (rollback para tenants demo),
+    // pendente de decisão na issue #124.
 });
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
