@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
 using System.Text.Json;
@@ -13,7 +14,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidateModelFilter>();
-    options.Filters.Add<DemoTenantFilter>();
+
+    // DemoTenantFilter foi desregistrado: hoje ele é um pass-through puro, então mantê-lo
+    // custava uma alocação e um hop de pipeline por requisição sem fazer nada. A classe
+    // continua no repositório documentando a intenção original (rollback para tenants demo),
+    // pendente de decisão na issue #124.
 });
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -35,6 +40,21 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 builder.Services.AddOpenApi();
+
+// A API roda atrás do proxy do Fly, que termina o TLS e encaminha via rede interna.
+// Sem isso, Connection.RemoteIpAddress é sempre o IP do edge do Fly — o mesmo para todos
+// os clientes — o que colapsava o rate limit de login numa única partição global de
+// 5 req/min para o produto inteiro, e gravava o IP errado no audit log (issue #118).
+//
+// KnownNetworks/KnownProxies são limpos porque o IP interno do proxy do Fly é dinâmico.
+// Isso é seguro aqui porque a aplicação só é alcançável através do proxy: o container
+// escuta na porta 8080 da rede privada, sem exposição pública direta.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddHttpContextAccessor();
 
@@ -77,10 +97,22 @@ builder.Services.AddApiVersioning(options =>
 
 var app = builder.Build();
 
-await app.UseSeedAsync();
+// Migration + seed rodam no deploy (release_command do fly.toml), não a cada boot.
+// Antes isso ficava no caminho de startup: MigrateAsync comparando 69 migrations mais 27
+// queries bloqueantes e 10 SaveChanges do seeder, tudo na frente da primeira requisição.
+// Medido em produção: 22s de TTFB no primeiro acesso após ociosidade (issue #114).
+if (args.Contains("--migrate"))
+{
+    await app.UseSeedAsync();
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {
+    // Em Development o seed continua no startup: o custo de boot é irrelevante localmente
+    // e evita exigir um passo extra (`dotnet run -- --migrate`) para levantar o ambiente.
+    await app.UseSeedAsync();
+
     app.MapOpenApi();
     app.MapScalarApiReference(options =>
     {
@@ -89,6 +121,10 @@ if (app.Environment.IsDevelopment())
             .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
     });
 }
+
+// Primeiro middleware do pipeline: tudo abaixo (auditoria, rate limiter, redirect de HTTPS)
+// precisa enxergar o IP e o protocolo reais do cliente, não os do proxy do Fly (issue #118).
+app.UseForwardedHeaders();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

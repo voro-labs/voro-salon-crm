@@ -51,12 +51,14 @@ namespace VoroSalonCrm.Application.Services
         public async Task<AuthDto> SignInAsync(SignInDto signInDto)
         {
             var result = await _mediator.Send(new SignInCommand(signInDto));
-            if (result is not null)
-                return result;
 
-            // 2FA disabled: direct JWT generation (kept here — handler returned null)
-            var (user, rolesNames) = await _userService.GetByEmailAndPassword(signInDto.Email, signInDto.Password);
-            return await GenerateAuthDtoAsync(user, rolesNames);
+            if (result.TwoFactorResponse is not null)
+                return result.TwoFactorResponse;
+
+            // 2FA disabled: the handler already validated the credentials and returned the
+            // user, so we only generate the JWT here. Re-calling GetByEmailAndPassword would
+            // run the Identity PBKDF2 hash a second time on every login (issue #120).
+            return await GenerateAuthDtoAsync(result.User!, result.Roles);
         }
 
         public async Task<AuthDto> VerifyTwoFactorAsync(VerifyTwoFactorDto dto)

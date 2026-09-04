@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
-using VoroSalonCrm.Infrastructure.Factories;
+using VoroSalonCrm.Domain.Interfaces.Auditing;
 
 namespace VoroSalonCrm.API.Middlewares
 {
@@ -11,7 +11,7 @@ namespace VoroSalonCrm.API.Middlewares
         private readonly RequestDelegate _next = next;
         private const int MaxBodyLength = 8192;
 
-        public async Task InvokeAsync(HttpContext context, ICurrentUserService currentUserService, JasmimDbContext dbContext)
+        public async Task InvokeAsync(HttpContext context, ICurrentUserService currentUserService, IRouteAuditQueue auditQueue)
         {
             string? requestBody = null;
 
@@ -53,13 +53,14 @@ namespace VoroSalonCrm.API.Middlewares
                 RequestBody = requestBody
             };
 
-            // Limpa qualquer estado pendente deixado pela lógica de negócio antes de salvar
-            // apenas o RouteAuditLog. Sem isso, entidades modificadas/deletadas durante
-            // a requisição podem ser re-processadas aqui causando DbUpdateConcurrencyException.
-            dbContext.ChangeTracker.Clear();
-
-            dbContext.RouteAuditLogs.Add(auditLog);
-            await dbContext.SaveChangesAsync();
+            // Enfileira e retorna. A gravação acontece em lote no RouteAuditWriter, fora do
+            // caminho da resposta — antes havia um SaveChangesAsync síncrono aqui, somando um
+            // round-trip ao Postgres em toda requisição HTTP (issue #115).
+            //
+            // Não é mais necessário limpar o ChangeTracker: o middleware não compartilha mais
+            // o DbContext da requisição, então não há risco de re-processar entidades
+            // modificadas pela lógica de negócio.
+            auditQueue.TryEnqueue(auditLog);
         }
     }
 }

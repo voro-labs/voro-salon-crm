@@ -1032,6 +1032,18 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(m => m.AttachmentUrl).HasMaxLength(2000);
                 b.Property(m => m.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
             });
+
+            // ---------------------------
+            // AUDITORIA
+            // ---------------------------
+            // A tabela recebe uma linha por requisição HTTP e não tinha índice nenhum além
+            // da PK (issue #115). Timestamp isolado atende o expurgo por retenção; o
+            // composto com TenantId atende consulta de auditoria por estabelecimento.
+            builder.Entity<RouteAuditLog>(b =>
+            {
+                b.HasIndex(l => l.Timestamp);
+                b.HasIndex(l => new { l.TenantId, l.Timestamp }).IsDescending(false, true);
+            });
         }
     }
 }
