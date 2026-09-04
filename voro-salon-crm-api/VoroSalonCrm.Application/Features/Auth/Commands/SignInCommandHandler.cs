@@ -9,15 +9,18 @@ namespace VoroSalonCrm.Application.Features.Auth.Commands;
 public class SignInCommandHandler(
     IUserService         userService,
     INotificationService notificationService)
-    : IRequestHandler<SignInCommand, AuthDto?>
+    : IRequestHandler<SignInCommand, SignInResult>
 {
-    public async Task<AuthDto?> Handle(SignInCommand request, CancellationToken cancellationToken)
+    public async Task<SignInResult> Handle(SignInCommand request, CancellationToken cancellationToken)
     {
         var dto = request.Dto;
-        var (user, _) = await userService.GetByEmailAndPassword(dto.Email, dto.Password);
+        var (user, roles) = await userService.GetByEmailAndPassword(dto.Email, dto.Password);
 
+        // 2FA desligado: devolve o usuário já autenticado para o chamador gerar o JWT.
+        // Antes retornava null e o AuthService refazia GetByEmailAndPassword, rodando o
+        // PBKDF2 do Identity duas vezes por login (issue #120).
         if (!user.TwoFactorEnabled)
-            return null; // Signal to facade: use direct JWT generation
+            return SignInResult.Authenticated(user, roles);
 
         var (code, pendingToken) = await userService.GenerateTwoFactorCodeAsync(user.Id);
 
@@ -38,11 +41,11 @@ public class SignInCommandHandler(
             throw new UnauthorizedAccessException(
                 "É necessário confirmar seu e-mail para fazer login. Verifique sua caixa de entrada.");
 
-        return new AuthDto
+        return SignInResult.RequiresTwoFactor(new AuthDto
         {
-            TwoFactorEnabled = true,
-            RequiresTwoFactor = true,
+            TwoFactorEnabled      = true,
+            RequiresTwoFactor     = true,
             TwoFactorPendingToken = pendingToken
-        };
+        });
     }
 }

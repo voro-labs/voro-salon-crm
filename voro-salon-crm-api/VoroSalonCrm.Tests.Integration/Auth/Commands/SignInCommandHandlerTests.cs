@@ -61,13 +61,17 @@ public class SignInCommandHandlerTests
             CancellationToken.None);
 
         result.Should().NotBeNull();
-        result!.RequiresTwoFactor.Should().BeTrue();
-        result.TwoFactorPendingToken.Should().Be("pending-token-abc");
-        result.Token.Should().BeNullOrEmpty();
+        result.TwoFactorResponse.Should().NotBeNull();
+        result.TwoFactorResponse!.RequiresTwoFactor.Should().BeTrue();
+        result.TwoFactorResponse.TwoFactorPendingToken.Should().Be("pending-token-abc");
+        result.TwoFactorResponse.Token.Should().BeNullOrEmpty();
+
+        // Fluxo de 2FA não devolve usuário — o JWT só é gerado após a verificação do código
+        result.User.Should().BeNull();
     }
 
     [Fact]
-    public async Task Handle_WhenTwoFactorDisabled_ReturnsNull()
+    public async Task Handle_WhenTwoFactorDisabled_ReturnsAuthenticatedUserWithoutRehashing()
     {
         var user = new User
         {
@@ -79,13 +83,23 @@ public class SignInCommandHandlerTests
 
         _userService
             .Setup(u => u.GetByEmailAndPassword(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync((user, new List<string>()));
+            .ReturnsAsync((user, new List<string> { "SalonOwner" }));
 
         var result = await Build().Handle(
             new SignInCommand(new SignInDto { Email = "user@test.com", Password = "pass" }),
             CancellationToken.None);
 
-        result.Should().BeNull();
+        // Sem 2FA o handler devolve o usuário já autenticado, para o AuthService gerar o
+        // JWT sem refazer a verificação de senha.
+        result.Should().NotBeNull();
+        result.TwoFactorResponse.Should().BeNull();
+        result.User.Should().BeSameAs(user);
+        result.Roles.Should().ContainSingle().Which.Should().Be("SalonOwner");
+
+        // Regressão da issue #120: a senha é verificada exatamente uma vez por login.
+        _userService.Verify(
+            u => u.GetByEmailAndPassword(It.IsAny<string>(), It.IsAny<string>()),
+            Times.Once);
     }
 
     [Fact]
