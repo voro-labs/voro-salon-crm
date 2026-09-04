@@ -97,10 +97,22 @@ builder.Services.AddApiVersioning(options =>
 
 var app = builder.Build();
 
-await app.UseSeedAsync();
+// Migration + seed rodam no deploy (release_command do fly.toml), não a cada boot.
+// Antes isso ficava no caminho de startup: MigrateAsync comparando 69 migrations mais 27
+// queries bloqueantes e 10 SaveChanges do seeder, tudo na frente da primeira requisição.
+// Medido em produção: 22s de TTFB no primeiro acesso após ociosidade (issue #114).
+if (args.Contains("--migrate"))
+{
+    await app.UseSeedAsync();
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {
+    // Em Development o seed continua no startup: o custo de boot é irrelevante localmente
+    // e evita exigir um passo extra (`dotnet run -- --migrate`) para levantar o ambiente.
+    await app.UseSeedAsync();
+
     app.MapOpenApi();
     app.MapScalarApiReference(options =>
     {
