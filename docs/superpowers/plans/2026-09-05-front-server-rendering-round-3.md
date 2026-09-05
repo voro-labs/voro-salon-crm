@@ -590,16 +590,32 @@ Note the query string is built in the same order the hook builds it (`page`, the
 Run: `cd voro-salon-crm-front && npx tsc --noEmit && npm run build`
 Expected: no new type errors; build exits 0; `/clients` is listed as dynamic (expected — it reads cookies now).
 
-- [ ] **Step 6: Prove the data is in the HTML**
+- [ ] **Step 6: Prove the server actually fetched, and know what you get**
 
-Run `npm run start`, log in through the browser, copy the `vorolabs_salon_token` cookie value, then:
+> **Corrigido durante a execucao (PR #137).** A versao original deste passo mandava
+> conferir que os cards aparecem no HTML. Eles **nao** aparecem: `AuthGuard`
+> (`app/clients/layout.tsx`) e `Main` (layout raiz) decidem o que renderizar a partir do
+> estado de auth, que so existe depois da hidratacao, entao no servidor eles nao renderizam
+> os filhos e o corpo do HTML volta vazio. O que a conversao entrega e **uma ida a API a
+> menos no caminho critico**: o dado viaja no payload do RSC e o SWR o usa sem buscar de
+> novo. Para o HTML pintar a lista sem JS, o portao de auth precisa renderizar no servidor
+> — mudanca a parte, com issue propria.
+
+Run `npm run start`, log in through the browser, copy the `vorolabs_salon_token` cookie
+value, then:
 
 ```bash
-curl -s -H "Cookie: vorolabs_salon_token=<valor>" http://localhost:3000/clients | grep -c "data-slot=\"card\""
-curl -s http://localhost:3000/clients | grep -c "data-slot=\"card\""
+curl -s -H "Cookie: vorolabs_salon_token=<valor>" http://localhost:3000/clients | grep -c "<nome de um cliente real>"
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}" http://localhost:3000/clients
 ```
 
-Expected: with the cookie, the HTML already contains client cards (count > 0). Without it, the middleware redirects and the count is 0. This is the check that the whole task exists for: the first response carries data instead of a skeleton.
+Expected: with the cookie, the client names appear in the response (inside the RSC
+payload, not as rendered cards). Without it, a 307 to `/admin/sign-in`.
+
+Where there is no API to log into, a stub is enough: serve
+`{"status":200,"hasError":false,"data":{"items":[...],"totalCount":2,"page":1,"pageSize":10,"totalPages":1}}`
+on the `NEXT_PUBLIC_BASE_API_URL` used at build time, and forge a cookie whose JWT payload
+carries a future `exp` — the middleware only base64-decodes it.
 
 - [ ] **Step 7: Add the e2e guard and run the clients suite**
 
@@ -781,6 +797,12 @@ The issue's item 3 says "as telas de listagem"; this plan converts clients, empl
 **Known gaps, on purpose:**
 - No unit tests, because the project has no runner (Design decision 5).
 - The e2e suite needs the API plus `TEST_EMAIL`, `TEST_PASSWORD` and `TEST_2FA_CODE`; every task that calls for it also gives a curl-level check that works without it.
+- **The auth gate blocks server rendering.** `AuthGuard` and `Main` render from client-side
+  auth state, so a converted listing ships its data in the RSC payload but still paints only
+  after hydration. Tasks 4 and 5 remove one API round trip each, not the wait for JS. Making
+  the gate server-renderable is the change that unlocks the rest — the middleware already
+  guards these routes, so the client guard there is defensive redundancy. It deserves its own
+  issue and is a prerequisite for the full payoff of item 3.
 - Server-side rendering of listings depends on a token cookie that is **not** `httpOnly`. That is how the middleware already works today and this plan does not change it, but making the session cookie `httpOnly` is a security improvement worth its own issue — and it would not break anything here, since the server only reads the cookie.
 
 ---
