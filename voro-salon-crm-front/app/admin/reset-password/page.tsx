@@ -2,15 +2,16 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Loader2 } from "lucide-react"
 import { API_CONFIG, apiCall } from "@/lib/api"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 
-export default function ResetPasswordPage() {
+function ResetPasswordPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = searchParams.get("email")
@@ -353,5 +354,15 @@ export default function ResetPasswordPage() {
 
       </div>
     </div>
+  )
+}
+
+// useSearchParams() forca render no cliente; sem um limite de Suspense acima dele, a rota
+// inteira deixa de poder ser pre-renderizada (issue #123, item 1).
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<LoadingSimple />}>
+      <ResetPasswordPageContent />
+    </Suspense>
   )
 }
