@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using VoroSalonCrm.Application.DTOs;
@@ -94,12 +94,17 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<PagedResult<AppointmentDto>> GetPagedAsync(int page, int pageSize, string? search, Guid? clientId = null, DateTimeOffset? dateFrom = null, DateTimeOffset? dateTo = null)
         {
-            var query = _appointmentRepository.Include(a => a.Client, a => a.Service!)
+            // Leitura pura: AsNoTracking mantém a página inteira e seus relacionamentos fora do
+            // ChangeTracker. AsSplitQuery evita a explosão de linhas do JOIN único com a coleção
+            // Services — sem ele, um agendamento com N serviços vira N linhas repetindo cliente,
+            // funcionário e plano de assinatura (issue #116).
+            var query = _appointmentRepository.Include(asNoTracking: true, a => a.Client, a => a.Service!)
                 .Include(a => a.Employee!)
                 .Include(a => a.Membership!)
                 .ThenInclude(m => m.Plan)
                 .Include(a => a.Services)
                 .ThenInclude(s => s.Service)
+                .AsSplitQuery()
                 .Where(a => !a.IsDeleted);
 
             if (clientId.HasValue)
@@ -111,23 +116,32 @@ namespace VoroSalonCrm.Application.Services
             if (dateTo.HasValue)
                 query = query.Where(a => a.ScheduledDateTime <= dateTo.Value);
 
-            var appointments = await query.OrderBy(a => a.ScheduledDateTime).ToListAsync();
-            var dtos = appointments.Select(MapToDto).ToList();
-
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var term = search.Trim().ToLowerInvariant();
-                dtos = dtos.Where(a =>
-                    (a.ClientName?.ToLowerInvariant().Contains(term) ?? false) ||
-                    (a.ServiceName?.ToLowerInvariant().Contains(term) ?? false) ||
-                    (a.Description?.ToLowerInvariant().Contains(term) ?? false))
-                    .ToList();
+                // Mesmo critério de antes (nome do cliente, nome do serviço, descrição), só que
+                // agora dentro do SQL. Contains sobre ToLower vira strpos(lower(...)) no Postgres:
+                // é case-insensitive e não tem curinga, então texto do usuário não vira padrão.
+                var term = search.Trim().ToLower();
+                query = query.Where(a =>
+                    a.Client.Name.ToLower().Contains(term) ||
+                    (a.Service != null && a.Service.Name.ToLower().Contains(term)) ||
+                    (a.Description != null && a.Description.ToLower().Contains(term)));
             }
 
-            var totalCount = dtos.Count;
-            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+            // O total tem que refletir o filtro, e não a página — daí o Count separado, antes do
+            // Skip/Take. Sem Include no plano, o Postgres resolve só com a tabela de agendamentos.
+            var totalCount = await query.CountAsync();
 
-            return new PagedResult<AppointmentDto>(items, totalCount, page, pageSize);
+            // ThenBy(Id) desempata: ScheduledDateTime repete bastante (encaixes, horário cheio) e,
+            // sem critério estável, Skip/Take pode repetir ou pular registro entre páginas.
+            var appointments = await query
+                .OrderBy(a => a.ScheduledDateTime)
+                .ThenBy(a => a.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResult<AppointmentDto>(appointments.Select(MapToDto), totalCount, page, pageSize);
         }
 
         public async Task<AppointmentDto> UpdateAsync(Guid id, UpdateAppointmentDto dto)

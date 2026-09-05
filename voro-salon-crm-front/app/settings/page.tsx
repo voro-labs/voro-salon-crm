@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -68,6 +68,7 @@ import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { getBrandingByType } from "@/lib/branding"
 import { AuthenticatedImage } from "@/components/ui/custom/authenticated-image"
 import { toast } from "sonner"
+import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 
 interface EvolutionInstance {
   id: string
@@ -157,7 +158,7 @@ function applyRadius(value: string) {
 }
 
 
-export default function ConfiguracoesPage() {
+function ConfiguracoesPageContent() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [currentRadius, setCurrentRadius] = useState("0.625rem")
@@ -1651,5 +1652,15 @@ export default function ConfiguracoesPage() {
         </DialogContent>
       </Dialog>
     </AuthGuard>
+  )
+}
+
+// useSearchParams() forca render no cliente; sem um limite de Suspense acima dele, a rota
+// inteira deixa de poder ser pre-renderizada (issue #123, item 1).
+export default function ConfiguracoesPage() {
+  return (
+    <Suspense fallback={<LoadingSimple />}>
+      <ConfiguracoesPageContent />
+    </Suspense>
   )
 }

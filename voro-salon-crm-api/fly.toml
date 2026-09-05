@@ -8,12 +8,23 @@ primary_region = 'gru'
 
 [build]
 
+# Migration + seed rodam aqui, uma vez por deploy, em vez de a cada boot da aplicacao.
+# Ver issue #114.
+[deploy]
+  release_command = "dotnet VoroSalonCrm.API.dll --migrate"
+  # Padrao do Fly e 5 min. O CREATE INDEX CONCURRENTLY em RouteAuditLogs (tabela que
+  # nunca teve expurgo) pode passar disso; estourando, a maquina de release e morta e
+  # o Postgres fica com indice INVALID. Ver issue #115.
+  release_command_timeout = "15m"
+
 [http_service]
   internal_port = 8080
   force_https = true
+  # min_machines_running = 1 mantem uma maquina sempre de pe. Com 0, a primeira requisicao
+  # apos ociosidade pagava o boot completo: 22s de TTFB medidos em producao (issue #114).
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
 [[vm]]

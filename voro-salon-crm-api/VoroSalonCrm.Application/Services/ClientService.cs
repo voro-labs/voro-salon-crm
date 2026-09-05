@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -85,26 +85,41 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<PagedResult<ClientDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
         {
-            var clients = await GetAllAsync();
-            var dtos = clients.ToList();
+            // Antes esta listagem paginava sobre a lista completa do tenant: cada página puxava
+            // todos os clientes do cache só para descartar quase tudo, e o custo crescia junto com
+            // o salão. Filtro, contagem, ordenação e recorte agora acontecem no Postgres (#116).
+            // O cache de GetAllAsync continua servindo quem precisa da lista inteira (selects).
+            var query = _clientRepository.Query();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var term = search.Trim().ToLowerInvariant();
-                dtos = dtos.Where(c =>
-                    (c.Name?.ToLowerInvariant().Contains(term) ?? false) ||
-                    (c.Email?.ToLowerInvariant().Contains(term) ?? false) ||
-                    (c.Phone?.ToLowerInvariant().Contains(term) ?? false)).ToList();
+                // Contains sobre ToLower vira strpos(lower(...)) no Postgres: case-insensitive e
+                // sem curinga, então o texto digitado não vira padrão de busca.
+                var term = search.Trim().ToLower();
+                query = query.Where(c =>
+                    c.Name.ToLower().Contains(term) ||
+                    (c.Email != null && c.Email.ToLower().Contains(term)) ||
+                    (c.Phone != null && c.Phone.ToLower().Contains(term)));
             }
 
+            // Conta com o filtro aplicado e antes do recorte: o total é do resultado, não da página.
+            var totalCount = await query.CountAsync();
+
+            // ThenBy(Id) desempata nomes repetidos - sem critério estável, Skip/Take pode repetir
+            // ou pular registro entre páginas.
             var desc = sortDirection?.ToLowerInvariant() == "desc";
-            dtos = (orderBy?.ToLowerInvariant()) switch
+            query = (orderBy?.ToLowerInvariant()) switch
             {
-                "name" or _ => desc ? dtos.OrderByDescending(c => c.Name).ToList() : dtos.OrderBy(c => c.Name).ToList(),
+                "name" or _ => desc
+                    ? query.OrderByDescending(c => c.Name).ThenBy(c => c.Id)
+                    : query.OrderBy(c => c.Name).ThenBy(c => c.Id),
             };
 
-            var totalCount = dtos.Count;
-            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => new ClientDto(c.Id, c.Name, c.Phone, c.Email, c.Notes, c.CreatedAt, c.BirthDate))
+                .ToListAsync();
 
             return new PagedResult<ClientDto>(items, totalCount, page, pageSize);
         }

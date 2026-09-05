@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VoroSalonCrm.Application.Services;
@@ -8,9 +8,11 @@ using VoroSalonCrm.Application.Services.Interfaces.Blob;
 using VoroSalonCrm.Application.Services.Interfaces.Email;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
+using VoroSalonCrm.Domain.Interfaces.Auditing;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
+using VoroSalonCrm.Infrastructure.Auditing;
 using VoroSalonCrm.Infrastructure.Blob;
 using VoroSalonCrm.Infrastructure.Email;
 using VoroSalonCrm.Infrastructure.Integration;
@@ -174,11 +176,19 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddScoped<ISupportService, SupportService>();
             #endregion
 
+            // Auditoria de rotas fora do caminho da requisição (issue #115).
+            // A fila é singleton: o middleware (scoped) escreve nela, o writer (hosted) drena.
+            services.AddSingleton<RouteAuditQueue>();
+            services.AddSingleton<IRouteAuditQueue>(sp => sp.GetRequiredService<RouteAuditQueue>());
+
             services.AddHostedService<AppointmentReminderBackgroundService>();
             services.AddHostedService<MembershipExpirationNotificationJob>();
             services.AddHostedService<ExpiredCheckoutCleanupJob>();
             services.AddHostedService<ExpiredPendingPlanChangeCleanupJob>();
             services.AddHostedService<EvolutionResponseWorker>();
+            services.AddHostedService<RouteAuditWriter>();
+            services.AddHostedService<RouteAuditRetentionJob>();
+            services.AddHostedService<EntityAuditRetentionJob>();
 
             services.AddMediatR(cfg =>
                 cfg.RegisterServicesFromAssembly(

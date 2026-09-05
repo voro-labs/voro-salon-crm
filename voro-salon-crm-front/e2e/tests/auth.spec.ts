@@ -28,4 +28,16 @@ test.describe('Autenticação', () => {
     await page.waitForURL('**/admin/sign-in**', { timeout: 10000 })
     expect(page.url()).toContain('/admin/sign-in')
   })
+
+  test('rota publica nao e redirecionada sem auth', async ({ page }) => {
+    await page.goto('/prices')
+    await page.waitForLoadState('domcontentloaded')
+    expect(page.url()).toContain('/prices')
+  })
+
+  test('rota protegida de admin redireciona sem auth', async ({ page }) => {
+    await page.goto('/settings')
+    await page.waitForURL('**/admin/sign-in**', { timeout: 10000 })
+    expect(page.url()).toContain('/admin/sign-in')
+  })
 })

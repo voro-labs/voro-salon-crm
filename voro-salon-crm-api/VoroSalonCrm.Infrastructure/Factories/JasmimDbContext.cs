@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Entities.Identity;
+using VoroSalonCrm.Infrastructure.Auditing;
 
 namespace VoroSalonCrm.Infrastructure.Factories
 {
@@ -92,7 +93,12 @@ namespace VoroSalonCrm.Infrastructure.Factories
 
             foreach (var entry in entries)
             {
-                if (entry.Entity is EntityAuditLog || entry.Entity is RouteAuditLog || entry.Entity is IntegrationAuditLog)
+                // Opt-in: só as entidades listadas em EntityAuditPolicy viram log. Antes qualquer
+                // entidade alterada gerava um INSERT extra com JSON, o que fazia o banco escrever
+                // várias vezes o necessário e enchia a tabela de ruído que nenhuma tela lê. A lista
+                // também deixa de fora os próprios logs de auditoria, que antes eram pulados aqui
+                // por tipo (issue #117).
+                if (!EntityAuditPolicy.IsAudited(entry.Metadata.ClrType))
                     continue;
 
                 var auditLog = new EntityAuditLog
@@ -119,8 +125,8 @@ namespace VoroSalonCrm.Infrastructure.Factories
                     {
                         if (property.IsModified)
                         {
-                            oldValues[property.Metadata.Name] = property.OriginalValue;
-                            newValues[property.Metadata.Name] = property.CurrentValue;
+                            oldValues[property.Metadata.Name] = EntityAuditPolicy.Sanitize(property.Metadata.Name, property.OriginalValue);
+                            newValues[property.Metadata.Name] = EntityAuditPolicy.Sanitize(property.Metadata.Name, property.CurrentValue);
                         }
                     }
 
@@ -129,12 +135,16 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 }
                 else if (entry.State == EntityState.Added)
                 {
-                    var newValues = entry.Properties.ToDictionary(p => p.Metadata.Name, p => p.CurrentValue);
+                    var newValues = entry.Properties.ToDictionary(
+                        p => p.Metadata.Name,
+                        p => EntityAuditPolicy.Sanitize(p.Metadata.Name, p.CurrentValue));
                     auditLog.NewValues = System.Text.Json.JsonSerializer.Serialize(newValues);
                 }
                 else if (entry.State == EntityState.Deleted)
                 {
-                    var oldValues = entry.Properties.ToDictionary(p => p.Metadata.Name, p => p.OriginalValue);
+                    var oldValues = entry.Properties.ToDictionary(
+                        p => p.Metadata.Name,
+                        p => EntityAuditPolicy.Sanitize(p.Metadata.Name, p.OriginalValue));
                     auditLog.OldValues = System.Text.Json.JsonSerializer.Serialize(oldValues);
                 }
 
@@ -1031,6 +1041,28 @@ namespace VoroSalonCrm.Infrastructure.Factories
                 b.Property(m => m.Body).IsRequired().HasMaxLength(4000);
                 b.Property(m => m.AttachmentUrl).HasMaxLength(2000);
                 b.Property(m => m.CreatedAt).HasDefaultValueSql("TIMEZONE('utc', NOW())");
+            });
+
+            // ---------------------------
+            // AUDITORIA
+            // ---------------------------
+            // A tabela recebe uma linha por requisição HTTP e não tinha índice nenhum além
+            // da PK (issue #115). Timestamp isolado atende o expurgo por retenção; o
+            // composto com TenantId atende consulta de auditoria por estabelecimento.
+            builder.Entity<RouteAuditLog>(b =>
+            {
+                b.HasIndex(l => l.Timestamp);
+                b.HasIndex(l => new { l.TenantId, l.Timestamp }).IsDescending(false, true);
+            });
+
+            // EntityAuditLogs também não tinha índice nenhum além da PK (issue #117). Timestamp
+            // isolado atende o expurgo por retenção; o composto com TenantId atende consulta por
+            // estabelecimento; (EntityName, PrimaryKey) atende "o que aconteceu com este registro".
+            builder.Entity<EntityAuditLog>(b =>
+            {
+                b.HasIndex(l => l.Timestamp);
+                b.HasIndex(l => new { l.TenantId, l.Timestamp }).IsDescending(false, true);
+                b.HasIndex(l => new { l.EntityName, l.PrimaryKey });
             });
         }
     }

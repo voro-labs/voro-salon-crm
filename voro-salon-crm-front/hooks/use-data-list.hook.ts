@@ -26,9 +26,12 @@ export function useDataList<T>(
   options?: {
     pageSize?: number
     extraParams?: Record<string, string>
+    /** Primeira pagina buscada no servidor. Ignorada assim que o usuario pagina, busca ou filtra. */
+    initialData?: PagedResult<T>
   }
 ) {
-  const [pageSize, setPageSize] = useState(options?.pageSize ?? 20)
+  const initialPageSize = options?.pageSize ?? 20
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [extraParams, setExtraParams] = useState<Record<string, string>>(options?.extraParams ?? {})
@@ -57,7 +60,23 @@ export function useDataList<T>(
   })
   const key = `${endpoint}?${params.toString()}`
 
-  const { data, isLoading, error, mutate } = useSWR<PagedResult<T>>(key, fetcher)
+  // A chave que o servidor buscou. So ela recebe fallbackData: qualquer paginacao, busca
+  // ou filtro muda a chave e volta a ser uma requisicao normal do cliente.
+  const initialKey = `${endpoint}?${new URLSearchParams({
+    page: "1",
+    pageSize: String(initialPageSize),
+    ...(options?.extraParams ?? {}),
+  }).toString()}`
+
+  const hasServerData = key === initialKey && options?.initialData !== undefined
+
+  const { data, isLoading, error, mutate } = useSWR<PagedResult<T>>(key, fetcher, {
+    fallbackData: hasServerData ? options?.initialData : undefined,
+    // O dado do servidor foi buscado nesta mesma requisicao, entao revalidar na montagem
+    // repetiria a chamada que a conversao existe para evitar. Foco, intervalo e troca de
+    // chave seguem revalidando normalmente.
+    revalidateOnMount: hasServerData ? false : undefined,
+  })
 
   return {
     items: data?.items ?? [],

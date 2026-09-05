@@ -31,7 +31,7 @@ namespace VoroSalonCrm.Application.Services.Interfaces
         Task Disable2FAAsync(Guid userId);
 
         // Troca de Tenant
-        Task<AuthDto> SwitchTenantAsync(Guid tenantId);
+        Task<AuthDto> SwitchTenantAsync(Guid tenantId, int? establishmentType = null);
 
         // Pós-login obrigatórios
         Task ChangePasswordAsync(Guid userId, string newPassword);

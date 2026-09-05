@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM.Financial;
@@ -59,26 +59,32 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<PagedResult<EmployeeDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
         {
-            var dtos = (await GetAllAsync()).ToList();
+            // Mesma troca feita em clientes e serviços (#116). Include opt-in sem rastreamento:
+            // Specialties alimenta SpecialtyIds no DTO e nada aqui é mutado.
+            var query = _repository.Include(asNoTracking: true, e => e.Specialties);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var term = search.Trim().ToLowerInvariant();
-                dtos = dtos.Where(e =>
-                    e.Name.ToLowerInvariant().Contains(term))
-                    .ToList();
+                var term = search.Trim().ToLower();
+                query = query.Where(e => e.Name.ToLower().Contains(term));
             }
-            
+
+            var totalCount = await query.CountAsync();
+
             var desc = sortDirection?.ToLowerInvariant() == "desc";
-            dtos = (orderBy?.ToLowerInvariant()) switch
+            query = (orderBy?.ToLowerInvariant()) switch
             {
-                "name" or _ => desc ? dtos.OrderByDescending(s => s.Name).ToList() : dtos.OrderBy(s => s.Name).ToList(),
+                "name" or _ => desc
+                    ? query.OrderByDescending(e => e.Name).ThenBy(e => e.Id)
+                    : query.OrderBy(e => e.Name).ThenBy(e => e.Id),
             };
 
-            var totalCount = dtos.Count;
-            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+            var employees = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
-            return new PagedResult<EmployeeDto>(items, totalCount, page, pageSize);
+            return new PagedResult<EmployeeDto>(employees.Select(MapToDto), totalCount, page, pageSize);
         }
 
         public async Task<EmployeeDto?> GetByIdAsync(Guid id)

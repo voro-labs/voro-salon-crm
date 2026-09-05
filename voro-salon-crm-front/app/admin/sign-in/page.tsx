@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Eye, EyeOff, AlertCircle, Scissors, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth.context"
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { getClientBranding } from "@/lib/branding"
 
-export default function SignInPage() {
+function SignInPageContent() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirect") || "/"
   const { user, loading: authLoading } = useAuth()
@@ -185,5 +185,15 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// useSearchParams() forca render no cliente; sem um limite de Suspense acima dele, a rota
+// inteira deixa de poder ser pre-renderizada (issue #123, item 1).
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<LoadingSimple />}>
+      <SignInPageContent />
+    </Suspense>
   )
 }

@@ -3,6 +3,7 @@
 import useSWR from "swr"
 import { useCallback } from "react"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
+import { useAuth } from "@/contexts/auth.context"
 import { fetcher } from "@/lib/fetcher"
 
 export interface UserNotification {
@@ -15,22 +16,42 @@ export interface UserNotification {
   createdAt: string
 }
 
-export function useUserNotifications() {
+const POLL_INTERVAL_MS = 30000
+
+interface UseUserNotificationsOptions {
+  /**
+   * Liga o polling desta instância. Só quem está montado o tempo todo precisa
+   * disso — hoje o `WebPushManager`, no layout raiz. As demais telas leem do
+   * mesmo cache do SWR, atualizado por esse único poller, em vez de abrirem um
+   * intervalo próprio para as mesmas duas chaves.
+   */
+  poll?: boolean
+}
+
+export function useUserNotifications({ poll = false }: UseUserNotificationsOptions = {}) {
+  const { user } = useAuth()
+
+  // sem usuário não há o que buscar: com a chave nula o SWR não requisita nada,
+  // o que evita 401 em loop nas telas públicas (landing, agendamento)
+  const notificationsKey = user ? API_CONFIG.ENDPOINTS.NOTIFICATIONS : null
+  const unreadCountKey = user ? API_CONFIG.ENDPOINTS.NOTIFICATIONS_UNREAD_COUNT : null
+  const refreshInterval = poll ? POLL_INTERVAL_MS : 0
+
   const {
     data: notifications,
     isLoading,
     mutate: mutateNotifications,
-  } = useSWR<UserNotification[]>(API_CONFIG.ENDPOINTS.NOTIFICATIONS, fetcher, {
+  } = useSWR<UserNotification[]>(notificationsKey, fetcher, {
     shouldRetryOnError: false,
-    refreshInterval: 30000,
+    refreshInterval,
   })
 
   const { data: unreadCountData, mutate: mutateUnreadCount } = useSWR<{ count: number } | number>(
-    API_CONFIG.ENDPOINTS.NOTIFICATIONS_UNREAD_COUNT,
+    unreadCountKey,
     fetcher,
     {
       shouldRetryOnError: false,
-      refreshInterval: 30000,
+      refreshInterval,
     },
   )
 

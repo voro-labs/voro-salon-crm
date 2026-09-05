@@ -840,6 +840,13 @@ namespace VoroSalonCrm.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("EntityName", "PrimaryKey");
+
+                    b.HasIndex("TenantId", "Timestamp")
+                        .IsDescending(false, true);
+
                     b.ToTable("EntityAuditLogs");
                 });
 
@@ -1264,6 +1271,11 @@ namespace VoroSalonCrm.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("TenantId", "Timestamp")
+                        .IsDescending(false, true);
 
                     b.ToTable("RouteAuditLogs");
                 });

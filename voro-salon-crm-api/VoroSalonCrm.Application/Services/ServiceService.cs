@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs;
 using VoroSalonCrm.Application.DTOs.CRM;
 using VoroSalonCrm.Application.Services.Interfaces;
@@ -92,25 +92,60 @@ namespace VoroSalonCrm.Application.Services
 
         public async Task<PagedResult<ServiceDto>> GetPagedAsync(int page, int pageSize, string? search, string? orderBy = "name", string? sortDirection = "asc")
         {
-            var dtos = (await GetAllAsync()).ToList();
+            // Mesma troca feita em clientes: filtro, contagem, ordenação e recorte no Postgres em
+            // vez de paginar a lista inteira do tenant vinda do cache (#116). GetAllAsync segue
+            // cacheado para quem consome a lista completa.
+            var query = _serviceRepository.Query();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var term = search.Trim().ToLowerInvariant();
-                dtos = dtos.Where(s =>
-                    (s.Name?.ToLowerInvariant().Contains(term) ?? false) ||
-                    (s.Description?.ToLowerInvariant().Contains(term) ?? false))
-                    .ToList();
+                var term = search.Trim().ToLower();
+                query = query.Where(s =>
+                    s.Name.ToLower().Contains(term) ||
+                    (s.Description != null && s.Description.ToLower().Contains(term)));
             }
 
+            var totalCount = await query.CountAsync();
+
             var desc = sortDirection?.ToLowerInvariant() == "desc";
-            dtos = (orderBy?.ToLowerInvariant()) switch
+            query = (orderBy?.ToLowerInvariant()) switch
             {
-                "name" or _ => desc ? dtos.OrderByDescending(s => s.Name).ToList() : dtos.OrderBy(s => s.Name).ToList(),
+                "name" or _ => desc
+                    ? query.OrderByDescending(s => s.Name).ThenBy(s => s.Id)
+                    : query.OrderBy(s => s.Name).ThenBy(s => s.Id),
             };
 
-            var totalCount = dtos.Count;
-            var items = dtos.Skip((page - 1) * pageSize).Take(pageSize);
+            var services = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(s => new { s.Id, s.Name, s.Description, s.Price, s.DurationMinutes, s.CreatedAt, s.Category })
+                .ToListAsync();
+
+            // Promoções só dos serviços da página. Antes o cruzamento era feito em memória contra
+            // todas as promoções ativas do tenant.
+            var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+            var todayDow = (int)today.DayOfWeek;
+            var pageIds = services.Select(s => s.Id).ToList();
+
+            var promotions = pageIds.Count == 0
+                ? []
+                : await _servicePromotionRepository
+                    .Query(p =>
+                        p.TenantId == _currentUserService.TenantId &&
+                        p.IsActive &&
+                        pageIds.Contains(p.ServiceId) &&
+                        p.DaysOfWeek.Contains(todayDow) &&
+                        (p.ValidFrom == null || p.ValidFrom <= today) &&
+                        (p.ValidUntil == null || p.ValidUntil >= today))
+                    .IgnoreQueryFilters()
+                    .ToListAsync();
+
+            var items = services.Select(s =>
+            {
+                var promo = promotions.FirstOrDefault(p => p.ServiceId == s.Id);
+                return new ServiceDto(s.Id, s.Name, s.Description, s.Price, s.DurationMinutes, s.CreatedAt,
+                    s.Category, promo?.PromotionalPrice, promo != null);
+            }).ToList();
 
             return new PagedResult<ServiceDto>(items, totalCount, page, pageSize);
         }
