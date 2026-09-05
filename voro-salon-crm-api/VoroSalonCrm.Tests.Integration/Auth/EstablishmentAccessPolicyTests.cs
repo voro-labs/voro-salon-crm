@@ -124,4 +124,46 @@ public class EstablishmentAccessPolicyTests
             .ResolveTenantId(UserWith(), (int)EstablishmentType.Salon, lastConnectedTenantId: null)
             .Should().BeNull();
     }
+
+    // ── VisibleTenants ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void VisibleTenants_KeepsOnlyTheEstablishmentsOfTheDomain()
+    {
+        var salon   = Link(EstablishmentType.Salon, isDefault: true);
+        var barberA = Link(EstablishmentType.Barber);
+        var barberB = Link(EstablishmentType.Barber);
+        var user    = UserWith(salon, barberA, barberB);
+
+        EstablishmentAccessPolicy
+            .VisibleTenants(user, (int)EstablishmentType.Barber)
+            .Select(ut => ut.TenantId)
+            .Should().BeEquivalentTo([barberA.TenantId, barberB.TenantId]);
+    }
+
+    [Fact]
+    public void VisibleTenants_ReturnsEveryTenantWhenDomainIsNotInformed()
+    {
+        var salon  = Link(EstablishmentType.Salon, isDefault: true);
+        var barber = Link(EstablishmentType.Barber);
+        var user   = UserWith(salon, barber);
+
+        EstablishmentAccessPolicy
+            .VisibleTenants(user, null)
+            .Select(ut => ut.TenantId)
+            .Should().BeEquivalentTo([salon.TenantId, barber.TenantId]);
+    }
+
+    [Fact]
+    public void VisibleTenants_ReturnsEveryTenantWhenNoneMatchesTheDomain()
+    {
+        // Não há o que filtrar: quem não tem estabelecimento do tipo nem chega a logar
+        var salon = Link(EstablishmentType.Salon, isDefault: true);
+        var user  = UserWith(salon);
+
+        EstablishmentAccessPolicy
+            .VisibleTenants(user, (int)EstablishmentType.Petshop)
+            .Select(ut => ut.TenantId)
+            .Should().BeEquivalentTo([salon.TenantId]);
+    }
 }

@@ -410,7 +410,7 @@ namespace VoroSalonCrm.Application.Services
             await _userService.DisableTwoFactorAsync(userId);
         }
 
-        public async Task<AuthDto> SwitchTenantAsync(Guid tenantId)
+        public async Task<AuthDto> SwitchTenantAsync(Guid tenantId, int? establishmentType = null)
         {
             var userId = _currentUser.UserId;
             Console.WriteLine($"[DEBUG] SwitchTenantAsync: UserId={userId}, TargetTenantId={tenantId}");
@@ -432,9 +432,16 @@ namespace VoroSalonCrm.Application.Services
             var userTenant = user.UserTenants?.FirstOrDefault(ut => ut.TenantId == tenantId)
                 ?? throw new UnauthorizedAccessException("Usuário não tem acesso a este salão.");
 
+            // O domínio atual também limita a troca: cada tipo de estabelecimento é
+            // acessado pelo seu próprio endereço.
+            if (establishmentType.HasValue && userTenant.Tenant != null &&
+                (int)userTenant.Tenant.EstablishmentType != establishmentType.Value)
+                throw new UnauthorizedAccessException(
+                    "Este estabelecimento não pode ser acessado por este endereço de acesso.");
+
             var roles = await _userService.GetRolesAsync(user);
 
-            return await GenerateAuthDtoAsync(user, roles, tenantId);
+            return await GenerateAuthDtoAsync(user, roles, tenantId, establishmentType);
         }
 
         private static List<Claim> GenerateClaims(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
@@ -622,13 +629,18 @@ namespace VoroSalonCrm.Application.Services
             }
             await _unitOfWork.SaveChangesAsync();
 
-            var tenants = user.UserTenants?.Select(ut => new TenantDto
-            {
-                Id = ut.TenantId,
-                Name = ut.Tenant?.Name ?? "Salon",
-                Slug = ut.Tenant?.Slug ?? "",
-                LogoUrl = ut.Tenant?.LogoUrl
-            }).ToList() ?? [];
+            // Seletor de estabelecimentos: só os do domínio acessado, para não oferecer
+            // uma troca que deixaria a sessão com a marca de um tipo e os dados de outro.
+            var tenants = Features.Auth.EstablishmentAccessPolicy
+                .VisibleTenants(user, establishmentType)
+                .Select(ut => new TenantDto
+                {
+                    Id = ut.TenantId,
+                    Name = ut.Tenant?.Name ?? "Salon",
+                    Slug = ut.Tenant?.Slug ?? "",
+                    LogoUrl = ut.Tenant?.LogoUrl,
+                    EstablishmentType = ut.Tenant?.EstablishmentType ?? Domain.Enums.EstablishmentType.Salon
+                }).ToList();
 
             return new AuthDto()
             {

@@ -45,6 +45,20 @@ public static class EstablishmentAccessPolicy
     }
 
     /// <summary>
+    /// Estabelecimentos que o usuário pode usar no domínio acessado — é a lista que
+    /// alimenta o seletor de estabelecimentos. Sem tipo informado (ou quando nenhum
+    /// estabelecimento é daquele tipo), devolve todos.
+    /// </summary>
+    public static IReadOnlyList<UserTenant> VisibleTenants(User user, int? establishmentType)
+    {
+        var all = user.UserTenants?.ToList() ?? [];
+
+        var ofType = TenantsOfType(user, establishmentType);
+
+        return ofType.Count > 0 ? ofType : all;
+    }
+
+    /// <summary>
     /// Estabelecimento a ser conectado no login, priorizando os do tipo do domínio
     /// acessado. Dentro dos candidatos, mantém o último acessado; senão, o padrão.
     /// </summary>
@@ -60,13 +74,9 @@ public static class EstablishmentAccessPolicy
 
     private static UserTenant? ResolveUserTenant(User user, int? establishmentType, Guid? lastConnectedTenantId)
     {
-        var candidates = user.UserTenants?.ToList() ?? [];
+        var candidates = VisibleTenants(user, establishmentType);
         if (candidates.Count == 0)
             return null;
-
-        var ofType = TenantsOfType(user, establishmentType);
-        if (ofType.Count > 0)
-            candidates = [.. ofType];
 
         if (lastConnectedTenantId.HasValue)
         {

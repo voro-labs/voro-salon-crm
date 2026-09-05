@@ -206,6 +206,56 @@ public class AuthServiceTests
             .WithMessage("*endereço de acesso*");
     }
 
+    // ── SwitchTenantAsync ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task SwitchTenant_Throws_WhenTargetEstablishmentIsFromAnotherDomain()
+    {
+        // Arrange — sessão aberta no domínio da barbearia tentando ir para o salão
+        var ctx    = new AuthServiceContext();
+        var salon  = new Tenant { Id = Guid.NewGuid(), EstablishmentType = EstablishmentType.Salon };
+        var barber = new Tenant { Id = Guid.NewGuid(), EstablishmentType = EstablishmentType.Barber };
+        var user = new User
+        {
+            Id          = Guid.NewGuid(),
+            Email       = "test@voro.com",
+            UserTenants =
+            [
+                new UserTenant { TenantId = salon.Id,  IsDefault = true, Tenant = salon },
+                new UserTenant { TenantId = barber.Id, Tenant = barber }
+            ]
+        };
+
+        ctx.CurrentUser.Setup(c => c.UserId).Returns(user.Id);
+        ctx.UserService.Setup(s => s.GetByIdAsync(user.Id)).ReturnsAsync(user);
+
+        var svc = ctx.Build();
+
+        // Act
+        var act = () => svc.SwitchTenantAsync(salon.Id, (int)EstablishmentType.Barber);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*endereço de acesso*");
+    }
+
+    [Fact]
+    public async Task SwitchTenant_Throws_WhenUserDoesNotBelongToTenant()
+    {
+        var ctx  = new AuthServiceContext();
+        var user = new User { Id = Guid.NewGuid(), Email = "test@voro.com", UserTenants = [] };
+
+        ctx.CurrentUser.Setup(c => c.UserId).Returns(user.Id);
+        ctx.UserService.Setup(s => s.GetByIdAsync(user.Id)).ReturnsAsync(user);
+
+        var svc = ctx.Build();
+
+        var act = () => svc.SwitchTenantAsync(Guid.NewGuid());
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*não tem acesso*");
+    }
+
     // ── Delegation tests ──────────────────────────────────────────────────────
 
     [Fact]

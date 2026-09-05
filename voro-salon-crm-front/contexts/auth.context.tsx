@@ -3,7 +3,23 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { getAuthToken, removeAuthToken, setAuthToken, getRefreshToken, setRefreshToken, removeRefreshToken, API_CONFIG, tokenManager } from "@/lib/api"
 import { AuthDto } from "@/types/DTOs/auth.interface"
+import { getEstablishmentTypeByHostname } from "@/lib/branding"
 import { jwtDecode } from "jwt-decode"
+
+// Cada tipo de estabelecimento tem seu próprio endereço, então o seletor mostra apenas
+// os estabelecimentos do domínio acessado — uma conta pode ter salão e barbearia juntos.
+// Itens sem o tipo (lista salva por uma versão anterior) são mantidos, e se nada
+// corresponder devolvemos a lista inteira em vez de deixar o seletor vazio.
+function tenantsOfCurrentDomain(tenants?: any[]) {
+  if (!tenants?.length || typeof window === "undefined") return tenants ?? []
+
+  const expectedType = getEstablishmentTypeByHostname(window.location.hostname)
+  const ofDomain = tenants.filter(
+    (t) => t?.establishmentType === undefined || t.establishmentType === expectedType
+  )
+
+  return ofDomain.length > 0 ? ofDomain : tenants
+}
 
 // Tipo do payload esperado no token JWT
 interface JwtPayload {
@@ -73,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailConfirmed: decoded.email_verified?.toLowerCase() === "true",
           token: jwt,
           refreshToken: refresh,
-          tenants: parsedTenants,
+          tenants: tenantsOfCurrentDomain(parsedTenants),
         })
       }
 
@@ -190,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailConfirmed: decoded.email_verified?.toLowerCase() === "true",
         token: token,
         refreshToken: refreshToken,
-        tenants: tenants || []
+        tenants: tenantsOfCurrentDomain(tenants)
       }
 
       setUser(userData)
@@ -239,7 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailConfirmed: decoded.email_verified?.toLowerCase() === "true",
           token: newToken,
           refreshToken: newRefresh || refreshToken,
-          tenants: parsedTenants,
+          tenants: tenantsOfCurrentDomain(parsedTenants),
         })
       }
     } catch { }
@@ -248,9 +264,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchTenant = async (tenantId: string) => {
     try {
       const { secureApiCall, API_CONFIG } = await import("@/lib/api")
-      const result = await secureApiCall<AuthDto>(`${API_CONFIG.ENDPOINTS.SWITCH_TENANT}/${tenantId}`, {
-        method: "POST"
-      })
+      const establishmentType = getEstablishmentTypeByHostname(window.location.hostname)
+      const result = await secureApiCall<AuthDto>(
+        `${API_CONFIG.ENDPOINTS.SWITCH_TENANT}/${tenantId}?establishmentType=${establishmentType}`,
+        { method: "POST" }
+      )
 
       if (result.hasError) throw new Error(result.message ?? "Erro ao trocar de salão")
 
