@@ -42,8 +42,9 @@ and "Out of scope".
 - **Module availability is UX, not a security barrier.** The API refuses callers who lack
   the module; the guard exists to keep people out of a screen they did not contract. So it
   may render optimistically and correct itself when the answer arrives.
-- **The correction stays exactly as it is:** the existing effect redirects to
-  `/not-authorized` when the loaded module list says the module is disabled.
+- **The redirect effect is left byte-for-byte alone**, including the comparison bug that
+  keeps it from ever firing. Fixing it here would smuggle a production behavior change into
+  a performance cleanup; it gets its own issue (see "Open question").
 - **No server-side module fetch.** Feeding modules from the server would remove even the
   brief flash, but it means converting every guarded layout into a server component — a
   scope deliberately left out of this round.
@@ -60,13 +61,26 @@ That is the whole change. One edit covers all seven call sites: five section lay
 guard directly (`funnel`, `whatsapp`). Sections without a module gate — `settings`,
 `reports`, `notifications`, the dashboard — never paid this round trip and are unaffected.
 
-### Why the flash is acceptable
+### There is no flash, because the redirect never fires today
 
-Someone browsing to a module they do not have will see the screen for about one round trip
-before being redirected. Today they see a full-screen spinner for the same duration and
-then the same redirect — the wait is identical, only what fills it changes. The screen they
-glimpse renders no privileged data: every request it makes is refused by the API for the
-same reason the module is disabled.
+Found while writing the implementation plan, and it removes the only risk this design had:
+
+```typescript
+// module-guard.tsx:24 — moduleId is number[], m.module is a number
+const mod = (modules as any[]).find(m => m.module === moduleId)
+```
+
+Every call site passes an array (`moduleId={[1]}`, `{[8, 9]}`), and `TenantModule.Module` is
+an `AppModule` enum serialized as a number. `1 === [1]` is never true, so `mod` is always
+`undefined` and the redirect never runs. **The guard blocks every guarded screen waiting for
+an answer it then discards.**
+
+So this change has no behavioral consequence at all: nobody is redirected today, and nobody
+will be redirected after. What disappears is a round trip that buys nothing.
+
+Whether module gating *should* work is a separate question, and a product decision rather
+than a cleanup — fixing the comparison would start redirecting tenants who browse those
+screens today. See "Open question" below.
 
 The SWR key is `API_CONFIG.ENDPOINTS.TENANT_MODULES`, shared across all sections, so only
 the first guarded screen of a session issues the request. Later navigations read the cache
@@ -84,6 +98,24 @@ Recorded here so the next person does not reopen the question.
 | `usePlanLimits` | nothing | Already non-blocking — it returns defaults while loading, and screens read them as "no limit". |
 | `Main`'s tenant query, `useSubscription` | nothing | Already non-blocking — they feed styling, sidebar props and the paywall branch, none of which gate the first render. |
 
+## Open question — should module gating work at all?
+
+The comparison bug means module gating has never taken effect on the front. Fixing it is one
+line (`moduleId.includes(m.module)`), but it is **not** part of this design, because it
+changes production behavior: a tenant whose plan has a module disabled would start being
+redirected out of a screen they browse today. That is the same shape as the trial block in
+#119 — a correctness fix whose blast radius is a business decision, not an engineering one.
+
+Two things need answering before anyone fixes it, and neither belongs to this round:
+
+1. How many tenants currently have a disabled module in `TenantModules` and would be locked
+   out on deploy? A count from production settles it.
+2. Should the gate redirect at all, or should the screens instead be hidden from the sidebar
+   and the module treated as an upsell? Redirecting someone who followed a link is harsher
+   than not showing the link.
+
+Whatever is decided, it should be its own issue. This plan leaves the comparison untouched.
+
 ## Testing
 
 The project has no unit test runner for the front, and the Playwright suite needs the API
@@ -96,8 +128,10 @@ plus `TEST_EMAIL` / `TEST_PASSWORD` / `TEST_2FA_CODE`. Verification therefore is
   stub receives `/tenant/modules` and the screen paints only after it answers; after the
   change the screen paints without waiting for it. This is the measurement that decides
   whether the change did what it claims.
-- Manual, against the real API: a user whose tenant has every module sees no behavior
-  change; a user whose tenant lacks a module still lands on `/not-authorized`.
+- Manual, against the real API: navigate through the guarded sections and confirm nothing
+  changed except the disappearance of the full-screen spinner. Nobody should be redirected
+  to `/not-authorized` — not before the change and not after, since the comparison that
+  would trigger it never matches.
 
 ## Out of scope
 
