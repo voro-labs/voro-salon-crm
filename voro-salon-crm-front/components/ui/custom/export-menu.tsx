@@ -35,11 +35,11 @@ export function ExportMenu<T>({ columns, rows, filename, disabled, className, si
           {rows.length} registro{rows.length !== 1 ? "s" : ""}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => exportToExcel(columns, rows, filename)}>
+        <DropdownMenuItem onClick={() => { void exportToExcel(columns, rows, filename) }}>
           <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" />
           Excel (.xlsx)
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => exportToCsv(columns, rows, filename)}>
+        <DropdownMenuItem onClick={() => { void exportToCsv(columns, rows, filename) }}>
           <FileText className="mr-2 h-4 w-4 text-blue-600" />
           CSV (.csv)
         </DropdownMenuItem>
