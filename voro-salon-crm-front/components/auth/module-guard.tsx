@@ -5,7 +5,6 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { API_CONFIG, secureApiCall } from "@/lib/api"
-import { LoadingSimple } from "../ui/custom/loading/loading-simple"
 
 interface ModuleGuardProps {
     children: React.ReactNode
@@ -31,9 +30,8 @@ export function ModuleGuard({ children, moduleId }: ModuleGuardProps) {
         }
     }, [modules, isLoading, moduleId, router])
 
-    if (isLoading) {
-        return <LoadingSimple />
-    }
-
+    // Renderiza sempre: a lista de módulos decide um redirect, não o que aparece na tela.
+    // Segurar os filhos aqui punha uma ida à API na frente do primeiro render de toda rota
+    // guardada — e o efeito acima nem chega a agir sobre a resposta (issue #123).
     return <>{children}</>
 }
