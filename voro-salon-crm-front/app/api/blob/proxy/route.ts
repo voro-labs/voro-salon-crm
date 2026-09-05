@@ -1,6 +1,11 @@
 import { get } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
+// URLs do Vercel Blob carregam um sufixo aleatório por upload: o conteúdo de uma
+// URL nunca muda, então a resposta pode ser cacheada de forma agressiva pela CDN
+// e pelo browser. Trocar a foto gera outra URL, que é outra entrada de cache.
+const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const blobUrl = searchParams.get("url");
@@ -23,6 +28,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(result.stream, {
       headers: {
         'Content-Type': result.blob.contentType,
+        'Cache-Control': IMMUTABLE_CACHE,
         'X-Content-Type-Options': 'nosniff',
       },
     });
