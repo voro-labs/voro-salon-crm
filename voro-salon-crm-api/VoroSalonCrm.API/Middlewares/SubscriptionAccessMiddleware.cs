@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Cache;
@@ -17,6 +19,18 @@ namespace VoroSalonCrm.API.Middlewares
         private static readonly TimeSpan AllowedTtl = TimeSpan.FromMinutes(1);
 
         public static string CacheKey(Guid tenantId) => $"subscription:access:tenant:{tenantId}";
+
+        // O paywall do cliente isenta funcionario (components/layout/admin/main.tsx), e o
+        // servidor nao deve contradizer o produto: o 402 e para quem pode assinar. Quem so
+        // tem SalonEmployee nem sequer ve a tela de assinatura, entao bloquear ali daria
+        // erro generico sem caminho de saida.
+        private static bool IsEmployeeOnly(HttpContext context)
+        {
+            var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+            return roles.Count > 0 && roles.All(role => role == EmployeeRole);
+        }
+
+        private const string EmployeeRole = "SalonEmployee";
 
         private static readonly string[] BypassSegments =
         [
@@ -44,6 +58,12 @@ namespace VoroSalonCrm.API.Middlewares
 
             var tenantId = currentUserService.TenantId;
             if (tenantId == Guid.Empty)
+            {
+                await _next(context);
+                return;
+            }
+
+            if (IsEmployeeOnly(context))
             {
                 await _next(context);
                 return;

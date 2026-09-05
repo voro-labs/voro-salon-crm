@@ -28,14 +28,18 @@ public class SubscriptionAccessMiddlewareTests
             .Returns(Task.CompletedTask);
     }
 
-    private static DefaultHttpContext BuildContext(bool authenticated = true, string path = "/api/v1/appointments")
+    private static DefaultHttpContext BuildContext(
+        bool authenticated = true,
+        string path = "/api/v1/appointments",
+        params string[] roles)
     {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) };
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
         var context = new DefaultHttpContext
         {
             User = authenticated
-                ? new ClaimsPrincipal(new ClaimsIdentity(
-                    [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())],
-                    authenticationType: "Bearer"))
+                ? new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "Bearer"))
                 : new ClaimsPrincipal(new ClaimsIdentity()),
         };
         context.Request.Path = path;
@@ -188,6 +192,38 @@ public class SubscriptionAccessMiddlewareTests
         nextCalled().Should().BeTrue();
         context.Response.StatusCode.Should().Be(200);
         _subscriptions.Verify(r => r.GetActiveByTenantIdAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenUserIsOnlyAnEmployee_SkipsTheCheckEvenWithAnExpiredTrial()
+    {
+        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+            .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(-1)));
+
+        var (middleware, nextCalled) = BuildMiddleware();
+        var context = BuildContext(roles: "SalonEmployee");
+
+        await Invoke(middleware, context);
+
+        // o paywall do cliente isenta funcionario; o 402 e para quem pode assinar
+        nextCalled().Should().BeTrue();
+        context.Response.StatusCode.Should().Be(200);
+        _subscriptions.Verify(r => r.GetActiveByTenantIdAsync(It.IsAny<Guid>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_WhenUserIsEmployeeAndOwner_StillBlocksTheExpiredTrial()
+    {
+        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+            .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(-1)));
+
+        var (middleware, nextCalled) = BuildMiddleware();
+        var context = BuildContext(roles: ["SalonEmployee", "SalonOwner"]);
+
+        await Invoke(middleware, context);
+
+        nextCalled().Should().BeFalse();
+        context.Response.StatusCode.Should().Be(402);
     }
 
     [Fact]
