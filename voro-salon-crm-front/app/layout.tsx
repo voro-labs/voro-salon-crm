@@ -10,6 +10,7 @@ import { Main } from "@/components/layout/admin/main"
 import { TenantThemeProvider } from "@/contexts/tenant-theme.context"
 import { BrowserNotificationsProvider } from "@/contexts/browser-notifications.context"
 import { WebPushManager } from "@/components/providers/web-push-manager"
+import { SwrProvider } from "@/components/providers/swr-provider"
 import { Toaster } from "sonner"
 import { getBrandingByHostname } from '@/lib/branding'
 
@@ -350,23 +351,25 @@ export default async function RootLayout({
         />
       </head>
       <body className={`${_geist.className} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TenantThemeProvider>
-            <AuthProvider>
-              <BrowserNotificationsProvider>
-                <WebPushManager />
-                <Main>
-                  {children}
-                </Main>
-              </BrowserNotificationsProvider>
-            </AuthProvider>
-          </TenantThemeProvider>
-        </ThemeProvider>
+        <SwrProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TenantThemeProvider>
+              <AuthProvider>
+                <BrowserNotificationsProvider>
+                  <WebPushManager />
+                  <Main>
+                    {children}
+                  </Main>
+                </BrowserNotificationsProvider>
+              </AuthProvider>
+            </TenantThemeProvider>
+          </ThemeProvider>
+        </SwrProvider>
         <Toaster richColors position="top-right" />
         {process.env.NODE_ENV === 'production' && (
           <>
