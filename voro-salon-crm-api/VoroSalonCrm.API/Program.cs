@@ -133,8 +133,6 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseMiddleware<AuditMiddleware>();
 
-app.UseMiddleware<SubscriptionAccessMiddleware>();
-
 app.UseCors("JasmimCors");
 
 app.UseRateLimiter();
@@ -145,6 +143,11 @@ app.UseRateLimiter();
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+// Depois de UseAuthentication/UseAuthorization: o middleware lê context.User e o tenant do
+// token, e antes disso o usuário ainda é anônimo — registrado no topo do pipeline, ele saía
+// pelo primeiro `if` em toda requisição e nunca chegava a bloquear trial vencido (issue #119).
+app.UseMiddleware<SubscriptionAccessMiddleware>();
 
 app.UseMiddleware<IdempotencyMiddleware>();
 
