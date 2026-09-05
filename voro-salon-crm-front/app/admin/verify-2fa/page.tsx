@@ -101,9 +101,15 @@ export default function VerifyTwoFactorPage() {
     setError(null)
 
     try {
+      // O domínio vai junto no segundo passo para que a sessão seja aberta no
+      // estabelecimento correto quando a conta tem tipos diferentes (salão, barbearia...)
       const response = await apiCall<AuthDto>(API_CONFIG.ENDPOINTS.VERIFY_2FA, {
         method: "POST",
-        body: JSON.stringify({ pendingToken, code }),
+        body: JSON.stringify({
+          pendingToken,
+          code,
+          establishmentType: getEstablishmentTypeByHostname(window.location.hostname),
+        }),
       })
 
       if (response.hasError || !response.data?.token) {

@@ -16,6 +16,12 @@ public class SignInCommandHandler(
         var dto = request.Dto;
         var (user, roles) = await userService.GetByEmailAndPassword(dto.Email, dto.Password);
 
+        // O domínio de acesso libera a conta se ela tiver ao menos um estabelecimento
+        // daquele tipo — antes só o estabelecimento padrão era considerado, o que barrava
+        // quem tem, por exemplo, um salão e uma barbearia na mesma conta.
+        if (!EstablishmentAccessPolicy.HasAccessTo(user, dto.EstablishmentType))
+            throw new UnauthorizedAccessException("Credenciais inválidas para este endereço de acesso.");
+
         // 2FA desligado: devolve o usuário já autenticado para o chamador gerar o JWT.
         // Antes retornava null e o AuthService refazia GetByEmailAndPassword, rodando o
         // PBKDF2 do Identity duas vezes por login (issue #120).
@@ -28,12 +34,8 @@ public class SignInCommandHandler(
             ? $"{user.FirstName} {user.LastName}".Trim()
             : user.UserName ?? string.Empty;
 
-        var primaryTenant = user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.Tenant
-                         ?? user.UserTenants?.FirstOrDefault()?.Tenant;
-
-        if (dto.EstablishmentType.HasValue && primaryTenant != null &&
-            (int)primaryTenant.EstablishmentType != dto.EstablishmentType.Value)
-            throw new UnauthorizedAccessException("Credenciais inválidas para este endereço de acesso.");
+        // Marca do e-mail: o estabelecimento do domínio acessado, não o padrão da conta.
+        var primaryTenant = EstablishmentAccessPolicy.ResolveTenant(user, dto.EstablishmentType);
 
         if (user.EmailConfirmed && !ReviewerConstants.IsReviewer(user.Email))
             await notificationService.SendTwoFactorCodeAsync(user.Email!, userName, code, primaryTenant);
