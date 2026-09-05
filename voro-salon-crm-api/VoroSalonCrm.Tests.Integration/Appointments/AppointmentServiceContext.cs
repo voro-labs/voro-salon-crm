@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using MediatR;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
@@ -118,6 +118,10 @@ internal sealed class AppointmentServiceContext
         var q = AsyncQueryable(appointments);
         AppointmentRepo
             .Setup(r => r.Include(It.IsAny<Expression<Func<Appointment, object>>[]>()))
+            .Returns(q);
+        // Sobrecarga com asNoTracking, usada pela listagem paginada (issue #116).
+        AppointmentRepo
+            .Setup(r => r.Include(It.IsAny<bool>(), It.IsAny<Expression<Func<Appointment, object>>[]>()))
             .Returns(q);
         AppointmentRepo
             .Setup(r => r.Query(It.IsAny<Expression<Func<Appointment, bool>>>(), It.IsAny<bool>()))
