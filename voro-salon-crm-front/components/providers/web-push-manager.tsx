@@ -1,11 +1,9 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import useSWR from "swr"
 import { useAuth } from "@/contexts/auth.context"
 import { useBrowserNotifications } from "@/contexts/browser-notifications.context"
-import { API_CONFIG } from "@/lib/api"
-import { fetcher } from "@/lib/fetcher"
+import { useUserNotifications } from "@/hooks/use-user-notifications.hook"
 
 export function WebPushManager() {
   const { user } = useAuth()
@@ -20,16 +18,9 @@ export function WebPushManager() {
     }
   }, [user, requestPermission])
 
-  const { data: unreadCountData } = useSWR<{ count: number } | number>(
-    user ? API_CONFIG.ENDPOINTS.NOTIFICATIONS_UNREAD_COUNT : null,
-    fetcher,
-    { refreshInterval: 30000, shouldRetryOnError: false },
-  )
-
-  const unreadCount =
-    typeof unreadCountData === "number"
-      ? unreadCountData
-      : (unreadCountData as any)?.count ?? 0
+  // único poller de notificações do app: este componente fica montado no layout
+  // raiz, e as demais telas (sidebar, /notifications) consomem o mesmo cache
+  const { unreadCount } = useUserNotifications({ poll: true })
 
   useEffect(() => {
     if (!isSupported() || !user) return
