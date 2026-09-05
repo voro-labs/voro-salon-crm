@@ -109,6 +109,28 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
+// O matcher lista exatamente os prefixos que PROTECTED_PATHS guarda. Antes ele casava
+// com toda requisicao e o runtime descartava a maioria - landing, /booking, /receipt e
+// o proxy de imagem pagavam uma invocacao de edge para nada (issue #123, item 2).
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/",
+    "/appointments/:path*",
+    "/clients/:path*",
+    "/dashboard/:path*",
+    "/employees/:path*",
+    "/finance/:path*",
+    "/my-commissions/:path*",
+    "/my-profile/:path*",
+    "/notifications/:path*",
+    "/reports/:path*",
+    "/services/:path*",
+    "/settings/:path*",
+    "/admin/change-password/:path*",
+    "/admin/complete-profile/:path*",
+    "/admin/terms/:path*",
+    // /api continua guardado, menos o proxy de imagem: ele responde com cache imutavel
+    // e nao deve pagar middleware por request (PR #129)
+    "/api/((?!blob/proxy).*)",
+  ],
 }
