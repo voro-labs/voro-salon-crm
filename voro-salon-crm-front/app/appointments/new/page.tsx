@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2, Calendar as CalendarIcon, Zap, Tag } from "lucide-react"
@@ -37,6 +37,7 @@ import { getServicePlaceholders } from "@/lib/branding"
 import { EstablishmentType } from "@/types/Enums/establishmentType.enum"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -54,7 +55,7 @@ interface SelectedServiceItem {
   hasPromotion?: boolean
 }
 
-export default function NovoAgendamentoPage() {
+function NovoAgendamentoPageContent() {
   const {
     clients,
     services,
@@ -712,5 +713,15 @@ export default function NovoAgendamentoPage() {
         </Card>
       </div>
     </AuthGuard>
+  )
+}
+
+// useSearchParams() forca render no cliente; sem um limite de Suspense acima dele, a rota
+// inteira deixa de poder ser pre-renderizada (issue #123, item 1).
+export default function NovoAgendamentoPage() {
+  return (
+    <Suspense fallback={<LoadingSimple />}>
+      <NovoAgendamentoPageContent />
+    </Suspense>
   )
 }

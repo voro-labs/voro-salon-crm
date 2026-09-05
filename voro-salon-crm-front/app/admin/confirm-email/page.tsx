@@ -1,14 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle, AlertCircle, MailCheck, ArrowLeft, Loader2, Smartphone, ExternalLink } from "lucide-react"
 import { API_CONFIG, apiCall } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 
 type State = "detecting" | "mobile-choice" | "confirming" | "success" | "error"
 
-export default function ConfirmEmailPage() {
+function ConfirmEmailPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
@@ -133,5 +134,15 @@ export default function ConfirmEmailPage() {
         </Button>
       </div>
     </div>
+  )
+}
+
+// useSearchParams() forca render no cliente; sem um limite de Suspense acima dele, a rota
+// inteira deixa de poder ser pre-renderizada (issue #123, item 1).
+export default function ConfirmEmailPage() {
+  return (
+    <Suspense fallback={<LoadingSimple />}>
+      <ConfirmEmailPageContent />
+    </Suspense>
   )
 }

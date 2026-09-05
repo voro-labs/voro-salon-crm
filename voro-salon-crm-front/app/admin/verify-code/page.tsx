@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, CheckCircle, ShieldCheck } from "lucide-react"
 import { API_CONFIG, apiCall } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { LoadingSimple } from "@/components/ui/custom/loading/loading-simple"
 
-export default function VerifyCodePage() {
+function VerifyCodePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
@@ -115,5 +116,15 @@ export default function VerifyCodePage() {
         </p>
       </div>
     </div>
+  )
+}
+
+// useSearchParams() forca render no cliente; sem um limite de Suspense acima dele, a rota
+// inteira deixa de poder ser pre-renderizada (issue #123, item 1).
+export default function VerifyCodePage() {
+  return (
+    <Suspense fallback={<LoadingSimple />}>
+      <VerifyCodePageContent />
+    </Suspense>
   )
 }
