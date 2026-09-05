@@ -30,15 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts"
+import dynamic from "next/dynamic"
 import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -50,6 +42,17 @@ import { usePlanLimits } from "@/hooks/use-plan-limits.hook"
 import { PageHeader } from "@/components/ui/custom/page-header"
 import { StatusDropdown } from "@/components/ui/custom/status-badge"
 import { ListSkeleton } from "@/components/ui/custom/list-skeleton"
+
+// O recharts responde por boa parte do JS do dashboard e nada dele é necessário para o
+// primeiro paint: carrega sob demanda, já no cliente, com um placeholder do mesmo tamanho
+// para a tela não pular quando o gráfico chega (issue #123, item 4).
+const RevenueChart = dynamic(
+  () => import("@/components/features/dashboard/revenue-chart").then((m) => m.RevenueChart),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-full w-full" />,
+  },
+)
 
 const fetcher = async (url: string) => {
   const result = await secureApiCall<any>(url, { method: "GET" })
@@ -282,46 +285,7 @@ export default function DashboardPage() {
             <CardContent>
               {chartData.length > 0 ? (
                 <div className="h-94 w-full min-w-0">
-                  <ResponsiveContainer width="99%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        vertical={false}
-                        stroke="var(--color-border)"
-                      />
-                      <XAxis
-                        dataKey="month"
-                        tick={{ fontSize: 12 }}
-                        stroke="var(--color-muted-foreground)"
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        stroke="var(--color-muted-foreground)"
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v) => `R$${v >= 1000 ? (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'k' : v}`}
-                        width={60}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "var(--color-card)",
-                          border: "1px solid var(--color-border)",
-                          borderRadius: "8px",
-                          fontSize: "13px",
-                        }}
-                        formatter={(value: number) => [formatCurrency(value), "Receita"]}
-                        labelStyle={{ fontWeight: 600 }}
-                      />
-                      <Bar
-                        dataKey="receita"
-                        fill="var(--color-primary)"
-                        radius={[6, 6, 0, 0]}
-                        maxBarSize={32}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <RevenueChart data={chartData} />
                 </div>
               ) : (
                 <div className="h-75 flex items-center justify-center text-muted-foreground text-sm">
