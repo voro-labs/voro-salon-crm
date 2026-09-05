@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VoroSalonCrm.Application.Services;
@@ -188,6 +188,7 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             services.AddHostedService<EvolutionResponseWorker>();
             services.AddHostedService<RouteAuditWriter>();
             services.AddHostedService<RouteAuditRetentionJob>();
+            services.AddHostedService<EntityAuditRetentionJob>();
 
             services.AddMediatR(cfg =>
                 cfg.RegisterServicesFromAssembly(
