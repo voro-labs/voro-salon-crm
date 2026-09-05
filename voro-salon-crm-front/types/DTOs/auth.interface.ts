@@ -1,3 +1,4 @@
+import { EstablishmentType } from "../Enums/establishmentType.enum";
 import { RoleDto } from "./Identity/role.interface";
 
 export interface AuthDto {
@@ -9,7 +10,7 @@ export interface AuthDto {
   roles?: RoleDto[];
   token?: string;
   refreshToken?: string;
-  tenants?: { id: string, name: string, slug: string, logoUrl?: string }[];
+  tenants?: { id: string, name: string, slug: string, logoUrl?: string, establishmentType?: EstablishmentType }[];
   twoFactorEnabled?: boolean;
   emailConfirmed?: boolean;
   requiresTwoFactor?: boolean;

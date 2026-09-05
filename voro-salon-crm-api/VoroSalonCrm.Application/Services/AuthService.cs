@@ -58,12 +58,17 @@ namespace VoroSalonCrm.Application.Services
             // 2FA disabled: the handler already validated the credentials and returned the
             // user, so we only generate the JWT here. Re-calling GetByEmailAndPassword would
             // run the Identity PBKDF2 hash a second time on every login (issue #120).
-            return await GenerateAuthDtoAsync(result.User!, result.Roles);
+            return await GenerateAuthDtoAsync(result.User!, result.Roles, establishmentType: signInDto.EstablishmentType);
         }
 
         public async Task<AuthDto> VerifyTwoFactorAsync(VerifyTwoFactorDto dto)
         {
             var (user, roles) = await _userService.VerifyTwoFactorAsync(dto.PendingToken, dto.Code);
+
+            // O domínio também vem no segundo passo: sem isso a sessão voltaria para o
+            // estabelecimento padrão da conta, mesmo tendo entrado por outro domínio.
+            if (!Features.Auth.EstablishmentAccessPolicy.HasAccessTo(user, dto.EstablishmentType))
+                throw new UnauthorizedAccessException("Credenciais inválidas para este endereço de acesso.");
 
             var isReviewer = ReviewerConstants.IsReviewer(user.Email);
             if (isReviewer)
@@ -91,7 +96,7 @@ namespace VoroSalonCrm.Application.Services
                 }
             }
 
-            return await GenerateAuthDtoAsync(user, roles);
+            return await GenerateAuthDtoAsync(user, roles, establishmentType: dto.EstablishmentType);
         }
 
         public async Task<AuthDto> SignUpAsync(SignUpDto signUpDto, List<string> roles)
@@ -405,7 +410,7 @@ namespace VoroSalonCrm.Application.Services
             await _userService.DisableTwoFactorAsync(userId);
         }
 
-        public async Task<AuthDto> SwitchTenantAsync(Guid tenantId)
+        public async Task<AuthDto> SwitchTenantAsync(Guid tenantId, int? establishmentType = null)
         {
             var userId = _currentUser.UserId;
             Console.WriteLine($"[DEBUG] SwitchTenantAsync: UserId={userId}, TargetTenantId={tenantId}");
@@ -427,9 +432,16 @@ namespace VoroSalonCrm.Application.Services
             var userTenant = user.UserTenants?.FirstOrDefault(ut => ut.TenantId == tenantId)
                 ?? throw new UnauthorizedAccessException("Usuário não tem acesso a este salão.");
 
+            // O domínio atual também limita a troca: cada tipo de estabelecimento é
+            // acessado pelo seu próprio endereço.
+            if (establishmentType.HasValue && userTenant.Tenant != null &&
+                (int)userTenant.Tenant.EstablishmentType != establishmentType.Value)
+                throw new UnauthorizedAccessException(
+                    "Este estabelecimento não pode ser acessado por este endereço de acesso.");
+
             var roles = await _userService.GetRolesAsync(user);
 
-            return await GenerateAuthDtoAsync(user, roles, tenantId);
+            return await GenerateAuthDtoAsync(user, roles, tenantId, establishmentType);
         }
 
         private static List<Claim> GenerateClaims(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
@@ -541,24 +553,19 @@ namespace VoroSalonCrm.Application.Services
             return principal;
         }
 
-        private async Task<AuthDto> GenerateAuthDtoAsync(User user, IList<string>? rolesNames, Guid? targetTenantId = null)
+        private async Task<AuthDto> GenerateAuthDtoAsync(User user, IList<string>? rolesNames, Guid? targetTenantId = null,
+            int? establishmentType = null)
         {
             // Verificar flags pós-login (senha expirada, troca obrigatória, termos)
             var userExt = await _userExtensionRepository.GetByIdAsync(false, user.Id);
 
-            // Se não foi passado um tenant específico (login normal), tenta usar o último conectado
-            Guid? resolvedTenantId = targetTenantId;
-            if (resolvedTenantId == null && userExt?.LastConnectedTenantId != null)
-            {
-                var lastTenant = userExt.LastConnectedTenantId.Value;
-                var belongsToLastTenant = user.UserTenants?.Any(ut => ut.TenantId == lastTenant) == true;
-                if (belongsToLastTenant)
-                    resolvedTenantId = lastTenant;
-            }
-
-            var primaryTenantId = resolvedTenantId
-                                ?? user.UserTenants?.FirstOrDefault(ut => ut.IsDefault)?.TenantId
-                                ?? user.UserTenants?.FirstOrDefault()?.TenantId
+            // Sem tenant específico (login normal): conecta um estabelecimento do tipo do
+            // domínio acessado, preservando dentro dele o último acessado / o padrão. Sem
+            // esse filtro, quem tem salão e barbearia na mesma conta entrava no domínio da
+            // barbearia e caía no salão.
+            var primaryTenantId = targetTenantId
+                                ?? Features.Auth.EstablishmentAccessPolicy.ResolveTenantId(
+                                       user, establishmentType, userExt?.LastConnectedTenantId)
                                 ?? Guid.Empty;
             var requiresPasswordChange = false;
             var requiresTermsAcceptance = false;
@@ -622,13 +629,18 @@ namespace VoroSalonCrm.Application.Services
             }
             await _unitOfWork.SaveChangesAsync();
 
-            var tenants = user.UserTenants?.Select(ut => new TenantDto
-            {
-                Id = ut.TenantId,
-                Name = ut.Tenant?.Name ?? "Salon",
-                Slug = ut.Tenant?.Slug ?? "",
-                LogoUrl = ut.Tenant?.LogoUrl
-            }).ToList() ?? [];
+            // Seletor de estabelecimentos: só os do domínio acessado, para não oferecer
+            // uma troca que deixaria a sessão com a marca de um tipo e os dados de outro.
+            var tenants = Features.Auth.EstablishmentAccessPolicy
+                .VisibleTenants(user, establishmentType)
+                .Select(ut => new TenantDto
+                {
+                    Id = ut.TenantId,
+                    Name = ut.Tenant?.Name ?? "Salon",
+                    Slug = ut.Tenant?.Slug ?? "",
+                    LogoUrl = ut.Tenant?.LogoUrl,
+                    EstablishmentType = ut.Tenant?.EstablishmentType ?? Domain.Enums.EstablishmentType.Salon
+                }).ToList();
 
             return new AuthDto()
             {
