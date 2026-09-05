@@ -19,6 +19,12 @@ builder.Services.AddControllers(options =>
     // custava uma alocação e um hop de pipeline por requisição sem fazer nada. A classe
     // continua no repositório documentando a intenção original (rollback para tenants demo),
     // pendente de decisão na issue #124.
+})
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -72,15 +78,12 @@ builder.Services
     .AddApplicationServices(builder.Configuration)
     .AddCustomCors(builder.Configuration);
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-    });
-
 builder.Services.AddEndpointsApiExplorer();
+
+// Liveness: responde "a aplicação subiu e o pipeline atende". Sem checar o banco de
+// propósito — o health check é o que o Fly usa para decidir se mata a máquina, e uma
+// oscilação do Postgres derrubando a API deixaria tudo pior, não melhor.
+builder.Services.AddHealthChecks();
 
 builder.Services.AddApiVersioning(options =>
 {
@@ -136,13 +139,16 @@ app.UseCors("JasmimCors");
 
 app.UseRateLimiter();
 
-app.UseHttpsRedirection();
-
+// Sem UseHttpsRedirection: o container escuta só HTTP (ASPNETCORE_URLS no Dockerfile), o TLS
+// termina no proxy do Fly e o `force_https` do fly.toml já redireciona na borda. Sem porta
+// HTTPS configurada o middleware não redirecionava nada, só logava warning por requisição.
 app.UseAuthentication();
 
 app.UseAuthorization();
 
 app.UseMiddleware<IdempotencyMiddleware>();
+
+app.MapHealthChecks("/health");
 
 app.MapControllers();
 
