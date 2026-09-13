@@ -4,6 +4,7 @@ using VoroSalonCrm.Application.Services.Interfaces;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Domain.Projections;
 
 namespace VoroSalonCrm.API.Middlewares
 {
@@ -84,7 +85,12 @@ namespace VoroSalonCrm.API.Middlewares
                 return;
             }
 
-            var sub = await subscriptionRepository.GetActiveByTenantIdAsync(tenantId);
+            // Projeção, e não a entidade: o veredito sai de Status + TrialEndsAt, mas
+            // GetActiveByTenantIdAsync trazia a assinatura inteira com Include(Plan) e
+            // rastreada pelo ChangeTracker, num caminho que roda a cada cache miss de cada
+            // tenant ativo (issue #129).
+            var sub = await subscriptionRepository.GetAccessSnapshotByTenantIdAsync(
+                tenantId, context.RequestAborted);
 
             // Bloqueia se trial expirou
             if (sub != null &&

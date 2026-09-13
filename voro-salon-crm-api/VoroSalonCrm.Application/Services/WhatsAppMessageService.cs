@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using VoroSalonCrm.Application.DTOs.Integration;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Entities;
+using VoroSalonCrm.Domain.Interfaces.Integration;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
 
@@ -10,6 +11,7 @@ namespace VoroSalonCrm.Application.Services
     public class WhatsAppMessageService(
         IWhatsAppMessageRepository repository,
         IWhatsAppConversationRepository conversationRepository,
+        IEvolutionMessageSignal evolutionSignal,
         IUnitOfWork unitOfWork) : IWhatsAppMessageService
     {
         public async Task SaveInboundAsync(Guid tenantId, string from, string to, string body, string? whatsAppMessageId = null)
@@ -58,7 +60,14 @@ namespace VoroSalonCrm.Application.Services
             catch (DbUpdateException) when (!string.IsNullOrEmpty(whatsAppMessageId))
             {
                 // Unique constraint violation: webhook duplicado chegou no mesmo instante — ignorar silenciosamente
+                return;
             }
+
+            // Só depois do commit: avisar antes faria o worker consultar o banco e não achar
+            // nada, exatamente o ciclo vazio que a troca do polling veio eliminar (issue #129).
+            // O aviso fica fora do try acima de propósito — se a gravação falhou, não há
+            // trabalho novo para o bot.
+            evolutionSignal.Signal();
         }
 
         public async Task SaveOutboundAsync(Guid tenantId, string from, string to, string body, string? whatsAppMessageId = null)
