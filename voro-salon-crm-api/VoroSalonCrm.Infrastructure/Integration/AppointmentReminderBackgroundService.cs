@@ -11,12 +11,17 @@ namespace VoroSalonCrm.Infrastructure.Integration
     /// <summary>
     /// Serviço de background que verifica a cada 10 minutos se há agendamentos
     /// que precisam de um lembrete de 24h via WhatsApp e os envia.
+    /// <para>
+    /// Acorda na grade compartilhada do <see cref="PeriodicJobSchedule"/>, junto com os demais
+    /// jobs periódicos, para o Postgres ter janelas contínuas de ociosidade (issue #129).
+    /// A frequência não mudou: continua de 10 em 10 minutos, agora ancorada no relógio.
+    /// </para>
     /// </summary>
     public class AppointmentReminderBackgroundService(
         IServiceScopeFactory scopeFactory,
         ILogger<AppointmentReminderBackgroundService> logger) : BackgroundService
     {
-        private static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
+        private static readonly TimeSpan Interval = PeriodicJobSchedule.Grid;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -33,7 +38,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     logger.LogError(ex, "Error processing appointment reminders.");
                 }
 
-                await Task.Delay(Interval, stoppingToken);
+                await PeriodicJobSchedule.WaitForNextTickAsync(Interval, stoppingToken);
             }
         }
 
