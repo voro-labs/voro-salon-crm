@@ -8,15 +8,24 @@ using VoroSalonCrm.Infrastructure.Factories;
 namespace VoroSalonCrm.Infrastructure.Integration
 {
     /// <summary>
-    /// Roda a cada minuto e cancela checkouts pendentes (Inactive) que
-    /// não foram concluídos dentro de 10 minutos, preservando a assinatura
-    /// anterior (Trial ou Active) como a assinatura vigente do tenant.
+    /// Cancela checkouts pendentes (Inactive) que não foram concluídos dentro de 10 minutos,
+    /// preservando a assinatura anterior (Trial ou Active) como a assinatura vigente do tenant.
     /// </summary>
     public class ExpiredCheckoutCleanupJob(
         IServiceScopeFactory scopeFactory,
         ILogger<ExpiredCheckoutCleanupJob> logger) : BackgroundService
     {
-        private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
+        /// <summary>
+        /// Antes rodava a cada minuto: 1.440 varreduras por dia em <c>TenantSubscriptions</c>
+        /// para uma tarefa sem nenhuma urgência, mantendo o compute do Postgres acordado
+        /// (issue #129).
+        /// <para>
+        /// A cadência mais lenta é segura porque o cancelamento virou só faxina: quem lê a
+        /// assinatura vigente já descarta o checkout expirado pela data, sem depender deste job
+        /// ter rodado — ver <c>TenantSubscriptionRepository</c>.
+        /// </para>
+        /// </summary>
+        private static readonly TimeSpan Interval = PeriodicJobSchedule.Grid;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -33,7 +42,7 @@ namespace VoroSalonCrm.Infrastructure.Integration
                     logger.LogError(ex, "Error cancelling expired checkouts.");
                 }
 
-                await Task.Delay(Interval, stoppingToken);
+                await PeriodicJobSchedule.WaitForNextTickAsync(Interval, stoppingToken);
             }
         }
 

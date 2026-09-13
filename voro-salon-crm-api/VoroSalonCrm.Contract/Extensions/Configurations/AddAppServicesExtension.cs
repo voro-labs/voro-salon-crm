@@ -9,6 +9,7 @@ using VoroSalonCrm.Application.Services.Interfaces.Email;
 using VoroSalonCrm.Application.Services.Interfaces.Identity;
 using VoroSalonCrm.Application.Services.Interfaces.Integration;
 using VoroSalonCrm.Domain.Interfaces.Auditing;
+using VoroSalonCrm.Domain.Interfaces.Integration;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
 using VoroSalonCrm.Domain.Interfaces.Repositories.Identity;
 using VoroSalonCrm.Domain.Interfaces.UnitOfWork;
@@ -180,6 +181,11 @@ namespace VoroSalonCrm.Contract.Extensions.Configurations
             // A fila é singleton: o middleware (scoped) escreve nela, o writer (hosted) drena.
             services.AddSingleton<RouteAuditQueue>();
             services.AddSingleton<IRouteAuditQueue>(sp => sp.GetRequiredService<RouteAuditQueue>());
+
+            // Aviso de mensagem inbound para o bot da Evolution (issue #129). Singleton pelo
+            // mesmo motivo da fila de auditoria: quem grava a mensagem é scoped, quem espera
+            // pelo aviso é o hosted service.
+            services.AddSingleton<IEvolutionMessageSignal, EvolutionMessageSignal>();
 
             services.AddHostedService<AppointmentReminderBackgroundService>();
             services.AddHostedService<MembershipExpirationNotificationJob>();

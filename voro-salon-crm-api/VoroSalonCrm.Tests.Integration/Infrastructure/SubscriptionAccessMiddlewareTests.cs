@@ -4,10 +4,10 @@ using Moq;
 using System.Security.Claims;
 using VoroSalonCrm.API.Middlewares;
 using VoroSalonCrm.Application.Services.Interfaces;
-using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Enums;
 using VoroSalonCrm.Domain.Interfaces.Cache;
 using VoroSalonCrm.Domain.Interfaces.Repositories;
+using VoroSalonCrm.Domain.Projections;
 
 namespace VoroSalonCrm.Tests.Integration.Infrastructure;
 
@@ -61,10 +61,11 @@ public class SubscriptionAccessMiddlewareTests
     private Task Invoke(SubscriptionAccessMiddleware middleware, HttpContext context) =>
         middleware.InvokeAsync(context, _currentUser.Object, _subscriptions.Object, _cache.Object);
 
-    private static TenantSubscription Subscription(SubscriptionStatus status, DateTimeOffset? trialEndsAt) => new()
+    // O middleware decide com Status + TrialEndsAt, e agora le exatamente isso do banco:
+    // GetAccessSnapshotByTenantIdAsync projeta as duas colunas em vez de materializar a
+    // assinatura inteira com Include(Plan) e rastreamento (issue #129).
+    private static SubscriptionAccessSnapshot Subscription(SubscriptionStatus status, DateTimeOffset? trialEndsAt) => new()
     {
-        Id = Guid.NewGuid(),
-        TenantId = TenantId,
         Status = status,
         TrialEndsAt = trialEndsAt,
     };
@@ -72,7 +73,7 @@ public class SubscriptionAccessMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WhenTrialExpired_Returns402AndStopsThePipeline()
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(-1)));
 
         var (middleware, nextCalled) = BuildMiddleware();
@@ -91,7 +92,7 @@ public class SubscriptionAccessMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WhenTrialExpired_DoesNotCacheTheBlock()
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(-1)));
 
         var (middleware, _) = BuildMiddleware();
@@ -106,7 +107,7 @@ public class SubscriptionAccessMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WhenTrialStillRunning_CallsNextAndCachesTheVerdict()
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(3)));
 
         var (middleware, nextCalled) = BuildMiddleware();
@@ -126,7 +127,7 @@ public class SubscriptionAccessMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WhenSubscriptionIsActive_CallsNext()
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Subscription(SubscriptionStatus.Active, trialEndsAt: null));
 
         var (middleware, nextCalled) = BuildMiddleware();
@@ -139,8 +140,8 @@ public class SubscriptionAccessMiddlewareTests
     [Fact]
     public async Task InvokeAsync_WhenTenantHasNoSubscription_CallsNext()
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
-            .ReturnsAsync((TenantSubscription?)null);
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SubscriptionAccessSnapshot?)null);
 
         var (middleware, nextCalled) = BuildMiddleware();
 
@@ -160,7 +161,7 @@ public class SubscriptionAccessMiddlewareTests
         await Invoke(middleware, BuildContext());
 
         nextCalled().Should().BeTrue();
-        _subscriptions.Verify(r => r.GetActiveByTenantIdAsync(It.IsAny<Guid>()), Times.Never);
+        _subscriptions.Verify(r => r.GetAccessSnapshotByTenantIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -171,7 +172,7 @@ public class SubscriptionAccessMiddlewareTests
         await Invoke(middleware, BuildContext(authenticated: false));
 
         nextCalled().Should().BeTrue();
-        _subscriptions.Verify(r => r.GetActiveByTenantIdAsync(It.IsAny<Guid>()), Times.Never);
+        _subscriptions.Verify(r => r.GetAccessSnapshotByTenantIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _cache.Verify(c => c.ExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -181,7 +182,7 @@ public class SubscriptionAccessMiddlewareTests
     [InlineData("/health")]
     public async Task InvokeAsync_WhenPathIsBypassed_SkipsTheCheck(string path)
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(-1)));
 
         var (middleware, nextCalled) = BuildMiddleware();
@@ -191,13 +192,13 @@ public class SubscriptionAccessMiddlewareTests
 
         nextCalled().Should().BeTrue();
         context.Response.StatusCode.Should().Be(200);
-        _subscriptions.Verify(r => r.GetActiveByTenantIdAsync(It.IsAny<Guid>()), Times.Never);
+        _subscriptions.Verify(r => r.GetAccessSnapshotByTenantIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task InvokeAsync_WhenUserIsOnlyAnEmployee_SkipsTheCheckEvenWithAnExpiredTrial()
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(-1)));
 
         var (middleware, nextCalled) = BuildMiddleware();
@@ -208,13 +209,13 @@ public class SubscriptionAccessMiddlewareTests
         // o paywall do cliente isenta funcionario; o 402 e para quem pode assinar
         nextCalled().Should().BeTrue();
         context.Response.StatusCode.Should().Be(200);
-        _subscriptions.Verify(r => r.GetActiveByTenantIdAsync(It.IsAny<Guid>()), Times.Never);
+        _subscriptions.Verify(r => r.GetAccessSnapshotByTenantIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task InvokeAsync_WhenUserIsEmployeeAndOwner_StillBlocksTheExpiredTrial()
     {
-        _subscriptions.Setup(r => r.GetActiveByTenantIdAsync(TenantId))
+        _subscriptions.Setup(r => r.GetAccessSnapshotByTenantIdAsync(TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Subscription(SubscriptionStatus.Trial, DateTimeOffset.UtcNow.AddDays(-1)));
 
         var (middleware, nextCalled) = BuildMiddleware();
@@ -236,6 +237,6 @@ public class SubscriptionAccessMiddlewareTests
         await Invoke(middleware, BuildContext());
 
         nextCalled().Should().BeTrue();
-        _subscriptions.Verify(r => r.GetActiveByTenantIdAsync(It.IsAny<Guid>()), Times.Never);
+        _subscriptions.Verify(r => r.GetAccessSnapshotByTenantIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

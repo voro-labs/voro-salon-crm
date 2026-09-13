@@ -1,5 +1,6 @@
 using VoroSalonCrm.Domain.Entities;
 using VoroSalonCrm.Domain.Interfaces.Repositories.Base;
+using VoroSalonCrm.Domain.Projections;
 
 namespace VoroSalonCrm.Domain.Interfaces.Repositories
 {
@@ -13,5 +14,11 @@ namespace VoroSalonCrm.Domain.Interfaces.Repositories
         Task<IEnumerable<TenantSubscription>> GetAllWithPlanAsync(int page, int pageSize);
         Task<TenantSubscription?> GetByIdWithPlanAsync(Guid id);
         Task<TenantSubscription?> GetByTenantIdWithPlanAsync(Guid tenantId);
+
+        /// <summary>
+        /// Só o estado de acesso da assinatura vigente, sem carregar a entidade nem o plano.
+        /// Devolve <c>null</c> quando o tenant não tem assinatura.
+        /// </summary>
+        Task<SubscriptionAccessSnapshot?> GetAccessSnapshotByTenantIdAsync(Guid tenantId, CancellationToken ct = default);
     }
 }
